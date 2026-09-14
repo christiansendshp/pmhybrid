@@ -1,32 +1,86 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  CdkDrag,
+  CdkDragDrop,
+  CdkDropList,
+  CdkDropListGroup,
+  moveItemInArray,
+  transferArrayItem,
+} from '@angular/cdk/drag-drop';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
+import { KANBAN_STATUSES, isDraggableTransition } from '../../core/task-status-policy.js';
 import { Task, TaskStatus, TasksService } from '../../core/tasks.service.js';
 
-const STATUSES: TaskStatus[] = ['PENDIENTE', 'ASIGNADA', 'EN_DESARROLLO', 'QA', 'TERMINADA'];
-
 /**
- * FASE-07 placeholder: status columns with a plain task list, no drag &
- * drop or filters yet — that's FASE-09. Enough to exercise "crear tarea"
- * and see status per column; TaskDetail is where status actually changes.
+ * FASE-09. Drag & drop moves a card between columns via
+ * POST .../transition. PENDIENTE and ASIGNADA are not drop targets — see
+ * core/task-status-policy.ts's isDraggableTransition docstring for why.
  */
 @Component({
   selector: 'app-kanban',
-  imports: [ReactiveFormsModule, RouterLink, MatButtonModule, MatFormFieldModule, MatInputModule],
+  imports: [
+    ReactiveFormsModule,
+    FormsModule,
+    RouterLink,
+    CdkDropListGroup,
+    CdkDropList,
+    CdkDrag,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+  ],
   templateUrl: './kanban.html',
 })
 export class Kanban implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly tasksService = inject(TasksService);
+  private readonly projectsService = inject(ProjectsService);
   private readonly fb = inject(FormBuilder);
 
-  readonly statuses = STATUSES;
-  readonly tasks = signal<Task[]>([]);
+  readonly statuses = KANBAN_STATUSES;
+  readonly allTasks = signal<Task[]>([]);
+  readonly members = signal<ProjectMember[]>([]);
   readonly showCreateForm = signal(false);
   readonly creating = signal(false);
+
+  readonly assigneeFilter = signal<string | null>(null);
+  readonly titleFilter = signal('');
+
+  readonly filteredTasks = computed(() => {
+    const assignee = this.assigneeFilter();
+    const title = this.titleFilter().trim().toLowerCase();
+    return this.allTasks().filter((task) => {
+      if (assignee && task.assigneeActorId !== assignee) {
+        return false;
+      }
+      if (title && !task.title.toLowerCase().includes(title)) {
+        return false;
+      }
+      return true;
+    });
+  });
+
+  /** Memoized per status — a plain per-render filter would hand cdkDropList a fresh array reference every change-detection tick, which corrupts in-flight drag index tracking. */
+  readonly tasksByStatus = computed(() => {
+    const grouped: Record<TaskStatus, Task[]> = {
+      PENDIENTE: [],
+      ASIGNADA: [],
+      EN_DESARROLLO: [],
+      QA: [],
+      TERMINADA: [],
+    };
+    for (const task of this.filteredTasks()) {
+      grouped[task.status].push(task);
+    }
+    return grouped;
+  });
 
   readonly form = this.fb.nonNullable.group({
     title: ['', [Validators.required]],
@@ -37,15 +91,44 @@ export class Kanban implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    await this.reload();
+    const [tasks, members] = await Promise.all([
+      this.tasksService.listForProject(this.projectId),
+      this.projectsService.listMembers(this.projectId),
+    ]);
+    this.allTasks.set(tasks);
+    this.members.set(members);
   }
 
-  tasksFor(status: TaskStatus): Task[] {
-    return this.tasks().filter((t) => t.status === status);
+  /** Drop targets: PENDIENTE and ASIGNADA columns are excluded entirely (see class docstring). */
+  connectedListsFor(status: TaskStatus): string[] {
+    if (status === 'PENDIENTE' || status === 'ASIGNADA') {
+      return [];
+    }
+    return this.statuses.map((s) => `column-${s}`);
   }
 
-  private async reload(): Promise<void> {
-    this.tasks.set(await this.tasksService.listForProject(this.projectId));
+  async onDrop(event: CdkDragDrop<Task[]>, toStatus: TaskStatus): Promise<void> {
+    const task = event.item.data as Task;
+    if (event.previousContainer === event.container) {
+      moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
+      return;
+    }
+    if (!isDraggableTransition(task.status, toStatus)) {
+      return; // illegal target — leave the card in its original column
+    }
+
+    transferArrayItem(
+      event.previousContainer.data,
+      event.container.data,
+      event.previousIndex,
+      event.currentIndex,
+    );
+
+    try {
+      await this.tasksService.transition(this.projectId, task.id, toStatus);
+    } finally {
+      this.allTasks.set(await this.tasksService.listForProject(this.projectId));
+    }
   }
 
   async submit(): Promise<void> {
@@ -57,7 +140,7 @@ export class Kanban implements OnInit {
       await this.tasksService.create(this.projectId, { title: this.form.getRawValue().title });
       this.form.reset();
       this.showCreateForm.set(false);
-      await this.reload();
+      this.allTasks.set(await this.tasksService.listForProject(this.projectId));
     } finally {
       this.creating.set(false);
     }

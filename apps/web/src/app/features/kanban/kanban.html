@@ -15,16 +15,40 @@
 }
 
 <div>
+  <input
+    [ngModel]="titleFilter()"
+    (ngModelChange)="titleFilter.set($event)"
+    placeholder="Filter by title…"
+  />
+  <mat-select
+    placeholder="Filter by assignee…"
+    [ngModel]="assigneeFilter()"
+    (ngModelChange)="assigneeFilter.set($event)"
+  >
+    <mat-option [value]="null">All assignees</mat-option>
+    @for (member of members(); track member.actorId) {
+      <mat-option [value]="member.actorId">{{ member.actor.displayName }}</mat-option>
+    }
+  </mat-select>
+</div>
+
+<div cdkDropListGroup>
   @for (status of statuses; track status) {
     <section>
       <h3>{{ status }}</h3>
-      <ul>
-        @for (task of tasksFor(status); track task.id) {
-          <li>
+      <div
+        [id]="'column-' + status"
+        cdkDropList
+        [cdkDropListData]="tasksByStatus()[status]"
+        [cdkDropListConnectedTo]="connectedListsFor(status)"
+        (cdkDropListDropped)="onDrop($event, status)"
+      >
+        @for (task of tasksByStatus()[status]; track task.id) {
+          <div cdkDrag [cdkDragData]="task">
             <a [routerLink]="['../tasks', task.id]">{{ task.title }}</a>
-          </li>
+          </div>
         }
-      </ul>
+      </div>
     </section>
   }
 </div>

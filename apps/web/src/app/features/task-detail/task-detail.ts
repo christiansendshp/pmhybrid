@@ -4,21 +4,13 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
+import { LEGAL_NEXT_STATUSES } from '../../core/task-status-policy.js';
 import {
   Task,
   TaskDetail as TaskDetailModel,
   TaskStatus,
   TasksService,
 } from '../../core/tasks.service.js';
-
-/** Mirrors apps/api/src/modules/tasks/task-status-policy.ts — which buttons are legal to show. */
-const LEGAL_NEXT_STATUSES: Record<TaskStatus, TaskStatus[]> = {
-  PENDIENTE: ['ASIGNADA'],
-  ASIGNADA: ['PENDIENTE', 'EN_DESARROLLO'],
-  EN_DESARROLLO: ['QA', 'ASIGNADA'],
-  QA: ['TERMINADA', 'EN_DESARROLLO'],
-  TERMINADA: ['EN_DESARROLLO', 'QA'],
-};
 
 @Component({
   selector: 'app-task-detail',
