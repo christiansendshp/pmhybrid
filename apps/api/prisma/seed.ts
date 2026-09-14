@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
@@ -106,17 +108,6 @@ async function main() {
     },
   });
 
-  await prisma.projectMember.upsert({
-    where: { projectId_actorId: { projectId: demoProject.id, actorId: humanActor.id } },
-    update: {},
-    create: { projectId: demoProject.id, actorId: humanActor.id },
-  });
-  await prisma.projectMember.upsert({
-    where: { projectId_actorId: { projectId: demoProject.id, actorId: agentActor.id } },
-    update: {},
-    create: { projectId: demoProject.id, actorId: agentActor.id },
-  });
-
   const ownerRole = await prisma.role.findUniqueOrThrow({
     where: { name_scope: { name: 'OWNER', scope: 'PROJECT' } },
   });
@@ -124,19 +115,50 @@ async function main() {
     where: { name_scope: { name: 'AI_AGENT', scope: 'PROJECT' } },
   });
 
-  await prisma.actorRole.upsert({
-    where: { actorId_roleId_projectId: { actorId: humanActor.id, roleId: ownerRole.id, projectId: demoProject.id } },
-    update: {},
-    create: { actorId: humanActor.id, roleId: ownerRole.id, projectId: demoProject.id },
+  async function addOwnerAndAgent(projectId: string) {
+    await prisma.projectMember.upsert({
+      where: { projectId_actorId: { projectId, actorId: humanActor.id } },
+      update: {},
+      create: { projectId, actorId: humanActor.id },
+    });
+    await prisma.projectMember.upsert({
+      where: { projectId_actorId: { projectId, actorId: agentActor.id } },
+      update: {},
+      create: { projectId, actorId: agentActor.id },
+    });
+    await prisma.actorRole.upsert({
+      where: { actorId_roleId_projectId: { actorId: humanActor.id, roleId: ownerRole.id, projectId } },
+      update: {},
+      create: { actorId: humanActor.id, roleId: ownerRole.id, projectId },
+    });
+    await prisma.actorRole.upsert({
+      where: { actorId_roleId_projectId: { actorId: agentActor.id, roleId: agentRole.id, projectId } },
+      update: {},
+      create: { actorId: agentActor.id, roleId: agentRole.id, projectId },
+    });
+  }
+
+  await addOwnerAndAgent(demoProject.id);
+
+  // Points at PMHYBRID's OWN docs/ (this repo is itself managed by the
+  // project-documentation skill — see Step 0 in the approved plan). Gives
+  // FASE-06's structured/documental views real content to render against
+  // instead of only synthetic seed data.
+  const selfDocsPath = path.resolve(fileURLToPath(import.meta.url), '../../../../docs');
+  const selfProject = await prisma.project.upsert({
+    where: { id: 'pmhybrid-self' },
+    update: { docsPath: selfDocsPath },
+    create: {
+      id: 'pmhybrid-self',
+      name: 'PM Hub (this repo)',
+      description: "This project's own docs/, managed by the project-documentation skill.",
+      docsPath: selfDocsPath,
+    },
   });
-  await prisma.actorRole.upsert({
-    where: { actorId_roleId_projectId: { actorId: agentActor.id, roleId: agentRole.id, projectId: demoProject.id } },
-    update: {},
-    create: { actorId: agentActor.id, roleId: agentRole.id, projectId: demoProject.id },
-  });
+  await addOwnerAndAgent(selfProject.id);
 
   console.log('Seed complete:', {
-    project: demoProject.name,
+    projects: [demoProject.name, selfProject.name],
     actors: [humanActor.displayName, agentActor.displayName],
     roles: SYSTEM_ROLES.length,
     permissions: PERMISSION_DEFS.length,

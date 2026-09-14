@@ -1,13 +1,154 @@
 import { Injectable } from '@nestjs/common';
+import { RoadmapTable, TaskStatus } from '@pmhybrid/shared-types';
+import { extractMarkdownTables } from './markdown-table.util.js';
+
+export interface ParsedRoadmapRow {
+  externalId: string;
+  table: RoadmapTable;
+  outcome?: string;
+  acceptanceCheck?: string;
+  statusRaw?: string;
+  /** null = present but not a recognized token — docs/roadmap-parser.md: never default to PENDIENTE. */
+  statusMapped?: TaskStatus | null;
+  rawOwner?: string;
+  ownerName?: string;
+  ownerClaimedAt?: string;
+  dependsOnRaw?: string;
+  blocker?: string;
+  neededDecision?: string;
+}
+
+// Bidirectional + closed (docs/roadmap-parser.md "Status token mapping") — identity
+// entries let a previously-written verbatim Kanban state round-trip unchanged.
+const STATUS_MAP: Record<string, TaskStatus> = {
+  TODO: TaskStatus.PENDIENTE,
+  'IN PROGRESS': TaskStatus.EN_DESARROLLO,
+  DONE: TaskStatus.TERMINADA,
+  PENDIENTE: TaskStatus.PENDIENTE,
+  ASIGNADA: TaskStatus.ASIGNADA,
+  'EN DESARROLLO': TaskStatus.EN_DESARROLLO,
+  QA: TaskStatus.QA,
+  TERMINADA: TaskStatus.TERMINADA,
+};
+
+function normalizeStatusToken(raw: string): string {
+  return raw.trim().toUpperCase().replace(/_/g, ' ').replace(/\s+/g, ' ');
+}
+
+function mapStatus(raw: string): TaskStatus | null {
+  return STATUS_MAP[normalizeStatusToken(raw)] ?? null;
+}
+
+/** Split on the LAST '@' (docs/roadmap-parser.md "Owner cell parsing"). */
+function parseOwnerCell(raw: string): {
+  ownerName?: string;
+  ownerClaimedAt?: string;
+} {
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed === '—' || trimmed === '-') {
+    return {};
+  }
+  const at = trimmed.lastIndexOf('@');
+  if (at === -1) {
+    return { ownerName: trimmed };
+  }
+  const name = trimmed.slice(0, at).trim();
+  const timestamp = trimmed.slice(at + 1).trim();
+  const parsed = new Date(timestamp);
+  return {
+    ownerName: name || undefined,
+    ownerClaimedAt: Number.isNaN(parsed.getTime())
+      ? undefined
+      : parsed.toISOString(),
+  };
+}
+
+function isPlaceholder(value: string): boolean {
+  return !value || value === '—' || value === '-';
+}
 
 /**
- * FASE-03 shell. Real table-discrimination-by-column-signature and status/
- * owner-cell mapping (docs/roadmap-parser.md) land in FASE-06. Parsing only
- * — no orchestration (that's synchronization.module.ts).
+ * Parses Roadmap.md's three tables (Active work / Near term / Blocked),
+ * discriminating by column signature rather than heading text
+ * (docs/roadmap-parser.md). Read-only — no orchestration, no persistence;
+ * that's synchronization.module (FASE-08).
  */
 @Injectable()
 export class RoadmapParserService {
-  parse(_rawMarkdown: string): unknown[] {
-    return [];
+  parse(rawMarkdown: string): ParsedRoadmapRow[] {
+    const tables = extractMarkdownTables(rawMarkdown);
+    const results: ParsedRoadmapRow[] = [];
+
+    for (const table of tables) {
+      const kind = discriminate(table.headers);
+      if (!kind) {
+        continue;
+      }
+
+      const idIndex = table.headers.indexOf('ID');
+      if (idIndex === -1) {
+        continue;
+      }
+
+      for (const cells of table.rows) {
+        const externalId = cells[idIndex];
+        if (isPlaceholder(externalId)) {
+          continue;
+        }
+
+        const get = (column: string): string | undefined => {
+          const index = table.headers.indexOf(column);
+          if (index === -1) {
+            return undefined;
+          }
+          const value = cells[index];
+          return isPlaceholder(value) ? undefined : value;
+        };
+
+        const row: ParsedRoadmapRow = { externalId, table: kind };
+
+        if (kind === RoadmapTable.BLOCKED) {
+          row.blocker = get('Blocker');
+          row.neededDecision = get('Needed decision or event');
+          const ownerCell = get('Owner');
+          if (ownerCell) {
+            row.rawOwner = ownerCell;
+            Object.assign(row, parseOwnerCell(ownerCell));
+          }
+        } else {
+          row.outcome = get('Outcome');
+          row.acceptanceCheck = get('Acceptance check');
+          const statusCell = get('Status');
+          if (statusCell) {
+            row.statusRaw = statusCell;
+            row.statusMapped = mapStatus(statusCell);
+          }
+          row.dependsOnRaw = get('Depends on');
+          const ownerCell = get('Owner');
+          if (ownerCell) {
+            row.rawOwner = ownerCell;
+            Object.assign(row, parseOwnerCell(ownerCell));
+          }
+        }
+
+        results.push(row);
+      }
+    }
+
+    return results;
   }
+}
+
+function discriminate(headers: string[]): RoadmapTable | null {
+  const set = new Set(headers);
+  if (set.has('Blocker') && set.has('Needed decision or event')) {
+    return RoadmapTable.BLOCKED;
+  }
+  if (set.has('Status') && set.has('Owner') && set.has('Depends on')) {
+    return RoadmapTable.ACTIVE;
+  }
+  if (set.has('Status') && set.has('Depends on')) {
+    return RoadmapTable.NEAR_TERM;
+  }
+  return null;
 }

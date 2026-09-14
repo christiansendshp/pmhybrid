@@ -43,3 +43,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/src/modules/{projects,project-members,roles,common}/**, apps/web/src/app/{core,features/my-projects,features/project-dashboard}/**
 - Verify: lint+build+test+e2e green (12 e2e); browser: created project, added AI_AGENT member, non-member denied
 - Follow-up: Start FASE-06 roadmap parser
+
+## [2026-09-14T18:15:51Z] | claude-code | FASE-06 | DONE
+
+- Summary: Real RoadmapParserService (column-signature discrimination, status mapping, owner-cell parsing) and AgentslogParserService (entry regex, rawEntryHash, rotation pointer). New RoadmapController: raw + structured views. Seed adds pmhybrid-self project pointing at this repo's own docs/. Fixed: parser was matching the fenced Entry-format example as a real entry.
+- Files: apps/api/src/modules/roadmap, apps/web/src/app/{core/documents.service.ts,features/documents-viewer}
+- Verify: lint+build+test+e2e green (17 e2e); browser: roadmap raw+structured rendered real PMHYBRID docs
+- Follow-up: Start FASE-07 tasks/hierarchy

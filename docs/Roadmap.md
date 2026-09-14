@@ -5,9 +5,9 @@ Keep active and near-term work only. Verified completed capability belongs in
 
 ## Active work
 
-| ID      | Outcome                              | Acceptance check                                                   | Status      | Owner       | Depends on |
-| ------- | ------------------------------------ | ------------------------------------------------------------------ | ----------- | ----------- | ---------- |
-| FASE-06 | Roadmap/Agentslog parser (read-only) | Structured + documental views render a real managed project's docs | IN_PROGRESS | claude-code | FASE-05    |
+| ID      | Outcome                                            | Acceptance check       | Status      | Owner       | Depends on |
+| ------- | -------------------------------------------------- | ---------------------- | ----------- | ----------- | ---------- |
+| FASE-07 | Tasks + hierarchy + dependencies + progress rollup | E2E scenarios 4-8 pass | IN_PROGRESS | claude-code | FASE-06    |
 
 <!-- context:end -->
 
@@ -15,7 +15,6 @@ Keep active and near-term work only. Verified completed capability belongs in
 
 | ID      | Outcome                                                            | Acceptance check                                        | Status | Depends on |
 | ------- | ------------------------------------------------------------------ | ------------------------------------------------------- | ------ | ---------- |
-| FASE-07 | Tasks + hierarchy + dependencies + progress rollup                 | E2E scenarios 4-8 pass                                  | TODO   | FASE-06    |
 | FASE-08 | Synchronization (scheduler, reconciliation, write-back, conflicts) | E2E scenarios 9-11 pass                                 | TODO   | FASE-07    |
 | FASE-09 | Kanban (drag & drop, filters)                                      | E2E scenario 12 passes                                  | TODO   | FASE-08    |
 | FASE-10 | Dashboard + metrics                                                | Dashboard shows required summary/activity per brief §14 | TODO   | FASE-09    |

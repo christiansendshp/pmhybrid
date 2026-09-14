@@ -1,0 +1,66 @@
+<h2>Documents</h2>
+
+<mat-select [ngModel]="selectedKind()" (ngModelChange)="onKindChange($event)">
+  @for (kind of documentKinds; track kind) {
+    <mat-option [value]="kind">{{ kind }}</mat-option>
+  }
+</mat-select>
+
+<mat-button-toggle-group [value]="viewMode()" (change)="onViewModeChange($event.value)">
+  <mat-button-toggle value="documental">Documental</mat-button-toggle>
+  <mat-button-toggle value="structured">Structured</mat-button-toggle>
+</mat-button-toggle-group>
+
+@if (loading()) {
+  <p>Loading…</p>
+}
+
+@if (rawContent(); as content) {
+  <pre>{{ content }}</pre>
+}
+
+@if (roadmapRows(); as rows) {
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Table</th>
+        <th>Outcome</th>
+        <th>Status (raw -&gt; mapped)</th>
+        <th>Owner</th>
+        <th>Depends on</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows; track row.externalId) {
+        <tr>
+          <td>{{ row.externalId }}</td>
+          <td>{{ row.table }}</td>
+          <td>{{ row.outcome || row.blocker }}</td>
+          <td>
+            {{ row.statusRaw }}
+            @if (row.statusMapped) {
+              -&gt; {{ row.statusMapped }}
+            }
+          </td>
+          <td>{{ row.ownerName }}</td>
+          <td>{{ row.dependsOnRaw }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}
+
+@if (agentslog(); as log) {
+  <ul>
+    @for (entry of log.entries; track entry.rawEntryHash) {
+      <li>
+        <strong>{{ entry.taskExternalId }}</strong> — {{ entry.statusWord }} —
+        {{ entry.summary }} ({{ entry.agentName }}, {{ entry.timestampFromLog }})
+      </li>
+    }
+  </ul>
+  @if (log.previousSegment) {
+    <p>Older entries archived at {{ log.previousSegment.archivePath }}</p>
+  }
+}
