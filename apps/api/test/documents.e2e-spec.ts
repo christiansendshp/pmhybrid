@@ -56,10 +56,30 @@ describe('Documents (roadmap parser, e2e)', () => {
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
 
+    // pmhybrid-self dogfoods this repo's own live docs/Roadmap.md — as of
+    // FASE-12 (the last phase) its Active/Near-term/Blocked tables are all
+    // placeholder ("—") rows, which the parser correctly treats as empty
+    // (roadmap-parser.service.ts). An empty result here is therefore valid,
+    // real behavior, not a parsing failure — so this only asserts the shape
+    // of whatever rows do come back, rather than requiring a nonzero count.
     expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.length).toBeGreaterThan(0);
     for (const row of res.body) {
       expect(['ACTIVE', 'NEAR_TERM', 'BLOCKED']).toContain(row.table);
+      expect(typeof row.externalId).toBe('string');
+    }
+  });
+
+  it('parses a project with active/near-term/blocked rows into all three discriminated tables', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/projects/demo-website-relaunch/documents/roadmap/structured')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThan(0);
+    const tables = new Set(res.body.map((row: { table: string }) => row.table));
+    expect(tables).toEqual(new Set(['ACTIVE', 'NEAR_TERM', 'BLOCKED']));
+    for (const row of res.body) {
       expect(typeof row.externalId).toBe('string');
     }
   });
