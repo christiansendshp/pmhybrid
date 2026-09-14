@@ -1,15 +1,29 @@
-import { Controller, Param, Post } from '@nestjs/common';
+import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
+import { PrismaService } from '../../prisma/prisma.service.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { SynchronizationService } from './synchronization.service.js';
 
-@Controller('projects/:projectId/sync')
+/** "Sincronizar ahora" (brief §11) and a read-only sync-run history for the project. */
+@UseGuards(JwtAuthGuard, ProjectMemberGuard)
+@Controller('projects/:projectId')
 export class SynchronizationController {
   constructor(
     private readonly synchronizationService: SynchronizationService,
+    private readonly prisma: PrismaService,
   ) {}
 
-  @Post()
-  async triggerManualSync(@Param('projectId') projectId: string) {
-    await this.synchronizationService.runSync(projectId, 'MANUAL');
-    return { projectId, trigger: 'MANUAL' };
+  @Post('sync')
+  triggerManualSync(@Param('projectId') projectId: string) {
+    return this.synchronizationService.runSync(projectId, 'MANUAL');
+  }
+
+  @Get('sync-runs')
+  listSyncRuns(@Param('projectId') projectId: string) {
+    return this.prisma.syncRun.findMany({
+      where: { projectId },
+      orderBy: { startedAt: 'desc' },
+      take: 20,
+    });
   }
 }

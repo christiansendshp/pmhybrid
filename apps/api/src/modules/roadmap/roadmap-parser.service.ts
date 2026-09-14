@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { RoadmapTable, TaskStatus } from '@pmhybrid/shared-types';
-import { extractMarkdownTables } from './markdown-table.util.js';
+import {
+  discriminateRoadmapTable,
+  extractMarkdownTables,
+} from './markdown-table.util.js';
 
 export interface ParsedRoadmapRow {
   externalId: string;
@@ -80,7 +83,7 @@ export class RoadmapParserService {
     const results: ParsedRoadmapRow[] = [];
 
     for (const table of tables) {
-      const kind = discriminate(table.headers);
+      const kind = discriminateRoadmapTable(table.headers);
       if (!kind) {
         continue;
       }
@@ -137,18 +140,4 @@ export class RoadmapParserService {
 
     return results;
   }
-}
-
-function discriminate(headers: string[]): RoadmapTable | null {
-  const set = new Set(headers);
-  if (set.has('Blocker') && set.has('Needed decision or event')) {
-    return RoadmapTable.BLOCKED;
-  }
-  if (set.has('Status') && set.has('Owner') && set.has('Depends on')) {
-    return RoadmapTable.ACTIVE;
-  }
-  if (set.has('Status') && set.has('Depends on')) {
-    return RoadmapTable.NEAR_TERM;
-  }
-  return null;
 }

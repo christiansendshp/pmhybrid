@@ -365,9 +365,15 @@ model AgentLogEvent {
   files                    String
   verify                   String
   followUp                 String
-  rawEntryHash             String    @unique
+  rawEntryHash             String
   sourceDocumentRevisionId String
   createdAt                DateTime  @default(now())
+
+  // Scoped per project, not global — two unrelated projects' agents could
+  // coincidentally log byte-identical entry text (same summary, same
+  // relative timestamp shape); a bare global unique would silently drop
+  // the second project's entry as a "duplicate" of the first's.
+  @@unique([projectId, rawEntryHash])
 }
 
 model Conflict {

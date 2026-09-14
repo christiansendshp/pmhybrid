@@ -7,6 +7,7 @@ import {
 import { TaskStatus } from '@pmhybrid/shared-types';
 import { PermissionsResolverService } from '../../common/permissions-resolver.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { WriteBackService } from '../synchronization/write-back.service.js';
 import { AddDependencyDto } from './dto/add-dependency.dto.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
 import { UpdateTaskDto } from './dto/update-task.dto.js';
@@ -31,6 +32,7 @@ export class TasksService {
     private readonly prisma: PrismaService,
     private readonly progressRollup: ProgressRollupService,
     private readonly permissionsResolver: PermissionsResolverService,
+    private readonly writeBack: WriteBackService,
   ) {}
 
   findAllForProject(projectId: string, filters: TaskListFilters) {
@@ -66,9 +68,14 @@ export class TasksService {
     return { ...full, computedProgress };
   }
 
-  async create(projectId: string, dto: CreateTaskDto) {
+  /** Task creation is a write-back trigger (docs/synchronization.md) — mints an externalId and appends an Agentslog entry. */
+  async create(
+    projectId: string,
+    dto: CreateTaskDto,
+    requesterActorId: string,
+  ) {
     await this.assertHierarchyRefs(projectId, dto);
-    return this.prisma.task.create({
+    const task = await this.prisma.task.create({
       data: {
         projectId,
         sourceOrigin: 'UI',
@@ -88,6 +95,12 @@ export class TasksService {
         progressPercent: dto.progressPercent,
       },
     });
+    return this.writeBack.recordTaskEvent(
+      projectId,
+      task.id,
+      'CREATED',
+      requesterActorId,
+    );
   }
 
   async update(projectId: string, taskId: string, dto: UpdateTaskDto) {
@@ -130,7 +143,8 @@ export class TasksService {
   ) {
     const task = await this.getOwned(projectId, taskId);
 
-    const requiredPermission = isAssigneeLocked(toSharedStatus(task.status))
+    const wasLocked = isAssigneeLocked(toSharedStatus(task.status));
+    const requiredPermission = wasLocked
       ? REASSIGN_LOCKED_PERMISSION
       : PERMISSIONS.TASK_ASSIGN;
     const allowed = await this.permissionsResolver.hasPermission(
@@ -155,7 +169,7 @@ export class TasksService {
     const nextStatus =
       task.status === TaskStatus.PENDIENTE ? TaskStatus.ASIGNADA : task.status;
 
-    return this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       await tx.taskAssignment.updateMany({
         where: { taskId, unassignedAt: null },
         data: { unassignedAt: new Date() },
@@ -169,8 +183,14 @@ export class TasksService {
           entityType: 'Task',
           entityId: taskId,
           operation: 'REASSIGN',
-          previousValue: { assigneeActorId: task.assigneeActorId },
-          newValue: { assigneeActorId: actorId },
+          // Includes `status` too when the PENDIENTE->ASIGNADA side effect
+          // fires — sync's per-field conflict check (docs/synchronization.md
+          // step 5) reads this newValue to know which fields the UI touched.
+          previousValue: {
+            assigneeActorId: task.assigneeActorId,
+            status: task.status,
+          },
+          newValue: { assigneeActorId: actorId, status: nextStatus },
           origin: 'UI',
         },
       });
@@ -179,6 +199,18 @@ export class TasksService {
         data: { assigneeActorId: actorId, status: nextStatus },
       });
     });
+
+    // Locked reassignment is a write-back trigger (docs/synchronization.md);
+    // an ordinary PENDIENTE/ASIGNADA assignment is UI-only.
+    if (wasLocked) {
+      return this.writeBack.recordTaskEvent(
+        projectId,
+        taskId,
+        'LOCKED_REASSIGN',
+        requesterActorId,
+      );
+    }
+    return this.getOwned(projectId, taskId);
   }
 
   /** Kanban transition (docs/domain-model.md, task-status-policy.ts) — the one legal way to change Task.status. */
@@ -207,7 +239,7 @@ export class TasksService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       const updated = await tx.task.update({
         where: { id: taskId },
         data: {
@@ -228,6 +260,26 @@ export class TasksService {
       });
       return updated;
     });
+
+    // Only these two transitions are write-back triggers
+    // (docs/synchronization.md step 3) — every other status change stays UI-only.
+    if (toStatus === TaskStatus.EN_DESARROLLO) {
+      return this.writeBack.recordTaskEvent(
+        projectId,
+        taskId,
+        'STATUS_EN_DESARROLLO',
+        requesterActorId,
+      );
+    }
+    if (toStatus === TaskStatus.TERMINADA) {
+      return this.writeBack.recordTaskEvent(
+        projectId,
+        taskId,
+        'STATUS_TERMINADA',
+        requesterActorId,
+      );
+    }
+    return this.getOwned(projectId, taskId);
   }
 
   async addDependency(

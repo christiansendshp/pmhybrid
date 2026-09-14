@@ -5,6 +5,19 @@
   }
 }
 
+<button mat-flat-button type="button" [disabled]="syncing()" (click)="syncNow()">
+  {{ syncing() ? 'Syncing…' : 'Sync now' }}
+</button>
+@if (lastSyncRun(); as run) {
+  <span>
+    Last run: {{ run.status }}
+    @if (run.summary) {
+      ({{ run.summary['tasksCreated'] }} created, {{ run.summary['tasksUpdated'] }} updated,
+      {{ run.summary['conflictsRaised'] }} conflicts)
+    }
+  </span>
+}
+
 <nav>
   <a routerLink="kanban" routerLinkActive="active">Kanban</a>
   <a routerLink="progress" routerLinkActive="active">Progress</a>

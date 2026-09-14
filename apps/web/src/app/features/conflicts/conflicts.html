@@ -1,0 +1,35 @@
+<h2>Conflicts</h2>
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else if (conflicts().length === 0) {
+  <p>No open conflicts.</p>
+}
+
+@for (conflict of conflicts(); track conflict.id) {
+  <section>
+    <h3>{{ conflict.kind }}</h3>
+    <p>{{ conflict.entityType }} {{ conflict.entityId }} — detected {{ conflict.detectedAt }}</p>
+
+    <div>
+      <strong>Local</strong>
+      <pre>{{ conflict.localVersion | json }}</pre>
+    </div>
+    @if (conflict.externalVersion) {
+      <div>
+        <strong>External</strong>
+        <pre>{{ conflict.externalVersion | json }}</pre>
+      </div>
+    }
+
+    <button mat-flat-button type="button" (click)="resolve(conflict, 'KEEP_LOCAL')">
+      Keep local
+    </button>
+    @if (conflict.externalVersion || conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG') {
+      <button mat-flat-button type="button" (click)="resolve(conflict, 'KEEP_EXTERNAL')">
+        Keep external
+      </button>
+    }
+    <button mat-flat-button type="button" (click)="resolve(conflict, 'DISMISSED')">Dismiss</button>
+  </section>
+}

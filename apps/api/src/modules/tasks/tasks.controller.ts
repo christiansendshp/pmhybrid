@@ -57,8 +57,12 @@ export class TasksController {
   }
 
   @Post()
-  create(@Param('projectId') projectId: string, @Body() dto: CreateTaskDto) {
-    return this.tasksService.create(projectId, dto);
+  create(
+    @Param('projectId') projectId: string,
+    @Body() dto: CreateTaskDto,
+    @CurrentActorId() requesterActorId: string,
+  ) {
+    return this.tasksService.create(projectId, dto, requesterActorId);
   }
 
   @Patch(':taskId')

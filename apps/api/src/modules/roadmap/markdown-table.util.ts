@@ -1,3 +1,5 @@
+import { RoadmapTable } from '@pmhybrid/shared-types';
+
 export interface RawMarkdownTable {
   headers: string[];
   rows: string[][];
@@ -37,7 +39,62 @@ export function extractMarkdownTables(markdown: string): RawMarkdownTable[] {
   return tables;
 }
 
-function isTableRow(line: string): boolean {
+/** Column-signature discrimination (docs/roadmap-parser.md) — shared by the parser (read) and the write-back row writer. */
+export function discriminateRoadmapTable(
+  headers: string[],
+): RoadmapTable | null {
+  const set = new Set(headers);
+  if (set.has('Blocker') && set.has('Needed decision or event')) {
+    return RoadmapTable.BLOCKED;
+  }
+  if (set.has('Status') && set.has('Owner') && set.has('Depends on')) {
+    return RoadmapTable.ACTIVE;
+  }
+  if (set.has('Status') && set.has('Depends on')) {
+    return RoadmapTable.NEAR_TERM;
+  }
+  return null;
+}
+
+export interface TableLineRange {
+  headers: string[];
+  /** Index of the first data row line (headers + separator are the two lines before it). */
+  rowsStart: number;
+  /** Exclusive — the line index just past the table's last data row. */
+  rowsEnd: number;
+}
+
+/** Same walk as extractMarkdownTables, but keeps raw (untrimmed) line indices — needed to surgically edit one row line in place. */
+export function findRoadmapTableLineRange(
+  lines: string[],
+  kind: RoadmapTable,
+): TableLineRange | null {
+  let i = 0;
+  while (i < lines.length) {
+    const trimmed = lines[i].trim();
+    if (
+      isTableRow(trimmed) &&
+      i + 1 < lines.length &&
+      isSeparatorRow(lines[i + 1].trim())
+    ) {
+      const headers = splitRow(trimmed);
+      const rowsStart = i + 2;
+      let rowsEnd = rowsStart;
+      while (rowsEnd < lines.length && isTableRow(lines[rowsEnd].trim())) {
+        rowsEnd += 1;
+      }
+      if (discriminateRoadmapTable(headers) === kind) {
+        return { headers, rowsStart, rowsEnd };
+      }
+      i = rowsEnd;
+    } else {
+      i += 1;
+    }
+  }
+  return null;
+}
+
+export function isTableRow(line: string): boolean {
   return line.startsWith('|') && line.endsWith('|') && line.length > 1;
 }
 
@@ -48,7 +105,7 @@ function isSeparatorRow(line: string): boolean {
   return splitRow(line).every((cell) => /^:?-+:?$/.test(cell));
 }
 
-function splitRow(line: string): string[] {
+export function splitRow(line: string): string[] {
   return line
     .replace(/^\|/, '')
     .replace(/\|$/, '')

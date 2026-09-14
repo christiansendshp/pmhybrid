@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './../prisma/demo-credentials.js';
+import { createScratchDocsPath } from './helpers/scratch-docs.js';
 
 describe('Tasks (hierarchy, assignment, transitions, dependencies, progress — e2e)', () => {
   let app: INestApplication<App>;
@@ -32,7 +33,7 @@ describe('Tasks (hierarchy, assignment, transitions, dependencies, progress — 
     const project = await request(server)
       .post('/projects')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ name: `Tasks E2E ${Date.now()}`, docsPath: './tasks-e2e-docs' })
+      .send({ name: `Tasks E2E ${Date.now()}`, docsPath: createScratchDocsPath() })
       .expect(201);
     projectId = project.body.id;
 
