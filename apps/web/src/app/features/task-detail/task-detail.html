@@ -1,0 +1,81 @@
+@if (task(); as t) {
+  <h2>{{ t.title }}</h2>
+  <p>Status: {{ t.status }} — Progress: {{ t.computedProgress }}%</p>
+  @if (t.description) {
+    <p>{{ t.description }}</p>
+  }
+
+  <section>
+    <h3>Transition</h3>
+    @for (status of legalNextStatuses(); track status) {
+      <button mat-flat-button type="button" (click)="transition(status)">{{ status }}</button>
+    }
+  </section>
+
+  <section>
+    <h3>Assignee</h3>
+    <p>{{ t.assignee ? t.assignee.displayName + ' (' + t.assignee.kind + ')' : 'Unassigned' }}</p>
+    <mat-select
+      placeholder="Assign to…"
+      [ngModel]="selectedAssigneeId()"
+      (ngModelChange)="selectedAssigneeId.set($event)"
+    >
+      @for (member of members(); track member.actorId) {
+        <mat-option [value]="member.actorId">{{ member.actor.displayName }}</mat-option>
+      }
+    </mat-select>
+    <button mat-flat-button type="button" [disabled]="!selectedAssigneeId()" (click)="assign()">
+      Assign
+    </button>
+  </section>
+
+  <section>
+    <h3>Subtasks</h3>
+    <ul>
+      @for (subtask of t.subtasks; track subtask.id) {
+        <li>
+          <a [routerLink]="['../', subtask.id]">{{ subtask.title }}</a> — {{ subtask.status }}
+        </li>
+      }
+    </ul>
+    <input
+      [ngModel]="newSubtaskTitle()"
+      (ngModelChange)="newSubtaskTitle.set($event)"
+      placeholder="New subtask title"
+    />
+    <button
+      mat-flat-button
+      type="button"
+      [disabled]="!newSubtaskTitle().trim()"
+      (click)="addSubtask()"
+    >
+      Add subtask
+    </button>
+  </section>
+
+  <section>
+    <h3>Dependencies</h3>
+    <ul>
+      @for (dep of t.dependencies; track dep.id) {
+        <li>{{ dep.dependsOnTask ? dep.dependsOnTask.title : dep.rawExternalRef }}</li>
+      }
+    </ul>
+    <mat-select
+      placeholder="Depends on…"
+      [ngModel]="selectedDependsOnId()"
+      (ngModelChange)="selectedDependsOnId.set($event)"
+    >
+      @for (other of otherTasks(); track other.id) {
+        <mat-option [value]="other.id">{{ other.title }}</mat-option>
+      }
+    </mat-select>
+    <button
+      mat-flat-button
+      type="button"
+      [disabled]="!selectedDependsOnId()"
+      (click)="addDependency()"
+    >
+      Add dependency
+    </button>
+  </section>
+}

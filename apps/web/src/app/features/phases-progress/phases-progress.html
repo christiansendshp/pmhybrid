@@ -1,0 +1,43 @@
+<h2>Phases &amp; Progress</h2>
+
+@if (tree(); as t) {
+  <p>Project progress: {{ t.project !== null ? t.project + '%' : 'no data' }}</p>
+
+  @for (phase of t.phases; track phase.id) {
+    <section>
+      <h3>{{ phase.name }} — {{ phase.progress !== null ? phase.progress + '%' : 'no data' }}</h3>
+      @for (epic of phase.epics; track epic.id) {
+        <div>
+          <h4>{{ epic.name }} — {{ epic.progress !== null ? epic.progress + '%' : 'no data' }}</h4>
+          <ul>
+            @for (task of epic.tasks; track task.id) {
+              <li>{{ task.name }} — {{ task.progress }}%</li>
+            }
+          </ul>
+        </div>
+      }
+      <ul>
+        @for (task of phase.tasks; track task.id) {
+          <li>{{ task.name }} — {{ task.progress }}%</li>
+        }
+      </ul>
+    </section>
+  }
+
+  @for (epic of t.epics; track epic.id) {
+    <section>
+      <h3>{{ epic.name }} — {{ epic.progress !== null ? epic.progress + '%' : 'no data' }}</h3>
+      <ul>
+        @for (task of epic.tasks; track task.id) {
+          <li>{{ task.name }} — {{ task.progress }}%</li>
+        }
+      </ul>
+    </section>
+  }
+
+  <ul>
+    @for (task of t.tasks; track task.id) {
+      <li>{{ task.name }} — {{ task.progress }}%</li>
+    }
+  </ul>
+}

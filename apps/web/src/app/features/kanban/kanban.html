@@ -1,0 +1,30 @@
+<h2>Kanban</h2>
+
+<button mat-flat-button type="button" (click)="showCreateForm.set(!showCreateForm())">
+  {{ showCreateForm() ? 'Cancel' : 'New task' }}
+</button>
+
+@if (showCreateForm()) {
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <mat-form-field>
+      <mat-label>Title</mat-label>
+      <input matInput formControlName="title" />
+    </mat-form-field>
+    <button mat-flat-button type="submit" [disabled]="form.invalid || creating()">Create</button>
+  </form>
+}
+
+<div>
+  @for (status of statuses; track status) {
+    <section>
+      <h3>{{ status }}</h3>
+      <ul>
+        @for (task of tasksFor(status); track task.id) {
+          <li>
+            <a [routerLink]="['../tasks', task.id]">{{ task.title }}</a>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+</div>
