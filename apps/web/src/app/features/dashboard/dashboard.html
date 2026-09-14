@@ -1,0 +1,79 @@
+<h1>Dashboard</h1>
+
+<nav>
+  <a routerLink="/dashboard">Dashboard</a>
+  <a routerLink="/projects">My Projects</a>
+</nav>
+
+@if (loading()) {
+  <p>Loading…</p>
+}
+
+@if (summary(); as s) {
+  <section>
+    <h2>Resumen</h2>
+    <ul>
+      <li>Active projects: {{ s.activeProjects }}</li>
+      <li>Total tasks: {{ s.totalTasks }}</li>
+      <li>Pendiente: {{ s.pendiente }}</li>
+      <li>Asignada: {{ s.asignada }}</li>
+      <li>En desarrollo: {{ s.enDesarrollo }}</li>
+      <li>QA: {{ s.qa }}</li>
+      <li>Terminada: {{ s.terminada }}</li>
+      <li>Bloqueadas: {{ s.blocked }}</li>
+      <li>Avance global: {{ s.globalProgress !== null ? s.globalProgress + '%' : 'no data' }}</li>
+    </ul>
+  </section>
+}
+
+@if (activity(); as a) {
+  <section>
+    <h2>Actividad</h2>
+
+    <h3>Últimas tareas modificadas</h3>
+    <ul>
+      @for (task of a.recentlyModifiedTasks; track task.id) {
+        <li>{{ task.title }} — {{ task.status }} ({{ task.updatedAt }})</li>
+      }
+    </ul>
+
+    <h3>Últimos cambios de estado</h3>
+    <ul>
+      @for (change of a.recentStatusChanges; track change.id) {
+        <li>
+          {{ change.previousValue?.status }} -&gt; {{ change.newValue?.status }} ({{
+            change.occurredAt
+          }})
+        </li>
+      }
+    </ul>
+
+    <h3>Últimas asignaciones</h3>
+    <ul>
+      @for (assignment of a.recentAssignments; track assignment.id) {
+        <li>
+          {{ assignment.task.title }} -&gt; {{ assignment.actor.displayName }} ({{
+            assignment.assignedAt
+          }})
+        </li>
+      }
+    </ul>
+
+    <h3>Últimos eventos de agentes IA</h3>
+    <ul>
+      @for (event of a.recentAgentEvents; track event.id) {
+        <li>
+          {{ event.agentName }} — {{ event.taskExternalId }} — {{ event.statusWord }} —
+          {{ event.summary }} ({{ event.createdAt }})
+        </li>
+      }
+    </ul>
+
+    <h3>Últimos cambios en documentos</h3>
+    <ul>
+      @for (revision of a.recentDocumentChanges; track revision.id) {
+        <li>{{ revision.document.kind }} — {{ revision.source }} ({{ revision.capturedAt }})</li>
+      }
+    </ul>
+  </section>
+}

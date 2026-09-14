@@ -3,10 +3,15 @@ import { authGuard } from './core/auth.guard';
 import { projectMemberGuard } from './core/project-member.guard';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'projects' },
+  { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
   {
     path: 'login',
     loadComponent: () => import('./features/auth/login/login').then((m) => m.Login),
+  },
+  {
+    path: 'dashboard',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard),
   },
   {
     path: 'projects',
@@ -48,5 +53,5 @@ export const routes: Routes = [
       },
     ],
   },
-  { path: '**', redirectTo: 'projects' },
+  { path: '**', redirectTo: 'dashboard' },
 ];

@@ -1,5 +1,10 @@
 <h1>My Projects</h1>
 
+<nav>
+  <a routerLink="/dashboard">Dashboard</a>
+  <a routerLink="/projects">My Projects</a>
+</nav>
+
 @if (loading()) {
   <p>Loading…</p>
 } @else if (projects().length === 0) {

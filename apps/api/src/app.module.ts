@@ -25,6 +25,7 @@ import { GitProvidersModule } from './modules/git-providers/git-providers.module
 import { AuditModule } from './modules/audit/audit.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { ConflictsModule } from './modules/conflicts/conflicts.module.js';
+import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 
 @Module({
@@ -52,6 +53,7 @@ import { HealthModule } from './modules/health/health.module.js';
     AuditModule,
     NotificationsModule,
     ConflictsModule,
+    DashboardModule,
     HealthModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

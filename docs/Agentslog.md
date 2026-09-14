@@ -71,3 +71,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/web/src/app/core/task-status-policy.ts, apps/web/src/app/features/kanban
 - Verify: lint+build+test+e2e green (12 web unit incl. new isDraggableTransition tests, 28 e2e); browser: filters verified live, legal/illegal drag transitions verified via onDrop() with a real API round-trip
 - Follow-up: Start FASE-10 dashboard + metrics
+
+## [2026-09-14T19:29:10Z] | claude-code | FASE-10 | DONE
+
+- Summary: New dashboard module (no FASE-03 stub existed): GET /dashboard/summary (active projects, task counts by status, blocked, avg global progress across the actor's projects) and /dashboard/activity (5 feeds per brief SS14: modified tasks, status changes, assignments, AI agent events, document changes). Angular Dashboard is now the post-login landing route. Fixed a real test-isolation bug: parallel e2e spec files share demo-human, so cross-project diff assertions need a dedicated actor.
+- Files: apps/api/src/modules/dashboard, apps/web/src/app/{core/dashboard.service.ts,features/dashboard}, app.routes.ts
+- Verify: lint+build+test+e2e green (30 e2e); browser: dashboard renders real cross-project counts + all 5 activity feeds, including my own Agentslog entries via pmhybrid-self
+- Follow-up: Start FASE-11 workload view

@@ -33,7 +33,7 @@ export class Login {
     const { email, password } = this.form.getRawValue();
     try {
       await this.authService.login(email, password);
-      await this.router.navigateByUrl('/projects');
+      await this.router.navigateByUrl('/dashboard');
     } catch {
       this.errorMessage.set('Invalid email or password.');
     } finally {
