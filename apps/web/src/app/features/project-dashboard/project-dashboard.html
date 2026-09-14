@@ -1,0 +1,40 @@
+@if (project(); as p) {
+  <h1>{{ p.name }}</h1>
+  @if (p.description) {
+    <p>{{ p.description }}</p>
+  }
+}
+
+<nav>
+  <a routerLink="kanban" routerLinkActive="active">Kanban</a>
+  <a routerLink="progress" routerLinkActive="active">Progress</a>
+  <a routerLink="workload" routerLinkActive="active">Workload</a>
+  <a routerLink="documents" routerLinkActive="active">Documents</a>
+  <a routerLink="conflicts" routerLinkActive="active">Conflicts</a>
+</nav>
+
+<section>
+  <h2>Members</h2>
+  <ul>
+    @for (member of members(); track member.id) {
+      <li>{{ member.actor.displayName }} ({{ member.actor.kind }})</li>
+    }
+  </ul>
+
+  @if (canManageMembers() && candidateActors().length > 0) {
+    <mat-select
+      placeholder="Add a member…"
+      [ngModel]="selectedActorId()"
+      (ngModelChange)="selectedActorId.set($event)"
+    >
+      @for (actor of candidateActors(); track actor.id) {
+        <mat-option [value]="actor.id">{{ actor.displayName }}</mat-option>
+      }
+    </mat-select>
+    <button mat-flat-button type="button" [disabled]="!selectedActorId()" (click)="addMember()">
+      Add member
+    </button>
+  }
+</section>
+
+<router-outlet></router-outlet>

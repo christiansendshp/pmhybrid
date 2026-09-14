@@ -1,0 +1,49 @@
+<h1>My Projects</h1>
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else if (projects().length === 0) {
+  <p>No projects yet.</p>
+}
+
+<mat-nav-list>
+  @for (project of projects(); track project.id) {
+    <a mat-list-item [routerLink]="['/projects', project.id]">
+      {{ project.name }}
+    </a>
+  }
+</mat-nav-list>
+
+<button mat-flat-button type="button" (click)="showCreateForm.set(!showCreateForm())">
+  {{ showCreateForm() ? 'Cancel' : 'New project' }}
+</button>
+
+@if (showCreateForm()) {
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <mat-form-field>
+      <mat-label>Name</mat-label>
+      <input matInput formControlName="name" />
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Description</mat-label>
+      <input matInput formControlName="description" />
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Docs path</mat-label>
+      <input matInput formControlName="docsPath" placeholder="./my-project-docs" />
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Repo URL</mat-label>
+      <input matInput formControlName="repoUrl" />
+    </mat-form-field>
+
+    @if (errorMessage()) {
+      <p role="alert">{{ errorMessage() }}</p>
+    }
+
+    <button mat-flat-button type="submit" [disabled]="form.invalid || creating()">Create</button>
+  </form>
+}

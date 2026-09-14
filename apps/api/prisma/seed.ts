@@ -14,13 +14,24 @@ const PERMISSION_DEFS = [
   { key: PERMISSIONS.TASK_QA_REJECT, description: 'Reject QA -> EN_DESARROLLO' },
   { key: PERMISSIONS.TASK_REOPEN, description: 'Reopen a TERMINADA task' },
   { key: PERMISSIONS.TASK_REASSIGN_LOCKED, description: 'Reassign a task locked by EN_DESARROLLO' },
+  { key: PERMISSIONS.PROJECT_UPDATE, description: 'Update project settings' },
+  { key: PERMISSIONS.PROJECT_MEMBERS_MANAGE, description: 'Add or remove project members' },
+  { key: PERMISSIONS.PROJECT_ROLES_MANAGE, description: 'Assign or revoke project-scoped roles' },
 ];
 
 // Minimal default mapping (brief §4 leaves the exact matrix to the app).
 const ROLE_PERMISSIONS: Record<string, string[]> = {
   OWNER: PERMISSION_DEFS.map((p) => p.key),
   PROJECT_ADMIN: PERMISSION_DEFS.map((p) => p.key),
-  PROJECT_MANAGER: PERMISSION_DEFS.map((p) => p.key),
+  PROJECT_MANAGER: [
+    PERMISSIONS.TASK_ASSIGN,
+    PERMISSIONS.TASK_STATUS_TRANSITION,
+    PERMISSIONS.TASK_QA_APPROVE,
+    PERMISSIONS.TASK_QA_REJECT,
+    PERMISSIONS.TASK_REOPEN,
+    PERMISSIONS.TASK_REASSIGN_LOCKED,
+    PERMISSIONS.PROJECT_MEMBERS_MANAGE,
+  ],
   DEVELOPER: [PERMISSIONS.TASK_ASSIGN, PERMISSIONS.TASK_STATUS_TRANSITION],
   QA: [PERMISSIONS.TASK_QA_APPROVE, PERMISSIONS.TASK_QA_REJECT],
   VIEWER: [],

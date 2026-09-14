@@ -6,6 +6,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 
 import { PrismaModule } from './prisma/prisma.module.js';
+import { CommonModule } from './common/common.module.js';
 import { validateEnv } from './config/env.validation.js';
 
 import { AuthModule } from './modules/auth/auth.module.js';
@@ -33,6 +34,7 @@ import { HealthModule } from './modules/health/health.module.js';
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
     PrismaModule,
+    CommonModule,
 
     AuthModule,
     UsersModule,
