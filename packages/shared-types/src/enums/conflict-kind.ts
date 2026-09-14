@@ -1,0 +1,15 @@
+/**
+ * See docs/synchronization.md for when each kind is raised.
+ */
+export enum ConflictKind {
+  ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG = 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG',
+  CONCURRENT_FIELD_EDIT = 'CONCURRENT_FIELD_EDIT',
+  WRITE_BACK_COLLISION = 'WRITE_BACK_COLLISION',
+}
+
+export enum ConflictResolution {
+  KEEP_LOCAL = 'KEEP_LOCAL',
+  KEEP_EXTERNAL = 'KEEP_EXTERNAL',
+  MANUAL_EDIT = 'MANUAL_EDIT',
+  DISMISSED = 'DISMISSED',
+}
