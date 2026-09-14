@@ -8,4 +8,5 @@ coverage/
 .DS_Store
 .angular/
 apps/api/prisma/*.db
+apps/api/prisma/demo-projects/
 *.tsbuildinfo

@@ -168,10 +168,17 @@ export class WriteBackService {
       }
     }
 
+    // The Owner cell reflects the task's assignee, not whoever triggered
+    // this write-back (docs/synchronization.md step 4) — those are often
+    // different actors (e.g. an OWNER reassigning locked work to someone
+    // else writes the new assignee's name, not their own).
+    const assignee = task.assigneeActorId
+      ? await tx.actor.findUnique({ where: { id: task.assigneeActorId } })
+      : null;
     const ownerCell =
-      actor?.kind === 'AI_AGENT'
-        ? `${actor.displayName}@${new Date().toISOString()}`
-        : (actor?.displayName ?? '');
+      assignee?.kind === 'AI_AGENT'
+        ? `${assignee.displayName}@${new Date().toISOString()}`
+        : (assignee?.displayName ?? '');
     const updatedRoadmap = upsertActiveRoadmapRow(roadmapContent, externalId, {
       outcome: task.title,
       acceptanceCheck: task.acceptanceCriteria ?? '',

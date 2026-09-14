@@ -50,23 +50,25 @@ PMHYBRID/
 Each module is small and cohesive (brief §22, §34 — no premature abstraction,
 no oversized modules):
 
-| Module                         | Responsibility                                                                             |
-| ------------------------------ | ------------------------------------------------------------------------------------------ |
-| `auth`                         | JWT issuance/verification, login                                                           |
-| `users`                        | Human actor management (thin layer over `Actor`/`UserCredential`)                          |
-| `agents`                       | AI agent actor management (`Actor`/`AgentProfile`)                                         |
-| `projects`                     | Project CRUD, settings (sync interval, docs path, rollup strategy)                         |
-| `project-members`              | Membership records, independent of role grants                                             |
-| `roles`                        | Role/Permission/ActorRole CRUD, permission checks                                          |
-| `phases`, `epics`, `templates` | Optional hierarchy rungs                                                                   |
-| `tasks`                        | Task CRUD, subtasks (self-referential), dependencies, assignment, Kanban transition policy |
-| `roadmap`                      | `RoadmapParserService`, `AgentslogParserService` — parsing only, no orchestration          |
-| `synchronization`              | Scheduler, reconciliation algorithm, write-back orchestration                              |
-| `git-providers`                | `ProjectRepositoryProvider` interface + `LocalFsGitProvider` (MVP)                         |
-| `audit`                        | `AuditEvent` recording, subscribes to domain events                                        |
-| `notifications`                | `Notification` recording, subscribes to domain events                                      |
-| `conflicts`                    | `Conflict` CRUD and resolution endpoints                                                   |
-| `health`                       | Liveness/readiness (`@nestjs/terminus` + Prisma check)                                     |
+| Module                         | Responsibility                                                                               |
+| ------------------------------ | -------------------------------------------------------------------------------------------- |
+| `auth`                         | JWT issuance/verification, login                                                             |
+| `users`                        | Human actor management (thin layer over `Actor`/`UserCredential`)                            |
+| `agents`                       | AI agent actor management (`Actor`/`AgentProfile`)                                           |
+| `projects`                     | Project CRUD, settings (sync interval, docs path, rollup strategy)                           |
+| `project-members`              | Membership records, independent of role grants                                               |
+| `roles`                        | Role/Permission/ActorRole CRUD, permission checks                                            |
+| `phases`, `epics`, `templates` | Optional hierarchy rungs                                                                     |
+| `tasks`                        | Task CRUD, subtasks (self-referential), dependencies, assignment, Kanban transition policy   |
+| `roadmap`                      | `RoadmapParserService`, `AgentslogParserService` — parsing only, no orchestration            |
+| `synchronization`              | Scheduler, reconciliation algorithm, write-back orchestration                                |
+| `git-providers`                | `ProjectRepositoryProvider` interface + `LocalFsGitProvider` (MVP)                           |
+| `audit`                        | `AuditEvent` recording, subscribes to domain events                                          |
+| `notifications`                | `Notification` recording, subscribes to domain events                                        |
+| `conflicts`                    | `Conflict` CRUD and resolution endpoints                                                     |
+| `dashboard`                    | Cross-project summary + activity feed (brief §14) — aggregate, not project-scoped            |
+| `workload`                     | Cross-project per-actor task list (brief §19) — `projectId` is an optional filter, not scope |
+| `health`                       | Liveness/readiness (`@nestjs/terminus` + Prisma check)                                       |
 
 `roadmap` (parsing) and `synchronization` (orchestration) are deliberately
 separate modules — parsing is a pure function of document text, orchestration
@@ -101,10 +103,13 @@ MVP.
 ## Frontend structure
 
 Standalone Angular components, lazy-loaded per feature area under
-`src/app/features/`: `auth`, `my-projects`, `project-dashboard`, `kanban`,
-`phases-progress`, `task-detail`, `workload`, `documents-viewer`, `conflicts`.
-`core/` holds auth guards/interceptors and the Signals-based `AuthService`;
-`shared/` holds cross-feature UI primitives.
+`src/app/features/`: `auth`, `dashboard`, `my-projects`, `project-dashboard`,
+`kanban`, `phases-progress`, `task-detail`, `workload`, `documents-viewer`,
+`conflicts`. `dashboard` and `workload` are top-level routes (`/dashboard`,
+`/workload`, post-login landing is `/dashboard`) backed by the cross-project
+modules above; `project-dashboard` is the project-scoped overview nested
+under `/projects/:projectId`. `core/` holds auth guards/interceptors and the
+Signals-based `AuthService`; `shared/` holds cross-feature UI primitives.
 
 ## Security (brief §28)
 

@@ -32,3 +32,14 @@ The seed script creates one HUMAN actor you can log in as at `/login`:
 - Password: `demo1234`
 
 Not a real secret — just seed data for a fresh local database.
+
+### Demo dataset
+
+Besides `pmhybrid-self` (this repo's own `docs/`), the seed script creates two
+richer demo projects — **Website Relaunch** and **Mobile App Revamp** — each
+with its own `Roadmap.md`/`Agentslog.md` (written to
+`apps/api/prisma/demo-projects/`, gitignored, regenerated on every seed run),
+multiple phases/epics, subtasks, task dependencies, all five Kanban states,
+one blocked task, and a mix of human (`Demo Human`, `Ana García`) and AI-agent
+(`Demo Agent`, `Codex`) assignees. The seed is idempotent — safe to re-run
+against an existing database.

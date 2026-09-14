@@ -122,9 +122,18 @@ not need to re-sanitize on read, only split on `|`.
 - `TASK-ID` is the correlation key to `Task.externalId`, matched within the
   same project.
 - Idempotency: compute `rawEntryHash` over the full raw entry text (header +
-  four bullet lines); this is a unique constraint on `AgentLogEvent`, so
-  re-parsing the same entry after a ledger rotation or a re-sync of an
-  overlapping revision is a no-op rather than a duplicate.
+  four bullet lines); this is a unique constraint on `AgentLogEvent`, scoped
+  **per project** (`@@unique([projectId, rawEntryHash])`, not a bare global
+  unique) — re-parsing the same entry after a ledger rotation or a re-sync of
+  an overlapping revision is a no-op rather than a duplicate, and two
+  unrelated projects whose agents happen to log byte-identical entry text
+  don't collide with each other.
+- Fenced code blocks are skipped entirely: a line starting with ` ``` `
+  toggles an `inFence` flag, and no header/bullet matching happens while it's
+  set. This exists because the skill's own documentation shows the entry
+  format as a fenced ` ```markdown ` example inside `Agentslog.md` itself
+  (see the block above) — without the skip, that example is indistinguishable
+  from a real entry and gets ingested as one.
 
 ## Ledger rotation awareness
 

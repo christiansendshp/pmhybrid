@@ -5,11 +5,14 @@ Keep active and near-term work only. Verified completed capability belongs in
 
 ## Active work
 
-| ID      | Outcome                                     | Acceptance check                                    | Status      | Owner       | Depends on |
-| ------- | ------------------------------------------- | --------------------------------------------------- | ----------- | ----------- | ---------- |
-| FASE-12 | Testing + stabilization + full demo dataset | All brief §33 E2E scenarios green; `docs/` complete | IN_PROGRESS | claude-code | FASE-11    |
+| ID  | Outcome | Acceptance check | Status | Owner | Depends on |
+| --- | ------- | ---------------- | ------ | ----- | ---------- |
+| —   | —       | —                | —      | —     | —          |
 
 <!-- context:end -->
+
+FASE-12 (last phase of the 12-phase MVP plan) completed 2026-09-14 — see
+`Agentslog.md` and `Features.md`. No further phases are queued.
 
 ## Near term
 

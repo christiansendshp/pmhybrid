@@ -85,3 +85,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/src/modules/workload, apps/web/src/app/{core/workload.service.ts,features/workload}, app.routes.ts
 - Verify: lint+build+test+e2e green (32 e2e); browser: workload table renders real Actor/Tipo/Proyecto/Tarea/Estado/Avance rows matching brief SS18's example shape, status filter verified live
 - Follow-up: Start FASE-12 testing + stabilization + full demo dataset
+
+## [2026-09-14T20:04:17Z] | claude-code | FASE-12 | DONE
+
+- Summary: Full brief SS33 14-scenario E2E walkthrough (apps/api/test/brief-scenarios.e2e-spec.ts), sequential against one project, all 14 green. Found+fixed a real write-back bug: Roadmap Owner cell used the requesting actor instead of the task's actual assignee. Built the full brief SS32 demo dataset in seed.ts: 2 rich projects (Website Relaunch, Mobile App Revamp) with phases/epics/subtasks/dependencies/all 5 Kanban states/2 blocked tasks/human+AI assignees, Roadmap.md+Agentslog.md rendered from the same source array as the DB seed (single source of truth), idempotent (verified 2 consecutive runs, stable row counts). Reconciled docs/architecture.md (dashboard+workload module rows), docs/roadmap-parser.md (per-project rawEntryHash scoping, fenced-block skip), README.md (demo dataset section).
+- Files: apps/api/test/brief-scenarios.e2e-spec.ts, apps/api/src/modules/synchronization/write-back.service.ts, apps/api/prisma/seed.ts, docs/architecture.md, docs/roadmap-parser.md, README.md
+- Verify: lint+build+test+e2e green across api (46 e2e, 19 unit) and web (12 unit); seed run twice with no row-count growth; browser: Dashboard/Workload/Kanban all render the new demo dataset correctly (blocked=2, global progress=31.64%, all 5 activity feeds populated)
+- Follow-up: This is the last phase in the 12-phase MVP plan -- no further phases queued
