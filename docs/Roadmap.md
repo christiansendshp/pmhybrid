@@ -5,9 +5,9 @@ Keep active and near-term work only. Verified completed capability belongs in
 
 ## Active work
 
-| ID      | Outcome                                                                                                                                | Acceptance check                                                                                                       | Status      | Owner       | Depends on |
-| ------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------- | ----------- | ---------- |
-| FASE-03 | Monorepo scaffolded: pnpm workspaces, NestJS `apps/api`, Angular `apps/web`, `packages/shared-types`, tooling, docker-compose Postgres | `pnpm -r lint && pnpm -r build && pnpm -r test` green; `/health` returns 200; Angular shell renders all planned routes | IN_PROGRESS | claude-code | FASE-02    |
+| ID  | Outcome | Acceptance check | Status | Owner | Depends on |
+| --- | ------- | ---------------- | ------ | ----- | ---------- |
+| —   | —       | —                | —      | —     | —          |
 
 <!-- context:end -->
 
