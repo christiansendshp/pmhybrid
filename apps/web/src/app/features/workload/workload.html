@@ -1,0 +1,77 @@
+<h1>Workload</h1>
+
+<nav>
+  <a routerLink="/dashboard">Dashboard</a>
+  <a routerLink="/projects">My Projects</a>
+  <a routerLink="/workload">Workload</a>
+</nav>
+
+<div>
+  <mat-select
+    placeholder="Filter by project…"
+    [ngModel]="projectFilter()"
+    (ngModelChange)="projectFilter.set($event); onFilterChange()"
+  >
+    <mat-option [value]="null">All projects</mat-option>
+    @for (project of myProjects(); track project.id) {
+      <mat-option [value]="project.id">{{ project.name }}</mat-option>
+    }
+  </mat-select>
+
+  <mat-select
+    placeholder="Filter by actor…"
+    [ngModel]="actorFilter()"
+    (ngModelChange)="actorFilter.set($event); onFilterChange()"
+  >
+    <mat-option [value]="null">All actors</mat-option>
+    @for (actor of actors(); track actor.id) {
+      <mat-option [value]="actor.id">{{ actor.displayName }}</mat-option>
+    }
+  </mat-select>
+
+  <mat-select
+    placeholder="Filter by status…"
+    [ngModel]="statusFilter()"
+    (ngModelChange)="statusFilter.set($event); onFilterChange()"
+  >
+    <mat-option [value]="null">All statuses</mat-option>
+    @for (status of statuses; track status) {
+      <mat-option [value]="status">{{ status }}</mat-option>
+    }
+  </mat-select>
+</div>
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else if (rows().length === 0) {
+  <p>No assigned tasks match these filters.</p>
+}
+
+<table>
+  <thead>
+    <tr>
+      <th>Actor</th>
+      <th>Tipo</th>
+      <th>Proyecto</th>
+      <th>Tarea</th>
+      <th>Estado</th>
+      <th>Avance</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (row of rows(); track row.task.id) {
+      <tr>
+        <td>{{ row.actor.displayName }}</td>
+        <td>{{ row.actor.kind }}</td>
+        <td>{{ row.project.name }}</td>
+        <td>
+          <a [routerLink]="['/projects', row.project.id, 'tasks', row.task.id]">{{
+            row.task.title
+          }}</a>
+        </td>
+        <td>{{ row.status }}</td>
+        <td>{{ row.progress }}%</td>
+      </tr>
+    }
+  </tbody>
+</table>

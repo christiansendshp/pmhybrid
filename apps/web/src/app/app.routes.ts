@@ -19,6 +19,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/my-projects/my-projects').then((m) => m.MyProjects),
   },
   {
+    path: 'workload',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/workload/workload').then((m) => m.Workload),
+  },
+  {
     path: 'projects/:projectId',
     canActivate: [authGuard, projectMemberGuard],
     loadComponent: () =>
@@ -37,10 +42,6 @@ export const routes: Routes = [
       {
         path: 'tasks/:taskId',
         loadComponent: () => import('./features/task-detail/task-detail').then((m) => m.TaskDetail),
-      },
-      {
-        path: 'workload',
-        loadComponent: () => import('./features/workload/workload').then((m) => m.Workload),
       },
       {
         path: 'documents',

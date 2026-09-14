@@ -1,3 +1,9 @@
+<nav>
+  <a routerLink="/dashboard">Dashboard</a>
+  <a routerLink="/projects">My Projects</a>
+  <a routerLink="/workload">Workload</a>
+</nav>
+
 @if (project(); as p) {
   <h1>{{ p.name }}</h1>
   @if (p.description) {
@@ -21,7 +27,6 @@
 <nav>
   <a routerLink="kanban" routerLinkActive="active">Kanban</a>
   <a routerLink="progress" routerLinkActive="active">Progress</a>
-  <a routerLink="workload" routerLinkActive="active">Workload</a>
   <a routerLink="documents" routerLinkActive="active">Documents</a>
   <a routerLink="conflicts" routerLinkActive="active">Conflicts</a>
 </nav>
