@@ -2,6 +2,7 @@ export interface EnvConfig {
   DATABASE_URL: string;
   JWT_SECRET: string;
   JWT_EXPIRES_IN: string;
+  JWT_REFRESH_EXPIRES_IN: string;
   PORT: number;
   SYNC_DEFAULT_INTERVAL_MINUTES: number;
   GIT_PROVIDER_TYPE: string;
@@ -27,6 +28,7 @@ export function validateEnv(
     DATABASE_URL: raw.DATABASE_URL!,
     JWT_SECRET: raw.JWT_SECRET!,
     JWT_EXPIRES_IN: raw.JWT_EXPIRES_IN ?? '15m',
+    JWT_REFRESH_EXPIRES_IN: raw.JWT_REFRESH_EXPIRES_IN ?? '7d',
     PORT: raw.PORT ? Number(raw.PORT) : 3000,
     SYNC_DEFAULT_INTERVAL_MINUTES: raw.SYNC_DEFAULT_INTERVAL_MINUTES
       ? Number(raw.SYNC_DEFAULT_INTERVAL_MINUTES)

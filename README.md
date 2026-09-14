@@ -23,3 +23,12 @@ pnpm dev
 
 API: http://localhost:3000 (health check at `/health`)
 Web: http://localhost:4200
+
+### Demo login (local dev only)
+
+The seed script creates one HUMAN actor you can log in as at `/login`:
+
+- Email: `demo-human@pmhybrid.local`
+- Password: `demo1234`
+
+Not a real secret — just seed data for a fresh local database.

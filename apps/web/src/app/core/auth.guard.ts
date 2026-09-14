@@ -1,18 +1,25 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { AuthService } from './auth.service';
+import { AuthService } from './auth.service.js';
 
 /**
- * Stub for FASE-04. Currently permissive (always allows) so downstream
- * routes are reachable before real auth exists; real logic redirects to
- * /login when unauthenticated.
+ * Real guard for FASE-04 (replaces the FASE-03 permissive stub). If there's
+ * no in-memory access token, tries one silent refresh (covers a page
+ * reload, since the access token is intentionally not persisted — ADR-006)
+ * before redirecting to /login.
  */
-export const authGuard: CanActivateFn = () => {
-  const auth = inject(AuthService);
+export const authGuard: CanActivateFn = async () => {
+  const authService = inject(AuthService);
   const router = inject(Router);
-  if (!auth.isAuthenticated()) {
-    // FASE-04: return router.createUrlTree(['/login']) once login is real.
-    void router;
+
+  if (authService.isAuthenticated()) {
+    return true;
   }
-  return true;
+
+  const refreshed = await authService.refresh();
+  if (refreshed) {
+    return true;
+  }
+
+  return router.createUrlTree(['/login']);
 };

@@ -1,5 +1,7 @@
 import { PrismaClient } from '@prisma/client';
+import * as argon2 from 'argon2';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
+import { DEMO_EMAIL, DEMO_PASSWORD } from './demo-credentials.js';
 
 const prisma = new PrismaClient();
 
@@ -65,14 +67,21 @@ async function main() {
   });
 
   const humanActor = await prisma.actor.upsert({
-    where: { email: 'demo-human@pmhybrid.local' },
+    where: { email: DEMO_EMAIL },
     update: {},
     create: {
       kind: 'HUMAN',
       displayName: 'Demo Human',
-      email: 'demo-human@pmhybrid.local',
-      credential: { create: { authProvider: 'LOCAL' } },
+      email: DEMO_EMAIL,
     },
+  });
+
+  // Local-dev-only demo password, not a real secret — documented in README.md.
+  const demoPasswordHash = await argon2.hash(DEMO_PASSWORD, { type: argon2.argon2id });
+  await prisma.userCredential.upsert({
+    where: { actorId: humanActor.id },
+    update: { passwordHash: demoPasswordHash },
+    create: { actorId: humanActor.id, authProvider: 'LOCAL', passwordHash: demoPasswordHash },
   });
 
   const agentActor = await prisma.actor.upsert({
