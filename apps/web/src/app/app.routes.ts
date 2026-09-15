@@ -33,6 +33,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/team/team').then((m) => m.Team),
       },
       {
+        path: 'roles',
+        loadComponent: () => import('./features/roles/roles').then((m) => m.RolesPage),
+      },
+      {
         path: 'projects/:projectId',
         canActivate: [projectMemberGuard],
         loadComponent: () =>

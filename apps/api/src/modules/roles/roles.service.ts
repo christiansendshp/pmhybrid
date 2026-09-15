@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { PERMISSIONS } from '@pmhybrid/shared-types';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { PermissionsResolverService } from '../../common/permissions-resolver.service.js';
 import { AuditService } from '../audit/audit.service.js';
@@ -21,6 +22,93 @@ export class RolesService {
 
   findAllPermissions() {
     return this.prisma.permission.findMany({ orderBy: { key: 'asc' } });
+  }
+
+  /**
+   * Replaces a role's entire permission set (brief §4 "permisos
+   * configurables"). Every seeded role currently has `isSystem: true`
+   * (apps/api/prisma/seed.ts) — permission edits apply to any role, system
+   * or not; `isSystem` only ever protected the role's name/existence, which
+   * this endpoint doesn't touch.
+   *
+   * Refuses a write that would leave no actor holding roles.manage
+   * instance-wide (only global, projectId-null grants count — the same
+   * scope PermissionGuard checks for this route), since nothing could ever
+   * grant it back. Checked after applying the change, inside the same
+   * transaction, so a violation rolls the whole write back.
+   */
+  async updateRolePermissions(
+    roleId: string,
+    permissionKeys: string[],
+    requesterActorId: string,
+  ) {
+    const role = await this.prisma.role.findUnique({ where: { id: roleId } });
+    if (!role) {
+      throw new NotFoundException('No such role');
+    }
+
+    const uniqueKeys = [...new Set(permissionKeys)];
+    const permissions = await this.prisma.permission.findMany({
+      where: { key: { in: uniqueKeys } },
+    });
+    if (permissions.length !== uniqueKeys.length) {
+      const known = new Set(permissions.map((p) => p.key));
+      const unknown = uniqueKeys.filter((key) => !known.has(key));
+      throw new BadRequestException(
+        `Unknown permission key(s): ${unknown.join(', ')}`,
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const previousKeys = (
+        await tx.rolePermission.findMany({
+          where: { roleId },
+          include: { permission: { select: { key: true } } },
+        })
+      ).map((rp) => rp.permission.key);
+
+      await tx.rolePermission.deleteMany({ where: { roleId } });
+      if (permissions.length > 0) {
+        await tx.rolePermission.createMany({
+          data: permissions.map((p) => ({ roleId, permissionId: p.id })),
+        });
+      }
+
+      const stillGranted = await tx.actorRole.findFirst({
+        where: {
+          projectId: null,
+          role: {
+            rolePermissions: {
+              some: { permission: { key: PERMISSIONS.ROLES_MANAGE } },
+            },
+          },
+        },
+      });
+      if (!stillGranted) {
+        throw new BadRequestException(
+          'This change would leave no actor able to manage roles; refused',
+        );
+      }
+
+      await this.audit.record(
+        {
+          projectId: null,
+          actorId: requesterActorId,
+          entityType: 'Role',
+          entityId: roleId,
+          operation: 'ROLE_PERMISSIONS_UPDATE',
+          origin: 'UI',
+          previousValue: { permissionKeys: previousKeys },
+          newValue: { permissionKeys: uniqueKeys },
+        },
+        tx,
+      );
+
+      return tx.role.findUniqueOrThrow({
+        where: { id: roleId },
+        include: { rolePermissions: { include: { permission: true } } },
+      });
+    });
   }
 
   findAssignmentsForProject(projectId: string) {

@@ -5,8 +5,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { actorKindLabel } from '../../core/actor-kind.js';
 import { Actor, ActorsService } from '../../core/actors.service.js';
+import { describeHttpError } from '../../core/http-error.js';
 import { ProjectContext } from '../../core/project-context.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
+import { Role, RoleAssignment, RolesService } from '../../core/roles.service.js';
 import { SyncRun, SynchronizationService } from '../../core/synchronization.service.js';
 
 /** Project header inside the app shell: identity, sync, members and the section tabs. */
@@ -28,6 +30,7 @@ export class ProjectDashboard implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly projectsService = inject(ProjectsService);
   private readonly actorsService = inject(ActorsService);
+  private readonly rolesService = inject(RolesService);
   private readonly synchronizationService = inject(SynchronizationService);
   private readonly context = inject(ProjectContext);
 
@@ -49,30 +52,86 @@ export class ProjectDashboard implements OnInit {
   readonly syncing = signal(false);
   readonly lastSyncRun = signal<SyncRun | null>(null);
 
+  /** Project-scoped roles (brief §4) — assignment reuses the roles.controller.ts catalog, filtered client-side. */
+  readonly projectRoles = signal<Role[]>([]);
+  readonly roleAssignments = signal<RoleAssignment[]>([]);
+  readonly canManageRoles = signal(false);
+  readonly roleErrorMessage = signal<string | null>(null);
+  /** One pending role-to-assign selection per member row, keyed by actorId. */
+  private readonly selectedRoleByActor = signal<Record<string, string | null>>({});
+
   private get projectId(): string {
     return this.route.snapshot.paramMap.get('projectId')!;
   }
 
   async ngOnInit(): Promise<void> {
     const projectId = this.projectId;
-    const [project, members, permissions, users, agents] = await Promise.all([
+    const [project, members, permissions, users, agents, roles, assignments] = await Promise.all([
       this.projectsService.getById(projectId),
       this.projectsService.listMembers(projectId),
       this.projectsService.myPermissions(projectId),
       this.actorsService.listUsers(),
       this.actorsService.listAgents(),
+      this.rolesService.listRoles(),
+      this.rolesService.listAssignments(projectId),
     ]);
 
     this.context.project.set(project);
     this.context.permissions.set(permissions);
     this.members.set(members);
     this.canManageMembers.set(permissions.includes('project.members.manage'));
+    this.canManageRoles.set(permissions.includes('project.roles.manage'));
+    this.projectRoles.set(roles.filter((r) => r.scope === 'PROJECT'));
+    this.roleAssignments.set(assignments);
 
     // Inactive actors can't join a project (the API rejects them), so they're never offered.
     const memberActorIds = new Set(members.map((m) => m.actorId));
     this.candidateActors.set(
       [...users, ...agents].filter((a) => a.isActive && !memberActorIds.has(a.id)),
     );
+  }
+
+  rolesForMember(actorId: string): RoleAssignment[] {
+    return this.roleAssignments().filter((a) => a.actorId === actorId);
+  }
+
+  /** Roles not already assigned to this member — nothing left to offer once they hold every project role. */
+  availableRolesForMember(actorId: string): Role[] {
+    const assignedRoleIds = new Set(this.rolesForMember(actorId).map((a) => a.roleId));
+    return this.projectRoles().filter((r) => !assignedRoleIds.has(r.id));
+  }
+
+  selectedRoleFor(actorId: string): string | null {
+    return this.selectedRoleByActor()[actorId] ?? null;
+  }
+
+  setSelectedRoleFor(actorId: string, roleId: string | null): void {
+    this.selectedRoleByActor.set({ ...this.selectedRoleByActor(), [actorId]: roleId });
+  }
+
+  async assignRole(actorId: string): Promise<void> {
+    const roleId = this.selectedRoleFor(actorId);
+    if (!roleId) {
+      return;
+    }
+    this.roleErrorMessage.set(null);
+    try {
+      await this.rolesService.assign(this.projectId, actorId, roleId);
+      this.setSelectedRoleFor(actorId, null);
+      this.roleAssignments.set(await this.rolesService.listAssignments(this.projectId));
+    } catch (error) {
+      this.roleErrorMessage.set(describeHttpError(error));
+    }
+  }
+
+  async revokeRole(assignment: RoleAssignment): Promise<void> {
+    this.roleErrorMessage.set(null);
+    try {
+      await this.rolesService.revoke(this.projectId, assignment.id);
+      this.roleAssignments.set(await this.rolesService.listAssignments(this.projectId));
+    } catch (error) {
+      this.roleErrorMessage.set(describeHttpError(error));
+    }
   }
 
   /** "Sincronizar ahora" (brief §11). */

@@ -1,0 +1,71 @@
+<h1>Roles</h1>
+<p class="page-header__description">
+  Every role and the permissions it grants (brief §4). Assign or revoke a project's roles from that
+  project's page; this catalog controls what each role can do everywhere it is granted.
+</p>
+
+@if (errorMessage()) {
+  <p role="alert">{{ errorMessage() }}</p>
+}
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else {
+  <table>
+    <thead>
+      <tr>
+        <th>Role</th>
+        <th>Scope</th>
+        <th>Permissions</th>
+        @if (canManage()) {
+          <th>Actions</th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (role of roles(); track role.id) {
+        <tr>
+          <td>{{ role.name }}</td>
+          <td>{{ role.scope }}</td>
+          <td>
+            @if (permissionKeys(role).length === 0) {
+              <span class="meta-text">None</span>
+            } @else {
+              <ul class="status-counts">
+                @for (key of permissionKeys(role); track key) {
+                  <li>{{ key }}</li>
+                }
+              </ul>
+            }
+          </td>
+          @if (canManage()) {
+            <td>
+              <button mat-button type="button" (click)="startEdit(role)">Edit</button>
+            </td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  @if (editingRole(); as role) {
+    <section>
+      <h2>Edit {{ role.name }} permissions</h2>
+      <ul class="permission-checklist">
+        @for (permission of permissions(); track permission.id) {
+          <li>
+            <mat-checkbox
+              [checked]="editingKeys().has(permission.key)"
+              (change)="togglePermission(permission.key, $event.checked)"
+            >
+              {{ permission.key }}
+              <span class="meta-text">— {{ permission.description }}</span>
+            </mat-checkbox>
+          </li>
+        }
+      </ul>
+      <button mat-flat-button type="button" [disabled]="saving()" (click)="saveEdit()">Save</button>
+      <button mat-button type="button" (click)="cancelEdit()">Cancel</button>
+    </section>
+  }
+}

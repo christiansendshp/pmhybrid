@@ -17,6 +17,8 @@ export const PERMISSIONS = {
   PROJECT_ROLES_MANAGE: 'project.roles.manage',
   /** Global-scope only (granted via a GLOBAL role, never a project role): create, edit, deactivate users and AI agents. */
   ACTORS_MANAGE: 'actors.manage',
+  /** Global-scope only: edit any role's permission set (the catalog itself, not a project's assignments). */
+  ROLES_MANAGE: 'roles.manage',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

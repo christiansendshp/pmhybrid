@@ -183,3 +183,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: api progress-rollup.service; web core/tasks.service + features/phases-progress/*; +progress-task-node.spec.ts
 - Verify: 97 api e2e, 33 api unit, 94 web green
 - Follow-up: none
+
+## [2026-09-15T15:40:56Z] | claude-code | GAP-12 | DONE
+
+- Summary: Role catalog + configurable permissions (brief §4): new roles.manage global permission; PATCH /roles/:id/permissions replaces any role's set, refusing an edit that strands the instance without a roles.manage holder. Project dashboard gained role assign/revoke on the members list; new top-level Roles page for the catalog.
+- Files: apps/api/src/modules/roles/roles.service.ts, apps/web/src/app/features/roles/roles.ts, apps/web/src/app/features/project-dashboard/project-dashboard.ts
+- Verify: apps/api/test/roles.e2e-spec.ts, features/roles/roles.spec.ts, project-dashboard.spec.ts
+- Follow-up: Promoted GAP-16 to Active

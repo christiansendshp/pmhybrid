@@ -5,9 +5,9 @@ Keep active and near-term work only. Verified completed capability belongs in
 
 ## Active work
 
-| ID     | Outcome                                                                         | Acceptance check                             | Status      | Owner                            | Depends on |
-| ------ | ------------------------------------------------------------------------------- | -------------------------------------------- | ----------- | -------------------------------- | ---------- |
-| GAP-12 | Roles UI: assign/revoke project roles; configurable role permissions (brief §4) | e2e for role-permission edits; browser check | IN_PROGRESS | claude-code@2026-09-15T15:11:56Z | GAP-02     |
+| ID     | Outcome                                             | Acceptance check                                                      | Status      | Owner                            | Depends on |
+| ------ | --------------------------------------------------- | --------------------------------------------------------------------- | ----------- | -------------------------------- | ---------- |
+| GAP-16 | Frontend component tests for main views (brief §33) | `pnpm --filter web test` covers kanban/task-detail/workload/conflicts | IN_PROGRESS | claude-code@2026-09-15T15:40:27Z | GAP-06     |
 
 <!-- context:end -->
 
@@ -19,7 +19,6 @@ first, per the user's direction on 2026-09-15.
 
 | ID     | Outcome                                                                                                          | Acceptance check                                                          | Status | Depends on |
 | ------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------ | ---------- |
-| GAP-16 | Frontend component tests for main views (brief §33)                                                              | `pnpm --filter web test` covers kanban/task-detail/workload/conflicts     | TODO   | GAP-06     |
 | GAP-13 | Internal notifications (brief §29): generated on events, list/mark-read API, UI indicator; failed sync persisted | e2e per notification event                                                | TODO   | GAP-01     |
 | GAP-14 | Roadmap `Depends on` reconciled into TaskDependency rows                                                         | sync e2e with a dependency cell                                           | TODO   | —          |
 | GAP-15 | Controlled API access for AI agents via hashed API keys (brief §27, §28)                                         | e2e: key auth works, revoked key rejected, key never stored in plain text | TODO   | GAP-02     |

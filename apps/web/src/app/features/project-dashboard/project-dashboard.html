@@ -24,15 +24,63 @@
   </div>
 </header>
 
+@if (roleErrorMessage()) {
+  <p role="alert">{{ roleErrorMessage() }}</p>
+}
+
 <section class="members" aria-labelledby="members-heading">
   <h2 id="members-heading" class="members__heading">Members</h2>
   <ul class="members__list">
     @for (member of members(); track member.id) {
       <li class="members__item">
-        {{ member.actor.displayName }}
-        <span class="kind-badge" [attr.data-kind]="member.actor.kind">{{
-          kindLabel(member.actor.kind)
-        }}</span>
+        <div class="members__identity">
+          {{ member.actor.displayName }}
+          <span class="kind-badge" [attr.data-kind]="member.actor.kind">{{
+            kindLabel(member.actor.kind)
+          }}</span>
+        </div>
+
+        <ul class="status-counts members__roles">
+          @for (assignment of rolesForMember(member.actorId); track assignment.id) {
+            <li>
+              {{ assignment.role.name }}
+              @if (canManageRoles()) {
+                <button
+                  mat-icon-button
+                  type="button"
+                  [attr.aria-label]="'Revoke ' + assignment.role.name"
+                  (click)="revokeRole(assignment)"
+                >
+                  ×
+                </button>
+              }
+            </li>
+          }
+        </ul>
+
+        @if (canManageRoles() && availableRolesForMember(member.actorId).length > 0) {
+          <div class="members__add-role">
+            <mat-select
+              class="members__select"
+              [placeholder]="'Add a role for ' + member.actor.displayName"
+              [attr.aria-label]="'Role to assign to ' + member.actor.displayName"
+              [ngModel]="selectedRoleFor(member.actorId)"
+              (ngModelChange)="setSelectedRoleFor(member.actorId, $event)"
+            >
+              @for (role of availableRolesForMember(member.actorId); track role.id) {
+                <mat-option [value]="role.id">{{ role.name }}</mat-option>
+              }
+            </mat-select>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!selectedRoleFor(member.actorId)"
+              (click)="assignRole(member.actorId)"
+            >
+              Assign
+            </button>
+          </div>
+        }
       </li>
     }
   </ul>

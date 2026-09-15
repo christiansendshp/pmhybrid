@@ -29,6 +29,7 @@ export class AppShell {
     { label: 'My Projects', path: '/projects' },
     { label: 'Workload', path: '/workload' },
     { label: 'Team', path: '/team' },
+    { label: 'Roles', path: '/roles' },
   ];
 
   readonly currentActor = this.authService.currentActor;

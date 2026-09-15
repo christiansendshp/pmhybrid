@@ -26,6 +26,7 @@ const PROJECT_PERMISSION_DEFS = [
 ];
 const GLOBAL_PERMISSION_DEFS = [
   { key: PERMISSIONS.ACTORS_MANAGE, description: 'Create, edit and deactivate users and AI agents' },
+  { key: PERMISSIONS.ROLES_MANAGE, description: "Edit any role's permission set" },
 ];
 const PERMISSION_DEFS = [...PROJECT_PERMISSION_DEFS, ...GLOBAL_PERMISSION_DEFS];
 

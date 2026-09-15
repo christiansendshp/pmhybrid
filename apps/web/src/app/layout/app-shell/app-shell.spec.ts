@@ -27,6 +27,7 @@ describe('AppShell', () => {
               { path: 'projects/:projectId', component: StubPage },
               { path: 'workload', component: StubPage },
               { path: 'team', component: StubPage },
+              { path: 'roles', component: StubPage },
             ],
           },
         ]),
@@ -67,6 +68,7 @@ describe('AppShell', () => {
       'My Projects',
       'Workload',
       'Team',
+      'Roles',
     ]);
     expect(root.querySelector('main')?.textContent).toContain('page body');
   });
