@@ -1,0 +1,39 @@
+.filter-toggle button.is-active {
+  color: var(--mat-sys-primary);
+  font-weight: 600;
+}
+
+.conflict-card {
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.conflict-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.conflict-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+// A field both sides changed stands out from the read-only diff rows around it.
+.diff-row--changed th,
+.diff-row--changed td {
+  background: var(--mat-sys-surface-container-highest);
+}
+
+.manual-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}

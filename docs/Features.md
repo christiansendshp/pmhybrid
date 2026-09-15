@@ -2,9 +2,9 @@
 
 ## Operational summary
 
-- Verified capabilities: 21
-- Latest verification: `2026-09-15` — lint, build, unit, e2e green (80 api e2e, 33 api unit, 68 web)
-- Known limitations: no refresh-token revocation (ADR-005); Roadmap `Depends on` not reconciled into `TaskDependency`; PM Hub's own write-back Agentslog entries are ingested only after an external file change; a status write-back for a Near term row adds a duplicate Active row (GAP-19)
+- Verified capabilities: 22
+- Latest verification: `2026-09-15` — lint, build, unit, e2e green (88 api e2e, 33 api unit, 76 web)
+- Known limitations: no refresh-token revocation (ADR-005); Roadmap `Depends on` not reconciled into `TaskDependency`; PM Hub's own write-back Agentslog entries are ingested only after an external file change; a status write-back for a Near term row adds a duplicate Active row (GAP-19); Workload's filter bar calls `GET /projects` to list the user's projects, which recomputes each project's full progress rollup just to populate a dropdown — fine at demo scale, worth a dedicated lightweight endpoint before real data; `ProjectContext` is DI-scoped to `ProjectDashboard`'s routed children (kanban/progress/conflicts/settings/...) and throws if one is ever routed outside that parent
 
 <!-- context:end -->
 
@@ -36,3 +36,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | F19 | Kanban board (§15): cards with ID, title, assignee + kind, priority, rolled-up progress, phase › epic, subtask and open-dependency counts, due/estimated/overdue date, blocked indicators; search by title or ID, assignee/priority/phase/epic/blocked filters, swimlane grouping, in-column sorting; drops only on legal transitions | `apps/api/test/task-board.e2e-spec.ts`, `core/board.spec.ts`, `features/kanban/kanban.spec.ts`                                         | brief §15                                                | 2026-09-15 |
 | F20 | My Projects (§19): per-project status, rolled-up progress, active tasks, overdue tasks, active AI agents, open conflicts and last sync, with a link into each project; project Settings tab (name, description, status, sync interval, docs path, repository URL) editable with project.update                                        | `apps/api/test/projects.e2e-spec.ts`, `features/my-projects/my-projects.spec.ts`, `features/project-settings/project-settings.spec.ts` | brief §19, §20                                           | 2026-09-15 |
 | F21 | Workload (§18): every active actor listed, idle ones included (while no status, phase or epic filter narrows to tasks); filters by project, people or AI agents, actor, status, and phase and epic within a project                                                                                                                   | `apps/api/test/workload.e2e-spec.ts`, `features/workload/workload.spec.ts`                                                             | brief §18                                                | 2026-09-15 |
+| F22 | Conflicts (§26): field-by-field local (app) vs. external (document) diff per conflict kind, with an explanation of what raised it; resolve via keep app / keep document / manual edit (per-field form restricted to the fields that conflict actually contests) / dismiss; open/resolved filter                                       | `apps/api/test/conflicts.e2e-spec.ts`, `core/conflict-diff.spec.ts`                                                                    | brief §26, `docs/synchronization.md` Conflicts           | 2026-09-15 |

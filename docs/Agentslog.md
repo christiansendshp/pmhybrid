@@ -155,3 +155,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: api workload service/dto + e2e (task-removal workload check updated); web workload service/view/scss/spec
 - Verify: lint+build; 80 api e2e, 33 api unit, 68 web green; browser check pending a signed-in session
 - Follow-up: GAP-10
+
+## [2026-09-15T14:48:12Z] | claude-code | GAP-10 | DONE
+
+- Summary: Conflict resolution UI (brief §26): field-by-field local-vs-external diff (core/conflict-diff.ts), MANUAL_EDIT form restricted to each conflict's own contested+editable fields, API whitelist rejecting unknown/uncontested manualValue keys as 400 (was an unguarded Prisma 500). Ran full monorepo gate first (lint/build/unit/e2e all green on HEAD) per an advisor review that flagged the gate had drifted to per-package runs.
+- Files: apps/api/src/modules/conflicts/conflicts.service.ts, apps/api/test/conflicts.e2e-spec.ts, apps/web/src/app/core/conflict-diff.ts, apps/web/src/app/core/conflict-diff.spec.ts, apps/web/src/app/features/conflicts/*, apps/web/src/app/app.routes.ts, docs/Features.md, docs/Roadmap.md
+- Verify: 88 api e2e, 33 api unit, 76 web; api+web lint/build green
+- Follow-up: Browser check pending the user's own login (credentials policy); GAP-16 will add a conflicts.spec.ts component test

@@ -37,6 +37,9 @@ export const routes: Routes = [
         canActivate: [projectMemberGuard],
         loadComponent: () =>
           import('./features/project-dashboard/project-dashboard').then((m) => m.ProjectDashboard),
+        // Every child below (including ProjectSettings) injects ProjectContext,
+        // which only ProjectDashboard provides — keep them nested here, never
+        // routed standalone, or DI throws NullInjectorError at runtime.
         children: [
           { path: '', pathMatch: 'full', redirectTo: 'kanban' },
           {

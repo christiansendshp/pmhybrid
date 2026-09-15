@@ -1,35 +1,172 @@
-<h2>Conflicts</h2>
+<header class="page-header">
+  <div>
+    <h2>Conflicts</h2>
+    <p class="page-header__description">
+      Raised when a synced document and the app changed the same thing, or a Roadmap row disappeared
+      with nothing to prove it finished (brief §26). Nothing here is applied automatically — pick
+      how to resolve each one.
+    </p>
+  </div>
+  <div class="page-header__actions filter-toggle" role="group" aria-label="Filter conflicts">
+    <button
+      mat-button
+      type="button"
+      [class.is-active]="!showResolved()"
+      [attr.aria-pressed]="!showResolved()"
+      (click)="setFilter(false)"
+    >
+      Open
+    </button>
+    <button
+      mat-button
+      type="button"
+      [class.is-active]="showResolved()"
+      [attr.aria-pressed]="showResolved()"
+      (click)="setFilter(true)"
+    >
+      Resolved
+    </button>
+  </div>
+</header>
+
+@if (error()) {
+  <p role="alert">{{ error() }}</p>
+}
+@if (resolveError()) {
+  <p role="alert">{{ resolveError() }}</p>
+}
 
 @if (loading()) {
   <p>Loading…</p>
 } @else if (conflicts().length === 0) {
-  <p>No open conflicts.</p>
+  <p>{{ showResolved() ? 'No resolved conflicts yet.' : 'No open conflicts.' }}</p>
 }
 
 @for (conflict of conflicts(); track conflict.id) {
-  <section>
-    <h3>{{ conflict.kind }}</h3>
-    <p>{{ conflict.entityType }} {{ conflict.entityId }} — detected {{ conflict.detectedAt }}</p>
-
-    <div>
-      <strong>Local</strong>
-      <pre>{{ conflict.localVersion | json }}</pre>
-    </div>
-    @if (conflict.externalVersion) {
+  <section class="conflict-card">
+    <header class="conflict-card__header">
       <div>
-        <strong>External</strong>
-        <pre>{{ conflict.externalVersion | json }}</pre>
+        <h3>{{ conflict.kind }}</h3>
+        <p class="meta-text">
+          @if (conflict.entityType === 'Task') {
+            <a [routerLink]="['../tasks', conflict.entityId]">Task</a>
+          } @else {
+            {{ conflict.entityType }}
+          }
+          — detected {{ conflict.detectedAt | date: 'medium' }}
+          @if (conflict.resolvedAt) {
+            — resolved {{ conflict.resolvedAt | date: 'medium' }} ({{
+              conflict.resolutionStrategy
+            }})
+          }
+        </p>
       </div>
-    }
+    </header>
 
-    <button mat-flat-button type="button" (click)="resolve(conflict, 'KEEP_LOCAL')">
-      Keep local
-    </button>
-    @if (conflict.externalVersion || conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG') {
-      <button mat-flat-button type="button" (click)="resolve(conflict, 'KEEP_EXTERNAL')">
-        Keep external
-      </button>
+    <p>{{ explanationFor(conflict.kind) }}</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Field</th>
+          <th scope="col">App (local)</th>
+          <th scope="col">Document (external)</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (diff of diffFor(conflict); track diff.field) {
+          <tr [class.diff-row--changed]="diff.status === 'changed'">
+            <th scope="row">{{ labelFor(diff.field) }}</th>
+            <td>{{ diff.status === 'external-only' ? 'Not present locally' : diff.local }}</td>
+            <td>
+              {{ diff.status === 'local-only' ? 'Not present in the document' : diff.external }}
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    @if (!conflict.resolvedAt) {
+      @if (editingConflictId() === conflict.id) {
+        <form class="manual-edit" (ngSubmit)="submitManualEdit(conflict)">
+          @for (field of manualFields(); track field.field) {
+            <mat-form-field>
+              <mat-label>{{ field.label }}</mat-label>
+              @if (field.kind === 'status') {
+                <mat-select
+                  [ngModel]="manualValues()[field.field]"
+                  [ngModelOptions]="{ standalone: true }"
+                  (ngModelChange)="setManualValue(field.field, $event)"
+                >
+                  @for (status of statuses; track status) {
+                    <mat-option [value]="status">{{ status }}</mat-option>
+                  }
+                </mat-select>
+              } @else if (field.kind === 'roadmapTable') {
+                <mat-select
+                  [ngModel]="manualValues()[field.field]"
+                  [ngModelOptions]="{ standalone: true }"
+                  (ngModelChange)="setManualValue(field.field, $event)"
+                >
+                  <mat-option [value]="null">None</mat-option>
+                  @for (table of roadmapTables; track table) {
+                    <mat-option [value]="table">{{ table }}</mat-option>
+                  }
+                </mat-select>
+              } @else {
+                <input
+                  matInput
+                  [ngModel]="manualValues()[field.field]"
+                  [ngModelOptions]="{ standalone: true }"
+                  (ngModelChange)="setManualValue(field.field, $event)"
+                />
+              }
+            </mat-form-field>
+          }
+          <div class="conflict-card__actions">
+            <button mat-flat-button type="submit" [disabled]="resolvingId() === conflict.id">
+              {{ resolvingId() === conflict.id ? 'Saving…' : 'Save manual edit' }}
+            </button>
+            <button mat-button type="button" (click)="cancelManualEdit()">Cancel</button>
+          </div>
+        </form>
+      } @else {
+        <div class="conflict-card__actions">
+          <button
+            mat-flat-button
+            type="button"
+            [disabled]="resolvingId() === conflict.id"
+            (click)="resolve(conflict, 'KEEP_LOCAL')"
+          >
+            Keep app version
+          </button>
+          @if (
+            conflict.externalVersion || conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG'
+          ) {
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="resolvingId() === conflict.id"
+              (click)="resolve(conflict, 'KEEP_EXTERNAL')"
+            >
+              Keep document version
+            </button>
+          }
+          @if (hasEditableFields(conflict)) {
+            <button mat-stroked-button type="button" (click)="startManualEdit(conflict)">
+              Edit manually
+            </button>
+          }
+          <button
+            mat-button
+            type="button"
+            [disabled]="resolvingId() === conflict.id"
+            (click)="resolve(conflict, 'DISMISSED')"
+          >
+            Dismiss
+          </button>
+        </div>
+      }
     }
-    <button mat-flat-button type="button" (click)="resolve(conflict, 'DISMISSED')">Dismiss</button>
   </section>
 }
