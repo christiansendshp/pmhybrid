@@ -103,6 +103,24 @@ describe('Role catalog and configurable permissions (e2e)', () => {
       .expect(400);
   });
 
+  it('refuses a global-only permission key on a PROJECT-scope role (it could never be resolved there)', async () => {
+    const viewer = await findRole('VIEWER', 'PROJECT');
+
+    const attempt = await request(server())
+      .patch(`/roles/${viewer.id}/permissions`)
+      .set('Authorization', auth())
+      .send({ permissionKeys: ['task.assign', 'roles.manage'] })
+      .expect(400);
+    expect(attempt.body.message).toMatch(/global-only/i);
+
+    // The rejected write must not have partially applied.
+    const roles = await request(server()).get('/roles').set('Authorization', auth()).expect(200);
+    const reloaded = (roles.body as Array<{ id: string; rolePermissions: unknown[] }>).find(
+      (r) => r.id === viewer.id,
+    )!;
+    expect(reloaded.rolePermissions).toEqual([]);
+  });
+
   it('edits a role permission set and it takes effect immediately, with no caching', async () => {
     const viewer = await findRole('VIEWER', 'PROJECT');
 

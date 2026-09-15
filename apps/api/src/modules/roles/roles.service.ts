@@ -3,7 +3,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PERMISSIONS } from '@pmhybrid/shared-types';
+import {
+  GLOBAL_PERMISSION_KEYS,
+  PERMISSIONS,
+  PermissionKey,
+} from '@pmhybrid/shared-types';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { PermissionsResolverService } from '../../common/permissions-resolver.service.js';
 import { AuditService } from '../audit/audit.service.js';
@@ -17,7 +21,10 @@ export class RolesService {
   ) {}
 
   findAllRoles() {
-    return this.prisma.role.findMany({ orderBy: { name: 'asc' } });
+    return this.prisma.role.findMany({
+      orderBy: { name: 'asc' },
+      include: { rolePermissions: { include: { permission: true } } },
+    });
   }
 
   findAllPermissions() {
@@ -57,6 +64,21 @@ export class RolesService {
       throw new BadRequestException(
         `Unknown permission key(s): ${unknown.join(', ')}`,
       );
+    }
+
+    // A PROJECT-scope role's permissions only ever apply within a project
+    // (docs/domain-model.md RBAC section); PermissionGuard resolves a
+    // GLOBAL-only key exclusively from a global (projectId-null) grant, so
+    // granting one to a PROJECT role would be a dead, misleading write.
+    if (role.scope === 'PROJECT') {
+      const globalOnly = uniqueKeys.filter((key) =>
+        GLOBAL_PERMISSION_KEYS.includes(key as PermissionKey),
+      );
+      if (globalOnly.length > 0) {
+        throw new BadRequestException(
+          `Global-only permission key(s) cannot be granted to a project-scoped role: ${globalOnly.join(', ')}`,
+        );
+      }
     }
 
     return this.prisma.$transaction(async (tx) => {

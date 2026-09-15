@@ -143,7 +143,7 @@ describe('ProjectDashboard — role assignment (brief §4)', () => {
     expect(component.availableRolesForMember('a1')).toEqual([qaRole]);
   });
 
-  it('is read-only without project.roles.manage: no Assign control, assignRole/revokeRole still work if called directly (server enforces it)', async () => {
+  it('hides the Assign control without project.roles.manage', async () => {
     permissions = [];
     const { fixture, component } = await render();
 

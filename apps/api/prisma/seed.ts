@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PrismaClient, TaskStatus, RoadmapTable } from '@prisma/client';
 import * as argon2 from 'argon2';
-import { PERMISSIONS } from '@pmhybrid/shared-types';
+import { GLOBAL_PERMISSION_KEYS, PERMISSIONS } from '@pmhybrid/shared-types';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './demo-credentials.js';
 
 const prisma = new PrismaClient();
@@ -29,6 +29,22 @@ const GLOBAL_PERMISSION_DEFS = [
   { key: PERMISSIONS.ROLES_MANAGE, description: "Edit any role's permission set" },
 ];
 const PERMISSION_DEFS = [...PROJECT_PERMISSION_DEFS, ...GLOBAL_PERMISSION_DEFS];
+
+// Drift guard: GLOBAL_PERMISSION_DEFS above must exactly match the shared,
+// authoritative GLOBAL_PERMISSION_KEYS list that RolesService.updateRolePermissions
+// uses to refuse granting a global-only key to a project-scoped role.
+{
+  const declaredGlobal = new Set(GLOBAL_PERMISSION_DEFS.map((p) => p.key));
+  const sharedGlobal = new Set(GLOBAL_PERMISSION_KEYS);
+  const mismatch =
+    declaredGlobal.size !== sharedGlobal.size ||
+    [...declaredGlobal].some((key) => !sharedGlobal.has(key));
+  if (mismatch) {
+    throw new Error(
+      'seed.ts GLOBAL_PERMISSION_DEFS has drifted from shared-types GLOBAL_PERMISSION_KEYS',
+    );
+  }
+}
 
 const GLOBAL_ROLE_PERMISSIONS: Record<(typeof GLOBAL_ROLES)[number], string[]> = {
   ADMIN: GLOBAL_PERMISSION_DEFS.map((p) => p.key),

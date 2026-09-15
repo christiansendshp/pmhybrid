@@ -22,3 +22,17 @@ export const PERMISSIONS = {
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
+
+/**
+ * The keys granted only via a GLOBAL role (projectId-null ActorRole grant) —
+ * everything else is PROJECT-scope. Single source of truth for the seed's
+ * two permission-def arrays and for RolesService.updateRolePermissions,
+ * which must never let a PROJECT-scope role carry one of these: granted
+ * only through project-scoped ActorRole rows, it could never actually be
+ * resolved (PermissionGuard checks global ∪ that project's grants only), so
+ * the role would silently hold power it can never exercise.
+ */
+export const GLOBAL_PERMISSION_KEYS: readonly PermissionKey[] = [
+  PERMISSIONS.ACTORS_MANAGE,
+  PERMISSIONS.ROLES_MANAGE,
+];

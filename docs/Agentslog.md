@@ -190,3 +190,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/src/modules/roles/roles.service.ts, apps/web/src/app/features/roles/roles.ts, apps/web/src/app/features/project-dashboard/project-dashboard.ts
 - Verify: apps/api/test/roles.e2e-spec.ts, features/roles/roles.spec.ts, project-dashboard.spec.ts
 - Follow-up: Promoted GAP-16 to Active
+
+## [2026-09-15T15:47:58Z] | claude-code | GAP-12 | DONE
+
+- Summary: Follow-up fix (advisor review): PROJECT-scope roles could be granted a GLOBAL-only key (roles.manage/actors.manage) — never resolvable there, a silent dead grant that broke the seed's own documented invariant. Now rejected 400, backed by a shared GLOBAL_PERMISSION_KEYS list + seed drift-guard. Also fixed GET /roles never including rolePermissions, which would have crashed the new Roles page.
+- Files: packages/shared-types/permissions.ts, apps/api roles.service.ts + seed.ts
+- Verify: 104 api e2e, 33 api unit, 105 web green
+- Follow-up: none
