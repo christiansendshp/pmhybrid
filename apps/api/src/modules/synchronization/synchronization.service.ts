@@ -239,6 +239,11 @@ export class SynchronizationService {
     for (const row of rows) {
       seenExternalIds.add(row.externalId);
       const existing = existingByExternalId.get(row.externalId);
+      if (existing?.deletedAt) {
+        // Removed in PM Hub: a row that still names it neither recreates nor
+        // updates it (docs/synchronization.md "Removal").
+        continue;
+      }
       if (!existing) {
         await this.createFromRoadmapRow(tx, projectId, row);
         summary.tasksCreated += 1;
@@ -258,6 +263,9 @@ export class SynchronizationService {
     for (const [externalId, task] of existingByExternalId) {
       if (seenExternalIds.has(externalId)) {
         continue;
+      }
+      if (task.deletedAt) {
+        continue; // its row was taken out on purpose when the task was removed
       }
       if (task.status === TaskStatus.TERMINADA && task.roadmapTable === null) {
         continue; // already resolved by a previous run

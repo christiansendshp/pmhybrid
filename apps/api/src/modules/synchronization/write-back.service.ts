@@ -7,6 +7,7 @@ import { RoadmapParserService } from '../roadmap/roadmap-parser.service.js';
 import { rowContentHash } from './row-content-hash.util.js';
 import { appendAgentslogEntry } from '../roadmap/agentslog-writer.util.js';
 import {
+  removeRoadmapRow,
   replaceRoadmapRowCells,
   sanitizeField,
   upsertActiveRoadmapRow,
@@ -103,6 +104,105 @@ export class WriteBackService {
       },
       { timeout: 20000, maxWait: 10000 },
     );
+  }
+
+  /**
+   * Removal (docs/synchronization.md "Removal"): the REMOVED Agentslog entry
+   * goes first, then the row is taken out of whichever table holds it — the
+   * same ledger-first order as the lifecycle triggers, so a row never
+   * vanishes without an entry saying why.
+   */
+  async recordTaskRemoval(
+    projectId: string,
+    taskId: string,
+    requesterActorId: string,
+  ) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`;
+        return this.removalLocked(tx, projectId, taskId, requesterActorId);
+      },
+      { timeout: 20000, maxWait: 10000 },
+    );
+  }
+
+  private async removalLocked(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    taskId: string,
+    requesterActorId: string,
+  ) {
+    const project = await tx.project.findUniqueOrThrow({
+      where: { id: projectId },
+    });
+    const task = await tx.task.findUniqueOrThrow({ where: { id: taskId } });
+    if (!task.externalId) {
+      return task;
+    }
+    const actor = await tx.actor.findUnique({
+      where: { id: requesterActorId },
+    });
+
+    const agentslogContent = await this.repositoryProvider.readFile(
+      project.docsPath,
+      DOCUMENT_FILENAMES.AGENTSLOG,
+    );
+    const updatedAgentslog = appendAgentslogEntry(agentslogContent, {
+      timestampIso: new Date().toISOString(),
+      agentName: actor?.displayName ?? 'system',
+      taskExternalId: task.externalId,
+      statusWord: 'REMOVED',
+      summary: `Removed: ${task.title}`,
+      files: '—',
+      verify: '—',
+      followUp: '—',
+    });
+    await this.repositoryProvider.writeFile(
+      project.docsPath,
+      DOCUMENT_FILENAMES.AGENTSLOG,
+      updatedAgentslog,
+    );
+    await this.recordDocumentRevision(
+      tx,
+      projectId,
+      'AGENTSLOG',
+      DOCUMENT_FILENAMES.AGENTSLOG,
+      updatedAgentslog,
+    );
+
+    const roadmapContent = await this.repositoryProvider.readFile(
+      project.docsPath,
+      DOCUMENT_FILENAMES.ROADMAP,
+    );
+    const updatedRoadmap = removeRoadmapRow(roadmapContent, task.externalId);
+    if (updatedRoadmap !== null) {
+      await this.repositoryProvider.writeFile(
+        project.docsPath,
+        DOCUMENT_FILENAMES.ROADMAP,
+        updatedRoadmap,
+      );
+      await this.recordDocumentRevision(
+        tx,
+        projectId,
+        'ROADMAP',
+        DOCUMENT_FILENAMES.ROADMAP,
+        updatedRoadmap,
+      );
+    }
+
+    await this.audit.record(
+      {
+        projectId,
+        actorId: requesterActorId,
+        entityType: 'Task',
+        entityId: task.id,
+        operation: 'WRITE_BACK',
+        origin: 'UI',
+        newValue: { trigger: 'REMOVED', rowRemoved: updatedRoadmap !== null },
+      },
+      tx,
+    );
+    return task;
   }
 
   private async fieldEditLocked(

@@ -120,3 +120,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: api tasks dto/service, write-back, row writer, shared-types TaskPriority, e2e task-editing/sync/audit; web shared/task-form, hierarchy.service, kanban, task-detail
 - Verify: lint+build; 72 api e2e, 26 api unit, 47 web green; no browser login (credential policy): component specs
 - Follow-up: GAP-05; GAP-19 logged
+
+## [2026-09-15T13:51:18Z] | claude-code | GAP-05 | DONE
+
+- Summary: Task removal: DELETE task (task.delete, seeded for OWNER/PROJECT_ADMIN/PROJECT_MANAGER), soft delete via Task.deletedAt (migration), refused with live subtasks; drops dependency links, closes assignment, audits DELETE. Write-back appends REMOVED entry then removes the row from its own table (placeholder kept). Sync skips removed tasks; lists, progress, workload, dashboard exclude them. Task detail: confirm-to-remove.
+- Files: api tasks/write-back/row writer/sync/rollup/dashboard/workload, schema+migration, seed, shared-types; e2e task-removal; web task-detail
+- Verify: lint+build; 76 api e2e, 29 api unit, 49 web green
+- Follow-up: GAP-06; backlog reordered frontend-first

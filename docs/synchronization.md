@@ -167,6 +167,15 @@ progress and hierarchy are not Roadmap columns and never touch the document.
   carried no unreconciled document change; otherwise the next sync still
   applies or contests the document's changes to the row's other cells.
 
+### Removal
+
+Removing a task (a soft delete, `docs/domain-model.md`) appends a `REMOVED`
+Agentslog entry first and then takes the task's row out of whichever table
+holds it; a table left without rows gets its `—` placeholder row back. Sync
+skips a removed task entirely: a row that still names it neither recreates nor
+updates it, and its missing row never raises
+`ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG`.
+
 Known limitation: the lifecycle triggers above (steps 3-7) still render the
 whole row into Active work, so a status write-back for a Near term row adds a
 second row for the same ID.

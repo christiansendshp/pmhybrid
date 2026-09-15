@@ -2,7 +2,7 @@ import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { describeAuditChanges } from '../../core/audit-format.js';
@@ -29,6 +29,7 @@ import {
 } from '../../shared/task-form/task-form.js';
 
 const HISTORY_LIMIT = 50;
+const TASK_DELETE = 'task.delete';
 
 /** Brief §6, §17: every task field, its hierarchy, subtasks, dependencies, agent activity and history. */
 @Component({
@@ -39,6 +40,7 @@ const HISTORY_LIMIT = 50;
 })
 export class TaskDetail implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly tasksService = inject(TasksService);
   private readonly projectsService = inject(ProjectsService);
@@ -56,6 +58,11 @@ export class TaskDetail implements OnInit {
   readonly addingSubtask = signal(false);
   readonly saving = signal(false);
   readonly formError = signal<string | null>(null);
+  /** Hides a doomed action only; the API enforces task.delete regardless. */
+  readonly canDelete = signal(false);
+  readonly confirmingDelete = signal(false);
+  readonly deleting = signal(false);
+  readonly deleteError = signal<string | null>(null);
   readonly describeChanges = describeAuditChanges;
 
   readonly otherTasks = computed(() =>
@@ -105,20 +112,24 @@ export class TaskDetail implements OnInit {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.editing.set(false);
       this.addingSubtask.set(false);
+      this.confirmingDelete.set(false);
+      this.deleteError.set(null);
       void this.load();
     });
   }
 
   private async load(): Promise<void> {
     await this.reload();
-    const [members, allTasks, hierarchy] = await Promise.all([
+    const [members, allTasks, hierarchy, permissions] = await Promise.all([
       this.projectsService.listMembers(this.projectId),
       this.tasksService.listForProject(this.projectId),
       this.hierarchyService.load(this.projectId),
+      this.projectsService.myPermissions(this.projectId),
     ]);
     this.members.set(members);
     this.allTasks.set(allTasks);
     this.hierarchy.set(hierarchy);
+    this.canDelete.set(permissions.includes(TASK_DELETE));
   }
 
   /** Task and its change history together, so the history always reflects the action just taken (brief §17). */
@@ -184,6 +195,24 @@ export class TaskDetail implements OnInit {
       await this.tasksService.create(this.projectId, toCreateTaskInput(value));
       this.addingSubtask.set(false);
     });
+  }
+
+  /** Brief §25: removes the task (after the inline confirmation) and returns to the board. */
+  async deleteTask(): Promise<void> {
+    if (this.deleting()) {
+      return;
+    }
+    this.deleting.set(true);
+    this.deleteError.set(null);
+    try {
+      await this.tasksService.remove(this.projectId, this.taskId);
+      await this.router.navigate(['kanban'], { relativeTo: this.route.parent });
+    } catch (error) {
+      this.deleteError.set(describeHttpError(error, 'The task could not be removed.'));
+      this.confirmingDelete.set(false);
+    } finally {
+      this.deleting.set(false);
+    }
   }
 
   private async submitForm(action: () => Promise<void>): Promise<void> {

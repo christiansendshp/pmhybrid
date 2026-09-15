@@ -7,9 +7,40 @@
     @if (!editing()) {
       <div class="page-header__actions">
         <button mat-stroked-button type="button" (click)="startEditing()">Edit task</button>
+        @if (canDelete()) {
+          @if (confirmingDelete()) {
+            <span class="meta-text">Remove it from the board and the Roadmap?</span>
+            <button
+              mat-flat-button
+              class="danger-button"
+              type="button"
+              [disabled]="deleting()"
+              (click)="deleteTask()"
+            >
+              {{ deleting() ? 'Removing…' : 'Remove task' }}
+            </button>
+            <button mat-button type="button" (click)="confirmingDelete.set(false)">Keep it</button>
+          } @else {
+            <button
+              mat-button
+              type="button"
+              [disabled]="t.subtasks.length > 0"
+              [attr.aria-describedby]="t.subtasks.length > 0 ? 'remove-hint' : null"
+              (click)="confirmingDelete.set(true)"
+            >
+              Remove task
+            </button>
+          }
+        }
       </div>
     }
   </header>
+  @if (canDelete() && t.subtasks.length > 0 && !editing()) {
+    <p id="remove-hint" class="meta-text">Remove or move its subtasks before removing this task.</p>
+  }
+  @if (deleteError()) {
+    <p role="alert">{{ deleteError() }}</p>
+  }
   <p>Status: {{ t.status }} — Progress: {{ t.computedProgress }}%</p>
 
   @if (editing()) {

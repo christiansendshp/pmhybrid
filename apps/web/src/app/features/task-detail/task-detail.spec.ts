@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuditEvent, AuditService } from '../../core/audit.service.js';
@@ -85,11 +86,16 @@ const statusChange: AuditEvent = {
   actor: { id: 'a1', displayName: 'Demo Human', kind: 'HUMAN' },
 };
 
-describe('TaskDetail — details, editing, history and agent activity (brief §6, §17)', () => {
+@Component({ template: '<p>Board</p>' })
+class BoardStub {}
+
+describe('TaskDetail — details, editing, removal, history and agent activity (brief §6, §17, §25)', () => {
   let getById: ReturnType<typeof vi.fn>;
   let transition: ReturnType<typeof vi.fn>;
   let update: ReturnType<typeof vi.fn>;
   let create: ReturnType<typeof vi.fn>;
+  let remove: ReturnType<typeof vi.fn>;
+  let myPermissions: ReturnType<typeof vi.fn>;
   let listAudit: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -97,13 +103,18 @@ describe('TaskDetail — details, editing, history and agent activity (brief §6
     transition = vi.fn().mockResolvedValue({});
     update = vi.fn().mockResolvedValue({});
     create = vi.fn().mockResolvedValue({});
+    remove = vi.fn().mockResolvedValue({});
+    myPermissions = vi.fn().mockResolvedValue(['task.delete']);
     listAudit = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
           {
             path: 'projects/:projectId',
-            children: [{ path: 'tasks/:taskId', component: TaskDetail }],
+            children: [
+              { path: 'tasks/:taskId', component: TaskDetail },
+              { path: 'kanban', component: BoardStub },
+            ],
           },
         ]),
         {
@@ -113,10 +124,14 @@ describe('TaskDetail — details, editing, history and agent activity (brief §6
             transition,
             update,
             create,
+            remove,
             listForProject: vi.fn().mockResolvedValue([]),
           },
         },
-        { provide: ProjectsService, useValue: { listMembers: vi.fn().mockResolvedValue([]) } },
+        {
+          provide: ProjectsService,
+          useValue: { listMembers: vi.fn().mockResolvedValue([]), myPermissions },
+        },
         { provide: AuditService, useValue: { listForProject: listAudit } },
         { provide: HierarchyService, useValue: { load: vi.fn().mockResolvedValue(HIERARCHY) } },
       ],
@@ -195,6 +210,40 @@ describe('TaskDetail — details, editing, history and agent activity (brief §6
     expect(text()).toContain('Phase: Build · Epic: Public API');
     expect(text()).toContain('Oct 10, 2026');
     expect(text()).toContain('Public endpoints only');
+  });
+
+  it('removes the task after confirming and returns to the board', async () => {
+    getById.mockResolvedValue(taskDetail());
+    listAudit.mockResolvedValue([]);
+    const { harness, component, text } = await render();
+
+    expect(text()).toContain('Remove task');
+    component.confirmingDelete.set(true);
+    harness.detectChanges();
+    expect(text()).toContain('Remove it from the board and the Roadmap?');
+
+    await component.deleteTask();
+
+    expect(remove).toHaveBeenCalledWith('p1', 't1');
+    expect(TestBed.inject(Router).url).toBe('/projects/p1/kanban');
+  });
+
+  it('offers no removal without task.delete, and stays on the task when removal fails', async () => {
+    getById.mockResolvedValue(taskDetail());
+    listAudit.mockResolvedValue([]);
+    myPermissions.mockResolvedValue([]);
+    const { component, text } = await render();
+
+    expect(component.canDelete()).toBe(false);
+    expect(text()).not.toContain('Remove task');
+
+    remove.mockRejectedValueOnce(
+      new HttpErrorResponse({ status: 403, error: { message: 'Missing permission: task.delete' } }),
+    );
+    await component.deleteTask();
+
+    expect(component.deleteError()).toBeTruthy();
+    expect(TestBed.inject(Router).url).toBe('/projects/p1/tasks/t1');
   });
 
   it('reloads the history after an action, so it reflects the change just made', async () => {

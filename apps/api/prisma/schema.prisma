@@ -230,6 +230,10 @@ model Task {
   lastSyncedContentHash String?
   lastSyncedAt          DateTime?
 
+  // Soft delete (docs/domain-model.md): a removed task keeps its row, audit
+  // trail and externalId, so sync never recreates it from a stale Roadmap row.
+  deletedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

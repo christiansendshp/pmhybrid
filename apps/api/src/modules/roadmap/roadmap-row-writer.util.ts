@@ -104,6 +104,39 @@ export function replaceRoadmapRowCells(
   return null;
 }
 
+/**
+ * Removal write-back (docs/synchronization.md "Removal"): takes the row
+ * matching `externalId` out of whichever table holds it. A table left with no
+ * rows gets the `—` placeholder row back, so its shape stays what the
+ * project-documentation skill expects. Returns null when no table holds the
+ * row.
+ */
+export function removeRoadmapRow(
+  markdown: string,
+  externalId: string,
+): string | null {
+  const lines = markdown.split(/\r?\n/);
+  for (const kind of Object.values(RoadmapTable)) {
+    const range = findRoadmapTableLineRange(lines, kind);
+    const idIndex = range?.headers.indexOf('ID') ?? -1;
+    if (!range || idIndex === -1) {
+      continue;
+    }
+    for (let i = range.rowsStart; i < range.rowsEnd; i++) {
+      if (splitRow(lines[i].trim())[idIndex] !== externalId) {
+        continue;
+      }
+      if (range.rowsEnd - range.rowsStart === 1) {
+        lines[i] = renderRow(range.headers, {});
+      } else {
+        lines.splice(i, 1);
+      }
+      return lines.join('\n');
+    }
+  }
+  return null;
+}
+
 function renderRow(
   headers: string[],
   cellByHeader: Record<string, string>,

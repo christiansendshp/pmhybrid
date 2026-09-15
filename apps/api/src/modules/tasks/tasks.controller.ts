@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -8,8 +9,10 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { TaskStatus } from '@pmhybrid/shared-types';
+import { PERMISSIONS, TaskStatus } from '@pmhybrid/shared-types';
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
+import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { AddDependencyDto } from './dto/add-dependency.dto.js';
@@ -22,9 +25,10 @@ import { TasksService } from './tasks.service.js';
 /**
  * Base gate is project membership only — the seeded permission catalog
  * (task.assign, task.status.transition, ...) targets transitions and
- * assignment specifically, not plain CRUD, so create/update/dependency
- * declaration are left to "any member can edit" (pragmatic FASE-07 scope
- * call). /assign and /transition resolve their own dynamic permission
+ * assignment specifically, so create/update/dependency declaration are left
+ * to "any member can edit" (pragmatic FASE-07 scope call). Removal is the
+ * exception: it takes a row out of the project's documents, so it needs
+ * task.delete. /assign and /transition resolve their own dynamic permission
  * inside TasksService (see its docstring).
  */
 @UseGuards(JwtAuthGuard, ProjectMemberGuard)
@@ -73,6 +77,17 @@ export class TasksController {
     @CurrentActorId() requesterActorId: string,
   ) {
     return this.tasksService.update(projectId, taskId, dto, requesterActorId);
+  }
+
+  @Delete(':taskId')
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.TASK_DELETE)
+  remove(
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @CurrentActorId() requesterActorId: string,
+  ) {
+    return this.tasksService.remove(projectId, taskId, requesterActorId);
   }
 
   @Post(':taskId/assign')

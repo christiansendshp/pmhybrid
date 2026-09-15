@@ -152,6 +152,13 @@ export class TasksService {
     );
   }
 
+  /** Soft delete (brief §25): the task leaves the board and its Roadmap row is taken out. */
+  remove(projectId: string, taskId: string): Promise<Task> {
+    return firstValueFrom(
+      this.http.delete<Task>(`${API_BASE_URL}/projects/${projectId}/tasks/${taskId}`),
+    );
+  }
+
   transition(projectId: string, taskId: string, status: TaskStatus): Promise<Task> {
     return firstValueFrom(
       this.http.post<Task>(`${API_BASE_URL}/projects/${projectId}/tasks/${taskId}/transition`, {

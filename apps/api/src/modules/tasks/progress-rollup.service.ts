@@ -46,7 +46,9 @@ export class ProgressRollupService {
   async computeTaskProgress(taskId: string): Promise<number> {
     const task = await this.prisma.task.findUniqueOrThrow({
       where: { id: taskId },
-      include: { subtasks: { select: { id: true } } },
+      include: {
+        subtasks: { where: { deletedAt: null }, select: { id: true } },
+      },
     });
     if (task.subtasks.length === 0) {
       // Prisma's generated TaskStatus and shared-types' hand-authored one are
@@ -64,7 +66,7 @@ export class ProgressRollupService {
 
   async computeEpicProgress(epicId: string): Promise<number | null> {
     const topLevelTasks = await this.prisma.task.findMany({
-      where: { epicId, parentTaskId: null },
+      where: { epicId, parentTaskId: null, deletedAt: null },
       select: { id: true },
     });
     if (topLevelTasks.length === 0) {
@@ -80,7 +82,7 @@ export class ProgressRollupService {
     const [epics, directTasks] = await Promise.all([
       this.prisma.epic.findMany({ where: { phaseId }, select: { id: true } }),
       this.prisma.task.findMany({
-        where: { phaseId, epicId: null, parentTaskId: null },
+        where: { phaseId, epicId: null, parentTaskId: null, deletedAt: null },
         select: { id: true },
       }),
     ]);
@@ -105,7 +107,13 @@ export class ProgressRollupService {
         select: { id: true },
       }),
       this.prisma.task.findMany({
-        where: { projectId, phaseId: null, epicId: null, parentTaskId: null },
+        where: {
+          projectId,
+          phaseId: null,
+          epicId: null,
+          parentTaskId: null,
+          deletedAt: null,
+        },
         select: { id: true },
       }),
     ]);
@@ -140,7 +148,7 @@ export class ProgressRollupService {
         orderBy: { order: 'asc' },
       }),
       this.prisma.task.findMany({
-        where: { projectId, parentTaskId: null },
+        where: { projectId, parentTaskId: null, deletedAt: null },
         orderBy: { createdAt: 'asc' },
       }),
     ]);

@@ -11,6 +11,7 @@ export const PERMISSIONS = {
   TASK_QA_REJECT: 'task.qa.reject',
   TASK_REOPEN: 'task.reopen',
   TASK_REASSIGN_LOCKED: 'task.reassign.locked',
+  TASK_DELETE: 'task.delete',
   PROJECT_UPDATE: 'project.update',
   PROJECT_MEMBERS_MANAGE: 'project.members.manage',
   PROJECT_ROLES_MANAGE: 'project.roles.manage',

@@ -6,6 +6,11 @@
   margin: 0;
 }
 
+.danger-button {
+  --mat-button-filled-container-color: var(--mat-sys-error);
+  --mat-button-filled-label-text-color: var(--mat-sys-on-error);
+}
+
 .details {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);

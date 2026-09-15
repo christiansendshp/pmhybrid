@@ -58,13 +58,19 @@ export class DashboardService {
         }),
         this.prisma.task.groupBy({
           by: ['status'],
-          where: { projectId: { in: projectIds } },
+          where: { projectId: { in: projectIds }, deletedAt: null },
           _count: { _all: true },
         }),
         this.prisma.task.count({
-          where: { projectId: { in: projectIds }, roadmapTable: 'BLOCKED' },
+          where: {
+            projectId: { in: projectIds },
+            roadmapTable: 'BLOCKED',
+            deletedAt: null,
+          },
         }),
-        this.prisma.task.count({ where: { projectId: { in: projectIds } } }),
+        this.prisma.task.count({
+          where: { projectId: { in: projectIds }, deletedAt: null },
+        }),
         Promise.all(
           projectIds.map((id) =>
             this.progressRollup.computeProjectProgress(id),
@@ -106,14 +112,14 @@ export class DashboardService {
     }
 
     const recentlyModifiedTasks = await this.prisma.task.findMany({
-      where: { projectId: { in: projectIds } },
+      where: { projectId: { in: projectIds }, deletedAt: null },
       orderBy: { updatedAt: 'desc' },
       take: 10,
     });
 
     const taskIds = (
       await this.prisma.task.findMany({
-        where: { projectId: { in: projectIds } },
+        where: { projectId: { in: projectIds }, deletedAt: null },
         select: { id: true },
       })
     ).map((t) => t.id);

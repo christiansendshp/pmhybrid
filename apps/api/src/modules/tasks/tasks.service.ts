@@ -60,7 +60,7 @@ export class TasksService {
 
   findAllForProject(projectId: string, filters: TaskListFilters) {
     return this.prisma.task.findMany({
-      where: { projectId, ...filters },
+      where: { projectId, deletedAt: null, ...filters },
       orderBy: { createdAt: 'asc' },
     });
   }
@@ -71,7 +71,7 @@ export class TasksService {
       this.prisma.task.findUniqueOrThrow({
         where: { id: taskId },
         include: {
-          subtasks: true,
+          subtasks: { where: { deletedAt: null } },
           dependencies: {
             include: {
               dependsOnTask: {
@@ -188,7 +188,7 @@ export class TasksService {
     }
     if (patch.progressPercent !== undefined && patch.progressPercent !== null) {
       const subtaskCount = await this.prisma.task.count({
-        where: { parentTaskId: taskId },
+        where: { parentTaskId: taskId, deletedAt: null },
       });
       if (subtaskCount > 0) {
         // Brief §17, docs/domain-model.md rollup rule 2: read-only once derived.
@@ -451,9 +451,71 @@ export class TasksService {
     });
   }
 
+  /**
+   * Brief §25 "eliminación", §31 CRUD. A soft delete (docs/domain-model.md):
+   * the task leaves every view but keeps its audit trail and externalId, and
+   * its Roadmap row is taken out after a REMOVED Agentslog entry
+   * (docs/synchronization.md "Removal"). A task with live subtasks is refused,
+   * so no subtask is left under a parent nobody can see.
+   */
+  async remove(projectId: string, taskId: string, requesterActorId: string) {
+    const task = await this.getOwned(projectId, taskId);
+    const subtaskCount = await this.prisma.task.count({
+      where: { parentTaskId: taskId, deletedAt: null },
+    });
+    if (subtaskCount > 0) {
+      throw new BadRequestException('Remove or move its subtasks first');
+    }
+
+    const removed = await this.prisma.$transaction(async (tx) => {
+      const deletedAt = new Date();
+      // Dependency links are structure, not history: they go with the task.
+      await tx.taskDependency.deleteMany({
+        where: { OR: [{ taskId }, { dependsOnTaskId: taskId }] },
+      });
+      await tx.taskAssignment.updateMany({
+        where: { taskId, unassignedAt: null },
+        data: { unassignedAt: deletedAt },
+      });
+      const result = await tx.task.update({
+        where: { id: taskId },
+        data: { deletedAt },
+      });
+      await this.audit.record(
+        {
+          projectId,
+          actorId: requesterActorId,
+          entityType: 'Task',
+          entityId: taskId,
+          operation: 'DELETE',
+          origin: 'UI',
+          previousValue: {
+            externalId: task.externalId,
+            title: task.title,
+            status: task.status,
+            roadmapTable: task.roadmapTable,
+          },
+          newValue: { deletedAt: deletedAt.toISOString() },
+        },
+        tx,
+      );
+      return result;
+    });
+
+    if (!removed.externalId) {
+      return removed;
+    }
+    return this.writeBack.recordTaskRemoval(
+      projectId,
+      taskId,
+      requesterActorId,
+    );
+  }
+
+  /** A task that belongs to this project and has not been removed. */
   private async getOwned(projectId: string, taskId: string) {
     const task = await this.prisma.task.findFirst({
-      where: { id: taskId, projectId },
+      where: { id: taskId, projectId, deletedAt: null },
     });
     if (!task) {
       throw new NotFoundException('Task not found');
@@ -483,7 +545,7 @@ export class TasksService {
         : null,
       refs.parentTaskId
         ? this.prisma.task.findFirst({
-            where: { id: refs.parentTaskId, projectId },
+            where: { id: refs.parentTaskId, projectId, deletedAt: null },
             select: { id: true },
           })
         : null,

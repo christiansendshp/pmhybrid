@@ -52,6 +52,7 @@ export class WorkloadService {
     const tasks = await this.prisma.task.findMany({
       where: {
         projectId: { in: projectIds },
+        deletedAt: null,
         assigneeActorId: query.actorId ?? { not: null },
         status: query.status ? (query.status as TaskStatus) : undefined,
         phaseId: query.phaseId ?? undefined,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  removeRoadmapRow,
   replaceRoadmapRowCells,
   upsertActiveRoadmapRow,
 } from './roadmap-row-writer.util.js';
@@ -112,5 +113,33 @@ describe('replaceRoadmapRowCells', () => {
     expect(
       replaceRoadmapRowCells(ROADMAP, 'PMH-99', { Outcome: 'x' }),
     ).toBeNull();
+  });
+});
+
+describe('removeRoadmapRow', () => {
+  it('takes the row out of its own table and leaves every other row alone', () => {
+    const updated = removeRoadmapRow(
+      `${ROADMAP}| PMH-5 | Also later | check | TODO | — |\n`,
+      'PMH-2',
+    );
+
+    expect(updated).not.toContain('PMH-2');
+    expect(updated).toContain('| PMH-5 | Also later | check | TODO | — |');
+    expect(updated).toContain(
+      '| PMH-1 | First task | check it | PENDIENTE | — | — |',
+    );
+  });
+
+  it('puts the placeholder row back when the table would be left empty', () => {
+    const updated = removeRoadmapRow(ROADMAP, 'PMH-1');
+
+    expect(updated).not.toContain('PMH-1');
+    expect(updated).toContain(
+      '|---|---|---|---|---|---|\n| — | — | — | — | — | — |',
+    );
+  });
+
+  it('returns null for a row no table holds', () => {
+    expect(removeRoadmapRow(ROADMAP, 'PMH-99')).toBeNull();
   });
 });

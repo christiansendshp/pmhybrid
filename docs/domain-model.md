@@ -109,6 +109,7 @@ Task(
   blockedReason?, neededDecision?,
   sourceOrigin: UI|ROADMAP,               // immutable at creation
   lastSyncedContentHash?, lastSyncedAt?,
+  deletedAt?,                            // soft delete: out of every view, never recreated by sync
   createdAt, updatedAt
 )
 @@unique([projectId, externalId])
@@ -183,7 +184,7 @@ transaction as the change they describe, and `previousValue`/`newValue` carry
 only the fields that actually changed. Audited entity types: `Project`,
 `Task`, `ProjectMember`, `ActorRole`, `Phase`, `Epic`, `Template`, `SyncRun`.
 Operations: `CREATE`, `UPDATE`, `PROGRESS_CHANGE`, `ASSIGN`, `REASSIGN`,
-`STATUS_CHANGE`, `DEPENDENCY_ADD`, `MEMBER_ADD`/`MEMBER_REMOVE`,
+`STATUS_CHANGE`, `DELETE`, `DEPENDENCY_ADD`, `MEMBER_ADD`/`MEMBER_REMOVE`,
 `ROLE_ASSIGN`/`ROLE_REVOKE`, `WRITE_BACK`/`WRITE_BACK_AGENTSLOG_ONLY`,
 `ROADMAP_TABLE_CHANGE`, `ROADMAP_FIELD_UPDATE`,
 `COMPLETE_VIA_ROADMAP_REMOVAL`, `SYNC_RUN` (manual runs and scheduled runs
@@ -200,8 +201,13 @@ Project(id, name, description?, repoUrl?, docsPath, syncIntervalMinutes default 
   status default "ACTIVE", createdAt)
 ```
 
-No hard deletes on `Project`/`Task` in MVP — soft-delete via `status`/
-`isActive` flags. `AuditEvent` never cascades on delete, since it's the
+No hard deletes on `Project`/`Task` in MVP — a project is soft-deleted via
+`status`, a task via `deletedAt` (`DELETE /projects/:id/tasks/:taskId`,
+permission `task.delete`, refused while the task has live subtasks; its
+dependency links are dropped and its open assignment closed, and removed
+tasks are excluded from lists, progress, workload and dashboard). A removed
+task keeps its `externalId`, so sync never recreates it (`docs/synchronization.md`
+"Removal"). `AuditEvent` never cascades on delete, since it's the
 compliance record and must be able to outlive the row it describes.
 
 ## Kanban transition policy (brief §7)
