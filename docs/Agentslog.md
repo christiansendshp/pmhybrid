@@ -246,3 +246,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api roadmap-row-writer.util.ts, write-back.service.ts; synchronization.e2e-spec.ts
 - Verify: 127 api e2e x2, 35 api unit green
 - Follow-up: none; GAP-17/18 left have no frontend surface
+
+## [2026-09-15T17:31:45Z] | claude-code | GAP-17 | DONE
+
+- Summary: CI pipeline (.github/workflows/ci.yml): lint+build+unit for api/web, then migrate deploy + seed against a Postgres service container, then full e2e — on every push/PR to main/develop. Validated locally first (frozen-lockfile install, migrate deploy, seed all idempotent, e2e 127/127 x2), then pushed and confirmed the actual GitHub Actions run green in 1m37s.
+- Files: .github/workflows/ci.yml; docs/Stack_Tecnologies.md
+- Verify: Real GH Actions run green (not just local); bumped checkout/setup-node/pnpm actions to latest major to clear a Node20-runtime deprecation notice
+- Follow-up: none; GAP-18 (docs) is next, no frontend surface
