@@ -260,3 +260,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: docs/permissions.md, docs/api-reference.md, docs/testing.md (new); docs/Agents.md, docs/architecture.md, docs/domain-model.md (cross-links)
 - Verify: project-documentation check green; every docs/*.md cross-reference verified to resolve
 - Follow-up: none; Post-MVP backlog (GAP-12..19) fully closed
+
+## [2026-09-15T17:45:25Z] | claude-sonnet-5 | GAP-18 follow-up | DONE
+
+- Summary: Fixed api-reference.md: X-API-Key takes precedence over Bearer (not mutually exclusive), and /auth/me requires JwtAuthGuard (not unauthenticated). Caught by advisor review.
+- Files: docs/api-reference.md
+- Verify: manual re-read of jwt-auth.guard.ts and auth.controller.ts
+- Follow-up: none
