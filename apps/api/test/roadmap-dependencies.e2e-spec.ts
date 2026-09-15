@@ -202,6 +202,46 @@ describe('Roadmap "Depends on" reconciliation (e2e)', () => {
     expect(e.dependencies).toHaveLength(1); // still not duplicated after a third sync
   });
 
+  it('does not duplicate a UI-added dependency (rawExternalRef null) when the document later names the same target by external ID', async () => {
+    const docsPath = createScratchDocsPath();
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmapWithActiveRows(
+        '| PMH-BASE3 | Base | check | TODO | — | — |',
+        '| PMH-I | Will later depend on base too | check | TODO | — | — |',
+      ),
+      'utf-8',
+    );
+    const projectId = await createProjectAt(docsPath);
+    await sync(projectId);
+
+    // Added through the UI: dependsOnTaskId set, rawExternalRef left null —
+    // the same shape TasksService.addDependency writes from the task-detail
+    // page, distinct from a document-sourced link (rawExternalRef set).
+    const base = await getTaskByExternalId(projectId, 'PMH-BASE3');
+    const i = await getTaskByExternalId(projectId, 'PMH-I');
+    await request(server())
+      .post(`/projects/${projectId}/tasks/${i.id}/dependencies`)
+      .set('Authorization', auth())
+      .send({ dependsOnTaskId: base.id })
+      .expect(201);
+
+    // The document now declares the very same fact.
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmapWithActiveRows(
+        '| PMH-BASE3 | Base | check | TODO | — | — |',
+        '| PMH-I | Will later depend on base too | check | TODO | — | PMH-BASE3 |',
+      ),
+      'utf-8',
+    );
+    await sync(projectId);
+
+    const iAfter = await getTaskByExternalId(projectId, 'PMH-I');
+    expect(iAfter.dependencies).toHaveLength(1); // still one row, not two
+    expect(iAfter.dependencies[0].dependsOnTaskId).toBe(base.id);
+  });
+
   it('ignores a self-reference, without failing the sync', async () => {
     const docsPath = createScratchDocsPath();
     writeFileSync(

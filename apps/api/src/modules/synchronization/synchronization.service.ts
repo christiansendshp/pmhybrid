@@ -339,6 +339,7 @@ export class SynchronizationService {
       // against — removing on every mismatch would silently destroy it.
       await this.reconcileDependencies(
         tx,
+        projectId,
         taskId,
         row.externalId,
         row.dependsOnRaw,
@@ -647,6 +648,7 @@ export class SynchronizationService {
    */
   private async reconcileDependencies(
     tx: Prisma.TransactionClient,
+    projectId: string,
     taskId: string,
     externalId: string,
     dependsOnRaw: string | undefined,
@@ -674,20 +676,46 @@ export class SynchronizationService {
     });
 
     for (const referencedId of referencedIds) {
-      if (existingDeps.some((d) => d.rawExternalRef === referencedId)) {
-        continue; // already recorded, resolved or dangling — nothing new to do here
-      }
       const target = existingByExternalId.get(referencedId);
+      const alreadyRecorded = existingDeps.some(
+        (d) =>
+          d.rawExternalRef === referencedId ||
+          // Same target already linked by a different route (e.g. added
+          // through the UI with no rawExternalRef) — don't create a second
+          // row for one logical dependency just because this row's cell
+          // names it too.
+          (target && d.dependsOnTaskId === target.id),
+      );
+      if (alreadyRecorded) {
+        continue;
+      }
       if (target && (await this.wouldCreateCycle(tx, taskId, target.id))) {
         continue; // a document-authoring mistake — skip rather than corrupt the graph
       }
-      await tx.taskDependency.create({
+      const created = await tx.taskDependency.create({
         data: {
           taskId,
           dependsOnTaskId: target?.id ?? null,
           rawExternalRef: referencedId,
         },
       });
+      await this.audit.record(
+        {
+          projectId,
+          entityType: 'Task',
+          entityId: taskId,
+          operation: 'DEPENDENCY_ADD',
+          origin: 'ROADMAP',
+          newValue: diffFields(
+            {},
+            {
+              dependsOnTaskId: created.dependsOnTaskId,
+              rawExternalRef: created.rawExternalRef,
+            },
+          )?.newValue,
+        },
+        tx,
+      );
       summary.dependenciesLinked += 1;
     }
   }
@@ -725,6 +753,20 @@ export class SynchronizationService {
         where: { id: dep.id },
         data: { dependsOnTaskId: target.id },
       });
+      await this.audit.record(
+        {
+          projectId,
+          entityType: 'Task',
+          entityId: dep.taskId,
+          operation: 'DEPENDENCY_ADD',
+          origin: 'ROADMAP',
+          newValue: diffFields(
+            { dependsOnTaskId: null },
+            { dependsOnTaskId: target.id },
+          )?.newValue,
+        },
+        tx,
+      );
       summary.dependenciesLinked += 1;
     }
   }

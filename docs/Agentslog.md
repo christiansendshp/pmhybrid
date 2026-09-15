@@ -225,3 +225,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api synchronization.service.ts (reconcileDependencies, resolveDanglingDependencies, wouldCreateCycle)
 - Verify: 115 api e2e (x2 stable), 33 api unit green
 - Follow-up: Promoted GAP-15 to Active
+
+## [2026-09-15T16:37:43Z] | claude-code | GAP-14 | DONE
+
+- Summary: Follow-up fix (advisor review): dependency dedup only matched on rawExternalRef, so a UI-added dependency (rawExternalRef null) plus a later document cell naming the same target created a duplicate TaskDependency row. Now dedups on target id too. Also added audit trail (DEPENDENCY_ADD/ROADMAP) for document-sourced links, which had none.
+- Files: apps/api synchronization.service.ts (reconcileDependencies, resolveDanglingDependencies); test/roadmap-dependencies.e2e-spec.ts
+- Verify: 116 api e2e x2 stable, 33 api unit, lint+build green
+- Follow-up: none
