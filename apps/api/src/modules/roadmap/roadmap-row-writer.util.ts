@@ -10,14 +10,18 @@ export function sanitizeField(value: string): string {
 }
 
 /**
- * Surgical single-row edit: replaces the row matching `externalId` within
- * the Active work table, or appends it if not present — never touches any
- * other row (docs/synchronization.md write-back step 5). Write-back only
- * ever targets the Active table (FASE-08 scope: UI-driven task lifecycle
- * events read as "currently active work" — Near term/Blocked are populated
- * by human edits to the document, not by the app).
+ * Lifecycle write-back (docs/synchronization.md write-back step 4-5, Roadmap
+ * GAP-19): a task event (created, status change, locked reassign) updates
+ * whichever cells of its row a table actually has, **in whichever table
+ * already holds the row** — a Near term row stays in Near term, a Blocked
+ * row (which has neither Outcome/Acceptance check/Status/Depends on) only
+ * ever gets its Owner cell touched, and every other cell of that row is left
+ * exactly as the document has it. Only when no table holds the externalId
+ * yet (a brand-new task's very first write-back) does this insert a new row,
+ * always into Active work — the same "currently active" default write-back
+ * has always used for creation.
  */
-export function upsertActiveRoadmapRow(
+export function upsertLifecycleRoadmapRow(
   markdown: string,
   externalId: string,
   fields: {
@@ -29,11 +33,6 @@ export function upsertActiveRoadmapRow(
   },
 ): string {
   const lines = markdown.split(/\r?\n/);
-  const range = findRoadmapTableLineRange(lines, RoadmapTable.ACTIVE);
-  if (!range) {
-    throw new Error('Roadmap.md has no Active work table to write into');
-  }
-
   const cellByHeader: Record<string, string> = {
     ID: sanitizeField(externalId),
     Outcome: sanitizeField(fields.outcome),
@@ -42,23 +41,38 @@ export function upsertActiveRoadmapRow(
     Owner: sanitizeField(fields.owner),
     'Depends on': sanitizeField(fields.dependsOn),
   };
-  const newLine = renderRow(range.headers, cellByHeader);
 
-  const idIndex = range.headers.indexOf('ID');
-  let matchedLine = -1;
-  for (let i = range.rowsStart; i < range.rowsEnd; i++) {
-    if (splitRow(lines[i].trim())[idIndex] === externalId) {
-      matchedLine = i;
-      break;
+  for (const kind of Object.values(RoadmapTable)) {
+    const range = findRoadmapTableLineRange(lines, kind);
+    const idIndex = range?.headers.indexOf('ID') ?? -1;
+    if (!range || idIndex === -1) {
+      continue;
+    }
+    for (let i = range.rowsStart; i < range.rowsEnd; i++) {
+      const cells = splitRow(lines[i].trim());
+      if (cells[idIndex] !== externalId) {
+        continue;
+      }
+      // Only overwrite cells this table's own headers carry — a header the
+      // table lacks (Blocked has no Outcome/Status; Near term has no Owner)
+      // simply isn't in `cellByHeader`'s effect here, so its existing cell
+      // passes through unchanged.
+      const padded = range.headers.map((header, index) =>
+        header in cellByHeader ? cellByHeader[header] : (cells[index] ?? '—'),
+      );
+      lines[i] = `| ${padded.join(' | ')} |`;
+      return lines.join('\n');
     }
   }
 
-  if (matchedLine >= 0) {
-    lines[matchedLine] = newLine;
-  } else {
-    lines.splice(range.rowsEnd, 0, newLine);
+  // No table holds this row yet: a brand-new task's first write-back always
+  // lands in Active (docs/synchronization.md write-back step 4).
+  const activeRange = findRoadmapTableLineRange(lines, RoadmapTable.ACTIVE);
+  if (!activeRange) {
+    throw new Error('Roadmap.md has no Active work table to write into');
   }
-
+  const newLine = renderRow(activeRange.headers, cellByHeader);
+  lines.splice(activeRange.rowsEnd, 0, newLine);
   return lines.join('\n');
 }
 

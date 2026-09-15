@@ -518,4 +518,86 @@ describe('Synchronization (read path, disappeared rows, archive-following, confl
       .expect(200);
     expect(after.body).toMatchObject({ title: 'UI title', status: 'EN_DESARROLLO' });
   });
+
+  it('Roadmap GAP-19: a status write-back (EN_DESARROLLO) on a Near term task updates its row in place, leaving exactly one row for it', async () => {
+    const docsPath = createScratchDocsPath();
+    const { projectId, taskId } = await syncedTask(
+      docsPath,
+      roadmapWithNearTermRow('| PMH-11 | Not started yet | check | TODO | — |'),
+      'PMH-11',
+    );
+    const me = await request(server()).get('/auth/me').set('Authorization', auth()).expect(200);
+
+    await request(server())
+      .post(`/projects/${projectId}/tasks/${taskId}/assign`)
+      .set('Authorization', auth())
+      .send({ actorId: me.body.id })
+      .expect(201);
+    await request(server())
+      .post(`/projects/${projectId}/tasks/${taskId}/transition`)
+      .set('Authorization', auth())
+      .send({ status: 'EN_DESARROLLO' })
+      .expect(201);
+
+    const roadmap = readFileSync(path.join(docsPath, 'Roadmap.md'), 'utf-8');
+    // Exactly one row for PMH-11, updated in place...
+    expect(roadmap.match(/PMH-11/g)).toHaveLength(1);
+    expect(roadmap).toContain('| PMH-11 | Not started yet | check | EN_DESARROLLO | — |');
+    // ...and it never leaked a duplicate into Active work.
+    const activeSection = roadmap.split('## Near term')[0];
+    expect(activeSection).not.toContain('PMH-11');
+
+    const syncRun = await request(server())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth())
+      .expect(201);
+    expect(syncRun.body.summary.conflictsRaised).toBe(0);
+    const after = await request(server())
+      .get(`/projects/${projectId}/tasks/${taskId}`)
+      .set('Authorization', auth())
+      .expect(200);
+    expect(after.body).toMatchObject({ status: 'EN_DESARROLLO', roadmapTable: 'NEAR_TERM' });
+  });
+
+  it('Roadmap GAP-19: a status write-back on a Blocked task only touches its Owner cell, leaving Blocker/decision columns and the row count untouched', async () => {
+    const docsPath = createScratchDocsPath();
+    const roadmap = `# Roadmap
+
+## Active work
+
+${ACTIVE_HEADER}
+| — | — | — | — | — | — |
+
+## Near term
+
+| ID | Outcome | Acceptance check | Status | Depends on |
+| --- | --- | --- | --- | --- |
+| — | — | — | — | — |
+
+## Blocked
+
+| ID | Blocker | Needed decision or event | Owner |
+| --- | --- | --- | --- |
+| PMH-12 | Waiting on legal | Sign-off | — |
+`;
+    const { projectId, taskId } = await syncedTask(docsPath, roadmap, 'PMH-12');
+    const me = await request(server()).get('/auth/me').set('Authorization', auth()).expect(200);
+
+    await request(server())
+      .post(`/projects/${projectId}/tasks/${taskId}/assign`)
+      .set('Authorization', auth())
+      .send({ actorId: me.body.id })
+      .expect(201);
+    await request(server())
+      .post(`/projects/${projectId}/tasks/${taskId}/transition`)
+      .set('Authorization', auth())
+      .send({ status: 'EN_DESARROLLO' })
+      .expect(201);
+
+    const written = readFileSync(path.join(docsPath, 'Roadmap.md'), 'utf-8');
+    expect(written.match(/PMH-12/g)).toHaveLength(1);
+    expect(written).toContain('Waiting on legal');
+    expect(written).toContain('Sign-off');
+    expect(written).toContain(me.body.displayName);
+  });
 });

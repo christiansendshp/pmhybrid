@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   removeRoadmapRow,
   replaceRoadmapRowCells,
-  upsertActiveRoadmapRow,
+  upsertLifecycleRoadmapRow,
 } from './roadmap-row-writer.util.js';
 
 const ROADMAP = `# Roadmap
@@ -20,9 +20,9 @@ const ROADMAP = `# Roadmap
 | PMH-2 | Later | later check | TODO | — |
 `;
 
-describe('upsertActiveRoadmapRow', () => {
-  it('replaces an existing row in place without touching other rows or tables', () => {
-    const updated = upsertActiveRoadmapRow(ROADMAP, 'PMH-1', {
+describe('upsertLifecycleRoadmapRow', () => {
+  it('replaces an existing Active row in place without touching other rows or tables', () => {
+    const updated = upsertLifecycleRoadmapRow(ROADMAP, 'PMH-1', {
       outcome: 'First task',
       acceptanceCheck: 'check it',
       status: 'EN DESARROLLO',
@@ -38,8 +38,8 @@ describe('upsertActiveRoadmapRow', () => {
     expect(updated.match(/PMH-1/g)).toHaveLength(1);
   });
 
-  it('appends a new row when the externalId is not yet present', () => {
-    const updated = upsertActiveRoadmapRow(ROADMAP, 'PMH-3', {
+  it('appends a new row into Active when the externalId is not yet present anywhere', () => {
+    const updated = upsertLifecycleRoadmapRow(ROADMAP, 'PMH-3', {
       outcome: 'Brand new',
       acceptanceCheck: 'n/a',
       status: 'PENDIENTE',
@@ -56,7 +56,7 @@ describe('upsertActiveRoadmapRow', () => {
   });
 
   it('sanitizes pipe and newline characters that would corrupt the table', () => {
-    const updated = upsertActiveRoadmapRow(ROADMAP, 'PMH-1', {
+    const updated = upsertLifecycleRoadmapRow(ROADMAP, 'PMH-1', {
       outcome: 'has a | pipe\nand a newline',
       acceptanceCheck: 'ok',
       status: 'PENDIENTE',
@@ -65,6 +65,48 @@ describe('upsertActiveRoadmapRow', () => {
     });
 
     expect(updated).toContain('has a / pipe and a newline');
+  });
+
+  it('Roadmap GAP-19: a status write-back on a Near term row updates it in place, never duplicating it into Active', () => {
+    const updated = upsertLifecycleRoadmapRow(ROADMAP, 'PMH-2', {
+      outcome: 'Later',
+      acceptanceCheck: 'later check',
+      status: 'EN DESARROLLO',
+      owner: 'claude-code', // Near term has no Owner column — must be dropped, not error
+      dependsOn: '—',
+    });
+
+    expect(updated).toContain(
+      '| PMH-2 | Later | later check | EN DESARROLLO | — |',
+    );
+    expect(updated).not.toContain('claude-code');
+    // Still exactly one row for PMH-2, and it never leaked into Active work.
+    expect(updated.match(/PMH-2/g)).toHaveLength(1);
+    const activeSection = updated.split('## Near term')[0];
+    expect(activeSection).not.toContain('PMH-2');
+  });
+
+  it('Roadmap GAP-19: a write-back on a Blocked row only ever touches its Owner cell, leaving Blocker/decision untouched', () => {
+    const blocked = `${ROADMAP}
+## Blocked
+
+| ID | Blocker | Needed decision or event | Owner |
+|---|---|---|---|
+| PMH-4 | Waiting on legal | Sign-off | — |
+`;
+    const updated = upsertLifecycleRoadmapRow(blocked, 'PMH-4', {
+      outcome: 'Ignored — Blocked has no Outcome column',
+      acceptanceCheck: 'Ignored too',
+      status: 'EN DESARROLLO', // Blocked has no Status column — must be dropped
+      owner: 'claude-code',
+      dependsOn: '—',
+    });
+
+    expect(updated).toContain(
+      '| PMH-4 | Waiting on legal | Sign-off | claude-code |',
+    );
+    expect(updated).not.toContain('Ignored');
+    expect(updated.match(/PMH-4/g)).toHaveLength(1);
   });
 });
 

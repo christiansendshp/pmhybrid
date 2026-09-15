@@ -10,7 +10,7 @@ import {
   removeRoadmapRow,
   replaceRoadmapRowCells,
   sanitizeField,
-  upsertActiveRoadmapRow,
+  upsertLifecycleRoadmapRow,
 } from '../roadmap/roadmap-row-writer.util.js';
 import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository-provider.interface.js';
 import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
@@ -407,7 +407,8 @@ export class WriteBackService {
       updatedAgentslog,
     );
 
-    // Steps 4-6: Roadmap row (Active table only — see module docstring).
+    // Steps 4-6: Roadmap row, in whichever table already holds it (Roadmap
+    // GAP-19) — falling back to Active only for a brand-new row.
     const roadmapContent = await this.repositoryProvider.readFile(
       project.docsPath,
       DOCUMENT_FILENAMES.ROADMAP,
@@ -469,13 +470,17 @@ export class WriteBackService {
       assignee?.kind === 'AI_AGENT'
         ? `${assignee.displayName}@${new Date().toISOString()}`
         : (assignee?.displayName ?? '');
-    const updatedRoadmap = upsertActiveRoadmapRow(roadmapContent, externalId, {
-      outcome: task.title,
-      acceptanceCheck: task.acceptanceCriteria ?? '',
-      status: task.status, // verbatim Kanban state (ADR-002) — never mapped back to TODO/DONE
-      owner: ownerCell,
-      dependsOn: '—',
-    });
+    const updatedRoadmap = upsertLifecycleRoadmapRow(
+      roadmapContent,
+      externalId,
+      {
+        outcome: task.title,
+        acceptanceCheck: task.acceptanceCriteria ?? '',
+        status: task.status, // verbatim Kanban state (ADR-002) — never mapped back to TODO/DONE
+        owner: ownerCell,
+        dependsOn: '—',
+      },
+    );
     await this.repositoryProvider.writeFile(
       project.docsPath,
       DOCUMENT_FILENAMES.ROADMAP,

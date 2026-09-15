@@ -235,7 +235,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 
 ## [2026-09-15T16:59:58Z] | claude-code | GAP-15 | DONE
 
-- Summary: Controlled API access for AI agents (brief §27, §28): hashed pmh_ keys minted/revoked per agent (Team page + /agents/:id/keys), SHA-256 lookup hash not argon2id (ADR-009, no dictionary to defend). X-API-Key composes into JwtAuthGuard so a key authenticates as its agent under unchanged RBAC. Revoked key / deactivated agent rejected immediately.
-- Files: apps/api auth module, agents module (agent-api-keys.*), prisma ApiKey model; apps/web core/api-keys.service.ts, features/team
-- Verify: 125 api e2e x2 stable, 33 api unit, 124 web, lint+build green
-- Follow-up: authMethod not yet threaded into audit.record (origin stays UI); user asked to prioritize frontend next
+- Summary: Controlled API access for AI agents (brief §27, §28): hashed pmh_ keys minted/revoked per agent (Team page, /agents/:id/keys), SHA-256 not argon2id (ADR-009 — no dictionary to defend). X-API-Key composes into JwtAuthGuard, authenticating as the agent under unchanged RBAC. Revoked/deactivated rejected immediately.
+- Files: apps/api auth + agents modules (agent-api-keys.*), ApiKey model; apps/web api-keys.service.ts, features/team
+- Verify: 125 api e2e x2, 33 api unit, 124 web green
+- Follow-up: authMethod not threaded into audit.record yet
+
+## [2026-09-15T17:15:17Z] | claude-code | GAP-19 | DONE
+
+- Summary: Write-back always rendered into Active regardless of Task.roadmapTable, duplicating Near term/Blocked rows. upsertLifecycleRoadmapRow now edits in whichever table already holds the row, touching only that table's own headers; falls back to Active only for a brand-new row.
+- Files: apps/api roadmap-row-writer.util.ts, write-back.service.ts; synchronization.e2e-spec.ts
+- Verify: 127 api e2e x2, 35 api unit green
+- Follow-up: none; GAP-17/18 left have no frontend surface

@@ -125,13 +125,22 @@ locked reassignment):
    `TERMINADA`, and locked reassignment — not every field edit, to avoid
    ledger-rotation churn from fine-grained UI activity. Apply the skill's own
    field sanitization (strip `|`/CR/LF) to every field.
-4. Render the row into the correct table's exact column set for
-   `Task.roadmapTable`, writing the Kanban status **verbatim** into the
-   Status cell (`EN DESARROLLO`, `QA`, ...) — `check_docs()` only validates
-   heading presence, never cell values, so no round-trip mapping back to
-   `TODO`/`DONE` is needed on write (ADR-002, `docs/Stack_Tecnologies.md`).
-   If the assignee is `AI_AGENT`, emit `<displayName>@<ISO8601>` to match the
-   skill's multi-agent Owner convention; humans are written bare.
+4. Render the row into the correct table's exact column set — resolved by
+   locating the row wherever it already sits in the document (Active, Near
+   term or Blocked), not by reading `Task.roadmapTable` directly, so this
+   self-corrects even against a document a bug once left in a
+   `Task.roadmapTable`-inconsistent state (Roadmap GAP-19). Only the headers
+   that table actually has are touched — Near term has no `Owner` column, and
+   Blocked has neither `Outcome`/`Acceptance check`/`Status`/`Depends on`,
+   just `Owner` (the same assignee field as every other table,
+   `docs/roadmap-parser.md` "Owner cell parsing") plus its own
+   `Blocker`/`Needed decision or event`, which write-back never touches. The
+   Kanban status is written **verbatim** — `Task.status`'s own enum spelling
+   (`EN_DESARROLLO`, `QA`, ...) — `check_docs()` only validates heading
+   presence, never cell values, so no round-trip mapping back to `TODO`/`DONE`
+   is needed on write (ADR-002, `docs/Stack_Tecnologies.md`). If the assignee
+   is `AI_AGENT`, emit `<displayName>@<ISO8601>` to match the skill's
+   multi-agent Owner convention; humans are written bare.
 5. Surgical single-row file edit: locate the row by ID within the correct
    table block, replace only that row's line(s) (or append if new); never
    regenerate other rows from DB state.
@@ -175,10 +184,6 @@ holds it; a table left without rows gets its `—` placeholder row back. Sync
 skips a removed task entirely: a row that still names it neither recreates nor
 updates it, and its missing row never raises
 `ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG`.
-
-Known limitation: the lifecycle triggers above (steps 3-7) still render the
-whole row into Active work, so a status write-back for a Near term row adds a
-second row for the same ID.
 
 ## Conflicts (brief §26)
 
