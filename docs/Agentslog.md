@@ -158,14 +158,21 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 
 ## [2026-09-15T14:48:12Z] | claude-code | GAP-10 | DONE
 
-- Summary: Conflict resolution UI (brief §26): field-by-field local-vs-external diff (core/conflict-diff.ts), MANUAL_EDIT form restricted to each conflict's own contested+editable fields, API whitelist rejecting unknown/uncontested manualValue keys as 400 (was an unguarded Prisma 500). Ran full monorepo gate first (lint/build/unit/e2e all green on HEAD) per an advisor review that flagged the gate had drifted to per-package runs.
-- Files: apps/api/src/modules/conflicts/conflicts.service.ts, apps/api/test/conflicts.e2e-spec.ts, apps/web/src/app/core/conflict-diff.ts, apps/web/src/app/core/conflict-diff.spec.ts, apps/web/src/app/features/conflicts/*, apps/web/src/app/app.routes.ts, docs/Features.md, docs/Roadmap.md
-- Verify: 88 api e2e, 33 api unit, 76 web; api+web lint/build green
-- Follow-up: Browser check pending the user's own login (credentials policy); GAP-16 will add a conflicts.spec.ts component test
+- Summary: Conflicts UI (brief §26): field-by-field local-vs-external diff, MANUAL_EDIT limited to each conflict's own contested+editable fields. API whitelists manualValue keys, fixing an unguarded 500.
+- Files: api conflicts service + e2e; web core/conflict-diff + spec, features/conflicts/*
+- Verify: 88 api e2e, 33 api unit, 76 web green
+- Follow-up: browser check pending sign-in; GAP-16 adds conflicts.spec.ts
 
 ## [2026-09-15T14:59:09Z] | claude-code | GAP-09 | DONE
 
-- Summary: Documents view (brief §10): search with <mark> highlight and section navigation over the documental (raw) view, same search box filters the structured view's rows/entries, revision history per document kind (new GET .../documents/:kind/revisions[/:revisionId] reading DocumentRevision, which synchronization.service.ts already populated but nothing exposed). Raw content now renders line-by-line (not one <pre> blob) so headings and matches can be targeted individually.
-- Files: apps/api/src/modules/roadmap/roadmap.controller.ts, apps/api/src/modules/roadmap/document-kind.util.ts, apps/api/test/documents.e2e-spec.ts, apps/web/src/app/core/document-view.ts, apps/web/src/app/core/document-view.spec.ts, apps/web/src/app/core/documents.service.ts, apps/web/src/app/features/documents-viewer/*, docs/Features.md, docs/Roadmap.md
-- Verify: 92 api e2e, 33 api unit, 88 web; api+web lint/build green
-- Follow-up: Browser check pending the user's own login (credentials policy)
+- Summary: Documents view (brief §10): search+highlight and section nav over the documental view (line-by-line render, not one blob), same search filters the structured view, revision history via new GET .../documents/:kind/revisions[/:revisionId] over DocumentRevision.
+- Files: api roadmap.controller + document-kind.util + e2e; web core/document-view + spec, features/documents-viewer/*
+- Verify: 92 api e2e, 33 api unit, 88 web green
+- Follow-up: browser check pending sign-in
+
+## [2026-09-15T15:12:36Z] | claude-code | GAP-08 | DONE
+
+- Summary: Progress tree (brief §16): phase/epic/project nodes carry statusCounts (subtree tasks by Kanban status); task nodes nest subtasks at any depth. New builder is local to getProjectProgressTree; the shared compute*Progress methods other callers use are untouched.
+- Files: api progress-rollup.service + e2e; web core/tasks.service + status-counts + spec, features/phases-progress/*
+- Verify: 96 api e2e, 33 api unit, 91 web green
+- Follow-up: browser check pending sign-in

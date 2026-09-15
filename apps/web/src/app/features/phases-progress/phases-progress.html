@@ -1,35 +1,59 @@
 <h2>Phases &amp; Progress</h2>
 
 @if (tree(); as t) {
-  <p>Project progress: {{ t.project !== null ? t.project + '%' : 'no data' }}</p>
+  <section class="progress-node">
+    <p>Project progress: {{ t.project !== null ? t.project + '%' : 'no data' }}</p>
+    <ul class="status-counts">
+      @for (entry of countsFor(t.statusCounts); track entry.status) {
+        <li>{{ entry.count }} {{ entry.status }}</li>
+      }
+    </ul>
+  </section>
 
   @for (phase of t.phases; track phase.id) {
-    <section>
+    <section class="progress-node">
       <h3>{{ phase.name }} — {{ phase.progress !== null ? phase.progress + '%' : 'no data' }}</h3>
+      <ul class="status-counts">
+        @for (entry of countsFor(phase.statusCounts); track entry.status) {
+          <li>{{ entry.count }} {{ entry.status }}</li>
+        }
+      </ul>
+
       @for (epic of phase.epics; track epic.id) {
-        <div>
+        <div class="progress-node progress-node--nested">
           <h4>{{ epic.name }} — {{ epic.progress !== null ? epic.progress + '%' : 'no data' }}</h4>
+          <ul class="status-counts">
+            @for (entry of countsFor(epic.statusCounts); track entry.status) {
+              <li>{{ entry.count }} {{ entry.status }}</li>
+            }
+          </ul>
           <ul>
             @for (task of epic.tasks; track task.id) {
-              <li>{{ task.name }} — {{ task.progress }}%</li>
+              <app-progress-task-node [task]="task" />
             }
           </ul>
         </div>
       }
+
       <ul>
         @for (task of phase.tasks; track task.id) {
-          <li>{{ task.name }} — {{ task.progress }}%</li>
+          <app-progress-task-node [task]="task" />
         }
       </ul>
     </section>
   }
 
   @for (epic of t.epics; track epic.id) {
-    <section>
+    <section class="progress-node">
       <h3>{{ epic.name }} — {{ epic.progress !== null ? epic.progress + '%' : 'no data' }}</h3>
+      <ul class="status-counts">
+        @for (entry of countsFor(epic.statusCounts); track entry.status) {
+          <li>{{ entry.count }} {{ entry.status }}</li>
+        }
+      </ul>
       <ul>
         @for (task of epic.tasks; track task.id) {
-          <li>{{ task.name }} — {{ task.progress }}%</li>
+          <app-progress-task-node [task]="task" />
         }
       </ul>
     </section>
@@ -37,7 +61,7 @@
 
   <ul>
     @for (task of t.tasks; track task.id) {
-      <li>{{ task.name }} — {{ task.progress }}%</li>
+      <app-progress-task-node [task]="task" />
     }
   </ul>
 }

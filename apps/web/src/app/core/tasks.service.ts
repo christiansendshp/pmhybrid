@@ -95,14 +95,20 @@ export interface ProgressTaskNode {
   kind: 'TASK';
   id: string;
   name: string;
+  status: TaskStatus;
   progress: number;
+  subtasks: ProgressTaskNode[];
 }
+
+/** One count per Kanban status (brief §16 "conteos por estado"). */
+export type StatusCounts = Record<TaskStatus, number>;
 
 export interface ProgressEpicNode {
   kind: 'EPIC';
   id: string;
   name: string;
   progress: number | null;
+  statusCounts: StatusCounts;
   tasks: ProgressTaskNode[];
 }
 
@@ -111,12 +117,14 @@ export interface ProgressPhaseNode {
   id: string;
   name: string;
   progress: number | null;
+  statusCounts: StatusCounts;
   epics: ProgressEpicNode[];
   tasks: ProgressTaskNode[];
 }
 
 export interface ProjectProgressTree {
   project: number | null;
+  statusCounts: StatusCounts;
   phases: ProgressPhaseNode[];
   epics: ProgressEpicNode[];
   tasks: ProgressTaskNode[];
