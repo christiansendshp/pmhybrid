@@ -10,6 +10,7 @@ import { AuthService } from '../../../core/auth.service.js';
   selector: 'app-login',
   imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule],
   templateUrl: './login.html',
+  styleUrl: './login.scss',
 })
 export class Login {
   private readonly fb = inject(FormBuilder);

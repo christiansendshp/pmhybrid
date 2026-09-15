@@ -1,0 +1,31 @@
+<a class="skip-link" href="#main-content" (click)="skipToContent($event)">Skip to content</a>
+
+<header class="app-header">
+  <a class="brand" routerLink="/dashboard">PM Hub</a>
+
+  <nav class="primary-nav" aria-label="Primary">
+    @for (item of navItems; track item.path) {
+      <a
+        class="primary-nav__link"
+        [routerLink]="item.path"
+        routerLinkActive="is-active"
+        ariaCurrentWhenActive="page"
+        >{{ item.label }}</a
+      >
+    }
+  </nav>
+
+  <div class="session">
+    @if (currentActor(); as actor) {
+      <span class="session__actor" [attr.title]="actor.email ?? actor.displayName">
+        <span class="session__name">{{ actor.displayName }}</span>
+        <span class="kind-badge" [attr.data-kind]="actor.kind">{{ actorKindLabel() }}</span>
+      </span>
+    }
+    <button mat-button type="button" (click)="signOut()">Sign out</button>
+  </div>
+</header>
+
+<main #main id="main-content" class="app-main" tabindex="-1">
+  <router-outlet />
+</main>

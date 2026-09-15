@@ -3,10 +3,12 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
+import { actorKindLabel } from '../../core/actor-kind.js';
 import { Actor, ActorsService } from '../../core/actors.service.js';
 import { Project, ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { SyncRun, SynchronizationService } from '../../core/synchronization.service.js';
 
+/** Project header inside the app shell: identity, sync, members and the section tabs. */
 @Component({
   selector: 'app-project-dashboard',
   imports: [
@@ -18,12 +20,22 @@ import { SyncRun, SynchronizationService } from '../../core/synchronization.serv
     MatSelectModule,
   ],
   templateUrl: './project-dashboard.html',
+  styleUrl: './project-dashboard.scss',
 })
 export class ProjectDashboard implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly projectsService = inject(ProjectsService);
   private readonly actorsService = inject(ActorsService);
   private readonly synchronizationService = inject(SynchronizationService);
+
+  readonly tabs = [
+    { label: 'Kanban', path: 'kanban' },
+    { label: 'Progress', path: 'progress' },
+    { label: 'Documents', path: 'documents' },
+    { label: 'Conflicts', path: 'conflicts' },
+    { label: 'Audit', path: 'audit' },
+  ] as const;
+  readonly kindLabel = actorKindLabel;
 
   readonly project = signal<Project | null>(null);
   readonly members = signal<ProjectMember[]>([]);

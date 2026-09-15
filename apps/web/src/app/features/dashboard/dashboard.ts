@@ -1,5 +1,4 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import {
   DashboardActivity,
   DashboardService,
@@ -9,7 +8,6 @@ import {
 /** Brief §14 "DASHBOARD PRINCIPAL" — cross-project summary + activity. */
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink],
   templateUrl: './dashboard.html',
 })
 export class Dashboard implements OnInit {

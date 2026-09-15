@@ -1,60 +1,77 @@
-<nav>
-  <a routerLink="/dashboard">Dashboard</a>
-  <a routerLink="/projects">My Projects</a>
-  <a routerLink="/workload">Workload</a>
-  <a routerLink="/team">Team</a>
-</nav>
-
-@if (project(); as p) {
-  <h1>{{ p.name }}</h1>
-  @if (p.description) {
-    <p>{{ p.description }}</p>
-  }
-}
-
-<button mat-flat-button type="button" [disabled]="syncing()" (click)="syncNow()">
-  {{ syncing() ? 'Syncing…' : 'Sync now' }}
-</button>
-@if (lastSyncRun(); as run) {
-  <span>
-    Last run: {{ run.status }}
-    @if (run.summary) {
-      ({{ run.summary['tasksCreated'] }} created, {{ run.summary['tasksUpdated'] }} updated,
-      {{ run.summary['conflictsRaised'] }} conflicts)
+<header class="page-header">
+  <div>
+    @if (project(); as p) {
+      <h1>{{ p.name }}</h1>
+      @if (p.description) {
+        <p class="page-header__description">{{ p.description }}</p>
+      }
     }
-  </span>
-}
+  </div>
 
-<nav>
-  <a routerLink="kanban" routerLinkActive="active">Kanban</a>
-  <a routerLink="progress" routerLinkActive="active">Progress</a>
-  <a routerLink="documents" routerLinkActive="active">Documents</a>
-  <a routerLink="conflicts" routerLinkActive="active">Conflicts</a>
-  <a routerLink="audit" routerLinkActive="active">Audit</a>
-</nav>
+  <div class="page-header__actions">
+    <span class="meta-text" role="status">
+      @if (lastSyncRun(); as run) {
+        Last run: {{ run.status }}
+        @if (run.summary) {
+          ({{ run.summary['tasksCreated'] }} created, {{ run.summary['tasksUpdated'] }} updated,
+          {{ run.summary['conflictsRaised'] }} conflicts)
+        }
+      }
+    </span>
+    <button mat-flat-button type="button" [disabled]="syncing()" (click)="syncNow()">
+      {{ syncing() ? 'Syncing…' : 'Sync now' }}
+    </button>
+  </div>
+</header>
 
-<section>
-  <h2>Members</h2>
-  <ul>
+<section class="members" aria-labelledby="members-heading">
+  <h2 id="members-heading" class="members__heading">Members</h2>
+  <ul class="members__list">
     @for (member of members(); track member.id) {
-      <li>{{ member.actor.displayName }} ({{ member.actor.kind }})</li>
+      <li class="members__item">
+        {{ member.actor.displayName }}
+        <span class="kind-badge" [attr.data-kind]="member.actor.kind">{{
+          kindLabel(member.actor.kind)
+        }}</span>
+      </li>
     }
   </ul>
 
   @if (canManageMembers() && candidateActors().length > 0) {
-    <mat-select
-      placeholder="Add a member…"
-      [ngModel]="selectedActorId()"
-      (ngModelChange)="selectedActorId.set($event)"
-    >
-      @for (actor of candidateActors(); track actor.id) {
-        <mat-option [value]="actor.id">{{ actor.displayName }}</mat-option>
-      }
-    </mat-select>
-    <button mat-flat-button type="button" [disabled]="!selectedActorId()" (click)="addMember()">
-      Add member
-    </button>
+    <div class="members__add">
+      <mat-select
+        class="members__select"
+        placeholder="Add a member…"
+        aria-label="Actor to add as a member"
+        [ngModel]="selectedActorId()"
+        (ngModelChange)="selectedActorId.set($event)"
+      >
+        @for (actor of candidateActors(); track actor.id) {
+          <mat-option [value]="actor.id">{{ actor.displayName }}</mat-option>
+        }
+      </mat-select>
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="!selectedActorId()"
+        (click)="addMember()"
+      >
+        Add member
+      </button>
+    </div>
   }
 </section>
+
+<nav class="tab-nav" aria-label="Project sections">
+  @for (tab of tabs; track tab.path) {
+    <a
+      class="tab-nav__link"
+      [routerLink]="tab.path"
+      routerLinkActive="is-active"
+      ariaCurrentWhenActive="page"
+      >{{ tab.label }}</a
+    >
+  }
+</nav>
 
 <router-outlet></router-outlet>

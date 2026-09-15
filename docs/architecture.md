@@ -107,12 +107,17 @@ touching business logic — no gateway is built in MVP.
 
 Standalone Angular components, lazy-loaded per feature area under
 `src/app/features/`: `auth`, `dashboard`, `my-projects`, `project-dashboard`,
-`kanban`, `phases-progress`, `task-detail`, `workload`, `documents-viewer`,
-`conflicts`, `audit-log`. `dashboard` and `workload` are top-level routes (`/dashboard`,
-`/workload`, post-login landing is `/dashboard`) backed by the cross-project
-modules above; `project-dashboard` is the project-scoped overview nested
-under `/projects/:projectId`. `core/` holds auth guards/interceptors and the
-Signals-based `AuthService`; `shared/` holds cross-feature UI primitives.
+`kanban`, `phases-progress`, `task-detail`, `workload`, `team`, `documents-viewer`,
+`conflicts`, `audit-log`. `/login` is the only route outside
+`src/app/layout/app-shell`; every signed-in route is a child of that shell,
+which owns the one primary navigation, the signed-in actor and sign-out, and
+runs `authGuard` on each child navigation. `dashboard`, `projects`, `workload`
+and `team` are top-level children (post-login landing is `/dashboard`);
+`project-dashboard` is the project header (sync, members, section tabs) for the
+routes nested under `/projects/:projectId`. `core/` holds guards, interceptors
+and API services, including the Signals-based `AuthService`. Global tokens and
+shared page classes (`page-header`, `tab-nav`, `kind-badge`) live in
+`src/styles.scss` on top of the Angular Material theme.
 
 ## Security (brief §28)
 

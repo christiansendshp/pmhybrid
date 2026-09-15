@@ -106,3 +106,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: api users/agents/auth/roles/members/tasks, seed, shared-types, web team + actors.service
 - Verify: lint+build; 64 api e2e (actors 9), 23 api unit, 28 web green
 - Follow-up: GAP-03
+
+## [2026-09-15T13:07:26Z] | claude-code | GAP-03 | DONE
+
+- Summary: Shared app shell: signed-in routes nested under one AppShell (header nav with aria-current, actor + kind badge, sign out, skip link); duplicated navs removed; project header with sync status, members strip, section tabs; base tokens + light/dark Material theme, system fonts; login outside the shell. PRODUCT.md inferred from brief.
+- Files: web layout/app-shell, app.routes(+spec), styles.scss, project-dashboard, login, 4 page templates, apps/web/PRODUCT.md
+- Verify: lint+build; 64 api e2e, 23 api unit, 38 web green; detector clean; browser: login light/dark, signed-out redirect
+- Follow-up: GAP-04
