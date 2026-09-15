@@ -7,6 +7,8 @@ interface SyncCompletedPayload {
   projectId: string;
   syncRunId: string;
   conflictsRaised: number;
+  /** Undefined for a SCHEDULED run — nobody to exclude. */
+  requesterActorId?: string;
 }
 
 interface SyncFailedPayload {
@@ -14,6 +16,7 @@ interface SyncFailedPayload {
   syncRunId: string;
   trigger: string;
   error: string;
+  requesterActorId?: string;
 }
 
 /**
@@ -59,29 +62,46 @@ export class NotificationsService {
     if (payload.conflictsRaised === 0) {
       return;
     }
-    await this.notifyProjectMembers(payload.projectId, 'CONFLICTS_DETECTED', {
-      syncRunId: payload.syncRunId,
-      conflictsRaised: payload.conflictsRaised,
-    });
+    await this.notifyProjectMembers(
+      payload.projectId,
+      'CONFLICTS_DETECTED',
+      {
+        syncRunId: payload.syncRunId,
+        conflictsRaised: payload.conflictsRaised,
+      },
+      payload.requesterActorId,
+    );
   }
 
   @OnEvent('sync.failed')
   async handleSyncFailed(payload: SyncFailedPayload): Promise<void> {
-    await this.notifyProjectMembers(payload.projectId, 'SYNC_FAILED', {
-      syncRunId: payload.syncRunId,
-      trigger: payload.trigger,
-      error: payload.error,
-    });
+    await this.notifyProjectMembers(
+      payload.projectId,
+      'SYNC_FAILED',
+      {
+        syncRunId: payload.syncRunId,
+        trigger: payload.trigger,
+        error: payload.error,
+      },
+      payload.requesterActorId,
+    );
   }
 
+  /** Never notifies whoever directly triggered this run — a manual "Sync now" already returned its own result in the response. */
   private async notifyProjectMembers(
     projectId: string,
     type: string,
     payload: Prisma.InputJsonValue,
+    excludeActorId?: string,
   ): Promise<void> {
     try {
       const members = await this.prisma.projectMember.findMany({
-        where: { projectId, isActive: true, actor: { isActive: true } },
+        where: {
+          projectId,
+          isActive: true,
+          actor: { isActive: true },
+          ...(excludeActorId ? { actorId: { not: excludeActorId } } : {}),
+        },
         select: { actorId: true },
       });
       if (members.length === 0) {

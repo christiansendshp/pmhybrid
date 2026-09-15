@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DocumentKind, Prisma, SyncTrigger, TaskStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -48,6 +48,8 @@ type ReconcilableField = (typeof RECONCILABLE_FIELDS)[number];
  */
 @Injectable()
 export class SynchronizationService {
+  private readonly logger = new Logger(SynchronizationService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject(PROJECT_REPOSITORY_PROVIDER)
@@ -107,22 +109,42 @@ export class SynchronizationService {
       });
       // emitAsync (not emit) so the notification write finishes before this
       // resolves — emit() doesn't wait for async listeners, which left the
-      // notification creation racing the HTTP response.
-      await this.eventEmitter.emitAsync('sync.failed', {
+      // notification creation racing the HTTP response. Guarded so that
+      // even an emitter-level failure (not just a listener's own error,
+      // which NotificationsService already swallows) can never replace the
+      // real sync error with a notification one.
+      await this.emitNotificationEvent('sync.failed', {
         projectId,
         syncRunId: failedRun.id,
         trigger,
+        requesterActorId,
         error: message,
       });
       throw error;
     }
 
-    await this.eventEmitter.emitAsync('sync.completed', {
+    await this.emitNotificationEvent('sync.completed', {
       projectId,
       syncRunId: outcome.syncRun.id,
       conflictsRaised: outcome.summary.conflictsRaised,
+      requesterActorId,
     });
     return outcome.syncRun;
+  }
+
+  /** Best-effort by construction: never lets a notification-side failure change what runSync itself resolves or throws. */
+  private async emitNotificationEvent(
+    event: string,
+    payload: object,
+  ): Promise<void> {
+    try {
+      await this.eventEmitter.emitAsync(event, payload);
+    } catch (error) {
+      // NotificationsService already catches its own errors; reaching here
+      // would mean the emitter itself broke, which still must not surface
+      // as (or replace) the sync's own outcome.
+      this.logger.error(`Failed to emit ${event}: ${String(error)}`);
+    }
   }
 
   private async runLocked(

@@ -211,3 +211,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api synchronization.service.ts, notifications module; apps/web app-shell + notifications.service
 - Verify: 109 api e2e, 33 api unit, 120 web green
 - Follow-up: Promoted GAP-14 to Active
+
+## [2026-09-15T16:15:16Z] | claude-code | GAP-13 | DONE
+
+- Summary: Follow-up (advisor review): excluded whoever directly triggered a sync from its own CONFLICTS_DETECTED/SYNC_FAILED notification (they already saw the result); guarded emitAsync so a notification-emitter fault can never replace/mask the sync's real outcome. Updated docs/architecture.md with the concrete event names, since it only described the pattern before.
+- Files: apps/api synchronization.service.ts, notifications.service.ts; test/notifications.e2e-spec.ts
+- Verify: 109 api e2e (x2 stable), 33 api unit green
+- Follow-up: none

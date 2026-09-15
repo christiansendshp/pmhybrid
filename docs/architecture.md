@@ -101,7 +101,11 @@ commits.
 
 Side effects that may lag (notifications, a future WebSocket gateway for brief
 §27/§29) are the ones meant to hang off `@nestjs/event-emitter` events, without
-touching business logic — no gateway is built in MVP.
+touching business logic — no gateway is built in MVP. Concretely,
+`SynchronizationService.runSync` emits `sync.completed`/`sync.failed` (with
+`emitAsync`, awaited) only after its own reconciliation transaction has
+resolved; `NotificationsService` is the only listener, and excludes whoever
+directly triggered that run from the fan-out.
 
 ## Frontend structure
 
