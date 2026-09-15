@@ -3,7 +3,7 @@
 ## Repository rules
 
 - Scope: all AI agents and contributors in this repository.
-- Work branch: `UNKNOWN` — confirm from repository or user instructions.
+- Work branch: `develop` — commits push directly; no PR workflow yet.
 - Approval boundaries: follow the active runtime and repository instructions.
 - Never expose secrets or real environment values in documentation.
 - Treat `UNKNOWN` and `HYPOTHESIS` as unresolved, not as facts.
@@ -30,6 +30,8 @@
 
 ## Project conventions
 
-- Code style: `UNKNOWN` — infer from checked-in configuration.
-- Test command: `UNKNOWN` — record the confirmed command in Stack.
+- Code style: Prettier repo-wide; `oxlint` (api), ESLint (web). Enforced via
+  Husky + lint-staged; commitlint for messages.
+- Test command: `pnpm -r test` (unit), `pnpm test:e2e` (api e2e) — see
+  `docs/testing.md`. CI runs the same (`.github/workflows/ci.yml`, GAP-17).
 - Documentation language: match the project unless the user specifies one.

@@ -5,15 +5,17 @@ Keep active and near-term work only. Verified completed capability belongs in
 
 ## Active work
 
-| ID     | Outcome                                                                                  | Acceptance check                                   | Status      | Owner                            | Depends on |
-| ------ | ---------------------------------------------------------------------------------------- | -------------------------------------------------- | ----------- | -------------------------------- | ---------- |
-| GAP-18 | Documentation gaps (brief §35): permissions, API, testing docs; stale Stack/Agents facts | project-documentation `check` green; links resolve | IN_PROGRESS | claude-code@2026-09-15T17:32:00Z | —          |
+| ID  | Outcome | Acceptance check | Status | Owner | Depends on |
+| --- | ------- | ---------------- | ------ | ----- | ---------- |
+| —   | —       | —                | —      | —     | —          |
 
 <!-- context:end -->
 
 Post-MVP gap backlog derived from a brief-vs-code review on 2026-09-15 (the
-12-phase plan is complete; these close the gaps it left). Ordered frontend
-first, per the user's direction on 2026-09-15.
+12-phase plan is complete; these closed the gaps it left, GAP-12 through
+GAP-19 — all now DONE, see `Agentslog.md`/`Features.md`). No pending items
+identified as of 2026-09-15T17:40Z; the next gap is whatever the next
+brief-vs-code review or user instruction surfaces.
 
 ## Near term
 

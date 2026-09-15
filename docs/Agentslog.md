@@ -235,7 +235,7 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 
 ## [2026-09-15T16:59:58Z] | claude-code | GAP-15 | DONE
 
-- Summary: Controlled API access for AI agents (brief §27, §28): hashed pmh_ keys minted/revoked per agent (Team page, /agents/:id/keys), SHA-256 not argon2id (ADR-009 — no dictionary to defend). X-API-Key composes into JwtAuthGuard, authenticating as the agent under unchanged RBAC. Revoked/deactivated rejected immediately.
+- Summary: Controlled API access for AI agents (brief §27, §28): hashed pmh_ keys minted/revoked per agent (Team page, /agents/:id/keys), SHA-256 not argon2id (ADR-009). X-API-Key composes into JwtAuthGuard, authenticating as the agent under unchanged RBAC.
 - Files: apps/api auth + agents modules (agent-api-keys.*), ApiKey model; apps/web api-keys.service.ts, features/team
 - Verify: 125 api e2e x2, 33 api unit, 124 web green
 - Follow-up: authMethod not threaded into audit.record yet
@@ -249,7 +249,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 
 ## [2026-09-15T17:31:45Z] | claude-code | GAP-17 | DONE
 
-- Summary: CI pipeline (.github/workflows/ci.yml): lint+build+unit for api/web, then migrate deploy + seed against a Postgres service container, then full e2e — on every push/PR to main/develop. Validated locally first (frozen-lockfile install, migrate deploy, seed all idempotent, e2e 127/127 x2), then pushed and confirmed the actual GitHub Actions run green in 1m37s.
+- Summary: CI pipeline (.github/workflows/ci.yml): lint+build+unit for api/web, then migrate deploy + seed against a Postgres service container, then full e2e — every push/PR to main/develop. Validated locally, then confirmed the actual GitHub Actions run green.
 - Files: .github/workflows/ci.yml; docs/Stack_Tecnologies.md
-- Verify: Real GH Actions run green (not just local); bumped checkout/setup-node/pnpm actions to latest major to clear a Node20-runtime deprecation notice
-- Follow-up: none; GAP-18 (docs) is next, no frontend surface
+- Verify: Real GH Actions run green in 1m40s (not just local)
+- Follow-up: none; GAP-18 (docs) is next
+
+## [2026-09-15T17:40:02Z] | claude-code | GAP-18 | DONE
+
+- Summary: Doc gaps (brief §35): new docs/permissions.md (all 12 keys, role grant matrix, enforcement layers), docs/api-reference.md (route table, auth/error/rate-limit conventions), docs/testing.md (layout, commands, shared-DB/scheduler e2e caveats). Fixed stale Agents.md UNKNOWNs (branch=develop, code style, test cmd) and Stack.md's no-CI-yet line.
+- Files: docs/permissions.md, docs/api-reference.md, docs/testing.md (new); docs/Agents.md, docs/architecture.md, docs/domain-model.md (cross-links)
+- Verify: project-documentation check green; every docs/*.md cross-reference verified to resolve
+- Follow-up: none; Post-MVP backlog (GAP-12..19) fully closed

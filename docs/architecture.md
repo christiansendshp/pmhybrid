@@ -137,4 +137,7 @@ persisted in `AgentProfile.configJson` or anywhere else in the database.
 
 Entity fields and relations live in `docs/domain-model.md`. Sync/reconciliation
 mechanics live in `docs/synchronization.md`. Roadmap/Agentslog parsing rules
-live in `docs/roadmap-parser.md`.
+live in `docs/roadmap-parser.md`. The REST route/auth/error-shape reference
+lives in `docs/api-reference.md`, the full permission-key and default-role
+matrix in `docs/permissions.md`, and the test layout/commands/conventions in
+`docs/testing.md`.

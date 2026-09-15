@@ -1,9 +1,12 @@
 # Domain model
 
 This is the functional spec for `apps/api/prisma/schema.prisma`. See
-`docs/architecture.md` for how modules map to these entities, and
+`docs/architecture.md` for how modules map to these entities,
 `docs/skillProyectDocument-analysis.md` for why the model below layers on top
-of, rather than inside, a managed project's own documents.
+of, rather than inside, a managed project's own documents,
+`docs/permissions.md` for the full permission-key/role-grant reference (this
+file only covers the RBAC schema, not every key), and `docs/api-reference.md`
+for the REST surface these entities are served through.
 
 ## Brief → schema mapping
 
