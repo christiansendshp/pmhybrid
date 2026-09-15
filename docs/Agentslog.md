@@ -141,3 +141,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: api projects service/module/update DTO + e2e; web my-projects, project-settings, ProjectContext, project-dashboard, routes
 - Verify: lint+build; 79 api e2e, 29 api unit, 65 web green; browser check pending a signed-in session
 - Follow-up: GAP-11
+
+## [2026-09-15T14:23:40Z] | claude-code | E2E-STABILITY | DONE
+
+- Summary: API e2e runs no longer start the sync scheduler in every worker (SYNC_SCHEDULER_ENABLED=false in vitest.config.e2e.ts): it synced every project in the shared DB, including stale e2e ones, contended for advisory locks and timed out a hierarchy test. e2e testTimeout 20s, hookTimeout 30s. Switch defaults on; documented in .env.example and Stack.
+- Files: apps/api config/env.validation, sync-scheduler (+spec), vitest.config.e2e.ts, .env.example, docs Stack + synchronization
+- Verify: 80 api e2e green in 48s with zero scheduler log lines; 33 api unit incl. scheduler spec
+- Follow-up: none

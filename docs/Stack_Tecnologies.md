@@ -47,15 +47,16 @@
 
 Names and purpose only; never store real values.
 
-| Name                          | Purpose                                                                | Required |
-| ----------------------------- | ---------------------------------------------------------------------- | -------- |
-| DATABASE_URL                  | Postgres connection string for Prisma                                  | yes      |
-| JWT_SECRET                    | Signing secret for access/refresh tokens                               | yes      |
-| JWT_EXPIRES_IN                | Access token lifetime                                                  | yes      |
-| JWT_REFRESH_EXPIRES_IN        | Refresh token lifetime                                                 | no       |
-| PORT                          | API listen port                                                        | no       |
-| SYNC_DEFAULT_INTERVAL_MINUTES | Default project sync interval                                          | no       |
-| GIT_PROVIDER_TYPE             | Selects the ProjectRepositoryProvider implementation (`local` for MVP) | no       |
+| Name                          | Purpose                                                                                  | Required |
+| ----------------------------- | ---------------------------------------------------------------------------------------- | -------- |
+| DATABASE_URL                  | Postgres connection string for Prisma                                                    | yes      |
+| JWT_SECRET                    | Signing secret for access/refresh tokens                                                 | yes      |
+| JWT_EXPIRES_IN                | Access token lifetime                                                                    | yes      |
+| JWT_REFRESH_EXPIRES_IN        | Refresh token lifetime                                                                   | no       |
+| PORT                          | API listen port                                                                          | no       |
+| SYNC_DEFAULT_INTERVAL_MINUTES | Default project sync interval                                                            | no       |
+| SYNC_SCHEDULER_ENABLED        | Scheduled sync on (default) or off; manual sync always works; the e2e suite sets `false` | no       |
+| GIT_PROVIDER_TYPE             | Selects the ProjectRepositoryProvider implementation (`local` for MVP)                   | no       |
 
 ## Decisions
 

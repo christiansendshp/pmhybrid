@@ -12,7 +12,7 @@ and write-back that consume the parser's output.
   `Project` where `now - lastSyncedAt >= syncIntervalMinutes`.
 - **Manual**: `POST /projects/:id/sync` ("Sincronizar ahora", brief §11).
 
-Both paths call the same `SynchronizationService.runSync(projectId, trigger)`.
+Both paths call the same `SynchronizationService.runSync(projectId, trigger)`. The scheduled path can be switched off with `SYNC_SCHEDULER_ENABLED=false`; the e2e suite does, and triggers sync explicitly.
 
 ## Concurrency guard
 

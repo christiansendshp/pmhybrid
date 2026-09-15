@@ -5,6 +5,8 @@ export interface EnvConfig {
   JWT_REFRESH_EXPIRES_IN: string;
   PORT: number;
   SYNC_DEFAULT_INTERVAL_MINUTES: number;
+  /** Scheduled sync on or off; manual sync always works. The e2e suite turns it off. */
+  SYNC_SCHEDULER_ENABLED: boolean;
   GIT_PROVIDER_TYPE: string;
 }
 
@@ -12,7 +14,8 @@ const REQUIRED_KEYS: Array<keyof EnvConfig> = ['DATABASE_URL', 'JWT_SECRET'];
 
 /**
  * Hand-rolled on purpose: a schema-validation library (Joi/Zod) is
- * unnecessary weight for six flat env vars. Revisit if the env surface grows.
+ * unnecessary weight for a handful of flat env vars. Revisit if the env
+ * surface grows.
  */
 export function validateEnv(
   raw: Record<string, string | undefined>,
@@ -33,6 +36,8 @@ export function validateEnv(
     SYNC_DEFAULT_INTERVAL_MINUTES: raw.SYNC_DEFAULT_INTERVAL_MINUTES
       ? Number(raw.SYNC_DEFAULT_INTERVAL_MINUTES)
       : 5,
+    SYNC_SCHEDULER_ENABLED:
+      raw.SYNC_SCHEDULER_ENABLED?.toLowerCase() !== 'false',
     GIT_PROVIDER_TYPE: raw.GIT_PROVIDER_TYPE ?? 'local',
   };
 }
