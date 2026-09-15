@@ -5,9 +5,9 @@ Keep active and near-term work only. Verified completed capability belongs in
 
 ## Active work
 
-| ID     | Outcome                                                                  | Acceptance check                                                          | Status      | Owner                            | Depends on |
-| ------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------- | ----------- | -------------------------------- | ---------- |
-| GAP-15 | Controlled API access for AI agents via hashed API keys (brief §27, §28) | e2e: key auth works, revoked key rejected, key never stored in plain text | IN_PROGRESS | claude-code@2026-09-15T16:28:06Z | GAP-02     |
+| ID  | Outcome | Acceptance check | Status | Owner | Depends on |
+| --- | ------- | ---------------- | ------ | ----- | ---------- |
+| —   | —       | —                | —      | —     | —          |
 
 <!-- context:end -->
 

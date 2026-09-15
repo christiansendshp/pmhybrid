@@ -1,8 +1,10 @@
+import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { ApiKey, ApiKeysService, CreatedApiKey } from '../../core/api-keys.service.js';
 import { Actor, ActorsService, UpdateActorInput } from '../../core/actors.service.js';
 import { AuthService } from '../../core/auth.service.js';
 import { describeHttpError } from '../../core/http-error.js';
@@ -17,11 +19,12 @@ const INVALID_CONFIG = Symbol('invalid-config');
  */
 @Component({
   selector: 'app-team',
-  imports: [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatInputModule],
+  imports: [ReactiveFormsModule, DatePipe, MatButtonModule, MatFormFieldModule, MatInputModule],
   templateUrl: './team.html',
 })
 export class Team implements OnInit {
   private readonly actorsService = inject(ActorsService);
+  private readonly apiKeysService = inject(ApiKeysService);
   private readonly authService = inject(AuthService);
   private readonly fb = inject(FormBuilder);
 
@@ -33,6 +36,17 @@ export class Team implements OnInit {
   readonly editing = signal<Actor | null>(null);
   readonly canManage = computed(() => this.authService.hasGlobalPermission(ACTORS_MANAGE));
   readonly currentActorId = computed(() => this.authService.currentActor()?.id ?? null);
+
+  /** Roadmap GAP-15: API keys for whichever AI agent is currently being edited. */
+  readonly agentKeys = signal<ApiKey[]>([]);
+  readonly keysLoading = signal(false);
+  readonly keyErrorMessage = signal<string | null>(null);
+  /** Set only right after create() — the one moment the plaintext exists client-side. Cleared on any other action. */
+  readonly justCreatedKey = signal<CreatedApiKey | null>(null);
+
+  readonly keyForm = this.fb.nonNullable.group({
+    name: [''],
+  });
 
   readonly userForm = this.fb.nonNullable.group({
     displayName: ['', Validators.required],
@@ -93,10 +107,73 @@ export class Team implements OnInit {
       providerType: actor.agentProfile?.providerType ?? '',
       config: configJson ? JSON.stringify(configJson, null, 2) : '',
     });
+    this.justCreatedKey.set(null);
+    this.keyErrorMessage.set(null);
+    this.agentKeys.set([]);
+    if (actor.kind === 'AI_AGENT') {
+      void this.loadKeys(actor.id);
+    }
   }
 
   cancelEdit(): void {
     this.editing.set(null);
+    this.justCreatedKey.set(null);
+    this.keyErrorMessage.set(null);
+    this.agentKeys.set([]);
+  }
+
+  async createKey(agentId: string): Promise<void> {
+    this.keysLoading.set(true);
+    this.keyErrorMessage.set(null);
+    try {
+      const created = await this.apiKeysService.create(
+        agentId,
+        this.keyForm.getRawValue().name || undefined,
+      );
+      this.justCreatedKey.set(created);
+      this.keyForm.reset({ name: '' });
+      await this.loadKeys(agentId);
+    } catch (error) {
+      this.keyErrorMessage.set(describeHttpError(error));
+    } finally {
+      this.keysLoading.set(false);
+    }
+  }
+
+  async revokeKey(agentId: string, key: ApiKey): Promise<void> {
+    this.keysLoading.set(true);
+    this.keyErrorMessage.set(null);
+    try {
+      if (this.justCreatedKey()?.id === key.id) {
+        this.justCreatedKey.set(null);
+      }
+      await this.apiKeysService.revoke(agentId, key.id);
+      await this.loadKeys(agentId);
+    } catch (error) {
+      this.keyErrorMessage.set(describeHttpError(error));
+    } finally {
+      this.keysLoading.set(false);
+    }
+  }
+
+  /** Best-effort only — the key is still shown as selectable text if the clipboard API is unavailable or denied. */
+  async copyKey(key: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(key);
+    } catch {
+      // Ignored: the plaintext stays visible on screen either way.
+    }
+  }
+
+  private async loadKeys(agentId: string): Promise<void> {
+    this.keysLoading.set(true);
+    try {
+      this.agentKeys.set(await this.apiKeysService.list(agentId));
+    } catch (error) {
+      this.keyErrorMessage.set(describeHttpError(error));
+    } finally {
+      this.keysLoading.set(false);
+    }
   }
 
   async saveEdit(): Promise<void> {

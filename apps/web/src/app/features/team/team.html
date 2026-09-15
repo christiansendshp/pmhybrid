@@ -168,5 +168,79 @@
         <button mat-button type="button" (click)="cancelEdit()">Cancel</button>
       </form>
     </section>
+
+    @if (actor.kind === 'AI_AGENT') {
+      <section>
+        <h2>API keys</h2>
+        <p>
+          Lets {{ actor.displayName }} authenticate directly against the API with an
+          <code>X-API-Key</code> header, instead of a human login (brief §27, §28).
+        </p>
+
+        @if (keyErrorMessage()) {
+          <p role="alert">{{ keyErrorMessage() }}</p>
+        }
+
+        @if (justCreatedKey(); as created) {
+          <div role="alert">
+            <p>
+              <strong>Copy this key now — it will not be shown again.</strong>
+            </p>
+            <code>{{ created.key }}</code>
+            <button mat-button type="button" (click)="copyKey(created.key)">Copy</button>
+          </div>
+        }
+
+        @if (keysLoading()) {
+          <p>Loading…</p>
+        } @else if (agentKeys().length === 0) {
+          <p>No API keys yet.</p>
+        } @else {
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Prefix</th>
+                <th>Created</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (key of agentKeys(); track key.id) {
+                <tr>
+                  <td>{{ key.name ?? '—' }}</td>
+                  <td>
+                    <code>pmh_{{ key.prefix }}…</code>
+                  </td>
+                  <td>{{ key.createdAt | date: 'medium' }}</td>
+                  <td>{{ key.revokedAt ? 'Revoked' : 'Active' }}</td>
+                  <td>
+                    @if (!key.revokedAt) {
+                      <button
+                        mat-button
+                        type="button"
+                        [disabled]="keysLoading()"
+                        (click)="revokeKey(actor.id, key)"
+                      >
+                        Revoke
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+
+        <form [formGroup]="keyForm" (ngSubmit)="createKey(actor.id)">
+          <mat-form-field>
+            <mat-label>Key name (optional)</mat-label>
+            <input matInput formControlName="name" placeholder="CI pipeline, staging bot…" />
+          </mat-form-field>
+          <button mat-flat-button type="submit" [disabled]="keysLoading()">Generate new key</button>
+        </form>
+      </section>
+    }
   }
 }

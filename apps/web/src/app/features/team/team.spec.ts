@@ -3,6 +3,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiKey, ApiKeysService, CreatedApiKey } from '../../core/api-keys.service.js';
 import { Actor, ActorsService } from '../../core/actors.service.js';
 import { AuthService } from '../../core/auth.service.js';
 import { Team } from './team.js';
@@ -38,6 +39,11 @@ describe('Team (brief §3 — administrable actors)', () => {
     createAgent: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
   };
+  let apiKeysService: {
+    list: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+    revoke: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     permissions = ['actors.manage'];
@@ -48,10 +54,16 @@ describe('Team (brief §3 — administrable actors)', () => {
       createAgent: vi.fn().mockResolvedValue(actor({})),
       update: vi.fn().mockResolvedValue(actor({})),
     };
+    apiKeysService = {
+      list: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+      revoke: vi.fn(),
+    };
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         { provide: ActorsService, useValue: actorsService },
+        { provide: ApiKeysService, useValue: apiKeysService },
         {
           provide: AuthService,
           useValue: {
@@ -154,6 +166,80 @@ describe('Team (brief §3 — administrable actors)', () => {
       providerType: 'codex',
       config: { focus: 'backend' },
     });
+    expect(component.editing()).toBeNull();
+  });
+
+  it("loads an AI agent's API keys when editing starts, but not for a human", async () => {
+    const { component } = await render();
+
+    component.startEdit(ana);
+    expect(apiKeysService.list).not.toHaveBeenCalled();
+
+    component.startEdit(codex);
+    expect(apiKeysService.list).toHaveBeenCalledWith('a1');
+  });
+
+  it('generates a new key, shows the plaintext exactly once, and clears it on any other action', async () => {
+    const { component, fixture } = await render();
+    const created: CreatedApiKey = {
+      id: 'k1',
+      name: 'CI pipeline',
+      prefix: 'abcd1234',
+      createdAt: '2026-09-15T10:00:00.000Z',
+      revokedAt: null,
+      key: 'pmh_deadbeef',
+    };
+    apiKeysService.create.mockResolvedValue(created);
+    apiKeysService.list.mockResolvedValue([created]);
+
+    component.startEdit(codex);
+    component.keyForm.setValue({ name: 'CI pipeline' });
+    await component.createKey('a1');
+    fixture.detectChanges();
+
+    expect(apiKeysService.create).toHaveBeenCalledWith('a1', 'CI pipeline');
+    expect(component.justCreatedKey()?.key).toBe('pmh_deadbeef');
+    expect(fixture.nativeElement.textContent as string).toContain('pmh_deadbeef');
+
+    // Any other action — like revoking a (different) key — clears the plaintext off screen.
+    apiKeysService.revoke.mockResolvedValue({ ...created, revokedAt: '2026-09-15T11:00:00.000Z' });
+    apiKeysService.list.mockResolvedValue([{ ...created, revokedAt: '2026-09-15T11:00:00.000Z' }]);
+    await component.revokeKey('a1', created);
+    expect(component.justCreatedKey()).toBeNull();
+    expect(apiKeysService.revoke).toHaveBeenCalledWith('a1', 'k1');
+  });
+
+  it('surfaces a key-creation failure without crashing the panel', async () => {
+    const { component } = await render();
+    component.startEdit(codex);
+    apiKeysService.create.mockRejectedValueOnce(
+      new HttpErrorResponse({
+        status: 403,
+        error: { message: ['Missing permission: actors.manage'] },
+      }),
+    );
+
+    await component.createKey('a1');
+    expect(component.keyErrorMessage()).toBe('Missing permission: actors.manage');
+    expect(component.justCreatedKey()).toBeNull();
+  });
+
+  it('leaves the key panel behind on cancel', async () => {
+    const { component } = await render();
+    const key: ApiKey = {
+      id: 'k1',
+      name: null,
+      prefix: 'abcd1234',
+      createdAt: '2026-09-15T10:00:00.000Z',
+      revokedAt: null,
+    };
+    apiKeysService.list.mockResolvedValue([key]);
+    component.startEdit(codex);
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(component.agentKeys()).toEqual([key]);
+
+    component.cancelEdit();
+    expect(component.agentKeys()).toEqual([]);
     expect(component.editing()).toBeNull();
   });
 });

@@ -73,6 +73,40 @@ CREATE UNIQUE INDEX actor_role_global_uq
   ON "ActorRole" (actor_id, role_id) WHERE project_id IS NULL;
 ```
 
+## Controlled API access for AI agents (brief §27, §28, Roadmap GAP-15)
+
+```
+ApiKey(id, actorId, name?, prefix, secretHash, createdAt, revokedAt?)
+```
+
+Scoped to one agent Actor (`AgentApiKeysService`/`AgentApiKeysController`
+under `/agents/:agentId/keys`, gated by `actors.manage`, same as creating or
+editing the agent itself). The plaintext key is `pmh_<64 hex chars>` — 256
+bits of generator entropy — returned exactly once, in the create response,
+and never persisted: `secretHash` is a plain SHA-256 digest of the part after
+`pmh_`, not argon2id (ADR-009, Stack_Tecnologies.md), because there is no
+dictionary to defend against and it doubles as the deterministic lookup key.
+`prefix` (its first 8 hex chars) is plaintext and display-only.
+
+A key authenticates **as** the owning agent: `ApiKeyGuard`, composed into the
+existing `JwtAuthGuard` behind an `X-API-Key` header (instead of replacing it
+with a second auth axis), sets the same `request.user` shape a JWT would —
+so `PermissionGuard`/`CurrentActorId` and every route's RBAC apply completely
+unchanged, with no route needing to know which credential form was used.
+Re-checked per request, same as `JwtStrategy`: a revoked key or a deactivated
+agent is rejected immediately, not just on next login. Restricted to
+`AI_AGENT` actors as defense in depth (key creation is already confined to
+agents).
+
+`JwtPayload.authMethod` (`'JWT' | 'API_KEY'`) records which credential form
+authenticated the request, but is not yet threaded into `AuditService.record`
+calls — every service still hardcodes `origin: 'UI'` even for a
+key-authenticated write. Key **management** (an admin minting or revoking) is
+correctly audited as `UI` (`API_KEY_CREATE`/`API_KEY_REVOKE`, added to the
+operations list below); threading `authMethod` through every service so a
+key-authenticated write reads `origin: 'API'` — the reservation
+`AuditService` already documents — is a known follow-up, not yet done.
+
 ## Hierarchy (brief §5 — no level mandatory)
 
 All nullable/app-level, since the managed project's own documents don't define
@@ -182,15 +216,19 @@ it needs its own list/detail/resolve endpoints and UI route.
 `AuditEvent` rows are written by `AuditService.record()` inside the same
 transaction as the change they describe, and `previousValue`/`newValue` carry
 only the fields that actually changed. Audited entity types: `Project`,
-`Task`, `ProjectMember`, `ActorRole`, `Phase`, `Epic`, `Template`, `SyncRun`.
-Operations: `CREATE`, `UPDATE`, `PROGRESS_CHANGE`, `ASSIGN`, `REASSIGN`,
-`STATUS_CHANGE`, `DELETE`, `DEPENDENCY_ADD`, `MEMBER_ADD`/`MEMBER_REMOVE`,
-`ROLE_ASSIGN`/`ROLE_REVOKE`, `WRITE_BACK`/`WRITE_BACK_AGENTSLOG_ONLY`,
+`Task`, `Actor`, `Role`, `ProjectMember`, `ActorRole`, `Phase`, `Epic`,
+`Template`, `SyncRun`. Operations: `CREATE`, `UPDATE`, `PROGRESS_CHANGE`, `ASSIGN`,
+`REASSIGN`, `STATUS_CHANGE`, `DELETE`, `DEPENDENCY_ADD`, `MEMBER_ADD`/`MEMBER_REMOVE`,
+`ROLE_ASSIGN`/`ROLE_REVOKE`, `ROLE_PERMISSIONS_UPDATE`,
+`WRITE_BACK`/`WRITE_BACK_AGENTSLOG_ONLY`,
 `ROADMAP_TABLE_CHANGE`, `ROADMAP_FIELD_UPDATE`,
 `COMPLETE_VIA_ROADMAP_REMOVAL`, `SYNC_RUN` (manual runs and scheduled runs
-that changed something), `CONFLICT_DETECTED`, `CONFLICT_RESOLVED`. Every
-authenticated REST call on a person's behalf is origin `UI`; `API` is
-reserved for agent API-key access.
+that changed something), `CONFLICT_DETECTED`, `CONFLICT_RESOLVED`,
+`API_KEY_CREATE`, `API_KEY_REVOKE` (Roadmap GAP-15). Every authenticated REST
+call made by a human, or an agent key-managed by one, is origin `UI`; `API`
+is reserved for a request an agent _authenticated with its own key_ —
+minted per this section, but not yet threaded into every service's
+`audit.record()` call (see above), so it is reserved but currently unused.
 
 ## Project
 

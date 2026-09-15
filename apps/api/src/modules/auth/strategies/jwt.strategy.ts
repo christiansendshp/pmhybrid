@@ -34,6 +34,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     if (!actor?.isActive) {
       throw new UnauthorizedException('Actor not found or inactive');
     }
-    return payload;
+    return { ...payload, authMethod: 'JWT' };
   }
 }

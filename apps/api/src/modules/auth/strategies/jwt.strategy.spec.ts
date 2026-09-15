@@ -17,11 +17,11 @@ describe('JwtStrategy', () => {
     );
   }
 
-  it('accepts an access token payload for an active actor', async () => {
+  it('accepts an access token payload for an active actor, tagged with how it authenticated', async () => {
     const payload = { sub: 'actor-1', type: 'access' as const };
     await expect(
       strategyFor({ isActive: true }).validate(payload),
-    ).resolves.toBe(payload);
+    ).resolves.toEqual({ ...payload, authMethod: 'JWT' });
   });
 
   it('rejects a refresh token presented as an access token', async () => {

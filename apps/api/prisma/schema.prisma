@@ -39,6 +39,7 @@ model Actor {
   auditEvents      AuditEvent[]
   notifications    Notification[]
   resolvedConflicts Conflict[]      @relation("ConflictResolvedBy")
+  apiKeys          ApiKey[]
 }
 
 model UserCredential {
@@ -56,6 +57,28 @@ model AgentProfile {
   actor        Actor  @relation(fields: [actorId], references: [id])
   providerType String
   configJson   Json?
+}
+
+// Controlled API access for AI agents (brief §27, §28, Roadmap GAP-15). The
+// plaintext key is `pmh_<64 hex chars>`, shown to the caller exactly once at
+// creation and never persisted: only `secretHash` (SHA-256 of the part after
+// `pmh_`) is stored, and it doubles as the lookup key since it is
+// deterministic — no separate salt, unlike UserCredential.passwordHash
+// (argon2id), because this secret is generated with 256 bits of entropy, not
+// user-chosen (see Stack_Tecnologies.md ADR-009). `prefix` (the first 8 hex
+// chars) is plaintext and display-only, so an admin can tell keys apart
+// without ever seeing the full secret again.
+model ApiKey {
+  id         String    @id @default(uuid())
+  actorId    String
+  actor      Actor     @relation(fields: [actorId], references: [id])
+  name       String?
+  prefix     String
+  secretHash String    @unique
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+
+  @@index([actorId])
 }
 
 // ---------------------------------------------------------------------------

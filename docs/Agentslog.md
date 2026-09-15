@@ -232,3 +232,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api synchronization.service.ts (reconcileDependencies, resolveDanglingDependencies); test/roadmap-dependencies.e2e-spec.ts
 - Verify: 116 api e2e x2 stable, 33 api unit, lint+build green
 - Follow-up: none
+
+## [2026-09-15T16:59:58Z] | claude-code | GAP-15 | DONE
+
+- Summary: Controlled API access for AI agents (brief §27, §28): hashed pmh_ keys minted/revoked per agent (Team page + /agents/:id/keys), SHA-256 lookup hash not argon2id (ADR-009, no dictionary to defend). X-API-Key composes into JwtAuthGuard so a key authenticates as its agent under unchanged RBAC. Revoked key / deactivated agent rejected immediately.
+- Files: apps/api auth module, agents module (agent-api-keys.*), prisma ApiKey model; apps/web core/api-keys.service.ts, features/team
+- Verify: 125 api e2e x2 stable, 33 api unit, 124 web, lint+build green
+- Follow-up: authMethod not yet threaded into audit.record (origin stays UI); user asked to prioritize frontend next
