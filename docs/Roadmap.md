@@ -5,9 +5,9 @@ Keep active and near-term work only. Verified completed capability belongs in
 
 ## Active work
 
-| ID     | Outcome                                                                                                          | Acceptance check           | Status      | Owner                            | Depends on |
-| ------ | ---------------------------------------------------------------------------------------------------------------- | -------------------------- | ----------- | -------------------------------- | ---------- |
-| GAP-13 | Internal notifications (brief §29): generated on events, list/mark-read API, UI indicator; failed sync persisted | e2e per notification event | IN_PROGRESS | claude-code@2026-09-15T15:51:08Z | GAP-01     |
+| ID     | Outcome                                                  | Acceptance check                | Status      | Owner                            | Depends on |
+| ------ | -------------------------------------------------------- | ------------------------------- | ----------- | -------------------------------- | ---------- |
+| GAP-14 | Roadmap `Depends on` reconciled into TaskDependency rows | sync e2e with a dependency cell | IN_PROGRESS | claude-code@2026-09-15T16:06:24Z | —          |
 
 <!-- context:end -->
 
@@ -19,7 +19,6 @@ first, per the user's direction on 2026-09-15.
 
 | ID     | Outcome                                                                                                 | Acceptance check                                                          | Status | Depends on |
 | ------ | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------ | ---------- |
-| GAP-14 | Roadmap `Depends on` reconciled into TaskDependency rows                                                | sync e2e with a dependency cell                                           | TODO   | —          |
 | GAP-15 | Controlled API access for AI agents via hashed API keys (brief §27, §28)                                | e2e: key auth works, revoked key rejected, key never stored in plain text | TODO   | GAP-02     |
 | GAP-19 | Lifecycle write-back (created/status/locked reassign) keeps a Near term or Blocked row in its own table | sync e2e: EN_DESARROLLO on a Near term task leaves exactly one row        | TODO   | GAP-04     |
 | GAP-17 | CI pipeline running lint, build, unit and e2e tests                                                     | workflow file validated locally; green on push                            | TODO   | —          |

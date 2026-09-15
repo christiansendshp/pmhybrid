@@ -4,16 +4,34 @@ import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthService } from '../../core/auth.service.js';
+import { Notification, NotificationsService } from '../../core/notifications.service.js';
 import { AppShell } from './app-shell.js';
 
 @Component({ template: '<p>page body</p>' })
 class StubPage {}
 
+function notification(overrides: Partial<Notification> = {}): Notification {
+  return {
+    id: 'n1',
+    actorId: 'u1',
+    projectId: 'p1',
+    type: 'CONFLICTS_DETECTED',
+    payload: { conflictsRaised: 2 },
+    readAt: null,
+    createdAt: '2026-09-15T09:00:00.000Z',
+    ...overrides,
+  };
+}
+
 describe('AppShell', () => {
   let logout: ReturnType<typeof vi.fn>;
+  let list: ReturnType<typeof vi.fn>;
+  let markRead: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     logout = vi.fn();
+    list = vi.fn().mockResolvedValue([]);
+    markRead = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -45,6 +63,7 @@ describe('AppShell', () => {
             logout,
           },
         },
+        { provide: NotificationsService, useValue: { list, markRead } },
       ],
     });
   });
@@ -52,6 +71,8 @@ describe('AppShell', () => {
   async function renderAt(url: string) {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl(url, AppShell);
+    // ngOnInit's notifications.list() is a plain promise, which whenStable() does not track.
+    await new Promise((resolve) => setTimeout(resolve));
     harness.detectChanges();
     const root = harness.fixture.nativeElement as HTMLElement;
     const primaryLinks = () =>
@@ -114,5 +135,54 @@ describe('AppShell', () => {
     root.querySelector<HTMLAnchorElement>('.skip-link')!.click();
 
     expect(document.activeElement).toBe(root.querySelector('main'));
+  });
+
+  it('shows an unread badge and an empty state before the panel has any notifications', async () => {
+    const { root, harness } = await renderAt('/dashboard');
+
+    expect(root.querySelector('.notifications__badge')).toBeNull();
+
+    const toggle = root.querySelector<HTMLButtonElement>('.notifications__toggle')!;
+    toggle.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    expect(root.textContent).toContain('No notifications yet.');
+  });
+
+  it('badges the unread count and lets an unread notification be marked read', async () => {
+    list.mockResolvedValue([
+      notification({ id: 'n1', readAt: null }),
+      notification({ id: 'n2', type: 'SYNC_FAILED', payload: { error: 'boom' }, readAt: null }),
+      notification({ id: 'n3', readAt: '2026-09-15T10:00:00.000Z' }),
+    ]);
+    markRead.mockResolvedValue(notification({ id: 'n1', readAt: '2026-09-15T11:00:00.000Z' }));
+    const { root, harness } = await renderAt('/dashboard');
+
+    expect(root.querySelector('.notifications__badge')?.textContent?.trim()).toBe('2');
+
+    root.querySelector<HTMLButtonElement>('.notifications__toggle')!.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    expect(root.textContent).toContain('Sync found 2 conflicts to resolve');
+    expect(root.textContent).toContain('Sync failed: boom');
+
+    const markReadButtons = Array.from(root.querySelectorAll('button')).filter(
+      (b) => b.textContent?.trim() === 'Mark read',
+    );
+    expect(markReadButtons).toHaveLength(2); // n1 and n2 are unread; n3 already is.
+
+    markReadButtons[0].click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    expect(markRead).toHaveBeenCalledWith('n1');
+    expect(
+      Array.from(root.querySelectorAll('button')).filter(
+        (b) => b.textContent?.trim() === 'Mark read',
+      ),
+    ).toHaveLength(1);
+    expect(root.querySelector('.notifications__badge')?.textContent?.trim()).toBe('1');
   });
 });

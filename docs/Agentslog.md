@@ -204,3 +204,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/web/src/app/features/conflicts/conflicts.spec.ts
 - Verify: 113 web green (was 105)
 - Follow-up: Promoted GAP-13 to Active
+
+## [2026-09-15T16:06:47Z] | claude-code | GAP-13 | DONE
+
+- Summary: Internal notifications (brief §29): CONFLICTS_DETECTED/SYNC_FAILED events notify every active project member. Fixed a real bug found along the way: a failed sync's whole reconciliation tx (incl. the SyncRun row) used to roll back, so nothing persisted — now written separately. GET/PATCH /notifications scoped strictly to the caller's JWT actor (was an unauthenticated query-param hole). App-shell bell + panel.
+- Files: apps/api synchronization.service.ts, notifications module; apps/web app-shell + notifications.service
+- Verify: 109 api e2e, 33 api unit, 120 web green
+- Follow-up: Promoted GAP-14 to Active

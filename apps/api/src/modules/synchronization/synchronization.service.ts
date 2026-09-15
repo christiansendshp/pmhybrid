@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DocumentKind, Prisma, SyncTrigger, TaskStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import {
@@ -54,20 +55,74 @@ export class SynchronizationService {
     private readonly roadmapParser: RoadmapParserService,
     private readonly agentslogIngestion: AgentslogIngestionService,
     private readonly audit: AuditService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
+  /**
+   * Runs the whole reconciliation transaction; on failure, that transaction
+   * — including the SyncRun row it created — rolls back in full, so nothing
+   * above this point is ever persisted (brief §29 "failed sync persisted").
+   * The catch here writes the failure with its own, separate query instead.
+   *
+   * Emits `sync.completed`/`sync.failed` (NotificationsService listens —
+   * docs/architecture.md "side effects that may lag" hang off events, not
+   * business logic) only after the transaction has actually resolved, so a
+   * notification never outlives the row it describes. Uses `emitAsync` and
+   * awaits it — `emit` doesn't wait for async listeners, which otherwise
+   * left the notification write racing this method's own return.
+   */
   async runSync(
     projectId: string,
     trigger: SyncTrigger,
     requesterActorId?: string,
   ) {
-    return this.prisma.$transaction(
-      async (tx) => {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`;
-        return this.runLocked(tx, projectId, trigger, requesterActorId);
-      },
-      { timeout: 20000, maxWait: 10000 },
-    );
+    let outcome: Awaited<ReturnType<typeof this.runLocked>>;
+    try {
+      outcome = await this.prisma.$transaction(
+        async (tx) => {
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`;
+          return this.runLocked(tx, projectId, trigger, requesterActorId);
+        },
+        { timeout: 20000, maxWait: 10000 },
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      const failedRun = await this.prisma.syncRun.create({
+        data: {
+          projectId,
+          trigger,
+          status: 'FAILED',
+          finishedAt: new Date(),
+          summary: { error: message } as unknown as Prisma.InputJsonValue,
+        },
+      });
+      await this.audit.record({
+        projectId,
+        actorId: requesterActorId ?? null,
+        entityType: 'SyncRun',
+        entityId: failedRun.id,
+        operation: 'SYNC_RUN',
+        origin: 'SYNC',
+        newValue: { trigger, status: 'FAILED', error: message },
+      });
+      // emitAsync (not emit) so the notification write finishes before this
+      // resolves — emit() doesn't wait for async listeners, which left the
+      // notification creation racing the HTTP response.
+      await this.eventEmitter.emitAsync('sync.failed', {
+        projectId,
+        syncRunId: failedRun.id,
+        trigger,
+        error: message,
+      });
+      throw error;
+    }
+
+    await this.eventEmitter.emitAsync('sync.completed', {
+      projectId,
+      syncRunId: outcome.syncRun.id,
+      conflictsRaised: outcome.summary.conflictsRaised,
+    });
+    return outcome.syncRun;
   }
 
   private async runLocked(
@@ -92,89 +147,79 @@ export class SynchronizationService {
       conflictsRaised: 0,
     };
 
-    try {
-      const revisionIdByKind = new Map<DocumentKind, string | null>();
-      for (const kind of Object.keys(DOCUMENT_FILENAMES) as DocumentKind[]) {
-        const revisionId = await this.syncDocument(
-          tx,
-          projectId,
-          project.docsPath,
-          kind,
-          summary,
-        );
-        revisionIdByKind.set(kind, revisionId);
-      }
-
-      const agentslogContent = await this.repositoryProvider.readFile(
+    // No try/catch here: on a mid-step failure this simply throws out of the
+    // transaction, which rolls the whole thing back (including `syncRun`
+    // itself) — runSync's own catch is what persists a failed attempt, with
+    // a write that isn't inside the transaction being rolled back.
+    const revisionIdByKind = new Map<DocumentKind, string | null>();
+    for (const kind of Object.keys(DOCUMENT_FILENAMES) as DocumentKind[]) {
+      const revisionId = await this.syncDocument(
+        tx,
+        projectId,
         project.docsPath,
-        DOCUMENT_FILENAMES.AGENTSLOG,
+        kind,
+        summary,
       );
-      const entries = await this.agentslogIngestion.parseWithArchive(
-        project.docsPath,
-        agentslogContent,
-      );
-      const agentslogRevisionId = revisionIdByKind.get('AGENTSLOG');
-      if (agentslogRevisionId) {
-        await this.agentslogIngestion.ingest(
-          tx,
-          projectId,
-          entries,
-          agentslogRevisionId,
-        );
-      }
-
-      const roadmapContent = await this.repositoryProvider.readFile(
-        project.docsPath,
-        DOCUMENT_FILENAMES.ROADMAP,
-      );
-      const rows = this.roadmapParser.parse(roadmapContent);
-      await this.reconcileRoadmap(tx, projectId, rows, summary);
-
-      const status = summary.conflictsRaised > 0 ? 'PARTIAL' : 'SUCCESS';
-      await tx.syncRun.update({
-        where: { id: syncRun.id },
-        data: {
-          status,
-          finishedAt: new Date(),
-          summary: summary as unknown as Prisma.InputJsonValue,
-        },
-      });
-
-      // Brief §25 "sincronizaciones": every manual run, plus any scheduled
-      // run that actually changed something — an idle scheduled tick every
-      // few minutes would only bury real history (SyncRun keeps them all).
-      const changedSomething = Object.values(summary).some(
-        (count) => count > 0,
-      );
-      if (trigger === 'MANUAL' || changedSomething) {
-        await this.audit.record(
-          {
-            projectId,
-            actorId: requesterActorId ?? null,
-            entityType: 'SyncRun',
-            entityId: syncRun.id,
-            operation: 'SYNC_RUN',
-            origin: 'SYNC',
-            newValue: { trigger, status, ...summary },
-          },
-          tx,
-        );
-      }
-      return tx.syncRun.findUniqueOrThrow({ where: { id: syncRun.id } });
-    } catch (error) {
-      await tx.syncRun.update({
-        where: { id: syncRun.id },
-        data: {
-          status: 'FAILED',
-          finishedAt: new Date(),
-          summary: {
-            ...summary,
-            error: String(error),
-          } as unknown as Prisma.InputJsonValue,
-        },
-      });
-      throw error;
+      revisionIdByKind.set(kind, revisionId);
     }
+
+    const agentslogContent = await this.repositoryProvider.readFile(
+      project.docsPath,
+      DOCUMENT_FILENAMES.AGENTSLOG,
+    );
+    const entries = await this.agentslogIngestion.parseWithArchive(
+      project.docsPath,
+      agentslogContent,
+    );
+    const agentslogRevisionId = revisionIdByKind.get('AGENTSLOG');
+    if (agentslogRevisionId) {
+      await this.agentslogIngestion.ingest(
+        tx,
+        projectId,
+        entries,
+        agentslogRevisionId,
+      );
+    }
+
+    const roadmapContent = await this.repositoryProvider.readFile(
+      project.docsPath,
+      DOCUMENT_FILENAMES.ROADMAP,
+    );
+    const rows = this.roadmapParser.parse(roadmapContent);
+    await this.reconcileRoadmap(tx, projectId, rows, summary);
+
+    const status = summary.conflictsRaised > 0 ? 'PARTIAL' : 'SUCCESS';
+    await tx.syncRun.update({
+      where: { id: syncRun.id },
+      data: {
+        status,
+        finishedAt: new Date(),
+        summary: summary as unknown as Prisma.InputJsonValue,
+      },
+    });
+
+    // Brief §25 "sincronizaciones": every manual run, plus any scheduled
+    // run that actually changed something — an idle scheduled tick every
+    // few minutes would only bury real history (SyncRun keeps them all).
+    const changedSomething = Object.values(summary).some((count) => count > 0);
+    if (trigger === 'MANUAL' || changedSomething) {
+      await this.audit.record(
+        {
+          projectId,
+          actorId: requesterActorId ?? null,
+          entityType: 'SyncRun',
+          entityId: syncRun.id,
+          operation: 'SYNC_RUN',
+          origin: 'SYNC',
+          newValue: { trigger, status, ...summary },
+        },
+        tx,
+      );
+    }
+    const finalRun = await tx.syncRun.findUniqueOrThrow({
+      where: { id: syncRun.id },
+    });
+    return { syncRun: finalRun, summary };
   }
 
   /** Step 2: read, hash, and record a revision only if the content actually changed. Returns the new revision id, or null if unchanged/unreadable. */
