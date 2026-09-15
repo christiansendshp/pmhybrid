@@ -15,11 +15,43 @@ export interface Project {
   createdAt: string;
 }
 
+/** ACTIVE projects sync on their schedule; PAUSED and ARCHIVED ones do not. */
+export type ProjectStatus = 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
+
+export const PROJECT_STATUSES: readonly ProjectStatus[] = ['ACTIVE', 'PAUSED', 'ARCHIVED'];
+
+/** Brief §19: what My Projects shows for each project. */
+export interface ProjectSummary {
+  progress: number | null;
+  /** ASIGNADA, EN_DESARROLLO or QA. */
+  activeTasks: number;
+  /** Past their due date and not TERMINADA. */
+  overdueTasks: number;
+  /** Active AI agents assigned to active tasks. */
+  activeAgents: number;
+  openConflicts: number;
+  lastSyncRun: { status: string; startedAt: string; finishedAt: string | null } | null;
+}
+
+export interface ProjectWithSummary extends Project {
+  summary: ProjectSummary;
+}
+
 export interface CreateProjectInput {
   name: string;
   description?: string;
   repoUrl?: string;
   docsPath: string;
+}
+
+/** `null` clears the description or repository URL. */
+export interface UpdateProjectInput {
+  name?: string;
+  description?: string | null;
+  repoUrl?: string | null;
+  docsPath?: string;
+  syncIntervalMinutes?: number;
+  status?: ProjectStatus;
 }
 
 export interface ProjectMember {
@@ -35,8 +67,12 @@ export interface ProjectMember {
 export class ProjectsService {
   private readonly http = inject(HttpClient);
 
-  listMine(): Promise<Project[]> {
-    return firstValueFrom(this.http.get<Project[]>(`${API_BASE_URL}/projects`));
+  listMine(): Promise<ProjectWithSummary[]> {
+    return firstValueFrom(this.http.get<ProjectWithSummary[]>(`${API_BASE_URL}/projects`));
+  }
+
+  update(projectId: string, input: UpdateProjectInput): Promise<Project> {
+    return firstValueFrom(this.http.patch<Project>(`${API_BASE_URL}/projects/${projectId}`, input));
   }
 
   getById(projectId: string): Promise<Project> {

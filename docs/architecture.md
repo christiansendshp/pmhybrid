@@ -108,7 +108,7 @@ touching business logic — no gateway is built in MVP.
 Standalone Angular components, lazy-loaded per feature area under
 `src/app/features/`: `auth`, `dashboard`, `my-projects`, `project-dashboard`,
 `kanban`, `phases-progress`, `task-detail`, `workload`, `team`, `documents-viewer`,
-`conflicts`, `audit-log`. `/login` is the only route outside
+`conflicts`, `audit-log`, `project-settings`. `/login` is the only route outside
 `src/app/layout/app-shell`; every signed-in route is a child of that shell,
 which owns the one primary navigation, the signed-in actor and sign-out, and
 runs `authGuard` on each child navigation. `dashboard`, `projects`, `workload`

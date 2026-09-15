@@ -134,3 +134,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: api tasks.service list + e2e task-board; web core/board(+spec), TaskCard, kanban ts/html/scss/spec
 - Verify: lint+build; 77 api e2e, 29 api unit, 59 web green; browser check pending a signed-in session (credential policy)
 - Follow-up: GAP-07
+
+## [2026-09-15T14:11:53Z] | claude-code | GAP-07 | DONE
+
+- Summary: My Projects per brief §19: GET /projects adds a summary (rolled-up progress, active = ASIGNADA/EN_DESARROLLO/QA, overdue = past due and not TERMINADA, active AI agents on active tasks, open conflicts, last sync run); dense table with status and quick access. Project Settings tab: name, description, status (ACTIVE/PAUSED/ARCHIVED), sync interval, docs path, repo URL; project.update to edit; required settings never cleared; header updates via ProjectContext.
+- Files: api projects service/module/update DTO + e2e; web my-projects, project-settings, ProjectContext, project-dashboard, routes
+- Verify: lint+build; 79 api e2e, 29 api unit, 65 web green; browser check pending a signed-in session
+- Follow-up: GAP-11

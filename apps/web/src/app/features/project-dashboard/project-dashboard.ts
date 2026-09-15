@@ -5,7 +5,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { actorKindLabel } from '../../core/actor-kind.js';
 import { Actor, ActorsService } from '../../core/actors.service.js';
-import { Project, ProjectMember, ProjectsService } from '../../core/projects.service.js';
+import { ProjectContext } from '../../core/project-context.js';
+import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { SyncRun, SynchronizationService } from '../../core/synchronization.service.js';
 
 /** Project header inside the app shell: identity, sync, members and the section tabs. */
@@ -19,6 +20,7 @@ import { SyncRun, SynchronizationService } from '../../core/synchronization.serv
     MatButtonModule,
     MatSelectModule,
   ],
+  providers: [ProjectContext],
   templateUrl: './project-dashboard.html',
   styleUrl: './project-dashboard.scss',
 })
@@ -27,6 +29,7 @@ export class ProjectDashboard implements OnInit {
   private readonly projectsService = inject(ProjectsService);
   private readonly actorsService = inject(ActorsService);
   private readonly synchronizationService = inject(SynchronizationService);
+  private readonly context = inject(ProjectContext);
 
   readonly tabs = [
     { label: 'Kanban', path: 'kanban' },
@@ -34,10 +37,11 @@ export class ProjectDashboard implements OnInit {
     { label: 'Documents', path: 'documents' },
     { label: 'Conflicts', path: 'conflicts' },
     { label: 'Audit', path: 'audit' },
+    { label: 'Settings', path: 'settings' },
   ] as const;
   readonly kindLabel = actorKindLabel;
 
-  readonly project = signal<Project | null>(null);
+  readonly project = this.context.project;
   readonly members = signal<ProjectMember[]>([]);
   readonly candidateActors = signal<Actor[]>([]);
   readonly canManageMembers = signal(false);
@@ -59,7 +63,8 @@ export class ProjectDashboard implements OnInit {
       this.actorsService.listAgents(),
     ]);
 
-    this.project.set(project);
+    this.context.project.set(project);
+    this.context.permissions.set(permissions);
     this.members.set(members);
     this.canManageMembers.set(permissions.includes('project.members.manage'));
 

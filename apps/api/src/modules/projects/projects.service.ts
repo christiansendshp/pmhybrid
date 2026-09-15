@@ -1,22 +1,87 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { TaskStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
+import { ProgressRollupService } from '../tasks/progress-rollup.service.js';
 import { CreateProjectDto } from './dto/create-project.dto.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
+
+/** Work someone has picked up and not finished. */
+const ACTIVE_TASK_STATUSES: TaskStatus[] = ['ASIGNADA', 'EN_DESARROLLO', 'QA'];
 
 @Injectable()
 export class ProjectsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly progressRollup: ProgressRollupService,
   ) {}
 
-  /** "My Projects" (brief §19): only projects the actor is an active member of. */
-  findAllForActor(actorId: string) {
-    return this.prisma.project.findMany({
+  /** "My Projects" (brief §19): the projects the actor is an active member of, each with its summary. */
+  async findAllForActor(actorId: string) {
+    const projects = await this.prisma.project.findMany({
       where: { members: { some: { actorId, isActive: true } } },
       orderBy: { createdAt: 'desc' },
     });
+    return Promise.all(
+      projects.map(async (project) => ({
+        ...project,
+        summary: await this.summarize(project.id),
+      })),
+    );
+  }
+
+  /**
+   * Brief §19 per-project figures: progress; active tasks (ASIGNADA,
+   * EN_DESARROLLO or QA); overdue tasks (past their due date and not
+   * TERMINADA); active agents (active AI agents assigned to active tasks);
+   * unresolved conflicts; and the latest sync run.
+   */
+  private async summarize(projectId: string) {
+    const live = { projectId, deletedAt: null };
+    const [
+      progress,
+      activeTasks,
+      overdueTasks,
+      agentAssignees,
+      openConflicts,
+      lastSyncRun,
+    ] = await Promise.all([
+      this.progressRollup.computeProjectProgress(projectId),
+      this.prisma.task.count({
+        where: { ...live, status: { in: ACTIVE_TASK_STATUSES } },
+      }),
+      this.prisma.task.count({
+        where: {
+          ...live,
+          status: { not: 'TERMINADA' },
+          dueDate: { lt: new Date() },
+        },
+      }),
+      this.prisma.task.findMany({
+        where: {
+          ...live,
+          status: { in: ACTIVE_TASK_STATUSES },
+          assignee: { kind: 'AI_AGENT', isActive: true },
+        },
+        distinct: ['assigneeActorId'],
+        select: { assigneeActorId: true },
+      }),
+      this.prisma.conflict.count({ where: { projectId, resolvedAt: null } }),
+      this.prisma.syncRun.findFirst({
+        where: { projectId },
+        orderBy: { startedAt: 'desc' },
+        select: { status: true, startedAt: true, finishedAt: true },
+      }),
+    ]);
+    return {
+      progress,
+      activeTasks,
+      overdueTasks,
+      activeAgents: agentAssignees.length,
+      openConflicts,
+      lastSyncRun,
+    };
   }
 
   async findById(id: string) {

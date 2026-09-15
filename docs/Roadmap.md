@@ -5,9 +5,9 @@ Keep active and near-term work only. Verified completed capability belongs in
 
 ## Active work
 
-| ID     | Outcome                                                 | Acceptance check                        | Status      | Owner                            | Depends on |
-| ------ | ------------------------------------------------------- | --------------------------------------- | ----------- | -------------------------------- | ---------- |
-| GAP-07 | My Projects summary (brief §19) + project settings edit | e2e for summary endpoint; browser check | IN_PROGRESS | claude-code@2026-09-15T15:05:00Z | GAP-03     |
+| ID     | Outcome                                                                   | Acceptance check    | Status      | Owner                            | Depends on |
+| ------ | ------------------------------------------------------------------------- | ------------------- | ----------- | -------------------------------- | ---------- |
+| GAP-11 | Workload phase/epic filters in UI + idle active actors listed (brief §18) | e2e + browser check | IN_PROGRESS | claude-code@2026-09-15T15:40:00Z | GAP-03     |
 
 <!-- context:end -->
 
@@ -19,7 +19,6 @@ first, per the user's direction on 2026-09-15.
 
 | ID     | Outcome                                                                                                          | Acceptance check                                                          | Status | Depends on |
 | ------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------ | ---------- |
-| GAP-11 | Workload phase/epic filters in UI + idle active actors listed (brief §18)                                        | e2e + browser check                                                       | TODO   | GAP-03     |
 | GAP-10 | Conflict field diff + MANUAL_EDIT resolution in UI (brief §26)                                                   | web unit test for diff; browser check                                     | TODO   | GAP-03     |
 | GAP-09 | Documents view search, highlight, section navigation, revision history (brief §10)                               | e2e for revisions endpoint; browser check                                 | TODO   | GAP-03     |
 | GAP-08 | Phase progress counts by state + subtasks in the tree (brief §16)                                                | e2e on progress tree counts                                               | TODO   | —          |

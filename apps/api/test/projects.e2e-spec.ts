@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './../prisma/demo-credentials.js';
+import { createScratchDocsPath } from './helpers/scratch-docs.js';
 
 describe('Projects / RBAC (e2e)', () => {
   let app: INestApplication<App>;
@@ -152,5 +153,60 @@ describe('Projects / RBAC (e2e)', () => {
       .expect(200);
 
     expect(updated.body.description).toBe('updated via e2e');
+  });
+
+  it('edits project settings, including its status, and never clears the required ones', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/projects')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ name: 'Settings Project', docsPath: './settings-docs', repoUrl: 'https://example.test/old' })
+      .expect(201);
+    const patch = (body: object, token = ownerToken) =>
+      request(app.getHttpServer())
+        .patch(`/projects/${created.body.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(body);
+
+    const updated = await patch({ status: 'PAUSED', syncIntervalMinutes: 15, repoUrl: null }).expect(200);
+    expect(updated.body).toMatchObject({ status: 'PAUSED', syncIntervalMinutes: 15, repoUrl: null });
+
+    await patch({ status: 'DELETED' }).expect(400);
+    await patch({ name: '   ' }).expect(400);
+    await patch({ docsPath: null }).expect(400);
+    await patch({ syncIntervalMinutes: 0 }).expect(400);
+    await patch({ syncIntervalMinutes: null }).expect(400);
+    await patch({ name: 'Taken over' }, outsiderToken).expect(403);
+  });
+
+  it('summarises each of my projects for the multi-project view (brief §19)', async () => {
+    const auth = `Bearer ${ownerToken}`;
+    const created = await request(app.getHttpServer())
+      .post('/projects')
+      .set('Authorization', auth)
+      .send({ name: `Summary Project ${Date.now()}`, docsPath: createScratchDocsPath() })
+      .expect(201);
+    const projectId = created.body.id as string;
+    const post = (path: string, body: object) =>
+      request(app.getHttpServer()).post(`/projects/${projectId}/${path}`).set('Authorization', auth).send(body);
+
+    await post('members', { actorId: agentActorId }).expect(201);
+    const agentWork = await post('tasks', { title: 'Agent work', acceptanceCriteria: 'Reviewed' }).expect(201);
+    await post(`tasks/${agentWork.body.id}/assign`, { actorId: agentActorId }).expect(201);
+    // Not picked up yet, but already past its due date.
+    await post('tasks', { title: 'Late', acceptanceCriteria: 'Reviewed', dueDate: '2020-01-01' }).expect(201);
+    await post('sync', {}).expect(201);
+
+    const mine = await request(app.getHttpServer()).get('/projects').set('Authorization', auth).expect(200);
+    const listed = mine.body.find((project: { id: string }) => project.id === projectId);
+
+    expect(listed.status).toBe('ACTIVE');
+    expect(listed.summary).toMatchObject({
+      progress: 0,
+      activeTasks: 1,
+      overdueTasks: 1,
+      activeAgents: 1,
+      openConflicts: 0,
+      lastSyncRun: { status: 'SUCCESS' },
+    });
   });
 });

@@ -7,7 +7,7 @@ import {
   Min,
 } from 'class-validator';
 
-const ROLLUP_STRATEGIES = [
+export const ROLLUP_STRATEGIES = [
   'EQUAL_WEIGHT_AVERAGE',
   'LEAF_EQUAL_WEIGHT',
 ] as const;

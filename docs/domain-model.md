@@ -198,7 +198,8 @@ reserved for agent API-key access.
 Project(id, name, description?, repoUrl?, docsPath, syncIntervalMinutes default 5,
   progressRollupStrategy: EQUAL_WEIGHT_AVERAGE|LEAF_EQUAL_WEIGHT default EQUAL_WEIGHT_AVERAGE,
   nextTaskSeq default 1,      // monotonic counter for minted externalIds, see below
-  status default "ACTIVE", createdAt)
+  status: ACTIVE|PAUSED|ARCHIVED default ACTIVE,   // only ACTIVE projects sync on a schedule
+  createdAt)
 ```
 
 No hard deletes on `Project`/`Task` in MVP — a project is soft-deleted via

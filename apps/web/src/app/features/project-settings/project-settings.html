@@ -1,0 +1,76 @@
+<section aria-labelledby="settings-heading">
+  <h2 id="settings-heading" class="settings__title">Settings</h2>
+  @if (!canEdit()) {
+    <p class="meta-text">
+      You can read these settings; changing them needs the project.update permission.
+    </p>
+  }
+
+  <form class="settings" [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <mat-form-field class="settings__wide">
+      <mat-label>Name</mat-label>
+      <input matInput formControlName="name" />
+      <mat-error>A project needs a name.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field class="settings__wide">
+      <mat-label>Description</mat-label>
+      <textarea matInput formControlName="description" rows="2"></textarea>
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Status</mat-label>
+      <mat-select formControlName="status">
+        @for (status of statuses; track status) {
+          <mat-option [value]="status">{{ statusLabels[status] }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint>Paused and archived projects are not synced on a schedule.</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Sync every (minutes)</mat-label>
+      <input matInput type="number" min="1" step="1" formControlName="syncIntervalMinutes" />
+      <mat-error>A whole number of at least 1 minute.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field class="settings__wide">
+      <mat-label>Docs path</mat-label>
+      <input matInput formControlName="docsPath" />
+      <mat-hint>The folder that holds this project's Roadmap.md and Agentslog.md.</mat-hint>
+      <mat-error>The docs path cannot be empty.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field class="settings__wide">
+      <mat-label>Repository URL</mat-label>
+      <input matInput type="url" formControlName="repoUrl" />
+    </mat-form-field>
+
+    @if (project(); as p) {
+      <dl class="settings__facts settings__wide">
+        <dt>Progress rollup</dt>
+        <dd>{{ rollupLabel() }}</dd>
+        <dt>Created</dt>
+        <dd>{{ p.createdAt | date: 'mediumDate' }}</dd>
+      </dl>
+    }
+
+    @if (errorMessage()) {
+      <p class="settings__wide" role="alert">{{ errorMessage() }}</p>
+    }
+    @if (saved()) {
+      <p class="settings__wide meta-text" role="status">Settings saved.</p>
+    }
+
+    @if (canEdit()) {
+      <div class="settings__actions settings__wide">
+        <button mat-flat-button type="submit" [disabled]="saving() || form.pristine">
+          {{ saving() ? 'Saving…' : 'Save settings' }}
+        </button>
+        <button mat-button type="button" [disabled]="form.pristine" (click)="discard()">
+          Discard changes
+        </button>
+      </div>
+    }
+  </form>
+</section>
