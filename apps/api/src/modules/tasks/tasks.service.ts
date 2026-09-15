@@ -58,11 +58,45 @@ export class TasksService {
     private readonly audit: AuditService,
   ) {}
 
-  findAllForProject(projectId: string, filters: TaskListFilters) {
-    return this.prisma.task.findMany({
+  /**
+   * Board cards (brief §15): every task field plus what a card shows at a
+   * glance — the assignee and their kind, rolled-up progress, and subtask
+   * and dependency counts. A dependency is "open" until the task it points
+   * to is TERMINADA; an unresolved external reference counts as open.
+   */
+  async findAllForProject(projectId: string, filters: TaskListFilters) {
+    const tasks = await this.prisma.task.findMany({
       where: { projectId, deletedAt: null, ...filters },
       orderBy: { createdAt: 'asc' },
+      include: {
+        assignee: { select: { id: true, displayName: true, kind: true } },
+        subtasks: { where: { deletedAt: null }, select: { status: true } },
+        dependencies: {
+          select: { dependsOnTask: { select: { status: true } } },
+        },
+      },
     });
+    return Promise.all(
+      tasks.map(async ({ subtasks, dependencies, ...task }) => ({
+        ...task,
+        computedProgress: await this.progressRollup.computeTaskProgress(
+          task.id,
+        ),
+        subtaskCounts: {
+          total: subtasks.length,
+          done: subtasks.filter(
+            (subtask) => subtask.status === TaskStatus.TERMINADA,
+          ).length,
+        },
+        dependencyCounts: {
+          total: dependencies.length,
+          open: dependencies.filter(
+            (dependency) =>
+              dependency.dependsOnTask?.status !== TaskStatus.TERMINADA,
+          ).length,
+        },
+      })),
+    );
   }
 
   async findById(projectId: string, taskId: string) {

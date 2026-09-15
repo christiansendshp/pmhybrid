@@ -1,16 +1,25 @@
-import {
-  CdkDrag,
-  CdkDragDrop,
-  CdkDropList,
-  CdkDropListGroup,
-  moveItemInArray,
-  transferArrayItem,
-} from '@angular/cdk/drag-drop';
+import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { actorKindLabel } from '../../core/actor-kind.js';
+import {
+  BoardFilters,
+  BoardGroupBy,
+  BoardSortBy,
+  NO_FILTERS,
+  UNASSIGNED,
+  filterCards,
+  groupCards,
+  isBlocked,
+  sortCards,
+} from '../../core/board.js';
 import {
   EMPTY_HIERARCHY,
   HierarchyService,
@@ -19,27 +28,39 @@ import {
 import { describeHttpError } from '../../core/http-error.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { KANBAN_STATUSES, isDraggableTransition } from '../../core/task-status-policy.js';
-import { Task, TaskStatus, TasksService } from '../../core/tasks.service.js';
+import { TASK_PRIORITIES, TaskCard, TaskStatus, TasksService } from '../../core/tasks.service.js';
 import { TaskForm, TaskFormValue, toCreateTaskInput } from '../../shared/task-form/task-form.js';
 
+/** Columns a card can be dropped on — see core/task-status-policy.ts isDraggableTransition. */
+const DROP_TARGET_STATUSES = KANBAN_STATUSES.filter(
+  (status) => status !== 'PENDIENTE' && status !== 'ASIGNADA',
+);
+
 /**
- * FASE-09. Drag & drop moves a card between columns via
- * POST .../transition. PENDIENTE and ASIGNADA are not drop targets — see
- * core/task-status-policy.ts's isDraggableTransition docstring for why.
+ * Brief §15 Kanban: five columns, cards carrying every field the brief lists,
+ * search, filters, swimlane grouping and in-column sorting. Drag & drop only
+ * accepts a legal transition; the API still checks the transition and the
+ * requester's permission.
  */
 @Component({
   selector: 'app-kanban',
   imports: [
+    DatePipe,
+    DecimalPipe,
     FormsModule,
     RouterLink,
     CdkDropListGroup,
     CdkDropList,
     CdkDrag,
     MatButtonModule,
+    MatCheckboxModule,
+    MatFormFieldModule,
+    MatInputModule,
     MatSelectModule,
     TaskForm,
   ],
   templateUrl: './kanban.html',
+  styleUrl: './kanban.scss',
 })
 export class Kanban implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -48,90 +69,141 @@ export class Kanban implements OnInit {
   private readonly hierarchyService = inject(HierarchyService);
 
   readonly statuses = KANBAN_STATUSES;
-  readonly allTasks = signal<Task[]>([]);
+  readonly priorities = TASK_PRIORITIES;
+  readonly unassigned = UNASSIGNED;
+  readonly kindLabel = actorKindLabel;
+  readonly isBlocked = isBlocked;
+
+  readonly cards = signal<TaskCard[]>([]);
   readonly members = signal<ProjectMember[]>([]);
   readonly hierarchy = signal<ProjectHierarchy>(EMPTY_HIERARCHY);
+  readonly loading = signal(true);
+  readonly boardError = signal<string | null>(null);
   readonly showCreateForm = signal(false);
   readonly creating = signal(false);
   readonly createError = signal<string | null>(null);
 
-  readonly assigneeFilter = signal<string | null>(null);
-  readonly titleFilter = signal('');
+  readonly filters = signal<BoardFilters>(NO_FILTERS);
+  readonly groupBy = signal<BoardGroupBy>('none');
+  readonly sortBy = signal<BoardSortBy>('created');
 
-  readonly filteredTasks = computed(() => {
-    const assignee = this.assigneeFilter();
-    const title = this.titleFilter().trim().toLowerCase();
-    return this.allTasks().filter((task) => {
-      if (assignee && task.assigneeActorId !== assignee) {
-        return false;
-      }
-      if (title && !task.title.toLowerCase().includes(title)) {
-        return false;
-      }
-      return true;
-    });
+  readonly visibleCards = computed(() =>
+    sortCards(filterCards(this.cards(), this.filters()), this.sortBy()),
+  );
+
+  /** Memoized — cdkDropList needs stable array references between change-detection runs. */
+  readonly lanes = computed(() =>
+    groupCards(this.visibleCards(), this.groupBy(), this.hierarchy()),
+  );
+
+  readonly dropTargetIds = computed(() =>
+    this.lanes().flatMap((lane) =>
+      DROP_TARGET_STATUSES.map((status) => this.listId(lane.key, status)),
+    ),
+  );
+
+  readonly filtersActive = computed(() => {
+    const filters = this.filters();
+    return (
+      filters.search.trim() !== '' ||
+      filters.assigneeId !== null ||
+      filters.priority !== null ||
+      filters.phaseId !== null ||
+      filters.epicId !== null ||
+      filters.blockedOnly
+    );
   });
 
-  /** Memoized per status — a plain per-render filter would hand cdkDropList a fresh array reference every change-detection tick, which corrupts in-flight drag index tracking. */
-  readonly tasksByStatus = computed(() => {
-    const grouped: Record<TaskStatus, Task[]> = {
-      PENDIENTE: [],
-      ASIGNADA: [],
-      EN_DESARROLLO: [],
-      QA: [],
-      TERMINADA: [],
-    };
-    for (const task of this.filteredTasks()) {
-      grouped[task.status].push(task);
-    }
-    return grouped;
-  });
+  /** One stable predicate per column, so a card only enters a column it may legally move to. */
+  readonly canEnter = Object.fromEntries(
+    KANBAN_STATUSES.map((status) => [
+      status,
+      (drag: CdkDrag<TaskCard>) => isDraggableTransition(drag.data.status, status),
+    ]),
+  ) as Record<TaskStatus, (drag: CdkDrag<TaskCard>) => boolean>;
 
   private get projectId(): string {
     return this.route.parent!.snapshot.paramMap.get('projectId')!;
   }
 
   async ngOnInit(): Promise<void> {
-    const [tasks, members, hierarchy] = await Promise.all([
-      this.tasksService.listForProject(this.projectId),
-      this.projectsService.listMembers(this.projectId),
-      this.hierarchyService.load(this.projectId),
-    ]);
-    this.allTasks.set(tasks);
-    this.members.set(members);
-    this.hierarchy.set(hierarchy);
-  }
-
-  /** Drop targets: PENDIENTE and ASIGNADA columns are excluded entirely (see class docstring). */
-  connectedListsFor(status: TaskStatus): string[] {
-    if (status === 'PENDIENTE' || status === 'ASIGNADA') {
-      return [];
+    try {
+      const [cards, members, hierarchy] = await Promise.all([
+        this.tasksService.listForProject(this.projectId),
+        this.projectsService.listMembers(this.projectId),
+        this.hierarchyService.load(this.projectId),
+      ]);
+      this.cards.set(cards);
+      this.members.set(members);
+      this.hierarchy.set(hierarchy);
+    } catch (error) {
+      this.boardError.set(describeHttpError(error, 'The board could not be loaded.'));
+    } finally {
+      this.loading.set(false);
     }
-    return this.statuses.map((s) => `column-${s}`);
   }
 
-  async onDrop(event: CdkDragDrop<Task[]>, toStatus: TaskStatus): Promise<void> {
-    const task = event.item.data as Task;
-    if (event.previousContainer === event.container) {
-      moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
+  listId(laneKey: string, status: TaskStatus): string {
+    return `lane-${laneKey}-${status}`;
+  }
+
+  statusLabel(status: TaskStatus): string {
+    return status.replace('_', ' ');
+  }
+
+  patchFilters(patch: Partial<BoardFilters>): void {
+    this.filters.update((filters) => ({ ...filters, ...patch }));
+  }
+
+  clearFilters(): void {
+    this.filters.set(NO_FILTERS);
+  }
+
+  /** Phase › Epic, by name. */
+  placementOf(card: TaskCard): string {
+    const { phases, epics } = this.hierarchy();
+    return [
+      phases.find((phase) => phase.id === card.phaseId)?.name,
+      epics.find((epic) => epic.id === card.epicId)?.name,
+    ]
+      .filter(Boolean)
+      .join(' › ');
+  }
+
+  /** The date a card shows: due, else estimated; overdue once past and not finished. */
+  dateOf(card: TaskCard): { label: string; value: string; overdue: boolean } | null {
+    const value = card.dueDate ?? card.estimatedDate;
+    if (!value) {
+      return null;
+    }
+    const overdue =
+      card.dueDate !== null &&
+      card.status !== 'TERMINADA' &&
+      new Date(card.dueDate).getTime() < Date.now();
+    return { label: overdue ? 'Overdue' : card.dueDate ? 'Due' : 'Estimated', value, overdue };
+  }
+
+  async onDrop(event: CdkDragDrop<TaskCard[]>, toStatus: TaskStatus): Promise<void> {
+    const card = event.item.data as TaskCard;
+    if (
+      event.previousContainer === event.container ||
+      !isDraggableTransition(card.status, toStatus)
+    ) {
       return;
     }
-    if (!isDraggableTransition(task.status, toStatus)) {
-      return; // illegal target — leave the card in its original column
-    }
-
-    transferArrayItem(
-      event.previousContainer.data,
-      event.container.data,
-      event.previousIndex,
-      event.currentIndex,
+    this.boardError.set(null);
+    // Move the card right away; the reload below settles it either way.
+    this.cards.update((cards) =>
+      cards.map((existing) =>
+        existing.id === card.id ? { ...existing, status: toStatus } : existing,
+      ),
     );
-
     try {
-      await this.tasksService.transition(this.projectId, task.id, toStatus);
-    } finally {
-      this.allTasks.set(await this.tasksService.listForProject(this.projectId));
+      await this.tasksService.transition(this.projectId, card.id, toStatus);
+    } catch (error) {
+      this.boardError.set(describeHttpError(error, 'The task could not be moved.'));
     }
+    await this.reloadCards();
   }
 
   openCreateForm(): void {
@@ -148,11 +220,19 @@ export class Kanban implements OnInit {
     try {
       await this.tasksService.create(this.projectId, toCreateTaskInput(value));
       this.showCreateForm.set(false);
-      this.allTasks.set(await this.tasksService.listForProject(this.projectId));
+      await this.reloadCards();
     } catch (error) {
       this.createError.set(describeHttpError(error, 'The task could not be created.'));
     } finally {
       this.creating.set(false);
+    }
+  }
+
+  private async reloadCards(): Promise<void> {
+    try {
+      this.cards.set(await this.tasksService.listForProject(this.projectId));
+    } catch (error) {
+      this.boardError.set(describeHttpError(error, 'The board could not be refreshed.'));
     }
   }
 }

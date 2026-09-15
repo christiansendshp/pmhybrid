@@ -1,53 +1,231 @@
-<h2>Kanban</h2>
+<div class="board-header">
+  <h2 class="board-header__title">Kanban</h2>
+  @if (!showCreateForm()) {
+    <button mat-flat-button type="button" (click)="openCreateForm()">New task</button>
+  }
+</div>
 
 @if (showCreateForm()) {
   <app-task-form
     [hierarchy]="hierarchy()"
-    [tasks]="allTasks()"
+    [tasks]="cards()"
     [submitting]="creating()"
     [errorMessage]="createError()"
     (save)="create($event)"
     (cancelled)="showCreateForm.set(false)"
   />
-} @else {
-  <button mat-flat-button type="button" (click)="openCreateForm()">New task</button>
 }
 
-<div>
-  <input
-    [ngModel]="titleFilter()"
-    (ngModelChange)="titleFilter.set($event)"
-    placeholder="Filter by title…"
-  />
-  <mat-select
-    placeholder="Filter by assignee…"
-    [ngModel]="assigneeFilter()"
-    (ngModelChange)="assigneeFilter.set($event)"
-  >
-    <mat-option [value]="null">All assignees</mat-option>
-    @for (member of members(); track member.actorId) {
-      <mat-option [value]="member.actorId">{{ member.actor.displayName }}</mat-option>
-    }
-  </mat-select>
-</div>
+<div class="board-toolbar" role="search" aria-label="Board search and view">
+  <mat-form-field class="board-toolbar__search" subscriptSizing="dynamic">
+    <mat-label>Search</mat-label>
+    <input
+      matInput
+      type="search"
+      placeholder="Title or ID"
+      [ngModel]="filters().search"
+      (ngModelChange)="patchFilters({ search: $event })"
+    />
+  </mat-form-field>
 
-<div cdkDropListGroup>
-  @for (status of statuses; track status) {
-    <section>
-      <h3>{{ status }}</h3>
-      <div
-        [id]="'column-' + status"
-        cdkDropList
-        [cdkDropListData]="tasksByStatus()[status]"
-        [cdkDropListConnectedTo]="connectedListsFor(status)"
-        (cdkDropListDropped)="onDrop($event, status)"
-      >
-        @for (task of tasksByStatus()[status]; track task.id) {
-          <div cdkDrag [cdkDragData]="task">
-            <a [routerLink]="['../tasks', task.id]">{{ task.title }}</a>
-          </div>
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Assignee</mat-label>
+    <mat-select
+      [ngModel]="filters().assigneeId"
+      (ngModelChange)="patchFilters({ assigneeId: $event })"
+    >
+      <mat-option [value]="null">Everyone</mat-option>
+      <mat-option [value]="unassigned">Unassigned</mat-option>
+      @for (member of members(); track member.actorId) {
+        <mat-option [value]="member.actorId">{{ member.actor.displayName }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Priority</mat-label>
+    <mat-select [ngModel]="filters().priority" (ngModelChange)="patchFilters({ priority: $event })">
+      <mat-option [value]="null">Any priority</mat-option>
+      @for (priority of priorities; track priority) {
+        <mat-option [value]="priority">{{ priority }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  @if (hierarchy().phases.length > 0) {
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Phase</mat-label>
+      <mat-select [ngModel]="filters().phaseId" (ngModelChange)="patchFilters({ phaseId: $event })">
+        <mat-option [value]="null">Any phase</mat-option>
+        @for (phase of hierarchy().phases; track phase.id) {
+          <mat-option [value]="phase.id">{{ phase.name }}</mat-option>
         }
-      </div>
-    </section>
+      </mat-select>
+    </mat-form-field>
+  }
+
+  @if (hierarchy().epics.length > 0) {
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Epic</mat-label>
+      <mat-select [ngModel]="filters().epicId" (ngModelChange)="patchFilters({ epicId: $event })">
+        <mat-option [value]="null">Any epic</mat-option>
+        @for (epic of hierarchy().epics; track epic.id) {
+          <mat-option [value]="epic.id">{{ epic.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  }
+
+  <mat-checkbox
+    [ngModel]="filters().blockedOnly"
+    (ngModelChange)="patchFilters({ blockedOnly: $event })"
+  >
+    Blocked only
+  </mat-checkbox>
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Group by</mat-label>
+    <mat-select [ngModel]="groupBy()" (ngModelChange)="groupBy.set($event)">
+      <mat-option value="none">No grouping</mat-option>
+      <mat-option value="assignee">Assignee</mat-option>
+      <mat-option value="phase">Phase</mat-option>
+      <mat-option value="epic">Epic</mat-option>
+      <mat-option value="priority">Priority</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Sort by</mat-label>
+    <mat-select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)">
+      <mat-option value="created">Oldest first</mat-option>
+      <mat-option value="priority">Priority</mat-option>
+      <mat-option value="dueDate">Due date</mat-option>
+      <mat-option value="progress">Least progress</mat-option>
+      <mat-option value="updated">Recently updated</mat-option>
+      <mat-option value="externalId">Roadmap ID</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <span class="meta-text board-toolbar__count" aria-live="polite">
+    {{ visibleCards().length }} of {{ cards().length }} tasks
+  </span>
+  @if (filtersActive()) {
+    <button mat-button type="button" (click)="clearFilters()">Clear filters</button>
   }
 </div>
+
+@if (boardError()) {
+  <p role="alert">{{ boardError() }}</p>
+}
+
+@if (loading()) {
+  <p class="meta-text">Loading the board…</p>
+} @else if (cards().length === 0) {
+  <p class="board-empty">No tasks yet. Create the first one, or sync the project's Roadmap.</p>
+} @else if (visibleCards().length === 0) {
+  <p class="board-empty">No tasks match these filters.</p>
+} @else {
+  <div class="board" cdkDropListGroup>
+    @for (lane of lanes(); track lane.key) {
+      <section class="lane" [attr.aria-label]="groupBy() === 'none' ? 'Board' : lane.label">
+        @if (groupBy() !== 'none') {
+          <h3 class="lane__title">
+            {{ lane.label }} <span class="meta-text">{{ lane.count }}</span>
+          </h3>
+        }
+        <div class="lane__columns">
+          @for (status of statuses; track status) {
+            <div class="column">
+              <h4 class="column__title">
+                <span>{{ statusLabel(status) }}</span>
+                <span class="meta-text">{{ lane.columns[status].length }}</span>
+              </h4>
+              <div
+                class="column__cards"
+                cdkDropList
+                cdkDropListSortingDisabled
+                [id]="listId(lane.key, status)"
+                [cdkDropListData]="lane.columns[status]"
+                [cdkDropListConnectedTo]="dropTargetIds()"
+                [cdkDropListEnterPredicate]="canEnter[status]"
+                (cdkDropListDropped)="onDrop($event, status)"
+              >
+                @for (card of lane.columns[status]; track card.id) {
+                  <article
+                    class="card"
+                    cdkDrag
+                    [cdkDragData]="card"
+                    [class.card--blocked]="isBlocked(card)"
+                  >
+                    <div class="card__top">
+                      <span class="card__id">{{ card.externalId ?? 'No Roadmap ID' }}</span>
+                      @if (card.priority) {
+                        <span class="priority" [attr.data-priority]="card.priority">{{
+                          card.priority
+                        }}</span>
+                      }
+                    </div>
+                    <a class="card__title" [routerLink]="['../tasks', card.id]">{{ card.title }}</a>
+                    @if (placementOf(card); as placement) {
+                      <p class="card__placement">{{ placement }}</p>
+                    }
+                    <div class="card__assignee">
+                      @if (card.assignee; as assignee) {
+                        <span class="card__assignee-name">{{ assignee.displayName }}</span>
+                        <span class="kind-badge" [attr.data-kind]="assignee.kind">{{
+                          kindLabel(assignee.kind)
+                        }}</span>
+                      } @else {
+                        <span class="card__muted">Unassigned</span>
+                      }
+                    </div>
+                    <div class="card__progress">
+                      <span
+                        class="card__bar"
+                        role="progressbar"
+                        aria-label="Progress"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        [attr.aria-valuenow]="card.computedProgress | number: '1.0-0'"
+                      >
+                        <span class="card__bar-fill" [style.width.%]="card.computedProgress"></span>
+                      </span>
+                      <span class="card__percent"
+                        >{{ card.computedProgress | number: '1.0-0' }}%</span
+                      >
+                    </div>
+                    <ul class="card__facts">
+                      @if (card.subtaskCounts.total > 0) {
+                        <li>
+                          Subtasks {{ card.subtaskCounts.done }}/{{ card.subtaskCounts.total }}
+                        </li>
+                      }
+                      @if (card.dependencyCounts.total > 0) {
+                        <li [class.card__alert]="card.dependencyCounts.open > 0">
+                          Depends on {{ card.dependencyCounts.total }}
+                          @if (card.dependencyCounts.open > 0) {
+                            · {{ card.dependencyCounts.open }} open
+                          }
+                        </li>
+                      }
+                      @if (dateOf(card); as date) {
+                        <li [class.card__alert]="date.overdue">
+                          {{ date.label }} {{ date.value | date: 'MMM d' : 'UTC' }}
+                        </li>
+                      }
+                      @if (card.roadmapTable === 'BLOCKED') {
+                        <li class="card__alert" [attr.title]="card.blockedReason">Blocked</li>
+                      }
+                    </ul>
+                  </article>
+                } @empty {
+                  <p class="column__empty">No tasks</p>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+    }
+  </div>
+}

@@ -127,3 +127,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: api tasks/write-back/row writer/sync/rollup/dashboard/workload, schema+migration, seed, shared-types; e2e task-removal; web task-detail
 - Verify: lint+build; 76 api e2e, 29 api unit, 49 web green
 - Follow-up: GAP-06; backlog reordered frontend-first
+
+## [2026-09-15T14:03:58Z] | claude-code | GAP-06 | DONE
+
+- Summary: Kanban per brief §15: cards show ID, title, assignee + kind, priority, rolled-up progress, phase › epic, subtask and open-dependency counts, due/estimated/overdue date, blocked indicators; search by title/ID, assignee/priority/phase/epic/blocked filters, swimlane grouping, in-column sorting. Task list API returns the card fields. Fixed ASIGNADA cards not draggable to EN DESARROLLO.
+- Files: api tasks.service list + e2e task-board; web core/board(+spec), TaskCard, kanban ts/html/scss/spec
+- Verify: lint+build; 77 api e2e, 29 api unit, 59 web green; browser check pending a signed-in session (credential policy)
+- Follow-up: GAP-07

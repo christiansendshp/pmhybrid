@@ -34,6 +34,16 @@ export interface Task {
   updatedAt: string;
 }
 
+/** A task as the board lists it (brief §15): the task plus what its card shows at a glance. */
+export interface TaskCard extends Task {
+  blockedReason: string | null;
+  assignee: { id: string; displayName: string; kind: 'HUMAN' | 'AI_AGENT' } | null;
+  computedProgress: number;
+  subtaskCounts: { total: number; done: number };
+  /** `open` counts dependencies whose task is not TERMINADA yet. */
+  dependencyCounts: { total: number; open: number };
+}
+
 export interface TaskDetail extends Task {
   computedProgress: number;
   subtasks: Task[];
@@ -122,8 +132,8 @@ export class TasksService {
     );
   }
 
-  listForProject(projectId: string): Promise<Task[]> {
-    return firstValueFrom(this.http.get<Task[]>(`${API_BASE_URL}/projects/${projectId}/tasks`));
+  listForProject(projectId: string): Promise<TaskCard[]> {
+    return firstValueFrom(this.http.get<TaskCard[]>(`${API_BASE_URL}/projects/${projectId}/tasks`));
   }
 
   getById(projectId: string, taskId: string): Promise<TaskDetail> {
