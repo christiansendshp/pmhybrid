@@ -8,7 +8,7 @@
 - Architecture: `pnpm monorepo — apps/api (NestJS, modular), apps/web (Angular, standalone/lazy), packages/shared-types`
 - Data: `PostgreSQL via Prisma ORM; documents (Roadmap.md/Agentslog.md/etc.) are an external synced source, not the primary store`
 - Test command: `pnpm -r test`
-- Delivery: `Local dev via docker-compose (Postgres) + pnpm dev; no CI/CD configured yet`
+- Delivery: `Local dev via docker-compose (Postgres) + pnpm dev; GitHub Actions CI (.github/workflows/ci.yml) runs lint/build/unit/e2e on every push and PR against a Postgres service container (Roadmap GAP-17)`
 
 <!-- context:end -->
 
