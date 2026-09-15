@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 20
-- Latest verification: `2026-09-15` — lint, build, unit, e2e green (79 api e2e, 29 api unit, 65 web)
+- Verified capabilities: 21
+- Latest verification: `2026-09-15` — lint, build, unit, e2e green (80 api e2e, 33 api unit, 68 web)
 - Known limitations: no refresh-token revocation (ADR-005); Roadmap `Depends on` not reconciled into `TaskDependency`; PM Hub's own write-back Agentslog entries are ingested only after an external file change; a status write-back for a Near term row adds a duplicate Active row (GAP-19)
 
 <!-- context:end -->
@@ -35,3 +35,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | F18 | Task removal: soft delete needing task.delete, refused while subtasks exist; REMOVED Agentslog entry, then the row leaves its own table (placeholder kept); sync never recreates it or raises a conflict; removed tasks leave board, progress, workload and dashboard                                                                 | `apps/api/test/task-removal.e2e-spec.ts`, `features/task-detail/task-detail.spec.ts`                                                   | brief §25, §31, `docs/synchronization.md` Removal        | 2026-09-15 |
 | F19 | Kanban board (§15): cards with ID, title, assignee + kind, priority, rolled-up progress, phase › epic, subtask and open-dependency counts, due/estimated/overdue date, blocked indicators; search by title or ID, assignee/priority/phase/epic/blocked filters, swimlane grouping, in-column sorting; drops only on legal transitions | `apps/api/test/task-board.e2e-spec.ts`, `core/board.spec.ts`, `features/kanban/kanban.spec.ts`                                         | brief §15                                                | 2026-09-15 |
 | F20 | My Projects (§19): per-project status, rolled-up progress, active tasks, overdue tasks, active AI agents, open conflicts and last sync, with a link into each project; project Settings tab (name, description, status, sync interval, docs path, repository URL) editable with project.update                                        | `apps/api/test/projects.e2e-spec.ts`, `features/my-projects/my-projects.spec.ts`, `features/project-settings/project-settings.spec.ts` | brief §19, §20                                           | 2026-09-15 |
+| F21 | Workload (§18): every active actor listed, idle ones included (while no status, phase or epic filter narrows to tasks); filters by project, people or AI agents, actor, status, and phase and epic within a project                                                                                                                   | `apps/api/test/workload.e2e-spec.ts`, `features/workload/workload.spec.ts`                                                             | brief §18                                                | 2026-09-15 |

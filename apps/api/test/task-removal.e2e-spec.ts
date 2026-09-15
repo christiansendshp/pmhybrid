@@ -238,15 +238,18 @@ describe('Task removal (brief §25, §31 — e2e)', () => {
       .set('Authorization', auth())
       .send({ actorId: me.body.id })
       .expect(201);
-    const workload = () =>
-      request(server())
-        .get(`/workload?projectId=${projectId}`)
-        .set('Authorization', auth())
-        .expect(200);
-    expect((await workload()).body).toHaveLength(1);
+    const workloadTaskIds = async () =>
+      (
+        await request(server())
+          .get(`/workload?projectId=${projectId}`)
+          .set('Authorization', auth())
+          .expect(200)
+      ).body.map((row: { task: { id: string } | null }) => row.task?.id ?? null);
+    expect(await workloadTaskIds()).toEqual([task.body.id]);
 
     await removeTask(projectId, task.body.id).expect(200);
 
-    expect((await workload()).body).toHaveLength(0);
+    // Still an active member, the assignee now shows up idle.
+    expect(await workloadTaskIds()).toEqual([null]);
   });
 });

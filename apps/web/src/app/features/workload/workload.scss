@@ -1,0 +1,60 @@
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-4);
+
+  mat-form-field {
+    width: 11rem;
+  }
+}
+
+.filters__count {
+  margin-left: auto;
+}
+
+.empty {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.workload {
+  min-width: 48rem;
+
+  td {
+    vertical-align: middle;
+  }
+}
+
+.workload__actor {
+  font-weight: 600;
+}
+
+.workload__idle td {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.progress {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress__bar {
+  width: 5rem;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--mat-sys-surface-container-highest);
+}
+
+.progress__fill {
+  display: block;
+  height: 100%;
+  background: var(--mat-sys-primary);
+}

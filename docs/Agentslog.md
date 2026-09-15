@@ -148,3 +148,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api config/env.validation, sync-scheduler (+spec), vitest.config.e2e.ts, .env.example, docs Stack + synchronization
 - Verify: 80 api e2e green in 48s with zero scheduler log lines; 33 api unit incl. scheduler spec
 - Follow-up: none
+
+## [2026-09-15T14:23:50Z] | claude-code | GAP-11 | DONE
+
+- Summary: Workload per brief §18: every active actor shows up — members with nothing assigned get an idle row unless a status, phase or epic filter narrows to tasks; new kind filter (people / AI agents); rows ordered by actor. Web: filters for project, kind, actor, status, and phase and epic within a chosen project (reset with it); actor, task and idle counts; progress bars.
+- Files: api workload service/dto + e2e (task-removal workload check updated); web workload service/view/scss/spec
+- Verify: lint+build; 80 api e2e, 33 api unit, 68 web green; browser check pending a signed-in session
+- Follow-up: GAP-10

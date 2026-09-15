@@ -1,71 +1,156 @@
-<h1>Workload</h1>
+<header class="page-header">
+  <div>
+    <h1>Workload</h1>
+    <p class="page-header__description">Who is doing what, across your projects.</p>
+  </div>
+</header>
 
-<div>
-  <mat-select
-    placeholder="Filter by project…"
-    [ngModel]="projectFilter()"
-    (ngModelChange)="projectFilter.set($event); onFilterChange()"
-  >
-    <mat-option [value]="null">All projects</mat-option>
-    @for (project of myProjects(); track project.id) {
-      <mat-option [value]="project.id">{{ project.name }}</mat-option>
-    }
-  </mat-select>
+<div class="filters" role="search" aria-label="Workload filters">
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Project</mat-label>
+    <mat-select
+      [ngModel]="filters().projectId ?? null"
+      (ngModelChange)="setFilter({ projectId: $event })"
+    >
+      <mat-option [value]="null">All projects</mat-option>
+      @for (project of myProjects(); track project.id) {
+        <mat-option [value]="project.id">{{ project.name }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
 
-  <mat-select
-    placeholder="Filter by actor…"
-    [ngModel]="actorFilter()"
-    (ngModelChange)="actorFilter.set($event); onFilterChange()"
-  >
-    <mat-option [value]="null">All actors</mat-option>
-    @for (actor of actors(); track actor.id) {
-      <mat-option [value]="actor.id">{{ actor.displayName }}</mat-option>
-    }
-  </mat-select>
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>People or agents</mat-label>
+    <mat-select [ngModel]="filters().kind ?? null" (ngModelChange)="setFilter({ kind: $event })">
+      <mat-option [value]="null">Everyone</mat-option>
+      <mat-option value="HUMAN">People</mat-option>
+      <mat-option value="AI_AGENT">AI agents</mat-option>
+    </mat-select>
+  </mat-form-field>
 
-  <mat-select
-    placeholder="Filter by status…"
-    [ngModel]="statusFilter()"
-    (ngModelChange)="statusFilter.set($event); onFilterChange()"
-  >
-    <mat-option [value]="null">All statuses</mat-option>
-    @for (status of statuses; track status) {
-      <mat-option [value]="status">{{ status }}</mat-option>
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Actor</mat-label>
+    <mat-select
+      [ngModel]="filters().actorId ?? null"
+      (ngModelChange)="setFilter({ actorId: $event })"
+    >
+      <mat-option [value]="null">All actors</mat-option>
+      @for (actor of actorOptions(); track actor.id) {
+        <mat-option [value]="actor.id">{{ actor.displayName }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Status</mat-label>
+    <mat-select
+      [ngModel]="filters().status ?? null"
+      (ngModelChange)="setFilter({ status: $event })"
+    >
+      <mat-option [value]="null">All statuses</mat-option>
+      @for (status of statuses; track status) {
+        <mat-option [value]="status">{{ statusLabel(status) }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Phase</mat-label>
+    <mat-select
+      [disabled]="!filters().projectId"
+      [ngModel]="filters().phaseId ?? null"
+      (ngModelChange)="setFilter({ phaseId: $event })"
+    >
+      <mat-option [value]="null">All phases</mat-option>
+      @for (phase of hierarchy().phases; track phase.id) {
+        <mat-option [value]="phase.id">{{ phase.name }}</mat-option>
+      }
+    </mat-select>
+    @if (!filters().projectId) {
+      <mat-hint>Choose a project first</mat-hint>
     }
-  </mat-select>
+  </mat-form-field>
+
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>Epic</mat-label>
+    <mat-select
+      [disabled]="!filters().projectId"
+      [ngModel]="filters().epicId ?? null"
+      (ngModelChange)="setFilter({ epicId: $event })"
+    >
+      <mat-option [value]="null">All epics</mat-option>
+      @for (epic of epicOptions(); track epic.id) {
+        <mat-option [value]="epic.id">{{ epic.name }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  @if (hasFilters()) {
+    <button mat-button type="button" (click)="clearFilters()">Clear filters</button>
+  }
+  <span class="meta-text filters__count" aria-live="polite">
+    {{ plural(counts().actors, 'actor') }} · {{ plural(counts().tasks, 'task') }} ·
+    {{ counts().idle }} idle
+  </span>
 </div>
 
-@if (loading()) {
-  <p>Loading…</p>
-} @else if (rows().length === 0) {
-  <p>No assigned tasks match these filters.</p>
+@if (error()) {
+  <p role="alert">{{ error() }}</p>
 }
 
-<table>
-  <thead>
-    <tr>
-      <th>Actor</th>
-      <th>Tipo</th>
-      <th>Proyecto</th>
-      <th>Tarea</th>
-      <th>Estado</th>
-      <th>Avance</th>
-    </tr>
-  </thead>
-  <tbody>
-    @for (row of rows(); track row.task.id) {
-      <tr>
-        <td>{{ row.actor.displayName }}</td>
-        <td>{{ row.actor.kind }}</td>
-        <td>{{ row.project.name }}</td>
-        <td>
-          <a [routerLink]="['/projects', row.project.id, 'tasks', row.task.id]">{{
-            row.task.title
-          }}</a>
-        </td>
-        <td>{{ row.status }}</td>
-        <td>{{ row.progress }}%</td>
-      </tr>
-    }
-  </tbody>
-</table>
+@if (loading() && rows().length === 0) {
+  <p class="meta-text">Loading the workload…</p>
+} @else if (rows().length === 0) {
+  <p class="empty">Nothing matches these filters.</p>
+} @else {
+  <div class="table-scroll">
+    <table class="workload" aria-label="Workload" [attr.aria-busy]="loading()">
+      <thead>
+        <tr>
+          <th scope="col">Actor</th>
+          <th scope="col">Type</th>
+          <th scope="col">Project</th>
+          <th scope="col">Task</th>
+          <th scope="col">Status</th>
+          <th scope="col">Progress</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.task?.id ?? 'idle-' + row.actor.id) {
+          <tr [class.workload__idle]="!row.task">
+            <td>
+              <span class="workload__actor">{{ row.actor.displayName }}</span>
+              @if (!row.actor.isActive) {
+                <span class="meta-text">(inactive)</span>
+              }
+            </td>
+            <td>
+              <span class="kind-badge" [attr.data-kind]="row.actor.kind">{{
+                kindLabel(row.actor.kind)
+              }}</span>
+            </td>
+            @if (row.task && row.project) {
+              <td>{{ row.project.name }}</td>
+              <td>
+                <a [routerLink]="['/projects', row.project.id, 'tasks', row.task.id]">{{
+                  row.task.title
+                }}</a>
+              </td>
+              <td>{{ statusLabel(row.status) }}</td>
+              <td>
+                <span class="progress">
+                  <span class="progress__bar" aria-hidden="true">
+                    <span class="progress__fill" [style.width.%]="row.progress"></span>
+                  </span>
+                  {{ row.progress | number: '1.0-0' }}%
+                </span>
+              </td>
+            } @else {
+              <td colspan="4">No tasks assigned</td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
