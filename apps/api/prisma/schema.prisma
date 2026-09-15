@@ -394,6 +394,10 @@ model Conflict {
 
 model AuditEvent {
   id            String      @id @default(uuid())
+  // Null only for an event about a global entity (e.g. an Actor) — lets a
+  // project's whole change history be one indexed query (brief §25, §31).
+  projectId     String?
+  project       Project?    @relation(fields: [projectId], references: [id])
   actorId       String?
   actor         Actor?      @relation(fields: [actorId], references: [id])
   entityType    String
@@ -405,6 +409,7 @@ model AuditEvent {
   occurredAt    DateTime    @default(now())
 
   @@index([entityType, entityId, occurredAt])
+  @@index([projectId, occurredAt])
 }
 
 model Notification {
@@ -451,4 +456,5 @@ model Project {
   agentLogEvents AgentLogEvent[]
   conflicts     Conflict[]
   notifications Notification[]
+  auditEvents   AuditEvent[]
 }

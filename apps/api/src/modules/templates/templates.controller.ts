@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
+import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
 import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
@@ -37,8 +38,9 @@ export class TemplatesController {
   create(
     @Param('projectId') projectId: string,
     @Body() dto: CreateTemplateDto,
+    @CurrentActorId() requesterActorId: string,
   ) {
-    return this.templatesService.create(projectId, dto);
+    return this.templatesService.create(projectId, dto, requesterActorId);
   }
 
   @Patch(':id')
@@ -48,7 +50,8 @@ export class TemplatesController {
     @Param('projectId') projectId: string,
     @Param('id') id: string,
     @Body() dto: UpdateTemplateDto,
+    @CurrentActorId() requesterActorId: string,
   ) {
-    return this.templatesService.update(projectId, id, dto);
+    return this.templatesService.update(projectId, id, dto, requesterActorId);
   }
 }

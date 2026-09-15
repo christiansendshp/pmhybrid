@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
+import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
 import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
@@ -28,8 +29,16 @@ export class ProjectMembersController {
   @Post()
   @UseGuards(PermissionGuard)
   @RequirePermission(PERMISSIONS.PROJECT_MEMBERS_MANAGE)
-  addMember(@Param('projectId') projectId: string, @Body() dto: AddMemberDto) {
-    return this.projectMembersService.addMember(projectId, dto.actorId);
+  addMember(
+    @Param('projectId') projectId: string,
+    @Body() dto: AddMemberDto,
+    @CurrentActorId() requesterActorId: string,
+  ) {
+    return this.projectMembersService.addMember(
+      projectId,
+      dto.actorId,
+      requesterActorId,
+    );
   }
 
   @Delete(':actorId')
@@ -38,7 +47,12 @@ export class ProjectMembersController {
   removeMember(
     @Param('projectId') projectId: string,
     @Param('actorId') actorId: string,
+    @CurrentActorId() requesterActorId: string,
   ) {
-    return this.projectMembersService.removeMember(projectId, actorId);
+    return this.projectMembersService.removeMember(
+      projectId,
+      actorId,
+      requesterActorId,
+    );
   }
 }

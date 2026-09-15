@@ -8,7 +8,9 @@ import {
 } from '../roadmap/roadmap-parser.service.js';
 import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository-provider.interface.js';
 import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
+import { AuditService, diffFields } from '../audit/audit.service.js';
 import { AgentslogIngestionService } from './agentslog-ingestion.service.js';
+import { rowContentHash } from './row-content-hash.util.js';
 
 const DOCUMENT_FILENAMES: Record<DocumentKind, string> = {
   ROADMAP: 'Roadmap.md',
@@ -51,13 +53,18 @@ export class SynchronizationService {
     private readonly repositoryProvider: ProjectRepositoryProvider,
     private readonly roadmapParser: RoadmapParserService,
     private readonly agentslogIngestion: AgentslogIngestionService,
+    private readonly audit: AuditService,
   ) {}
 
-  async runSync(projectId: string, trigger: SyncTrigger) {
+  async runSync(
+    projectId: string,
+    trigger: SyncTrigger,
+    requesterActorId?: string,
+  ) {
     return this.prisma.$transaction(
       async (tx) => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`;
-        return this.runLocked(tx, projectId, trigger);
+        return this.runLocked(tx, projectId, trigger, requesterActorId);
       },
       { timeout: 20000, maxWait: 10000 },
     );
@@ -67,6 +74,7 @@ export class SynchronizationService {
     tx: Prisma.TransactionClient,
     projectId: string,
     trigger: SyncTrigger,
+    requesterActorId?: string,
   ) {
     const project = await tx.project.findUniqueOrThrow({
       where: { id: projectId },
@@ -122,14 +130,36 @@ export class SynchronizationService {
       const rows = this.roadmapParser.parse(roadmapContent);
       await this.reconcileRoadmap(tx, projectId, rows, summary);
 
+      const status = summary.conflictsRaised > 0 ? 'PARTIAL' : 'SUCCESS';
       await tx.syncRun.update({
         where: { id: syncRun.id },
         data: {
-          status: summary.conflictsRaised > 0 ? 'PARTIAL' : 'SUCCESS',
+          status,
           finishedAt: new Date(),
           summary: summary as unknown as Prisma.InputJsonValue,
         },
       });
+
+      // Brief §25 "sincronizaciones": every manual run, plus any scheduled
+      // run that actually changed something — an idle scheduled tick every
+      // few minutes would only bury real history (SyncRun keeps them all).
+      const changedSomething = Object.values(summary).some(
+        (count) => count > 0,
+      );
+      if (trigger === 'MANUAL' || changedSomething) {
+        await this.audit.record(
+          {
+            projectId,
+            actorId: requesterActorId ?? null,
+            entityType: 'SyncRun',
+            entityId: syncRun.id,
+            operation: 'SYNC_RUN',
+            origin: 'SYNC',
+            newValue: { trigger, status, ...summary },
+          },
+          tx,
+        );
+      }
       return tx.syncRun.findUniqueOrThrow({ where: { id: syncRun.id } });
     } catch (error) {
       await tx.syncRun.update({
@@ -243,8 +273,9 @@ export class SynchronizationService {
           where: { id: task.id },
           data: { status: TaskStatus.TERMINADA, roadmapTable: null },
         });
-        await tx.auditEvent.create({
-          data: {
+        await this.audit.record(
+          {
+            projectId,
             entityType: 'Task',
             entityId: task.id,
             operation: 'COMPLETE_VIA_ROADMAP_REMOVAL',
@@ -255,10 +286,11 @@ export class SynchronizationService {
             },
             newValue: { status: TaskStatus.TERMINADA, roadmapTable: null },
           },
-        });
+          tx,
+        );
         summary.completedViaRemoval += 1;
       } else {
-        await tx.conflict.create({
+        const conflict = await tx.conflict.create({
           data: {
             projectId,
             kind: 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG',
@@ -271,6 +303,7 @@ export class SynchronizationService {
             } as Prisma.InputJsonValue,
           },
         });
+        await this.audit.recordConflictDetected(conflict, 'SYNC', tx);
         summary.conflictsRaised += 1;
       }
     }
@@ -281,7 +314,7 @@ export class SynchronizationService {
     projectId: string,
     row: ParsedRoadmapRow,
   ) {
-    await tx.task.create({
+    const task = await tx.task.create({
       data: {
         projectId,
         externalId: row.externalId,
@@ -300,6 +333,22 @@ export class SynchronizationService {
         lastSyncedAt: new Date(),
       },
     });
+    await this.audit.record(
+      {
+        projectId,
+        entityType: 'Task',
+        entityId: task.id,
+        operation: 'CREATE',
+        origin: 'ROADMAP',
+        newValue: {
+          externalId: task.externalId,
+          title: task.title,
+          status: task.status,
+          roadmapTable: task.roadmapTable,
+        },
+      },
+      tx,
+    );
   }
 
   /** Step 5. Returns whether anything was actually written. */
@@ -309,12 +358,22 @@ export class SynchronizationService {
     row: ParsedRoadmapRow,
     summary: SyncSummary,
   ): Promise<boolean> {
+    // The row is exactly what was last reconciled (or last written back):
+    // the document side did not change, so any difference from the task is
+    // a local edit that must stand — never "reconciled" away (brief §12).
+    const incomingHash = rowContentHash(row);
+    if (task.lastSyncedContentHash === incomingHash) {
+      return false;
+    }
+
     const updates: Record<string, unknown> = {};
+    let conflictRaised = false;
 
     if (task.roadmapTable !== row.table) {
       updates.roadmapTable = row.table;
-      await tx.auditEvent.create({
-        data: {
+      await this.audit.record(
+        {
+          projectId: task.projectId,
           entityType: 'Task',
           entityId: task.id,
           operation: 'ROADMAP_TABLE_CHANGE',
@@ -322,7 +381,8 @@ export class SynchronizationService {
           previousValue: { roadmapTable: task.roadmapTable },
           newValue: { roadmapTable: row.table },
         },
-      });
+        tx,
+      );
       summary.tableChanged += 1;
     }
 
@@ -399,7 +459,7 @@ export class SynchronizationService {
             ];
             externalVersion[field] = candidates[field];
           }
-          await tx.conflict.create({
+          const conflict = await tx.conflict.create({
             data: {
               projectId: task.projectId,
               kind: 'CONCURRENT_FIELD_EDIT',
@@ -409,6 +469,8 @@ export class SynchronizationService {
               externalVersion: externalVersion as Prisma.InputJsonValue,
             },
           });
+          await this.audit.recordConflictDetected(conflict, 'SYNC', tx);
+          conflictRaised = true;
           summary.conflictsRaised += 1;
         }
         for (const field of clean) {
@@ -417,30 +479,42 @@ export class SynchronizationService {
       }
     }
 
-    if (Object.keys(updates).length === 0) {
-      return false;
+    // Table membership is already audited above; this records every other
+    // field the document changed (brief §25 "cambios provenientes de documentos").
+    const documentDiff = diffFields(
+      task as unknown as Record<string, unknown>,
+      Object.fromEntries(
+        Object.entries(updates).filter(([field]) => field !== 'roadmapTable'),
+      ),
+    );
+    if (documentDiff) {
+      await this.audit.record(
+        {
+          projectId: task.projectId,
+          entityType: 'Task',
+          entityId: task.id,
+          operation: 'ROADMAP_FIELD_UPDATE',
+          origin: 'ROADMAP',
+          ...documentDiff,
+        },
+        tx,
+      );
     }
-    updates.lastSyncedContentHash = rowContentHash(row);
-    updates.lastSyncedAt = new Date();
-    await tx.task.update({ where: { id: task.id }, data: updates });
-    return true;
-  }
-}
 
-function rowContentHash(row: ParsedRoadmapRow): string {
-  return createHash('sha256')
-    .update(
-      JSON.stringify([
-        row.externalId,
-        row.table,
-        row.outcome,
-        row.acceptanceCheck,
-        row.statusRaw,
-        row.rawOwner,
-        row.dependsOnRaw,
-        row.blocker,
-        row.neededDecision,
-      ]),
-    )
-    .digest('hex');
+    // The fingerprint always advances — even a fully contested row has now
+    // been seen (its external side lives in the Conflict), so the next run
+    // must not raise the same conflict again. The UI-edit window
+    // (lastSyncedAt) only moves when nothing was contested: otherwise a later
+    // document edit to a still-contested field would be applied silently.
+    const changed = Object.keys(updates).length > 0;
+    await tx.task.update({
+      where: { id: task.id },
+      data: {
+        ...updates,
+        lastSyncedContentHash: incomingHash,
+        ...(conflictRaised ? {} : { lastSyncedAt: new Date() }),
+      },
+    });
+    return changed;
+  }
 }

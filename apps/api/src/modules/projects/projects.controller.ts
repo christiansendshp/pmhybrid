@@ -42,7 +42,11 @@ export class ProjectsController {
   @Patch(':projectId')
   @UseGuards(ProjectMemberGuard, PermissionGuard)
   @RequirePermission(PERMISSIONS.PROJECT_UPDATE)
-  update(@Param('projectId') projectId: string, @Body() dto: UpdateProjectDto) {
-    return this.projectsService.update(projectId, dto);
+  update(
+    @Param('projectId') projectId: string,
+    @Body() dto: UpdateProjectDto,
+    @CurrentActorId() requesterActorId: string,
+  ) {
+    return this.projectsService.update(projectId, dto, requesterActorId);
   }
 }

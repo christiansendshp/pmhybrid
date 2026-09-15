@@ -2,7 +2,9 @@ import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { DocumentKind, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { AuditService } from '../audit/audit.service.js';
 import { RoadmapParserService } from '../roadmap/roadmap-parser.service.js';
+import { rowContentHash } from './row-content-hash.util.js';
 import { appendAgentslogEntry } from '../roadmap/agentslog-writer.util.js';
 import { upsertActiveRoadmapRow } from '../roadmap/roadmap-row-writer.util.js';
 import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository-provider.interface.js';
@@ -39,6 +41,7 @@ export class WriteBackService {
     @Inject(PROJECT_REPOSITORY_PROVIDER)
     private readonly repositoryProvider: ProjectRepositoryProvider,
     private readonly roadmapParser: RoadmapParserService,
+    private readonly audit: AuditService,
   ) {}
 
   async recordTaskEvent(
@@ -142,7 +145,7 @@ export class WriteBackService {
         currentRow?.statusMapped &&
         String(currentRow.statusMapped) !== String(task.status)
       ) {
-        await tx.conflict.create({
+        const conflict = await tx.conflict.create({
           data: {
             projectId,
             kind: 'WRITE_BACK_COLLISION',
@@ -154,16 +157,19 @@ export class WriteBackService {
             } as Prisma.InputJsonValue,
           },
         });
-        await tx.auditEvent.create({
-          data: {
+        await this.audit.recordConflictDetected(conflict, 'SYSTEM', tx);
+        await this.audit.record(
+          {
+            projectId,
             actorId: requesterActorId,
             entityType: 'Task',
             entityId: task.id,
             operation: 'WRITE_BACK_AGENTSLOG_ONLY',
             origin: 'UI',
-            newValue: { trigger } as Prisma.InputJsonValue,
+            newValue: { trigger },
           },
-        });
+          tx,
+        );
         return task;
       }
     }
@@ -199,16 +205,36 @@ export class WriteBackService {
       updatedRoadmap,
     );
 
-    await tx.auditEvent.create({
-      data: {
+    // The row now on disk is exactly what PM Hub just rendered, so it becomes
+    // the task's last known external version: sync must not mistake our own
+    // write for a document-side change, nor this task's earlier UI edits
+    // (already reflected in the row) for still-contested ones.
+    const writtenRow = this.roadmapParser
+      .parse(updatedRoadmap)
+      .find((row) => row.externalId === externalId);
+    if (writtenRow) {
+      task = await tx.task.update({
+        where: { id: task.id },
+        data: {
+          lastSyncedContentHash: rowContentHash(writtenRow),
+          lastSyncedAt: new Date(),
+          rawOwner: writtenRow.rawOwner ?? null,
+        },
+      });
+    }
+
+    await this.audit.record(
+      {
+        projectId,
         actorId: requesterActorId,
         entityType: 'Task',
         entityId: task.id,
         operation: 'WRITE_BACK',
         origin: 'UI',
-        newValue: { trigger } as Prisma.InputJsonValue,
+        newValue: { trigger },
       },
-    });
+      tx,
+    );
 
     return task;
   }

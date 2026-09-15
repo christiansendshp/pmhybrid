@@ -143,15 +143,30 @@ Conflict(id, projectId, kind: ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG|
   localVersion jsonb, externalVersion? jsonb, detectedAt, resolvedAt?,
   resolvedByActorId?, resolutionStrategy?: KEEP_LOCAL|KEEP_EXTERNAL|MANUAL_EDIT|DISMISSED)
 
-AuditEvent(id, actorId?, entityType, entityId, operation, previousValue? jsonb,
-  newValue? jsonb, origin: UI|ROADMAP|AGENTSLOG|SYNC|API|SYSTEM, occurredAt)
+AuditEvent(id, projectId?, actorId?, entityType, entityId, operation,
+  previousValue? jsonb, newValue? jsonb,
+  origin: UI|ROADMAP|AGENTSLOG|SYNC|API|SYSTEM, occurredAt)
   @@index([entityType, entityId, occurredAt])
+  @@index([projectId, occurredAt])   // a project's whole history in one query
 
 Notification(id, actorId, projectId, type, payload? jsonb, readAt?, createdAt)
 ```
 
 `Conflict` is a first-class entity (brief §26), not just an audit log line —
 it needs its own list/detail/resolve endpoints and UI route.
+
+`AuditEvent` rows are written by `AuditService.record()` inside the same
+transaction as the change they describe, and `previousValue`/`newValue` carry
+only the fields that actually changed. Audited entity types: `Project`,
+`Task`, `ProjectMember`, `ActorRole`, `Phase`, `Epic`, `Template`, `SyncRun`.
+Operations: `CREATE`, `UPDATE`, `PROGRESS_CHANGE`, `ASSIGN`, `REASSIGN`,
+`STATUS_CHANGE`, `DEPENDENCY_ADD`, `MEMBER_ADD`/`MEMBER_REMOVE`,
+`ROLE_ASSIGN`/`ROLE_REVOKE`, `WRITE_BACK`/`WRITE_BACK_AGENTSLOG_ONLY`,
+`ROADMAP_TABLE_CHANGE`, `ROADMAP_FIELD_UPDATE`,
+`COMPLETE_VIA_ROADMAP_REMOVAL`, `SYNC_RUN` (manual runs and scheduled runs
+that changed something), `CONFLICT_DETECTED`, `CONFLICT_RESOLVED`. Every
+authenticated REST call on a person's behalf is origin `UI`; `API` is
+reserved for agent API-key access.
 
 ## Project
 

@@ -37,11 +37,16 @@ export class ProjectRolesController {
   @Post()
   @UseGuards(PermissionGuard)
   @RequirePermission(PERMISSIONS.PROJECT_ROLES_MANAGE)
-  assign(@Param('projectId') projectId: string, @Body() dto: AssignRoleDto) {
+  assign(
+    @Param('projectId') projectId: string,
+    @Body() dto: AssignRoleDto,
+    @CurrentActorId() requesterActorId: string,
+  ) {
     return this.rolesService.assignProjectRole(
       projectId,
       dto.actorId,
       dto.roleId,
+      requesterActorId,
     );
   }
 
@@ -51,7 +56,12 @@ export class ProjectRolesController {
   revoke(
     @Param('projectId') projectId: string,
     @Param('actorRoleId') actorRoleId: string,
+    @CurrentActorId() requesterActorId: string,
   ) {
-    return this.rolesService.revokeAssignment(projectId, actorRoleId);
+    return this.rolesService.revokeAssignment(
+      projectId,
+      actorRoleId,
+      requesterActorId,
+    );
   }
 }

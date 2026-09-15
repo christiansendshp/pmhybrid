@@ -276,6 +276,88 @@ describe('Synchronization (read path, disappeared rows, archive-following, confl
     expect(after.body.acceptanceCriteria).toBe('updated acceptance');
   });
 
+  it('keeps a UI title edit (no overwrite, no conflict) while the Roadmap row itself is unchanged', async () => {
+    const docsPath = createScratchDocsPath();
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmapWithActiveRow('| PMH-6 | Doc title | check | TODO | — | — |'),
+      'utf-8',
+    );
+    const projectId = await createProjectAt(docsPath);
+    await request(server()).post(`/projects/${projectId}/sync`).set('Authorization', auth()).expect(201);
+    const tasks = await request(server())
+      .get(`/projects/${projectId}/tasks`)
+      .set('Authorization', auth())
+      .expect(200);
+    const task = tasks.body.find((t: { externalId: string }) => t.externalId === 'PMH-6');
+
+    await request(server())
+      .patch(`/projects/${projectId}/tasks/${task.id}`)
+      .set('Authorization', auth())
+      .send({ title: 'UI title' })
+      .expect(200);
+
+    // The document never changed since the last sync, so there is nothing
+    // external to reconcile — the local edit must simply stand.
+    const syncRun = await request(server())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth())
+      .expect(201);
+    expect(syncRun.body.summary.conflictsRaised).toBe(0);
+
+    const after = await request(server())
+      .get(`/projects/${projectId}/tasks/${task.id}`)
+      .set('Authorization', auth())
+      .expect(200);
+    expect(after.body.title).toBe('UI title');
+  });
+
+  it('raises CONCURRENT_FIELD_EDIT exactly once when a UI PATCH and a document edit touch the same field', async () => {
+    const docsPath = createScratchDocsPath();
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmapWithActiveRow('| PMH-7 | Doc title | check | TODO | — | — |'),
+      'utf-8',
+    );
+    const projectId = await createProjectAt(docsPath);
+    await request(server()).post(`/projects/${projectId}/sync`).set('Authorization', auth()).expect(201);
+    const tasks = await request(server())
+      .get(`/projects/${projectId}/tasks`)
+      .set('Authorization', auth())
+      .expect(200);
+    const task = tasks.body.find((t: { externalId: string }) => t.externalId === 'PMH-7');
+
+    await request(server())
+      .patch(`/projects/${projectId}/tasks/${task.id}`)
+      .set('Authorization', auth())
+      .send({ title: 'UI title' })
+      .expect(200);
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmapWithActiveRow('| PMH-7 | Doc title v2 | check | TODO | — | — |'),
+      'utf-8',
+    );
+
+    const firstSync = await request(server())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth())
+      .expect(201);
+    expect(firstSync.body.summary.conflictsRaised).toBe(1);
+
+    const after = await request(server())
+      .get(`/projects/${projectId}/tasks/${task.id}`)
+      .set('Authorization', auth())
+      .expect(200);
+    expect(after.body.title).toBe('UI title');
+
+    // Same document, same contested edit — already surfaced, not re-raised.
+    const secondSync = await request(server())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth())
+      .expect(201);
+    expect(secondSync.body.summary.conflictsRaised).toBe(0);
+  });
+
   it('records a real write-back: creating a task appends a CREATED Agentslog entry and a Roadmap row', async () => {
     const docsPath = createScratchDocsPath();
     const projectId = await createProjectAt(docsPath);

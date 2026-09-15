@@ -36,6 +36,14 @@ export interface TaskDetail extends Task {
     actor: { displayName: string };
   }[];
   assignee: { id: string; displayName: string; kind: string } | null;
+  agentLogEvents: {
+    id: string;
+    agentName: string;
+    statusWord: string;
+    summary: string;
+    timestampFromLog: string;
+    createdAt: string;
+  }[];
 }
 
 export interface CreateTaskInput {

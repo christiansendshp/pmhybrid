@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
@@ -14,8 +15,15 @@ export class SynchronizationController {
   ) {}
 
   @Post('sync')
-  triggerManualSync(@Param('projectId') projectId: string) {
-    return this.synchronizationService.runSync(projectId, 'MANUAL');
+  triggerManualSync(
+    @Param('projectId') projectId: string,
+    @CurrentActorId() requesterActorId: string,
+  ) {
+    return this.synchronizationService.runSync(
+      projectId,
+      'MANUAL',
+      requesterActorId,
+    );
   }
 
   @Get('sync-runs')

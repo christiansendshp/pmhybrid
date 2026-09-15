@@ -78,4 +78,42 @@
       Add dependency
     </button>
   </section>
+
+  <section>
+    <h3>Agent activity</h3>
+    @if (t.agentLogEvents.length === 0) {
+      <p>No Agentslog entries for this task yet.</p>
+    }
+    <ul>
+      @for (entry of t.agentLogEvents; track entry.id) {
+        <li>
+          <strong>{{ entry.agentName }}</strong> — {{ entry.statusWord }} — {{ entry.summary }} ({{
+            entry.timestampFromLog | date: 'medium'
+          }})
+        </li>
+      }
+    </ul>
+  </section>
+
+  <section>
+    <h3>History</h3>
+    @if (history().length === 0) {
+      <p>No recorded changes yet.</p>
+    }
+    <ul>
+      @for (event of history(); track event.id) {
+        <li>
+          {{ event.occurredAt | date: 'medium' }} —
+          {{ event.actor ? event.actor.displayName : 'system' }} — {{ event.operation }} ({{
+            event.origin
+          }})
+          <ul>
+            @for (change of describeChanges(event); track change.field) {
+              <li>{{ change.field }}: {{ change.from }} → {{ change.to }}</li>
+            }
+          </ul>
+        </li>
+      }
+    </ul>
+  </section>
 }

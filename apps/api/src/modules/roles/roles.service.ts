@@ -1,12 +1,18 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { PermissionsResolverService } from '../../common/permissions-resolver.service.js';
+import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
 export class RolesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissionsResolver: PermissionsResolverService,
+    private readonly audit: AuditService,
   ) {}
 
   findAllRoles() {
@@ -38,22 +44,91 @@ export class RolesService {
    * global-scope role currently exists in the seeded catalog (all seven
    * system roles are scope=PROJECT), so exposing global assignment over
    * HTTP is deferred until a global role actually exists to grant.
+   * Idempotent: an existing grant is returned as-is, with no audit entry.
    */
-  assignProjectRole(projectId: string, actorId: string, roleId: string) {
-    return this.prisma.actorRole.upsert({
+  async assignProjectRole(
+    projectId: string,
+    actorId: string,
+    roleId: string,
+    requesterActorId: string,
+  ) {
+    const existing = await this.prisma.actorRole.findUnique({
       where: { actorId_roleId_projectId: { actorId, roleId, projectId } },
-      update: {},
-      create: { actorId, roleId, projectId },
+    });
+    if (existing) {
+      return existing;
+    }
+    const [role, actor] = await Promise.all([
+      this.prisma.role.findUnique({ where: { id: roleId } }),
+      this.prisma.actor.findUnique({ where: { id: actorId } }),
+    ]);
+    if (!role) {
+      throw new BadRequestException('No such role');
+    }
+    if (!actor) {
+      throw new BadRequestException('No such actor');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const assignment = await tx.actorRole.create({
+        data: { actorId, roleId, projectId },
+      });
+      await this.audit.record(
+        {
+          projectId,
+          actorId: requesterActorId,
+          entityType: 'ActorRole',
+          entityId: assignment.id,
+          operation: 'ROLE_ASSIGN',
+          origin: 'UI',
+          newValue: {
+            actorId,
+            displayName: actor.displayName,
+            roleId,
+            roleName: role.name,
+          },
+        },
+        tx,
+      );
+      return assignment;
     });
   }
 
-  async revokeAssignment(projectId: string, actorRoleId: string) {
+  async revokeAssignment(
+    projectId: string,
+    actorRoleId: string,
+    requesterActorId: string,
+  ) {
     const assignment = await this.prisma.actorRole.findUnique({
       where: { id: actorRoleId },
+      include: {
+        role: { select: { name: true } },
+        actor: { select: { displayName: true } },
+      },
     });
     if (!assignment || assignment.projectId !== projectId) {
       throw new NotFoundException('No such role assignment on this project');
     }
-    return this.prisma.actorRole.delete({ where: { id: actorRoleId } });
+    return this.prisma.$transaction(async (tx) => {
+      const deleted = await tx.actorRole.delete({ where: { id: actorRoleId } });
+      await this.audit.record(
+        {
+          projectId,
+          actorId: requesterActorId,
+          entityType: 'ActorRole',
+          entityId: actorRoleId,
+          operation: 'ROLE_REVOKE',
+          origin: 'UI',
+          previousValue: {
+            actorId: assignment.actorId,
+            displayName: assignment.actor.displayName,
+            roleId: assignment.roleId,
+            roleName: assignment.role.name,
+          },
+        },
+        tx,
+      );
+      return deleted;
+    });
   }
 }

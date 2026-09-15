@@ -63,7 +63,7 @@ no oversized modules):
 | `roadmap`                      | `RoadmapParserService`, `AgentslogParserService` — parsing only, no orchestration            |
 | `synchronization`              | Scheduler, reconciliation algorithm, write-back orchestration                                |
 | `git-providers`                | `ProjectRepositoryProvider` interface + `LocalFsGitProvider` (MVP)                           |
-| `audit`                        | `AuditEvent` recording, subscribes to domain events                                          |
+| `audit`                        | `AuditEvent` recording inside callers' transactions + project audit trail read API           |
 | `notifications`                | `Notification` recording, subscribes to domain events                                        |
 | `conflicts`                    | `Conflict` CRUD and resolution endpoints                                                     |
 | `dashboard`                    | Cross-project summary + activity feed (brief §14) — aggregate, not project-scoped            |
@@ -93,19 +93,22 @@ grow without touching call sites:
 
 ## Cross-cutting concerns via events
 
-Domain services emit events (`task.status.changed`, `task.assigned`,
-`sync.conflict.detected`, ...) via `@nestjs/event-emitter`; `audit` and
-`notifications` subscribe rather than being called inline from every service.
-This also is the seam for a future WebSocket gateway (brief §27/§29) to fan
-out the same events without touching business logic — no gateway is built in
-MVP.
+Audit is deliberately **not** event-driven: an `AuditEvent` must commit or
+roll back with the mutation it describes, so services call
+`AuditService.record(entry, tx)` inside their own transaction. Sync's
+per-field conflict check depends on those rows existing the moment a UI edit
+commits.
+
+Side effects that may lag (notifications, a future WebSocket gateway for brief
+§27/§29) are the ones meant to hang off `@nestjs/event-emitter` events, without
+touching business logic — no gateway is built in MVP.
 
 ## Frontend structure
 
 Standalone Angular components, lazy-loaded per feature area under
 `src/app/features/`: `auth`, `dashboard`, `my-projects`, `project-dashboard`,
 `kanban`, `phases-progress`, `task-detail`, `workload`, `documents-viewer`,
-`conflicts`. `dashboard` and `workload` are top-level routes (`/dashboard`,
+`conflicts`, `audit-log`. `dashboard` and `workload` are top-level routes (`/dashboard`,
 `/workload`, post-login landing is `/dashboard`) backed by the cross-project
 modules above; `project-dashboard` is the project-scoped overview nested
 under `/projects/:projectId`. `core/` holds auth guards/interceptors and the

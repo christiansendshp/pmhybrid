@@ -1,8 +1,11 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
+import { describeAuditChanges } from '../../core/audit-format.js';
+import { AuditEvent, AuditService } from '../../core/audit.service.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { LEGAL_NEXT_STATUSES } from '../../core/task-status-policy.js';
 import {
@@ -12,22 +15,27 @@ import {
   TasksService,
 } from '../../core/tasks.service.js';
 
+const HISTORY_LIMIT = 50;
+
 @Component({
   selector: 'app-task-detail',
-  imports: [FormsModule, RouterLink, MatButtonModule, MatSelectModule],
+  imports: [DatePipe, FormsModule, RouterLink, MatButtonModule, MatSelectModule],
   templateUrl: './task-detail.html',
 })
 export class TaskDetail implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly tasksService = inject(TasksService);
   private readonly projectsService = inject(ProjectsService);
+  private readonly auditService = inject(AuditService);
 
   readonly task = signal<TaskDetailModel | null>(null);
+  readonly history = signal<AuditEvent[]>([]);
   readonly members = signal<ProjectMember[]>([]);
   readonly otherTasks = signal<Task[]>([]);
   readonly selectedAssigneeId = signal<string | null>(null);
   readonly selectedDependsOnId = signal<string | null>(null);
   readonly newSubtaskTitle = signal('');
+  readonly describeChanges = describeAuditChanges;
 
   private get projectId(): string {
     return this.route.parent!.snapshot.paramMap.get('projectId')!;
@@ -52,8 +60,18 @@ export class TaskDetail implements OnInit {
     this.otherTasks.set(allTasks.filter((t) => t.id !== this.taskId));
   }
 
+  /** Task and its change history together, so the history always reflects the action just taken (brief §17). */
   private async reload(): Promise<void> {
-    this.task.set(await this.tasksService.getById(this.projectId, this.taskId));
+    const [task, history] = await Promise.all([
+      this.tasksService.getById(this.projectId, this.taskId),
+      this.auditService.listForProject(this.projectId, {
+        entityType: 'Task',
+        entityId: this.taskId,
+        limit: HISTORY_LIMIT,
+      }),
+    ]);
+    this.task.set(task);
+    this.history.set(history);
   }
 
   async transition(status: TaskStatus): Promise<void> {

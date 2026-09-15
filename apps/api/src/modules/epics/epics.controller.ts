@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
+import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
 import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
@@ -34,8 +35,12 @@ export class EpicsController {
   @Post()
   @UseGuards(PermissionGuard)
   @RequirePermission(PERMISSIONS.PROJECT_UPDATE)
-  create(@Param('projectId') projectId: string, @Body() dto: CreateEpicDto) {
-    return this.epicsService.create(projectId, dto);
+  create(
+    @Param('projectId') projectId: string,
+    @Body() dto: CreateEpicDto,
+    @CurrentActorId() requesterActorId: string,
+  ) {
+    return this.epicsService.create(projectId, dto, requesterActorId);
   }
 
   @Patch(':id')
@@ -45,7 +50,8 @@ export class EpicsController {
     @Param('projectId') projectId: string,
     @Param('id') id: string,
     @Body() dto: UpdateEpicDto,
+    @CurrentActorId() requesterActorId: string,
   ) {
-    return this.epicsService.update(projectId, id, dto);
+    return this.epicsService.update(projectId, id, dto, requesterActorId);
   }
 }

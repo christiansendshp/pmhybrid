@@ -7,6 +7,7 @@ import {
 import { TaskStatus } from '@pmhybrid/shared-types';
 import { PermissionsResolverService } from '../../common/permissions-resolver.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { AuditService, diffFields } from '../audit/audit.service.js';
 import { WriteBackService } from '../synchronization/write-back.service.js';
 import { AddDependencyDto } from './dto/add-dependency.dto.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
@@ -33,6 +34,7 @@ export class TasksService {
     private readonly progressRollup: ProgressRollupService,
     private readonly permissionsResolver: PermissionsResolverService,
     private readonly writeBack: WriteBackService,
+    private readonly audit: AuditService,
   ) {}
 
   findAllForProject(projectId: string, filters: TaskListFilters) {
@@ -61,6 +63,20 @@ export class TasksService {
             include: { actor: { select: { id: true, displayName: true } } },
           },
           assignee: { select: { id: true, displayName: true, kind: true } },
+          // Brief §17 "actividad de agentes" — ordered by ingestion, never by
+          // the agent-authored (untrusted) timestampFromLog.
+          agentLogEvents: {
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+            select: {
+              id: true,
+              agentName: true,
+              statusWord: true,
+              summary: true,
+              timestampFromLog: true,
+              createdAt: true,
+            },
+          },
         },
       }),
       this.progressRollup.computeTaskProgress(taskId),
@@ -75,25 +91,24 @@ export class TasksService {
     requesterActorId: string,
   ) {
     await this.assertHierarchyRefs(projectId, dto);
-    const task = await this.prisma.task.create({
-      data: {
-        projectId,
-        sourceOrigin: 'UI',
-        title: dto.title,
-        description: dto.description,
-        phaseId: dto.phaseId,
-        epicId: dto.epicId,
-        templateId: dto.templateId,
-        parentTaskId: dto.parentTaskId,
-        priority: dto.priority,
-        acceptanceCriteria: dto.acceptanceCriteria,
-        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-        estimatedDate: dto.estimatedDate
-          ? new Date(dto.estimatedDate)
-          : undefined,
-        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
-        progressPercent: dto.progressPercent,
-      },
+    const fields = toTaskFields(dto);
+    const task = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.task.create({
+        data: { projectId, sourceOrigin: 'UI', ...fields, title: dto.title },
+      });
+      await this.audit.record(
+        {
+          projectId,
+          actorId: requesterActorId,
+          entityType: 'Task',
+          entityId: created.id,
+          operation: 'CREATE',
+          origin: 'UI',
+          newValue: diffFields({}, fields)?.newValue,
+        },
+        tx,
+      );
+      return created;
     });
     return this.writeBack.recordTaskEvent(
       projectId,
@@ -103,30 +118,49 @@ export class TasksService {
     );
   }
 
-  async update(projectId: string, taskId: string, dto: UpdateTaskDto) {
-    await this.getOwned(projectId, taskId);
+  /**
+   * Audits exactly the fields that changed — sync's per-field conflict
+   * check reads them (docs/synchronization.md step 5), so a UI edit to a
+   * Roadmap-backed field is never silently overwritten. A no-op PATCH
+   * writes nothing.
+   */
+  async update(
+    projectId: string,
+    taskId: string,
+    dto: UpdateTaskDto,
+    requesterActorId: string,
+  ) {
+    const task = await this.getOwned(projectId, taskId);
     await this.assertHierarchyRefs(projectId, dto);
     if (dto.parentTaskId) {
       await this.assertNoParentCycle(taskId, dto.parentTaskId);
     }
-    return this.prisma.task.update({
-      where: { id: taskId },
-      data: {
-        title: dto.title,
-        description: dto.description,
-        phaseId: dto.phaseId,
-        epicId: dto.epicId,
-        templateId: dto.templateId,
-        parentTaskId: dto.parentTaskId,
-        priority: dto.priority,
-        acceptanceCriteria: dto.acceptanceCriteria,
-        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-        estimatedDate: dto.estimatedDate
-          ? new Date(dto.estimatedDate)
-          : undefined,
-        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
-        progressPercent: dto.progressPercent,
-      },
+    const fields = toTaskFields(dto);
+    const diff = diffFields(task as unknown as Record<string, unknown>, fields);
+    if (!diff) {
+      return task;
+    }
+    const onlyProgress = Object.keys(diff.newValue).every(
+      (field) => field === 'progressPercent',
+    );
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.task.update({
+        where: { id: taskId },
+        data: fields,
+      });
+      await this.audit.record(
+        {
+          projectId,
+          actorId: requesterActorId,
+          entityType: 'Task',
+          entityId: taskId,
+          operation: onlyProgress ? 'PROGRESS_CHANGE' : 'UPDATE',
+          origin: 'UI',
+          ...diff,
+        },
+        tx,
+      );
+      return updated;
     });
   }
 
@@ -177,12 +211,13 @@ export class TasksService {
       await tx.taskAssignment.create({
         data: { taskId, actorId, assignedByActorId: requesterActorId },
       });
-      await tx.auditEvent.create({
-        data: {
+      await this.audit.record(
+        {
+          projectId,
           actorId: requesterActorId,
           entityType: 'Task',
           entityId: taskId,
-          operation: 'REASSIGN',
+          operation: task.assigneeActorId ? 'REASSIGN' : 'ASSIGN',
           // Includes `status` too when the PENDIENTE->ASIGNADA side effect
           // fires — sync's per-field conflict check (docs/synchronization.md
           // step 5) reads this newValue to know which fields the UI touched.
@@ -193,7 +228,8 @@ export class TasksService {
           newValue: { assigneeActorId: actorId, status: nextStatus },
           origin: 'UI',
         },
-      });
+        tx,
+      );
       return tx.task.update({
         where: { id: taskId },
         data: { assigneeActorId: actorId, status: nextStatus },
@@ -247,8 +283,9 @@ export class TasksService {
           assigneeLockedAt: isAssigneeLocked(toStatus) ? new Date() : null,
         },
       });
-      await tx.auditEvent.create({
-        data: {
+      await this.audit.record(
+        {
+          projectId,
           actorId: requesterActorId,
           entityType: 'Task',
           entityId: taskId,
@@ -257,7 +294,8 @@ export class TasksService {
           newValue: { status: toStatus },
           origin: 'UI',
         },
-      });
+        tx,
+      );
       return updated;
     });
 
@@ -286,6 +324,7 @@ export class TasksService {
     projectId: string,
     taskId: string,
     dto: AddDependencyDto,
+    requesterActorId: string,
   ) {
     await this.getOwned(projectId, taskId);
 
@@ -297,12 +336,33 @@ export class TasksService {
       await this.assertNoDependencyCycle(taskId, dto.dependsOnTaskId);
     }
 
-    return this.prisma.taskDependency.create({
-      data: {
-        taskId,
-        dependsOnTaskId: dto.dependsOnTaskId,
-        rawExternalRef: dto.rawExternalRef,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const dependency = await tx.taskDependency.create({
+        data: {
+          taskId,
+          dependsOnTaskId: dto.dependsOnTaskId,
+          rawExternalRef: dto.rawExternalRef,
+        },
+      });
+      await this.audit.record(
+        {
+          projectId,
+          actorId: requesterActorId,
+          entityType: 'Task',
+          entityId: taskId,
+          operation: 'DEPENDENCY_ADD',
+          origin: 'UI',
+          newValue: diffFields(
+            {},
+            {
+              dependsOnTaskId: dto.dependsOnTaskId,
+              rawExternalRef: dto.rawExternalRef,
+            },
+          )?.newValue,
+        },
+        tx,
+      );
+      return dependency;
     });
   }
 
@@ -412,6 +472,24 @@ export class TasksService {
       }
     }
   }
+}
+
+/** The persisted shape of a create/update payload; `undefined` means "not provided". */
+function toTaskFields(dto: UpdateTaskDto) {
+  return {
+    title: dto.title,
+    description: dto.description,
+    phaseId: dto.phaseId,
+    epicId: dto.epicId,
+    templateId: dto.templateId,
+    parentTaskId: dto.parentTaskId,
+    priority: dto.priority,
+    acceptanceCriteria: dto.acceptanceCriteria,
+    startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+    estimatedDate: dto.estimatedDate ? new Date(dto.estimatedDate) : undefined,
+    dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+    progressPercent: dto.progressPercent,
+  };
 }
 
 /** Prisma's generated TaskStatus and shared-types' hand-authored one are structurally identical string unions but nominally distinct types. */

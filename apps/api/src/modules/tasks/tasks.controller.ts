@@ -70,8 +70,9 @@ export class TasksController {
     @Param('projectId') projectId: string,
     @Param('taskId') taskId: string,
     @Body() dto: UpdateTaskDto,
+    @CurrentActorId() requesterActorId: string,
   ) {
-    return this.tasksService.update(projectId, taskId, dto);
+    return this.tasksService.update(projectId, taskId, dto, requesterActorId);
   }
 
   @Post(':taskId/assign')
@@ -109,7 +110,13 @@ export class TasksController {
     @Param('projectId') projectId: string,
     @Param('taskId') taskId: string,
     @Body() dto: AddDependencyDto,
+    @CurrentActorId() requesterActorId: string,
   ) {
-    return this.tasksService.addDependency(projectId, taskId, dto);
+    return this.tasksService.addDependency(
+      projectId,
+      taskId,
+      dto,
+      requesterActorId,
+    );
   }
 }

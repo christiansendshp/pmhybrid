@@ -3,8 +3,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ConflictResolutionKind, Prisma } from '@prisma/client';
+import { ConflictResolutionKind } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { AuditService } from '../audit/audit.service.js';
 import { ResolveConflictDto } from './dto/resolve-conflict.dto.js';
 
 /**
@@ -18,7 +19,10 @@ import { ResolveConflictDto } from './dto/resolve-conflict.dto.js';
  */
 @Injectable()
 export class ConflictsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   findAllForProject(projectId: string, resolved?: boolean) {
     return this.prisma.conflict.findMany({
@@ -70,20 +74,23 @@ export class ConflictsService {
         });
       }
 
-      await tx.auditEvent.create({
-        data: {
+      await this.audit.record(
+        {
+          projectId,
           actorId: requesterActorId,
           entityType: conflict.entityType,
           entityId: conflict.entityId,
           operation: 'CONFLICT_RESOLVED',
           origin: 'UI',
-          previousValue: conflict.localVersion as Prisma.InputJsonValue,
+          previousValue: conflict.localVersion as Record<string, unknown>,
           newValue: {
+            conflictId: conflict.id,
             strategy: dto.strategy,
             applied: fieldsToApply ?? null,
-          } as Prisma.InputJsonValue,
+          },
         },
-      });
+        tx,
+      );
 
       return tx.conflict.update({
         where: { id },

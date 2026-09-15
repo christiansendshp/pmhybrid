@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
+import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
 import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
@@ -35,8 +36,12 @@ export class PhasesController {
   @Post()
   @UseGuards(PermissionGuard)
   @RequirePermission(PERMISSIONS.PROJECT_UPDATE)
-  create(@Param('projectId') projectId: string, @Body() dto: CreatePhaseDto) {
-    return this.phasesService.create(projectId, dto);
+  create(
+    @Param('projectId') projectId: string,
+    @Body() dto: CreatePhaseDto,
+    @CurrentActorId() requesterActorId: string,
+  ) {
+    return this.phasesService.create(projectId, dto, requesterActorId);
   }
 
   @Patch(':id')
@@ -46,7 +51,8 @@ export class PhasesController {
     @Param('projectId') projectId: string,
     @Param('id') id: string,
     @Body() dto: UpdatePhaseDto,
+    @CurrentActorId() requesterActorId: string,
   ) {
-    return this.phasesService.update(projectId, id, dto);
+    return this.phasesService.update(projectId, id, dto, requesterActorId);
   }
 }

@@ -38,8 +38,12 @@ threshold is treated as crashed and a new run is allowed to proceed.
    (documented default — there is no other status source for it), with null
    `dependencies`/`acceptanceCriteria` until a later Active/Near-term
    appearance backfills them.
-5. **Existing rows still present** — diff mapped fields against the incoming
-   row:
+5. **Existing rows still present** — first compare the row's content hash
+   with `Task.lastSyncedContentHash` (the last known external version of the
+   row, set on creation-from-row, on every reconcile and after every
+   write-back). **Equal → skip the row entirely**: the document did not
+   change, so any difference from the task is a local edit that must stand.
+   Otherwise diff mapped fields against the incoming row:
    - Table membership changed → update `Task.roadmapTable`, write
      `AuditEvent(operation=ROADMAP_TABLE_CHANGE)`. This is the _entire_
      mechanism for tracking "which table a row sits in is itself a status
@@ -60,8 +64,17 @@ task.lastSyncedAt`, collecting the field names touched in `newValue`.
        `Conflict(kind=CONCURRENT_FIELD_EDIT, localVersion=<contested fields
 from DB>, externalVersion=<contested fields from row>)`; apply only the
        non-contested fields.
-     - Empty intersection → apply everything; update
-       `lastSyncedContentHash`/`lastSyncedAt`.
+     - Empty intersection → apply everything.
+   - UI edits reach this check because every task mutation audits exactly
+     the fields it changed (`PATCH` included), never unchanged ones.
+   - Always store the new `lastSyncedContentHash`, so an already-raised
+     conflict is not raised again for the same document. Advance
+     `lastSyncedAt` (the start of the UI-edit window) only when nothing was
+     contested — otherwise a later document edit to a still-contested field
+     would be applied silently.
+   - Applied document fields are audited as
+     `AuditEvent(operation=ROADMAP_FIELD_UPDATE, origin=ROADMAP)`; a row seen
+     for the first time as `AuditEvent(operation=CREATE, origin=ROADMAP)`.
 6. **Disappeared rows** — a known `externalId` not present in this parse. This
    is the core hazard: `Roadmap.md` _removes_ completed rows rather than
    marking them done, so a naive parser would report every completion as a
@@ -128,6 +141,11 @@ locked reassignment):
    if it collided with what just came in, raise
    `Conflict(kind=WRITE_BACK_COLLISION)` instead of blind-writing.
 7. Write, rehash, update `Document`, insert `DocumentRevision(source=UI)`.
+   Re-parse the written row and store its hash as the task's
+   `lastSyncedContentHash` (and `lastSyncedAt = now`): the row on disk is
+   exactly what PM Hub rendered, so the next read must neither mistake it for
+   a document-side change nor treat the task's earlier, now-written UI edits
+   as still contested.
 8. `AuditEvent(origin=UI)`.
 
 ## Conflicts (brief §26)

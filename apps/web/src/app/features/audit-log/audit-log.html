@@ -1,0 +1,74 @@
+<h2>Audit</h2>
+
+<div>
+  <mat-select
+    placeholder="Filter by origin…"
+    [ngModel]="originFilter()"
+    (ngModelChange)="originFilter.set($event); onFilterChange()"
+  >
+    <mat-option [value]="null">All origins</mat-option>
+    @for (origin of origins; track origin) {
+      <mat-option [value]="origin">{{ origin }}</mat-option>
+    }
+  </mat-select>
+
+  <mat-select
+    placeholder="Filter by entity…"
+    [ngModel]="entityTypeFilter()"
+    (ngModelChange)="entityTypeFilter.set($event); onFilterChange()"
+  >
+    <mat-option [value]="null">All entities</mat-option>
+    @for (entityType of entityTypes; track entityType) {
+      <mat-option [value]="entityType">{{ entityType }}</mat-option>
+    }
+  </mat-select>
+</div>
+
+@if (loading() && events().length === 0) {
+  <p>Loading…</p>
+} @else if (events().length === 0) {
+  <p>No recorded changes match these filters.</p>
+}
+
+<table>
+  <thead>
+    <tr>
+      <th>When</th>
+      <th>Actor</th>
+      <th>Origin</th>
+      <th>Operation</th>
+      <th>Entity</th>
+      <th>Changes</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (event of events(); track event.id) {
+      <tr>
+        <td>{{ event.occurredAt | date: 'medium' }}</td>
+        <td>{{ event.actor ? event.actor.displayName + ' (' + event.actor.kind + ')' : '—' }}</td>
+        <td>{{ event.origin }}</td>
+        <td>{{ event.operation }}</td>
+        <td>
+          @if (event.entityType === 'Task') {
+            <a [routerLink]="['../tasks', event.entityId]">Task</a>
+          } @else {
+            {{ event.entityType }}
+          }
+        </td>
+        <td>
+          <ul>
+            @for (change of describeChanges(event); track change.field) {
+              <li>{{ change.field }}: {{ change.from }} → {{ change.to }}</li>
+            }
+          </ul>
+        </td>
+      </tr>
+    }
+  </tbody>
+</table>
+
+@if (hasMore()) {
+  <button mat-flat-button type="button" [disabled]="loading()" (click)="loadOlder()">
+    Load older
+  </button>
+}

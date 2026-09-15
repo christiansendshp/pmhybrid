@@ -52,6 +52,10 @@ export const routes: Routes = [
         path: 'conflicts',
         loadComponent: () => import('./features/conflicts/conflicts').then((m) => m.Conflicts),
       },
+      {
+        path: 'audit',
+        loadComponent: () => import('./features/audit-log/audit-log').then((m) => m.AuditLog),
+      },
     ],
   },
   { path: '**', redirectTo: 'dashboard' },

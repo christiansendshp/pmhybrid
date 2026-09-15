@@ -92,3 +92,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/test/brief-scenarios.e2e-spec.ts, apps/api/src/modules/synchronization/write-back.service.ts, apps/api/prisma/seed.ts, docs/architecture.md, docs/roadmap-parser.md, README.md
 - Verify: lint+build+test+e2e green across api (46 e2e, 19 unit) and web (12 unit); seed run twice with no row-count growth; browser: Dashboard/Workload/Kanban all render the new demo dataset correctly (blocked=2, global progress=31.64%, all 5 activity feeds populated)
 - Follow-up: This is the last phase in the 12-phase MVP plan -- no further phases queued
+
+## [2026-09-15T12:33:14Z] | claude-code | GAP-01 | DONE
+
+- Summary: In-transaction changed-fields audit for task/project/member/role/hierarchy/sync/conflict changes; AuditEvent.projectId + backfill; GET /projects/:id/audit; Audit view + task history. Fixed sync silently reverting UI edits (row-hash baseline).
+- Files: api modules audit/tasks/synchronization/+6, migration audit_event_project_scope, web audit-log + task-detail
+- Verify: lint+build; 55 api e2e, 19 api unit, 23 web green
+- Follow-up: GAP-02
