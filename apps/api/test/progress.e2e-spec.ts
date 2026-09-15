@@ -178,6 +178,35 @@ describe('Progress tree — status counts and subtask nesting (e2e)', () => {
     expect(a1Node.subtasks[0]).toMatchObject({ id: taskA1aId, status: 'PENDIENTE', subtasks: [] });
   });
 
+  it("rolls a task node's own statusCounts up from itself and every descendant subtask", async () => {
+    const res = await request(server())
+      .get(`/projects/${projectId}/progress`)
+      .set('Authorization', auth())
+      .expect(200);
+
+    const phaseNode = res.body.phases.find((p: { id: string }) => p.id === phaseId);
+    const epic1Node = phaseNode.epics.find((e: { id: string }) => e.id === epic1Id);
+    const taskANode = epic1Node.tasks.find((t: { id: string }) => t.id === taskAId);
+
+    // A itself TERMINADA, A1 EN_DESARROLLO, A1a PENDIENTE — same subtree an
+    // epic-level rollup would sum, but visible on the task that owns it.
+    expect(statusCountsOf(taskANode)).toEqual({
+      PENDIENTE: 1,
+      ASIGNADA: 0,
+      EN_DESARROLLO: 1,
+      QA: 0,
+      TERMINADA: 1,
+    });
+    // A leaf carries just itself.
+    expect(statusCountsOf(taskANode.subtasks[0].subtasks[0])).toEqual({
+      PENDIENTE: 1,
+      ASIGNADA: 0,
+      EN_DESARROLLO: 0,
+      QA: 0,
+      TERMINADA: 0,
+    });
+  });
+
   it("sums an epic's statusCounts from its top-level tasks' full subtrees", async () => {
     const res = await request(server())
       .get(`/projects/${projectId}/progress`)

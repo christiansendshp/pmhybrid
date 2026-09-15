@@ -1,5 +1,6 @@
 import { Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { statusCountEntries } from '../../core/status-counts.js';
 import { ProgressTaskNode } from '../../core/tasks.service.js';
 
 /**
@@ -16,4 +17,5 @@ import { ProgressTaskNode } from '../../core/tasks.service.js';
 })
 export class ProgressTaskNodeItem {
   readonly task = input.required<ProgressTaskNode>();
+  readonly countsFor = statusCountEntries;
 }

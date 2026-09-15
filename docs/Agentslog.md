@@ -176,3 +176,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: api progress-rollup.service + e2e; web core/tasks.service + status-counts + spec, features/phases-progress/*
 - Verify: 96 api e2e, 33 api unit, 91 web green
 - Follow-up: browser check pending sign-in
+
+## [2026-09-15T15:23:48Z] | claude-code | GAP-08 | DONE
+
+- Summary: Follow-up fix: a task node's own statusCounts (its subtree, computed but discarded in f386e7d) is now on the node too, not just epic/phase/project. Web shows it as a pill row on any task with subtasks. New component spec covers 2-level recursion; advisor review caught the gap.
+- Files: api progress-rollup.service; web core/tasks.service + features/phases-progress/*; +progress-task-node.spec.ts
+- Verify: 97 api e2e, 33 api unit, 94 web green
+- Follow-up: none

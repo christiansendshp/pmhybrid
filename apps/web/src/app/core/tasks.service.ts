@@ -97,6 +97,8 @@ export interface ProgressTaskNode {
   name: string;
   status: TaskStatus;
   progress: number;
+  /** This task plus every descendant subtask, by status. */
+  statusCounts: StatusCounts;
   subtasks: ProgressTaskNode[];
 }
 

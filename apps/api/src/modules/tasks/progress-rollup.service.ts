@@ -10,6 +10,8 @@ export interface ProgressTaskNode {
   name: string;
   status: TaskStatus;
   progress: number;
+  /** This task plus every descendant subtask, by status — same meaning as the container-level field below. */
+  statusCounts: StatusCounts;
   /** Brief §16 "subtareas en el árbol" — nested arbitrarily deep, mirroring parentTaskId chains. */
   subtasks: ProgressTaskNode[];
 }
@@ -193,6 +195,7 @@ export class ProgressRollupService {
           name: task.title,
           status: task.status as TaskStatus,
           progress: await this.computeTaskProgress(task.id),
+          statusCounts: counts,
           subtasks: children.map((child) => child.node),
         },
         counts,

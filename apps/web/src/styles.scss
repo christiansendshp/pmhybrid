@@ -163,6 +163,27 @@ th {
   }
 }
 
+// A compact "N STATUS" pill row (brief §16), shared by the progress tree's
+// container nodes and its own task nodes.
+.status-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: 2px var(--space-2);
+    border-radius: 999px;
+    background: var(--mat-sys-surface-container-highest);
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-label-small);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+}
+
 .kind-badge {
   display: inline-flex;
   align-items: center;
