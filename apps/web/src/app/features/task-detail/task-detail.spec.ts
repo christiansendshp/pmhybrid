@@ -1,26 +1,37 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuditEvent, AuditService } from '../../core/audit.service.js';
+import { HierarchyService, ProjectHierarchy } from '../../core/hierarchy.service.js';
 import { ProjectsService } from '../../core/projects.service.js';
 import { TaskDetail as TaskDetailModel, TasksService } from '../../core/tasks.service.js';
+import { TaskFormValue } from '../../shared/task-form/task-form.js';
 import { TaskDetail } from './task-detail.js';
 
 function taskDetail(overrides: Partial<TaskDetailModel> = {}): TaskDetailModel {
   return {
     id: 't1',
     projectId: 'p1',
+    externalId: 'PMH-1',
     title: 'Build API',
     description: null,
     status: 'ASIGNADA',
     phaseId: null,
     epicId: null,
+    templateId: null,
     parentTaskId: null,
     assigneeActorId: null,
     priority: null,
     progressPercent: null,
+    acceptanceCriteria: 'Endpoints documented',
+    startDate: null,
+    estimatedDate: null,
+    dueDate: null,
+    roadmapTable: 'ACTIVE',
     createdAt: '2026-09-15T09:00:00.000Z',
+    updatedAt: '2026-09-15T09:00:00.000Z',
     computedProgress: 0,
     subtasks: [],
     dependencies: [],
@@ -30,6 +41,35 @@ function taskDetail(overrides: Partial<TaskDetailModel> = {}): TaskDetailModel {
     ...overrides,
   };
 }
+
+const HIERARCHY: ProjectHierarchy = {
+  phases: [
+    { id: 'ph1', projectId: 'p1', name: 'Build', order: 1, description: null, status: null },
+  ],
+  epics: [
+    {
+      id: 'ep1',
+      projectId: 'p1',
+      phaseId: 'ph1',
+      name: 'Public API',
+      order: 1,
+      description: null,
+      status: null,
+    },
+  ],
+  templates: [],
+};
+
+const FORM_VALUE: TaskFormValue = {
+  title: 'Build API v2',
+  acceptanceCriteria: 'Endpoints documented',
+  description: null,
+  priority: null,
+  progressPercent: 20,
+  startDate: null,
+  estimatedDate: null,
+  dueDate: null,
+};
 
 const statusChange: AuditEvent = {
   id: 'e1',
@@ -45,14 +85,18 @@ const statusChange: AuditEvent = {
   actor: { id: 'a1', displayName: 'Demo Human', kind: 'HUMAN' },
 };
 
-describe('TaskDetail — history and agent activity (brief §17)', () => {
+describe('TaskDetail — details, editing, history and agent activity (brief §6, §17)', () => {
   let getById: ReturnType<typeof vi.fn>;
   let transition: ReturnType<typeof vi.fn>;
+  let update: ReturnType<typeof vi.fn>;
+  let create: ReturnType<typeof vi.fn>;
   let listAudit: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     getById = vi.fn();
     transition = vi.fn().mockResolvedValue({});
+    update = vi.fn().mockResolvedValue({});
+    create = vi.fn().mockResolvedValue({});
     listAudit = vi.fn();
     TestBed.configureTestingModule({
       providers: [
@@ -64,10 +108,17 @@ describe('TaskDetail — history and agent activity (brief §17)', () => {
         ]),
         {
           provide: TasksService,
-          useValue: { getById, transition, listForProject: vi.fn().mockResolvedValue([]) },
+          useValue: {
+            getById,
+            transition,
+            update,
+            create,
+            listForProject: vi.fn().mockResolvedValue([]),
+          },
         },
         { provide: ProjectsService, useValue: { listMembers: vi.fn().mockResolvedValue([]) } },
         { provide: AuditService, useValue: { listForProject: listAudit } },
+        { provide: HierarchyService, useValue: { load: vi.fn().mockResolvedValue(HIERARCHY) } },
       ],
     });
   });
@@ -76,6 +127,8 @@ describe('TaskDetail — history and agent activity (brief §17)', () => {
     const harness = await RouterTestingHarness.create();
     const component = await harness.navigateByUrl('/projects/p1/tasks/t1', TaskDetail);
     await harness.fixture.whenStable();
+    // Let the load that follows the task (members, tasks, hierarchy) settle too.
+    await new Promise((resolve) => setTimeout(resolve));
     harness.detectChanges();
     return { harness, component, text: () => harness.routeNativeElement!.textContent ?? '' };
   }
@@ -120,6 +173,30 @@ describe('TaskDetail — history and agent activity (brief §17)', () => {
     expect(text()).toContain('No recorded changes yet.');
   });
 
+  it('shows every task field, including where it sits in the hierarchy', async () => {
+    getById.mockResolvedValue(
+      taskDetail({
+        priority: 'HIGH',
+        phaseId: 'ph1',
+        epicId: 'ep1',
+        dueDate: '2026-10-10T00:00:00.000Z',
+        description: 'Public endpoints only',
+      }),
+    );
+    listAudit.mockResolvedValue([]);
+
+    const { text: rawText } = await render();
+    // Template line breaks between the placement entries collapse to single spaces.
+    const text = () => rawText().replace(/\s+/g, ' ');
+
+    expect(text()).toContain('PMH-1');
+    expect(text()).toContain('Endpoints documented');
+    expect(text()).toContain('HIGH');
+    expect(text()).toContain('Phase: Build · Epic: Public API');
+    expect(text()).toContain('Oct 10, 2026');
+    expect(text()).toContain('Public endpoints only');
+  });
+
   it('reloads the history after an action, so it reflects the change just made', async () => {
     getById.mockResolvedValue(taskDetail());
     listAudit.mockResolvedValue([]);
@@ -129,5 +206,57 @@ describe('TaskDetail — history and agent activity (brief §17)', () => {
 
     expect(transition).toHaveBeenCalledWith('p1', 't1', 'EN_DESARROLLO');
     expect(listAudit).toHaveBeenCalledTimes(2);
+  });
+
+  it('saves an edit through the task form and reloads the task and its history', async () => {
+    getById.mockResolvedValue(taskDetail());
+    listAudit.mockResolvedValue([]);
+    const { component } = await render();
+
+    component.startEditing();
+    await component.saveEdit(FORM_VALUE);
+
+    expect(update).toHaveBeenCalledWith('p1', 't1', {
+      title: 'Build API v2',
+      acceptanceCriteria: 'Endpoints documented',
+      description: null,
+      priority: null,
+      progressPercent: 20,
+      startDate: null,
+      estimatedDate: null,
+      dueDate: null,
+    });
+    expect(component.editing()).toBe(false);
+    expect(getById).toHaveBeenCalledTimes(2);
+    expect(listAudit).toHaveBeenCalledTimes(2);
+  });
+
+  it('adds a subtask with its acceptance criteria, and keeps the form open with the reason when saving fails', async () => {
+    getById.mockResolvedValue(taskDetail());
+    listAudit.mockResolvedValue([]);
+    const { component } = await render();
+
+    component.startSubtask();
+    await component.createSubtask({ ...FORM_VALUE, title: 'Write docs', parentTaskId: 't1' });
+    expect(create).toHaveBeenCalledWith(
+      'p1',
+      expect.objectContaining({
+        title: 'Write docs',
+        acceptanceCriteria: 'Endpoints documented',
+        parentTaskId: 't1',
+      }),
+    );
+    expect(component.addingSubtask()).toBe(false);
+
+    create.mockRejectedValueOnce(
+      new HttpErrorResponse({
+        status: 400,
+        error: { message: 'parentTaskId would create a cycle' },
+      }),
+    );
+    component.startSubtask();
+    await component.createSubtask({ ...FORM_VALUE, parentTaskId: 't1' });
+    expect(component.addingSubtask()).toBe(true);
+    expect(component.formError()).toBeTruthy();
   });
 });

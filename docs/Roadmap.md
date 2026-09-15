@@ -5,9 +5,9 @@ Keep active and near-term work only. Verified completed capability belongs in
 
 ## Active work
 
-| ID     | Outcome                                                                                                                      | Acceptance check                                                     | Status      | Owner                            | Depends on |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ----------- | -------------------------------- | ---------- |
-| GAP-04 | Full task create/edit (brief §6, §9, §17): required acceptance + parent instance, editable progress/priority/dates/hierarchy | e2e validation cases; Roadmap row reflects UI title/acceptance edits | IN_PROGRESS | claude-code@2026-09-15T13:12:00Z | GAP-01     |
+| ID     | Outcome                                                                        | Acceptance check                                                      | Status      | Owner                            | Depends on |
+| ------ | ------------------------------------------------------------------------------ | --------------------------------------------------------------------- | ----------- | -------------------------------- | ---------- |
+| GAP-05 | Task removal (brief §25, §31 CRUD) without tripping the disappeared-row hazard | e2e: removed task leaves Roadmap/Agentslog consistent and no conflict | IN_PROGRESS | claude-code@2026-09-15T14:10:00Z | GAP-04     |
 
 <!-- context:end -->
 
@@ -18,7 +18,6 @@ Post-MVP gap backlog derived from a brief-vs-code review on 2026-09-15 (the
 
 | ID     | Outcome                                                                                                          | Acceptance check                                                          | Status | Depends on |
 | ------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------ | ---------- |
-| GAP-05 | Task removal (brief §25, §31 CRUD) without tripping the disappeared-row hazard                                   | e2e: removed task leaves Roadmap/Agentslog consistent and no conflict     | TODO   | GAP-04     |
 | GAP-06 | Kanban cards with all §15 fields + search, grouping, sorting                                                     | web unit tests for grouping/sorting; browser check                        | TODO   | GAP-03     |
 | GAP-07 | My Projects summary (brief §19) + project settings edit                                                          | e2e for summary endpoint; browser check                                   | TODO   | GAP-03     |
 | GAP-08 | Phase progress counts by state + subtasks in the tree (brief §16)                                                | e2e on progress tree counts                                               | TODO   | —          |
@@ -32,6 +31,7 @@ Post-MVP gap backlog derived from a brief-vs-code review on 2026-09-15 (the
 | GAP-16 | Frontend component tests for main views (brief §33)                                                              | `pnpm --filter web test` covers kanban/task-detail/workload/conflicts     | TODO   | GAP-06     |
 | GAP-17 | CI pipeline running lint, build, unit and e2e tests                                                              | workflow file validated locally; green on push                            | TODO   | —          |
 | GAP-18 | Documentation gaps (brief §35): permissions, API, testing docs; stale Stack/Agents facts                         | project-documentation `check` green; links resolve                        | TODO   | —          |
+| GAP-19 | Lifecycle write-back (created/status/locked reassign) keeps a Near term or Blocked row in its own table          | sync e2e: EN_DESARROLLO on a Near term task leaves exactly one row        | TODO   | GAP-04     |
 
 ## Blocked
 

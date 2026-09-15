@@ -105,7 +105,7 @@ describe('Brief §33 — all 14 E2E scenarios, sequentially', () => {
     const task = await request(server())
       .post(`/projects/${projectId}/tasks`)
       .set('Authorization', owner())
-      .send({ title: 'Parent task for the brief walkthrough' })
+      .send({ title: 'Parent task for the brief walkthrough', acceptanceCriteria: 'Verified by e2e' })
       .expect(201);
     parentTaskId = task.body.id;
     expect(task.body.status).toBe('PENDIENTE');
@@ -125,7 +125,7 @@ describe('Brief §33 — all 14 E2E scenarios, sequentially', () => {
     const subtask = await request(server())
       .post(`/projects/${projectId}/tasks`)
       .set('Authorization', owner())
-      .send({ title: 'Subtask for the brief walkthrough', parentTaskId })
+      .send({ title: 'Subtask for the brief walkthrough', acceptanceCriteria: 'Verified by e2e', parentTaskId })
       .expect(201);
     subtaskId = subtask.body.id;
 

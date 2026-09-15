@@ -1,4 +1,5 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -6,6 +7,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { describeAuditChanges } from '../../core/audit-format.js';
 import { AuditEvent, AuditService } from '../../core/audit.service.js';
+import {
+  EMPTY_HIERARCHY,
+  HierarchyService,
+  ProjectHierarchy,
+} from '../../core/hierarchy.service.js';
+import { describeHttpError } from '../../core/http-error.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { LEGAL_NEXT_STATUSES } from '../../core/task-status-policy.js';
 import {
@@ -14,28 +21,70 @@ import {
   TaskStatus,
   TasksService,
 } from '../../core/tasks.service.js';
+import {
+  TaskForm,
+  TaskFormValue,
+  toCreateTaskInput,
+  toUpdateTaskInput,
+} from '../../shared/task-form/task-form.js';
 
 const HISTORY_LIMIT = 50;
 
+/** Brief §6, §17: every task field, its hierarchy, subtasks, dependencies, agent activity and history. */
 @Component({
   selector: 'app-task-detail',
-  imports: [DatePipe, FormsModule, RouterLink, MatButtonModule, MatSelectModule],
+  imports: [DatePipe, FormsModule, RouterLink, MatButtonModule, MatSelectModule, TaskForm],
   templateUrl: './task-detail.html',
+  styleUrl: './task-detail.scss',
 })
 export class TaskDetail implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly tasksService = inject(TasksService);
   private readonly projectsService = inject(ProjectsService);
   private readonly auditService = inject(AuditService);
+  private readonly hierarchyService = inject(HierarchyService);
 
   readonly task = signal<TaskDetailModel | null>(null);
   readonly history = signal<AuditEvent[]>([]);
   readonly members = signal<ProjectMember[]>([]);
-  readonly otherTasks = signal<Task[]>([]);
+  readonly allTasks = signal<Task[]>([]);
+  readonly hierarchy = signal<ProjectHierarchy>(EMPTY_HIERARCHY);
   readonly selectedAssigneeId = signal<string | null>(null);
   readonly selectedDependsOnId = signal<string | null>(null);
-  readonly newSubtaskTitle = signal('');
+  readonly editing = signal(false);
+  readonly addingSubtask = signal(false);
+  readonly saving = signal(false);
+  readonly formError = signal<string | null>(null);
   readonly describeChanges = describeAuditChanges;
+
+  readonly otherTasks = computed(() =>
+    this.allTasks().filter((task) => task.id !== this.task()?.id),
+  );
+
+  /** Where the task sits in the hierarchy, by name (brief §17 "jerarquía"). */
+  readonly placement = computed(() => {
+    const task = this.task();
+    if (!task) {
+      return [];
+    }
+    const { phases, epics, templates } = this.hierarchy();
+    const entries = [
+      { label: 'Phase', value: phases.find((phase) => phase.id === task.phaseId)?.name },
+      { label: 'Epic', value: epics.find((epic) => epic.id === task.epicId)?.name },
+      {
+        label: 'Template',
+        value: templates.find((template) => template.id === task.templateId)?.name,
+      },
+      {
+        label: 'Parent task',
+        value: this.allTasks().find((other) => other.id === task.parentTaskId)?.title,
+      },
+    ];
+    return entries.filter((entry): entry is { label: string; value: string } =>
+      Boolean(entry.value),
+    );
+  });
 
   private get projectId(): string {
     return this.route.parent!.snapshot.paramMap.get('projectId')!;
@@ -50,14 +99,26 @@ export class TaskDetail implements OnInit {
     return current ? LEGAL_NEXT_STATUSES[current] : [];
   }
 
-  async ngOnInit(): Promise<void> {
+  ngOnInit(): void {
+    // The router reuses this component when moving between a task and its
+    // subtasks or parent, so every change of task id reloads the view.
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.editing.set(false);
+      this.addingSubtask.set(false);
+      void this.load();
+    });
+  }
+
+  private async load(): Promise<void> {
     await this.reload();
-    const [members, allTasks] = await Promise.all([
+    const [members, allTasks, hierarchy] = await Promise.all([
       this.projectsService.listMembers(this.projectId),
       this.tasksService.listForProject(this.projectId),
+      this.hierarchyService.load(this.projectId),
     ]);
     this.members.set(members);
-    this.otherTasks.set(allTasks.filter((t) => t.id !== this.taskId));
+    this.allTasks.set(allTasks);
+    this.hierarchy.set(hierarchy);
   }
 
   /** Task and its change history together, so the history always reflects the action just taken (brief §17). */
@@ -99,13 +160,46 @@ export class TaskDetail implements OnInit {
     await this.reload();
   }
 
-  async addSubtask(): Promise<void> {
-    const title = this.newSubtaskTitle().trim();
-    if (!title) {
+  startEditing(): void {
+    this.formError.set(null);
+    this.addingSubtask.set(false);
+    this.editing.set(true);
+  }
+
+  startSubtask(): void {
+    this.formError.set(null);
+    this.editing.set(false);
+    this.addingSubtask.set(true);
+  }
+
+  async saveEdit(value: TaskFormValue): Promise<void> {
+    await this.submitForm(async () => {
+      await this.tasksService.update(this.projectId, this.taskId, toUpdateTaskInput(value));
+      this.editing.set(false);
+    });
+  }
+
+  async createSubtask(value: TaskFormValue): Promise<void> {
+    await this.submitForm(async () => {
+      await this.tasksService.create(this.projectId, toCreateTaskInput(value));
+      this.addingSubtask.set(false);
+    });
+  }
+
+  private async submitForm(action: () => Promise<void>): Promise<void> {
+    if (this.saving()) {
       return;
     }
-    await this.tasksService.create(this.projectId, { title, parentTaskId: this.taskId });
-    this.newSubtaskTitle.set('');
-    await this.reload();
+    this.saving.set(true);
+    this.formError.set(null);
+    try {
+      await action();
+      await this.reload();
+      this.allTasks.set(await this.tasksService.listForProject(this.projectId));
+    } catch (error) {
+      this.formError.set(describeHttpError(error, 'The change could not be saved.'));
+    } finally {
+      this.saving.set(false);
+    }
   }
 }

@@ -106,7 +106,7 @@ describe('Audit trail (brief §25 — e2e)', () => {
     const task = await request(server())
       .post(`/projects/${projectId}/tasks`)
       .set('Authorization', auth())
-      .send({ title: 'Audited task' })
+      .send({ title: 'Audited task', acceptanceCriteria: 'Verified by e2e' })
       .expect(201);
     const taskId = task.body.id as string;
 
@@ -130,8 +130,15 @@ describe('Audit trail (brief §25 — e2e)', () => {
     const byOperation = (operation: string) => events.filter((e) => e.operation === operation);
 
     expect(byOperation('CREATE')).toHaveLength(1);
-    expect(byOperation('CREATE')[0].newValue).toEqual({ title: 'Audited task' });
-    expect(byOperation('WRITE_BACK')).toHaveLength(1);
+    expect(byOperation('CREATE')[0].newValue).toEqual({
+      title: 'Audited task',
+      acceptanceCriteria: 'Verified by e2e',
+    });
+    // Creation and the title edit reach the Roadmap; the progress change does not.
+    expect(byOperation('WRITE_BACK').map((e) => e.newValue?.trigger)).toEqual([
+      'FIELD_EDIT',
+      'CREATED',
+    ]);
     expect(byOperation('UPDATE')).toHaveLength(1);
     expect(byOperation('UPDATE')[0].previousValue).toEqual({ title: 'Audited task' });
     expect(byOperation('UPDATE')[0].newValue).toEqual({ title: 'Audited task v2' });
@@ -199,7 +206,7 @@ describe('Audit trail (brief §25 — e2e)', () => {
     const task = await request(server())
       .post(`/projects/${projectId}/tasks`)
       .set('Authorization', auth())
-      .send({ title: 'Synced task' })
+      .send({ title: 'Synced task', acceptanceCriteria: 'Verified by e2e' })
       .expect(201);
     // An agent working outside PM Hub logs progress against the task's Roadmap ID.
     appendFileSync(

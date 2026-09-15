@@ -200,7 +200,7 @@ describe('Administrable actors (brief §3 — e2e)', () => {
     const task = await request(server())
       .post(`/projects/${projectId}/tasks`)
       .set('Authorization', auth())
-      .send({ title: 'Needs an active assignee' })
+      .send({ title: 'Needs an active assignee', acceptanceCriteria: 'Verified by e2e' })
       .expect(201);
 
     await request(server())

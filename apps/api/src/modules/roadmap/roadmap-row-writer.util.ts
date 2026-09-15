@@ -62,6 +62,48 @@ export function upsertActiveRoadmapRow(
   return lines.join('\n');
 }
 
+/**
+ * Field-edit write-back (docs/synchronization.md "Field edits"): rewrites
+ * only the named cells of the row matching `externalId`, in whichever table
+ * holds it, leaving every other cell and row untouched — a Near term row
+ * stays in Near term. Headers the row's table lacks (Blocked has no Outcome)
+ * are skipped and left out of `replaced`. Returns null when no table holds
+ * the row.
+ */
+export function replaceRoadmapRowCells(
+  markdown: string,
+  externalId: string,
+  cellsByHeader: Record<string, string>,
+): { markdown: string; replaced: string[] } | null {
+  const lines = markdown.split(/\r?\n/);
+  for (const kind of Object.values(RoadmapTable)) {
+    const range = findRoadmapTableLineRange(lines, kind);
+    const idIndex = range?.headers.indexOf('ID') ?? -1;
+    if (!range || idIndex === -1) {
+      continue;
+    }
+    for (let i = range.rowsStart; i < range.rowsEnd; i++) {
+      const cells = splitRow(lines[i].trim());
+      if (cells[idIndex] !== externalId) {
+        continue;
+      }
+      const replaced = Object.keys(cellsByHeader).filter((header) =>
+        range.headers.includes(header),
+      );
+      if (replaced.length > 0) {
+        for (const header of replaced) {
+          cells[range.headers.indexOf(header)] =
+            sanitizeField(cellsByHeader[header]) || '—';
+        }
+        const padded = range.headers.map((_, index) => cells[index] ?? '—');
+        lines[i] = `| ${padded.join(' | ')} |`;
+      }
+      return { markdown: lines.join('\n'), replaced };
+    }
+  }
+  return null;
+}
+
 function renderRow(
   headers: string[],
   cellByHeader: Record<string, string>,

@@ -77,14 +77,14 @@ describe('Tasks (hierarchy, assignment, transitions, dependencies, progress — 
     const task = await request(server())
       .post(`/projects/${projectId}/tasks`)
       .set('Authorization', auth(ownerToken))
-      .send({ title: 'Parent task' })
+      .send({ title: 'Parent task', acceptanceCriteria: 'Verified by e2e' })
       .expect(201);
     expect(task.body.status).toBe('PENDIENTE');
 
     const subtask = await request(server())
       .post(`/projects/${projectId}/tasks`)
       .set('Authorization', auth(ownerToken))
-      .send({ title: 'Subtask', parentTaskId: task.body.id, progressPercent: 40 })
+      .send({ title: 'Subtask', acceptanceCriteria: 'Verified by e2e', parentTaskId: task.body.id, progressPercent: 40 })
       .expect(201);
 
     const assigned = await request(server())
@@ -116,7 +116,7 @@ describe('Tasks (hierarchy, assignment, transitions, dependencies, progress — 
     const task = await request(server())
       .post(`/projects/${projectId}/tasks`)
       .set('Authorization', auth(ownerToken))
-      .send({ title: 'Illegal jump' })
+      .send({ title: 'Illegal jump', acceptanceCriteria: 'Verified by e2e' })
       .expect(201);
 
     await request(server())
@@ -131,7 +131,7 @@ describe('Tasks (hierarchy, assignment, transitions, dependencies, progress — 
     const task = await request(server_)
       .post(`/projects/${projectId}/tasks`)
       .set('Authorization', auth(ownerToken))
-      .send({ title: 'Locked task' })
+      .send({ title: 'Locked task', acceptanceCriteria: 'Verified by e2e' })
       .expect(201);
 
     await request(server_)
@@ -169,12 +169,12 @@ describe('Tasks (hierarchy, assignment, transitions, dependencies, progress — 
     const taskA = await request(server())
       .post(`/projects/${projectId}/tasks`)
       .set('Authorization', auth(ownerToken))
-      .send({ title: 'A' })
+      .send({ title: 'A', acceptanceCriteria: 'Verified by e2e' })
       .expect(201);
     const taskB = await request(server())
       .post(`/projects/${projectId}/tasks`)
       .set('Authorization', auth(ownerToken))
-      .send({ title: 'B' })
+      .send({ title: 'B', acceptanceCriteria: 'Verified by e2e' })
       .expect(201);
 
     // B depends on A
@@ -207,7 +207,7 @@ describe('Tasks (hierarchy, assignment, transitions, dependencies, progress — 
     await request(server())
       .post(`/projects/${projectId}/tasks`)
       .set('Authorization', auth(ownerToken))
-      .send({ title: 'Cross-project', phaseId: foreignPhase.body.id })
+      .send({ title: 'Cross-project', acceptanceCriteria: 'Verified by e2e', phaseId: foreignPhase.body.id })
       .expect(400);
   });
 });

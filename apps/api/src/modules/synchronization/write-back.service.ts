@@ -6,12 +6,22 @@ import { AuditService } from '../audit/audit.service.js';
 import { RoadmapParserService } from '../roadmap/roadmap-parser.service.js';
 import { rowContentHash } from './row-content-hash.util.js';
 import { appendAgentslogEntry } from '../roadmap/agentslog-writer.util.js';
-import { upsertActiveRoadmapRow } from '../roadmap/roadmap-row-writer.util.js';
+import {
+  replaceRoadmapRowCells,
+  sanitizeField,
+  upsertActiveRoadmapRow,
+} from '../roadmap/roadmap-row-writer.util.js';
 import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository-provider.interface.js';
 import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
 
 export type WriteBackTrigger =
   'CREATED' | 'STATUS_EN_DESARROLLO' | 'STATUS_TERMINADA' | 'LOCKED_REASSIGN';
+
+/** Pre-edit values of the Roadmap-backed fields a UI edit just changed; absent keys were not changed. */
+export interface RoadmapFieldEdit {
+  title?: string;
+  acceptanceCriteria?: string | null;
+}
 
 const DOCUMENT_FILENAMES: Record<'ROADMAP' | 'AGENTSLOG', string> = {
   ROADMAP: 'Roadmap.md',
@@ -19,10 +29,12 @@ const DOCUMENT_FILENAMES: Record<'ROADMAP' | 'AGENTSLOG', string> = {
 };
 
 /**
- * Postgres -> Documents write-back (docs/synchronization.md). Only a
- * curated subset of task lifecycle events triggers it — everything else
- * (title edits, hierarchy moves) stays UI-only, to avoid ledger-rotation
- * churn from fine-grained activity. Runs under the same
+ * Postgres -> Documents write-back (docs/synchronization.md). A curated
+ * subset of task lifecycle events rewrites the row and appends an Agentslog
+ * entry; edits to the Roadmap-backed fields (title, acceptance criteria)
+ * rewrite just those cells with no ledger entry (`recordFieldEdit`); every
+ * other edit (priority, dates, hierarchy) stays UI-only, to avoid
+ * ledger-rotation churn from fine-grained activity. Runs under the same
  * pg_advisory_xact_lock as SynchronizationService.runSync, in its own
  * transaction, so the two naturally serialize against each other.
  *
@@ -63,6 +75,178 @@ export class WriteBackService {
       },
       { timeout: 20000, maxWait: 10000 },
     );
+  }
+
+  /**
+   * A UI edit to a Roadmap-backed field (title -> Outcome, acceptanceCriteria
+   * -> Acceptance check) rewrites just those cells of the task's existing
+   * row, wherever it sits. No Agentslog entry: an in-place edit never makes a
+   * row vanish, so the ledger-first ordering has nothing to protect
+   * (docs/synchronization.md "Field edits").
+   */
+  async recordFieldEdit(
+    projectId: string,
+    taskId: string,
+    previous: RoadmapFieldEdit,
+    requesterActorId: string,
+  ) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`;
+        return this.fieldEditLocked(
+          tx,
+          projectId,
+          taskId,
+          previous,
+          requesterActorId,
+        );
+      },
+      { timeout: 20000, maxWait: 10000 },
+    );
+  }
+
+  private async fieldEditLocked(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    taskId: string,
+    previous: RoadmapFieldEdit,
+    requesterActorId: string,
+  ) {
+    const project = await tx.project.findUniqueOrThrow({
+      where: { id: projectId },
+    });
+    const task = await tx.task.findUniqueOrThrow({ where: { id: taskId } });
+    if (!task.externalId) {
+      return task;
+    }
+    const externalId = task.externalId;
+
+    const roadmapContent = await this.repositoryProvider.readFile(
+      project.docsPath,
+      DOCUMENT_FILENAMES.ROADMAP,
+    );
+    const currentRow = this.roadmapParser
+      .parse(roadmapContent)
+      .find((row) => row.externalId === externalId);
+    if (!currentRow) {
+      // No row to edit: the document dropped it, which sync owns (step 6).
+      return task;
+    }
+
+    const roadmapDocument = await tx.document.findUnique({
+      where: { projectId_kind: { projectId, kind: 'ROADMAP' } },
+    });
+    const drifted =
+      roadmapDocument?.lastKnownHash !==
+      createHash('sha256').update(roadmapContent).digest('hex');
+
+    const edits = [
+      {
+        field: 'title',
+        header: 'Outcome',
+        current: currentRow.outcome,
+        next: task.title,
+      },
+      {
+        field: 'acceptanceCriteria',
+        header: 'Acceptance check',
+        current: currentRow.acceptanceCheck,
+        next: task.acceptanceCriteria ?? '',
+      },
+    ] as const;
+    const cells: Record<string, string> = {};
+    const deferred: string[] = [];
+    for (const edit of edits) {
+      if (!(edit.field in previous)) {
+        continue;
+      }
+      // Once the document changed since PM Hub last saw it, a cell that no
+      // longer holds the pre-edit value was edited on the document side too:
+      // never overwrite it — sync raises it as CONCURRENT_FIELD_EDIT (step 5).
+      const before = sanitizeField(previous[edit.field] ?? '');
+      if (drifted && (edit.current ?? '') !== before) {
+        deferred.push(edit.field);
+        continue;
+      }
+      cells[edit.header] = edit.next;
+    }
+
+    const written =
+      Object.keys(cells).length > 0
+        ? replaceRoadmapRowCells(roadmapContent, externalId, cells)
+        : null;
+    if (!written || written.replaced.length === 0) {
+      if (deferred.length > 0) {
+        await this.audit.record(
+          {
+            projectId,
+            actorId: requesterActorId,
+            entityType: 'Task',
+            entityId: task.id,
+            operation: 'WRITE_BACK_DEFERRED',
+            origin: 'UI',
+            newValue: { trigger: 'FIELD_EDIT', deferred },
+          },
+          tx,
+        );
+      }
+      return task;
+    }
+
+    await this.repositoryProvider.writeFile(
+      project.docsPath,
+      DOCUMENT_FILENAMES.ROADMAP,
+      written.markdown,
+    );
+    await this.recordDocumentRevision(
+      tx,
+      projectId,
+      'ROADMAP',
+      DOCUMENT_FILENAMES.ROADMAP,
+      written.markdown,
+    );
+
+    // The written row becomes the baseline only if the row carried no
+    // unreconciled document-side change: otherwise sync must still see — and
+    // apply or contest — what the document changed in the row's other cells.
+    let result = task;
+    const writtenRow = this.roadmapParser
+      .parse(written.markdown)
+      .find((row) => row.externalId === externalId);
+    if (
+      writtenRow &&
+      deferred.length === 0 &&
+      task.lastSyncedContentHash === rowContentHash(currentRow)
+    ) {
+      result = await tx.task.update({
+        where: { id: task.id },
+        data: {
+          lastSyncedContentHash: rowContentHash(writtenRow),
+          lastSyncedAt: new Date(),
+        },
+      });
+    }
+
+    await this.audit.record(
+      {
+        projectId,
+        actorId: requesterActorId,
+        entityType: 'Task',
+        entityId: task.id,
+        operation: 'WRITE_BACK',
+        origin: 'UI',
+        newValue: {
+          trigger: 'FIELD_EDIT',
+          fields: edits
+            .filter((edit) => written.replaced.includes(edit.header))
+            .map((edit) => edit.field),
+          ...(deferred.length > 0 ? { deferred } : {}),
+        },
+      },
+      tx,
+    );
+
+    return result;
   }
 
   private async writeBackLocked(

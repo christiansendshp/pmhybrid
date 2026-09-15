@@ -51,7 +51,7 @@ describe('Workload ("¿quién está haciendo qué?", e2e — brief §18)', () =>
     const task = await request(server())
       .post(`/projects/${projectId}/tasks`)
       .set('Authorization', auth())
-      .send({ title: 'Workload visible task' })
+      .send({ title: 'Workload visible task', acceptanceCriteria: 'Verified by e2e' })
       .expect(201);
     await request(server())
       .post(`/projects/${projectId}/tasks/${task.body.id}/assign`)

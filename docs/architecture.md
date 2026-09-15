@@ -115,7 +115,9 @@ runs `authGuard` on each child navigation. `dashboard`, `projects`, `workload`
 and `team` are top-level children (post-login landing is `/dashboard`);
 `project-dashboard` is the project header (sync, members, section tabs) for the
 routes nested under `/projects/:projectId`. `core/` holds guards, interceptors
-and API services, including the Signals-based `AuthService`. Global tokens and
+and API services, including the Signals-based `AuthService`; `shared/` holds
+cross-feature UI such as the task create/edit form used by the Kanban and the
+task detail. Global tokens and
 shared page classes (`page-header`, `tab-nav`, `kind-badge`) live in
 `src/styles.scss` on top of the Angular Material theme.
 

@@ -1,17 +1,16 @@
 <h2>Kanban</h2>
 
-<button mat-flat-button type="button" (click)="showCreateForm.set(!showCreateForm())">
-  {{ showCreateForm() ? 'Cancel' : 'New task' }}
-</button>
-
 @if (showCreateForm()) {
-  <form [formGroup]="form" (ngSubmit)="submit()">
-    <mat-form-field>
-      <mat-label>Title</mat-label>
-      <input matInput formControlName="title" />
-    </mat-form-field>
-    <button mat-flat-button type="submit" [disabled]="form.invalid || creating()">Create</button>
-  </form>
+  <app-task-form
+    [hierarchy]="hierarchy()"
+    [tasks]="allTasks()"
+    [submitting]="creating()"
+    [errorMessage]="createError()"
+    (save)="create($event)"
+    (cancelled)="showCreateForm.set(false)"
+  />
+} @else {
+  <button mat-flat-button type="button" (click)="openCreateForm()">New task</button>
 }
 
 <div>

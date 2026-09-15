@@ -113,3 +113,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: web layout/app-shell, app.routes(+spec), styles.scss, project-dashboard, login, 4 page templates, apps/web/PRODUCT.md
 - Verify: lint+build; 64 api e2e, 23 api unit, 38 web green; detector clean; browser: login light/dark, signed-out redirect
 - Follow-up: GAP-04
+
+## [2026-09-15T13:37:17Z] | claude-code | GAP-04 | DONE
+
+- Summary: Task create/edit: required title + acceptance (never cleared), priority enum, date order, agreeing phase/epic/template links, progress read-only with subtasks. Title/acceptance edits rewrite only those cells of the row in its own table, no Agentslog entry, per-cell drift check. Shared task form (parent-instance question) in Kanban, task edit, subtasks.
+- Files: api tasks dto/service, write-back, row writer, shared-types TaskPriority, e2e task-editing/sync/audit; web shared/task-form, hierarchy.service, kanban, task-detail
+- Verify: lint+build; 72 api e2e, 26 api unit, 47 web green; no browser login (credential policy): component specs
+- Follow-up: GAP-05; GAP-19 logged

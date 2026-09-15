@@ -62,7 +62,7 @@ describe('Dashboard (cross-project summary + activity, e2e — brief §14)', () 
     const task = await request(server())
       .post(`/projects/${project.body.id}/tasks`)
       .set('Authorization', ownToken)
-      .send({ title: 'Dashboard visible task' })
+      .send({ title: 'Dashboard visible task', acceptanceCriteria: 'Verified by e2e' })
       .expect(201);
 
     const summaryAfter = await request(server())

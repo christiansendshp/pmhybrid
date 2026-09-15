@@ -1,23 +1,37 @@
+import { TaskPriority } from '@pmhybrid/shared-types';
 import {
   IsDateString,
+  IsEnum,
   IsInt,
-  IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
   Max,
   Min,
 } from 'class-validator';
 
+/** At least one non-whitespace character. */
+export const NOT_BLANK = /\S/;
+
+/**
+ * Brief §9: an app-created task is never incomplete — its Roadmap row needs
+ * both an Outcome (title) and an Acceptance check. Hierarchy links stay
+ * optional (brief §5, BR-006); the UI asks for the parent instance explicitly.
+ */
 export class CreateTaskDto {
   @IsString()
-  @IsNotEmpty()
+  @Matches(NOT_BLANK, { message: 'title must not be blank' })
   title!: string;
+
+  @IsString()
+  @Matches(NOT_BLANK, { message: 'acceptanceCriteria must not be blank' })
+  acceptanceCriteria!: string;
 
   @IsString()
   @IsOptional()
   description?: string;
 
-  /** Hierarchy links — none mandatory (brief §5); if set, must exist in the same project. */
+  /** Hierarchy links — none mandatory (brief §5); if set, they must exist in the same project and agree with each other. */
   @IsString()
   @IsOptional()
   phaseId?: string;
@@ -34,13 +48,9 @@ export class CreateTaskDto {
   @IsOptional()
   parentTaskId?: string;
 
-  @IsString()
+  @IsEnum(TaskPriority)
   @IsOptional()
-  priority?: string;
-
-  @IsString()
-  @IsOptional()
-  acceptanceCriteria?: string;
+  priority?: TaskPriority;
 
   @IsDateString()
   @IsOptional()

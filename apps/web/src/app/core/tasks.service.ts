@@ -5,19 +5,33 @@ import { API_BASE_URL } from './api-base-url.js';
 
 export type TaskStatus = 'PENDIENTE' | 'ASIGNADA' | 'EN_DESARROLLO' | 'QA' | 'TERMINADA';
 
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+/** Mirrors shared-types TaskPriority, lowest first. */
+export const TASK_PRIORITIES: readonly TaskPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+
 export interface Task {
   id: string;
   projectId: string;
+  /** Roadmap row ID (brief §24); null until the task is written into the Roadmap. */
+  externalId: string | null;
   title: string;
   description: string | null;
   status: TaskStatus;
   phaseId: string | null;
   epicId: string | null;
+  templateId: string | null;
   parentTaskId: string | null;
   assigneeActorId: string | null;
-  priority: string | null;
+  priority: TaskPriority | null;
   progressPercent: number | null;
+  acceptanceCriteria: string | null;
+  startDate: string | null;
+  estimatedDate: string | null;
+  dueDate: string | null;
+  roadmapTable: 'ACTIVE' | 'NEAR_TERM' | 'BLOCKED' | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface TaskDetail extends Task {
@@ -46,16 +60,26 @@ export interface TaskDetail extends Task {
   }[];
 }
 
+/** Brief §9: title and acceptance criteria are required; everything else is optional. */
 export interface CreateTaskInput {
   title: string;
+  acceptanceCriteria: string;
   description?: string;
   phaseId?: string;
   epicId?: string;
   templateId?: string;
   parentTaskId?: string;
-  priority?: string;
+  priority?: TaskPriority;
   progressPercent?: number;
+  startDate?: string;
+  estimatedDate?: string;
+  dueDate?: string;
 }
+
+/** PATCH body: `null` clears an optional field; title and acceptance criteria can change but not be cleared. */
+export type UpdateTaskInput = {
+  [K in Exclude<keyof CreateTaskInput, 'title' | 'acceptanceCriteria'>]?: CreateTaskInput[K] | null;
+} & { title?: string; acceptanceCriteria?: string };
 
 export interface ProgressTaskNode {
   kind: 'TASK';
@@ -111,6 +135,12 @@ export class TasksService {
   create(projectId: string, input: CreateTaskInput): Promise<Task> {
     return firstValueFrom(
       this.http.post<Task>(`${API_BASE_URL}/projects/${projectId}/tasks`, input),
+    );
+  }
+
+  update(projectId: string, taskId: string, input: UpdateTaskInput): Promise<Task> {
+    return firstValueFrom(
+      this.http.patch<Task>(`${API_BASE_URL}/projects/${projectId}/tasks/${taskId}`, input),
     );
   }
 

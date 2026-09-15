@@ -22,16 +22,17 @@
 
 ## Business rules
 
-| ID     | Rule                                                                                                                                                                | Status    | Source or verification                                     |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------- |
-| BR-001 | A task's assignee is locked once status = EN_DESARROLLO; changing it requires a special permission and is always audited                                            | CONFIRMED | brief §7                                                   |
-| BR-002 | Kanban status is written verbatim into a managed project's Roadmap.md Status cell (PENDIENTE/ASIGNADA/EN DESARROLLO/QA/TERMINADA)                                   | CONFIRMED | user decision, `docs/skillProyectDocument-analysis.md` §12 |
-| BR-003 | A Roadmap row that disappears is never treated as deleted by default — completion must be confirmed via a terminal Agentslog entry, else it is raised as a Conflict | CONFIRMED | brief §12, `docs/synchronization.md`                       |
-| BR-004 | A task cannot be created without indicating which higher-level instance (Phase/Epic/Template/parent Task) it depends on, when applicable                            | CONFIRMED | brief §9                                                   |
-| BR-005 | Progress of a Phase/Epic/Task-with-subtasks is derived from its descendants via a documented strategy, not just a manually entered number, when descendants exist   | CONFIRMED | brief §16-17                                               |
-| BR-006 | Hierarchy levels (Phase/Epic/Template/Subtask) are optional per task, not mandatory                                                                                 | CONFIRMED | brief §5                                                   |
-| BR-007 | An inactive actor cannot sign in, use an already-issued token, join a project, or be assigned a task; an admin cannot deactivate themselves                         | CONFIRMED | brief §3, `apps/api/test/actors.e2e-spec.ts`               |
-| BR-008 | AI agent configuration never stores credentials; secrets come from environment variables                                                                            | CONFIRMED | brief §28, `agent-config.util.ts`                          |
+| ID     | Rule                                                                                                                                                                                | Status    | Source or verification                                     |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------- |
+| BR-001 | A task's assignee is locked once status = EN_DESARROLLO; changing it requires a special permission and is always audited                                                            | CONFIRMED | brief §7                                                   |
+| BR-002 | Kanban status is written verbatim into a managed project's Roadmap.md Status cell (PENDIENTE/ASIGNADA/EN DESARROLLO/QA/TERMINADA)                                                   | CONFIRMED | user decision, `docs/skillProyectDocument-analysis.md` §12 |
+| BR-003 | A Roadmap row that disappears is never treated as deleted by default — completion must be confirmed via a terminal Agentslog entry, else it is raised as a Conflict                 | CONFIRMED | brief §12, `docs/synchronization.md`                       |
+| BR-004 | A task cannot be created without indicating which higher-level instance (Phase/Epic/Template/parent Task) it depends on, when applicable                                            | CONFIRMED | brief §9                                                   |
+| BR-005 | Progress of a Phase/Epic/Task-with-subtasks is derived from its descendants via a documented strategy, not just a manually entered number, when descendants exist                   | CONFIRMED | brief §16-17                                               |
+| BR-006 | Hierarchy levels (Phase/Epic/Template/Subtask) are optional per task, not mandatory                                                                                                 | CONFIRMED | brief §5                                                   |
+| BR-007 | An inactive actor cannot sign in, use an already-issued token, join a project, or be assigned a task; an admin cannot deactivate themselves                                         | CONFIRMED | brief §3, `apps/api/test/actors.e2e-spec.ts`               |
+| BR-008 | AI agent configuration never stores credentials; secrets come from environment variables                                                                                            | CONFIRMED | brief §28, `agent-config.util.ts`                          |
+| BR-009 | An app-created task needs a title and acceptance criteria, which can change but never be cleared; edits to either reach the task's own Roadmap row without moving it between tables | CONFIRMED | brief §9, §12, `apps/api/test/task-editing.e2e-spec.ts`    |
 
 ## Main flows
 

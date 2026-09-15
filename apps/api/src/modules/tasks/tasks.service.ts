@@ -8,7 +8,10 @@ import { TaskStatus } from '@pmhybrid/shared-types';
 import { PermissionsResolverService } from '../../common/permissions-resolver.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
-import { WriteBackService } from '../synchronization/write-back.service.js';
+import {
+  type RoadmapFieldEdit,
+  WriteBackService,
+} from '../synchronization/write-back.service.js';
 import { AddDependencyDto } from './dto/add-dependency.dto.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
 import { UpdateTaskDto } from './dto/update-task.dto.js';
@@ -26,6 +29,24 @@ export interface TaskListFilters {
   status?: TaskStatus;
   assigneeActorId?: string;
 }
+
+interface HierarchyRefs {
+  phaseId?: string | null;
+  epicId?: string | null;
+  templateId?: string | null;
+  parentTaskId?: string | null;
+}
+
+/** A PATCH body as it arrives: `undefined` leaves a field alone, `null` clears it. */
+type TaskPatch = { [K in keyof UpdateTaskDto]?: UpdateTaskDto[K] | null };
+
+const HIERARCHY_FIELDS = [
+  'phaseId',
+  'epicId',
+  'templateId',
+  'parentTaskId',
+] as const;
+const DATE_FIELDS = ['startDate', 'estimatedDate', 'dueDate'] as const;
 
 @Injectable()
 export class TasksService {
@@ -84,17 +105,28 @@ export class TasksService {
     return { ...full, computedProgress };
   }
 
-  /** Task creation is a write-back trigger (docs/synchronization.md) — mints an externalId and appends an Agentslog entry. */
+  /**
+   * Task creation is a write-back trigger (docs/synchronization.md) — mints an
+   * externalId and appends an Agentslog entry. The DTO already refuses an
+   * incomplete task (brief §9); this validates the structure it hangs from.
+   */
   async create(
     projectId: string,
     dto: CreateTaskDto,
     requesterActorId: string,
   ) {
-    await this.assertHierarchyRefs(projectId, dto);
+    await this.assertHierarchy(projectId, dto);
+    assertDateOrder(dto);
     const fields = toTaskFields(dto);
     const task = await this.prisma.$transaction(async (tx) => {
       const created = await tx.task.create({
-        data: { projectId, sourceOrigin: 'UI', ...fields, title: dto.title },
+        data: {
+          projectId,
+          sourceOrigin: 'UI',
+          ...fields,
+          title: dto.title,
+          acceptanceCriteria: dto.acceptanceCriteria,
+        },
       });
       await this.audit.record(
         {
@@ -122,7 +154,8 @@ export class TasksService {
    * Audits exactly the fields that changed — sync's per-field conflict
    * check reads them (docs/synchronization.md step 5), so a UI edit to a
    * Roadmap-backed field is never silently overwritten. A no-op PATCH
-   * writes nothing.
+   * writes nothing. A changed title or acceptance criteria is then written
+   * into the task's Roadmap row ("Field edits").
    */
   async update(
     projectId: string,
@@ -131,10 +164,40 @@ export class TasksService {
     requesterActorId: string,
   ) {
     const task = await this.getOwned(projectId, taskId);
-    await this.assertHierarchyRefs(projectId, dto);
-    if (dto.parentTaskId) {
-      await this.assertNoParentCycle(taskId, dto.parentTaskId);
+    const patch = dto as TaskPatch;
+
+    // Checked against what the task will hold after the PATCH, so moving one
+    // link (or date) can't leave it disagreeing with a stored one.
+    if (HIERARCHY_FIELDS.some((field) => patch[field] !== undefined)) {
+      await this.assertHierarchy(projectId, {
+        phaseId: afterPatch(patch.phaseId, task.phaseId),
+        epicId: afterPatch(patch.epicId, task.epicId),
+        templateId: afterPatch(patch.templateId, task.templateId),
+        parentTaskId: afterPatch(patch.parentTaskId, task.parentTaskId),
+      });
     }
+    if (patch.parentTaskId) {
+      await this.assertNoParentCycle(taskId, patch.parentTaskId);
+    }
+    if (DATE_FIELDS.some((field) => patch[field] !== undefined)) {
+      assertDateOrder({
+        startDate: afterPatch(patch.startDate, task.startDate),
+        estimatedDate: afterPatch(patch.estimatedDate, task.estimatedDate),
+        dueDate: afterPatch(patch.dueDate, task.dueDate),
+      });
+    }
+    if (patch.progressPercent !== undefined && patch.progressPercent !== null) {
+      const subtaskCount = await this.prisma.task.count({
+        where: { parentTaskId: taskId },
+      });
+      if (subtaskCount > 0) {
+        // Brief §17, docs/domain-model.md rollup rule 2: read-only once derived.
+        throw new BadRequestException(
+          'progressPercent is derived from subtasks once a task has them',
+        );
+      }
+    }
+
     const fields = toTaskFields(dto);
     const diff = diffFields(task as unknown as Record<string, unknown>, fields);
     if (!diff) {
@@ -143,8 +206,8 @@ export class TasksService {
     const onlyProgress = Object.keys(diff.newValue).every(
       (field) => field === 'progressPercent',
     );
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.task.update({
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.task.update({
         where: { id: taskId },
         data: fields,
       });
@@ -160,8 +223,26 @@ export class TasksService {
         },
         tx,
       );
-      return updated;
+      return result;
     });
+
+    const previous: RoadmapFieldEdit = {};
+    if ('title' in diff.newValue) {
+      previous.title = diff.previousValue.title as string;
+    }
+    if ('acceptanceCriteria' in diff.newValue) {
+      previous.acceptanceCriteria = diff.previousValue.acceptanceCriteria as
+        string | null;
+    }
+    if (Object.keys(previous).length > 0 && updated.externalId) {
+      return this.writeBack.recordFieldEdit(
+        projectId,
+        taskId,
+        previous,
+        requesterActorId,
+      );
+    }
+    return updated;
   }
 
   /**
@@ -380,48 +461,54 @@ export class TasksService {
     return task;
   }
 
-  private async assertHierarchyRefs(
-    projectId: string,
-    dto: Pick<
-      CreateTaskDto,
-      'phaseId' | 'epicId' | 'templateId' | 'parentTaskId'
-    >,
-  ) {
-    if (
-      dto.phaseId &&
-      !(await this.prisma.phase.findFirst({
-        where: { id: dto.phaseId, projectId },
-      }))
-    ) {
+  /**
+   * Brief §9 "validar la estructura": every link belongs to this project, and
+   * the links agree with each other — an epic that sits in a phase can only
+   * be combined with that phase, a template with its own epic.
+   */
+  private async assertHierarchy(projectId: string, refs: HierarchyRefs) {
+    const [phase, epic, template, parentTask] = await Promise.all([
+      refs.phaseId
+        ? this.prisma.phase.findFirst({
+            where: { id: refs.phaseId, projectId },
+          })
+        : null,
+      refs.epicId
+        ? this.prisma.epic.findFirst({ where: { id: refs.epicId, projectId } })
+        : null,
+      refs.templateId
+        ? this.prisma.template.findFirst({
+            where: { id: refs.templateId, projectId },
+          })
+        : null,
+      refs.parentTaskId
+        ? this.prisma.task.findFirst({
+            where: { id: refs.parentTaskId, projectId },
+            select: { id: true },
+          })
+        : null,
+    ]);
+    if (refs.phaseId && !phase) {
       throw new BadRequestException('phaseId does not belong to this project');
     }
-    if (
-      dto.epicId &&
-      !(await this.prisma.epic.findFirst({
-        where: { id: dto.epicId, projectId },
-      }))
-    ) {
+    if (refs.epicId && !epic) {
       throw new BadRequestException('epicId does not belong to this project');
     }
-    if (
-      dto.templateId &&
-      !(await this.prisma.template.findFirst({
-        where: { id: dto.templateId, projectId },
-      }))
-    ) {
+    if (refs.templateId && !template) {
       throw new BadRequestException(
         'templateId does not belong to this project',
       );
     }
-    if (
-      dto.parentTaskId &&
-      !(await this.prisma.task.findFirst({
-        where: { id: dto.parentTaskId, projectId },
-      }))
-    ) {
+    if (refs.parentTaskId && !parentTask) {
       throw new BadRequestException(
         'parentTaskId does not belong to this project',
       );
+    }
+    if (epic?.phaseId && refs.phaseId && epic.phaseId !== refs.phaseId) {
+      throw new BadRequestException('epicId belongs to a different phase');
+    }
+    if (template?.epicId && refs.epicId && template.epicId !== refs.epicId) {
+      throw new BadRequestException('templateId belongs to a different epic');
     }
   }
 
@@ -478,22 +565,59 @@ export class TasksService {
   }
 }
 
-/** The persisted shape of a create/update payload; `undefined` means "not provided". */
+/** The persisted shape of a create/update payload; `undefined` means "not provided", `null` clears. */
 function toTaskFields(dto: UpdateTaskDto) {
+  const patch = dto as TaskPatch;
   return {
     title: dto.title,
-    description: dto.description,
-    phaseId: dto.phaseId,
-    epicId: dto.epicId,
-    templateId: dto.templateId,
-    parentTaskId: dto.parentTaskId,
-    priority: dto.priority,
+    description: patch.description,
+    phaseId: patch.phaseId,
+    epicId: patch.epicId,
+    templateId: patch.templateId,
+    parentTaskId: patch.parentTaskId,
+    priority: patch.priority,
     acceptanceCriteria: dto.acceptanceCriteria,
-    startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-    estimatedDate: dto.estimatedDate ? new Date(dto.estimatedDate) : undefined,
-    dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
-    progressPercent: dto.progressPercent,
+    startDate: toDate(patch.startDate),
+    estimatedDate: toDate(patch.estimatedDate),
+    dueDate: toDate(patch.dueDate),
+    progressPercent: patch.progressPercent,
   };
+}
+
+function toDate(value: string | null | undefined): Date | null | undefined {
+  return value === undefined || value === null ? value : new Date(value);
+}
+
+/** The value a field holds once a PATCH is applied. */
+function afterPatch<P, S>(
+  patched: P | null | undefined,
+  stored: S | null,
+): P | S | null {
+  return patched === undefined ? stored : patched;
+}
+
+/** Brief §6 dates: a task can be neither estimated nor due before it starts. */
+function assertDateOrder(dates: {
+  startDate?: Date | string | null;
+  estimatedDate?: Date | string | null;
+  dueDate?: Date | string | null;
+}) {
+  const start = toTime(dates.startDate);
+  if (start === null) {
+    return;
+  }
+  const estimated = toTime(dates.estimatedDate);
+  if (estimated !== null && estimated < start) {
+    throw new BadRequestException('estimatedDate cannot be before startDate');
+  }
+  const due = toTime(dates.dueDate);
+  if (due !== null && due < start) {
+    throw new BadRequestException('dueDate cannot be before startDate');
+  }
+}
+
+function toTime(value: Date | string | null | undefined): number | null {
+  return value ? new Date(value).getTime() : null;
 }
 
 /** Prisma's generated TaskStatus and shared-types' hand-authored one are structurally identical string unions but nominally distinct types. */

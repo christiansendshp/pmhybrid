@@ -7,15 +7,20 @@ import {
   transferArrayItem,
 } from '@angular/cdk/drag-drop';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import {
+  EMPTY_HIERARCHY,
+  HierarchyService,
+  ProjectHierarchy,
+} from '../../core/hierarchy.service.js';
+import { describeHttpError } from '../../core/http-error.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { KANBAN_STATUSES, isDraggableTransition } from '../../core/task-status-policy.js';
 import { Task, TaskStatus, TasksService } from '../../core/tasks.service.js';
+import { TaskForm, TaskFormValue, toCreateTaskInput } from '../../shared/task-form/task-form.js';
 
 /**
  * FASE-09. Drag & drop moves a card between columns via
@@ -25,16 +30,14 @@ import { Task, TaskStatus, TasksService } from '../../core/tasks.service.js';
 @Component({
   selector: 'app-kanban',
   imports: [
-    ReactiveFormsModule,
     FormsModule,
     RouterLink,
     CdkDropListGroup,
     CdkDropList,
     CdkDrag,
     MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
     MatSelectModule,
+    TaskForm,
   ],
   templateUrl: './kanban.html',
 })
@@ -42,13 +45,15 @@ export class Kanban implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly tasksService = inject(TasksService);
   private readonly projectsService = inject(ProjectsService);
-  private readonly fb = inject(FormBuilder);
+  private readonly hierarchyService = inject(HierarchyService);
 
   readonly statuses = KANBAN_STATUSES;
   readonly allTasks = signal<Task[]>([]);
   readonly members = signal<ProjectMember[]>([]);
+  readonly hierarchy = signal<ProjectHierarchy>(EMPTY_HIERARCHY);
   readonly showCreateForm = signal(false);
   readonly creating = signal(false);
+  readonly createError = signal<string | null>(null);
 
   readonly assigneeFilter = signal<string | null>(null);
   readonly titleFilter = signal('');
@@ -82,21 +87,19 @@ export class Kanban implements OnInit {
     return grouped;
   });
 
-  readonly form = this.fb.nonNullable.group({
-    title: ['', [Validators.required]],
-  });
-
   private get projectId(): string {
     return this.route.parent!.snapshot.paramMap.get('projectId')!;
   }
 
   async ngOnInit(): Promise<void> {
-    const [tasks, members] = await Promise.all([
+    const [tasks, members, hierarchy] = await Promise.all([
       this.tasksService.listForProject(this.projectId),
       this.projectsService.listMembers(this.projectId),
+      this.hierarchyService.load(this.projectId),
     ]);
     this.allTasks.set(tasks);
     this.members.set(members);
+    this.hierarchy.set(hierarchy);
   }
 
   /** Drop targets: PENDIENTE and ASIGNADA columns are excluded entirely (see class docstring). */
@@ -131,16 +134,23 @@ export class Kanban implements OnInit {
     }
   }
 
-  async submit(): Promise<void> {
-    if (this.form.invalid || this.creating()) {
+  openCreateForm(): void {
+    this.createError.set(null);
+    this.showCreateForm.set(true);
+  }
+
+  async create(value: TaskFormValue): Promise<void> {
+    if (this.creating()) {
       return;
     }
     this.creating.set(true);
+    this.createError.set(null);
     try {
-      await this.tasksService.create(this.projectId, { title: this.form.getRawValue().title });
-      this.form.reset();
+      await this.tasksService.create(this.projectId, toCreateTaskInput(value));
       this.showCreateForm.set(false);
       this.allTasks.set(await this.tasksService.listForProject(this.projectId));
+    } catch (error) {
+      this.createError.set(describeHttpError(error, 'The task could not be created.'));
     } finally {
       this.creating.set(false);
     }

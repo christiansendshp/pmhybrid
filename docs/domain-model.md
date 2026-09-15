@@ -99,11 +99,12 @@ Task(
   projectId, phaseId?, epicId?, templateId?, parentTaskId?,  // self-ref = subtask
   title, description?,
   status: PENDIENTE|ASIGNADA|EN_DESARROLLO|QA|TERMINADA,
-  priority?, progressPercent?,           // explicit override; null = derive via rollup
+  priority?: LOW|MEDIUM|HIGH|CRITICAL,
+  progressPercent?,                      // explicit override; null = derive via rollup
   startDate?, estimatedDate?, dueDate?,
   assigneeActorId?, assigneeLockedAt?,   // set when status becomes EN_DESARROLLO
   rawOwner?, ownerClaimedAt?,            // parsed "<agent>@<timestamp>" Owner cell
-  acceptanceCriteria?,
+  acceptanceCriteria?,                   // required for app-created tasks (brief §9)
   roadmapTable: ACTIVE|NEAR_TERM|BLOCKED|null,   // null = not doc-sourced
   blockedReason?, neededDecision?,
   sourceOrigin: UI|ROADMAP,               // immutable at creation
@@ -124,6 +125,15 @@ Task(
   read-optimized current+historical index for the Workload view, while
   `AuditEvent` is a generic append-only log across all entity types. Same
   underlying fact recorded twice on purpose, for two different query shapes.
+- Creating and editing a task from the app (brief §6, §9, `TasksService`):
+  `title` and `acceptanceCriteria` are required and can change but never be
+  cleared; every other field is optional and cleared with `null`. Hierarchy
+  links stay optional (§5) but must agree — an epic that sits in a phase only
+  under that phase, a template only under its own epic. `estimatedDate` and
+  `dueDate` cannot precede `startDate`. An explicit `progressPercent` is
+  refused once the task has subtasks (rollup rule 2 below). The web form
+  still makes the creator answer "which parent instance?" explicitly, with
+  "None" as a valid answer (BR-004).
 - `sourceOrigin` stays immutable at creation even though a UI-created task
   later gets an `externalId` once written back into `Roadmap.md` — it remains
   the only record of which side originated the task.

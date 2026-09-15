@@ -148,6 +148,29 @@ locked reassignment):
    as still contested.
 8. `AuditEvent(origin=UI)`.
 
+### Field edits
+
+A UI edit that changes a Roadmap-backed field — `title` (Outcome) or
+`acceptanceCriteria` (Acceptance check) — rewrites just those cells of the
+task's existing row, in whichever table holds it: a Near term row is never
+moved into Active work, and a Blocked row (which has neither column) is left
+alone. No Agentslog entry is appended: an in-place edit never makes a row
+vanish, so step 3's ordering has nothing to protect. Priority, dates,
+progress and hierarchy are not Roadmap columns and never touch the document.
+
+- Document unchanged since PM Hub last saw it: the cells are written.
+- Document drifted: a cell that no longer holds the pre-edit value was edited
+  on the document side too, so it is left untouched (`WRITE_BACK_DEFERRED`
+  when nothing else is written) and the next sync raises it once as
+  `CONCURRENT_FIELD_EDIT` (step 5).
+- The written row becomes the task's `lastSyncedContentHash` only if the row
+  carried no unreconciled document change; otherwise the next sync still
+  applies or contests the document's changes to the row's other cells.
+
+Known limitation: the lifecycle triggers above (steps 3-7) still render the
+whole row into Active work, so a status write-back for a Near term row adds a
+second row for the same ID.
+
 ## Conflicts (brief §26)
 
 `Conflict` is a first-class entity with its own endpoints/UI route, not just

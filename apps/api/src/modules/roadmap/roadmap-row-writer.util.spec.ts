@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { upsertActiveRoadmapRow } from './roadmap-row-writer.util.js';
+import {
+  replaceRoadmapRowCells,
+  upsertActiveRoadmapRow,
+} from './roadmap-row-writer.util.js';
 
 const ROADMAP = `# Roadmap
 
@@ -61,5 +64,53 @@ describe('upsertActiveRoadmapRow', () => {
     });
 
     expect(updated).toContain('has a / pipe and a newline');
+  });
+});
+
+describe('replaceRoadmapRowCells', () => {
+  const BLOCKED = `${ROADMAP}
+## Blocked
+
+| ID | Blocker | Needed decision or event | Owner |
+|---|---|---|---|
+| PMH-4 | Waiting on legal | Sign-off | Ana |
+`;
+
+  it('rewrites only the named cells, keeping the row in its own table', () => {
+    const result = replaceRoadmapRowCells(ROADMAP, 'PMH-2', {
+      Outcome: 'Later, renamed',
+      'Acceptance check': 'new check',
+    });
+
+    expect(result?.replaced).toEqual(['Outcome', 'Acceptance check']);
+    expect(result?.markdown).toContain(
+      '| PMH-2 | Later, renamed | new check | TODO | — |',
+    );
+    expect(result?.markdown).toContain(
+      '| PMH-1 | First task | check it | PENDIENTE | — | — |',
+    );
+    expect(result?.markdown.match(/PMH-2/g)).toHaveLength(1);
+  });
+
+  it('leaves the other cells of an Active row exactly as the document has them', () => {
+    const result = replaceRoadmapRowCells(ROADMAP, 'PMH-1', {
+      Outcome: 'First task | v2',
+    });
+
+    expect(result?.markdown).toContain(
+      '| PMH-1 | First task / v2 | check it | PENDIENTE | — | — |',
+    );
+  });
+
+  it('skips headers the row table lacks, and returns null for an unknown row', () => {
+    const blocked = replaceRoadmapRowCells(BLOCKED, 'PMH-4', {
+      Outcome: 'Not a Blocked column',
+    });
+    expect(blocked?.replaced).toEqual([]);
+    expect(blocked?.markdown).toBe(BLOCKED.split(/\r?\n/).join('\n'));
+
+    expect(
+      replaceRoadmapRowCells(ROADMAP, 'PMH-99', { Outcome: 'x' }),
+    ).toBeNull();
   });
 });

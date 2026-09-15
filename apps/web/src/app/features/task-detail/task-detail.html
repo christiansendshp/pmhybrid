@@ -1,8 +1,69 @@
 @if (task(); as t) {
-  <h2>{{ t.title }}</h2>
+  <header class="page-header">
+    <div>
+      <p class="meta-text task-id">{{ t.externalId ?? 'Not in the Roadmap yet' }}</p>
+      <h2 class="task-title">{{ t.title }}</h2>
+    </div>
+    @if (!editing()) {
+      <div class="page-header__actions">
+        <button mat-stroked-button type="button" (click)="startEditing()">Edit task</button>
+      </div>
+    }
+  </header>
   <p>Status: {{ t.status }} — Progress: {{ t.computedProgress }}%</p>
-  @if (t.description) {
-    <p>{{ t.description }}</p>
+
+  @if (editing()) {
+    <app-task-form
+      [hierarchy]="hierarchy()"
+      [tasks]="allTasks()"
+      [task]="t"
+      [progressDerived]="t.subtasks.length > 0"
+      [submitting]="saving()"
+      [errorMessage]="formError()"
+      submitLabel="Save changes"
+      (save)="saveEdit($event)"
+      (cancelled)="editing.set(false)"
+    />
+  } @else {
+    <section>
+      <h3>Details</h3>
+      <dl class="details">
+        <dt>Acceptance criteria</dt>
+        <dd>{{ t.acceptanceCriteria ?? '—' }}</dd>
+        <dt>Priority</dt>
+        <dd>{{ t.priority ?? '—' }}</dd>
+        <dt>Progress</dt>
+        <dd>
+          @if (t.subtasks.length > 0) {
+            Derived from subtasks
+          } @else if (t.progressPercent !== null) {
+            {{ t.progressPercent }}%
+          } @else {
+            From status
+          }
+        </dd>
+        <dt>Depends on</dt>
+        <dd>
+          @for (entry of placement(); track entry.label; let last = $last) {
+            {{ entry.label }}: {{ entry.value }}{{ last ? '' : ' · ' }}
+          } @empty {
+            Project level
+          }
+        </dd>
+        <dt>Start date</dt>
+        <dd>{{ (t.startDate | date: 'mediumDate' : 'UTC') ?? '—' }}</dd>
+        <dt>Estimated date</dt>
+        <dd>{{ (t.estimatedDate | date: 'mediumDate' : 'UTC') ?? '—' }}</dd>
+        <dt>Due date</dt>
+        <dd>{{ (t.dueDate | date: 'mediumDate' : 'UTC') ?? '—' }}</dd>
+        <dt>Created</dt>
+        <dd>{{ t.createdAt | date: 'medium' }}</dd>
+        @if (t.description) {
+          <dt>Description</dt>
+          <dd>{{ t.description }}</dd>
+        }
+      </dl>
+    </section>
   }
 
   <section>
@@ -38,19 +99,20 @@
         </li>
       }
     </ul>
-    <input
-      [ngModel]="newSubtaskTitle()"
-      (ngModelChange)="newSubtaskTitle.set($event)"
-      placeholder="New subtask title"
-    />
-    <button
-      mat-flat-button
-      type="button"
-      [disabled]="!newSubtaskTitle().trim()"
-      (click)="addSubtask()"
-    >
-      Add subtask
-    </button>
+    @if (addingSubtask()) {
+      <app-task-form
+        [hierarchy]="hierarchy()"
+        [tasks]="allTasks()"
+        [parentTaskId]="t.id"
+        [submitting]="saving()"
+        [errorMessage]="formError()"
+        submitLabel="Add subtask"
+        (save)="createSubtask($event)"
+        (cancelled)="addingSubtask.set(false)"
+      />
+    } @else {
+      <button mat-stroked-button type="button" (click)="startSubtask()">Add subtask</button>
+    }
   </section>
 
   <section>

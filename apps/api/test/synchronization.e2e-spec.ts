@@ -34,6 +34,28 @@ ${row}
 `;
 }
 
+function roadmapWithNearTermRow(row: string): string {
+  return `# Roadmap
+
+## Active work
+
+${ACTIVE_HEADER}
+| — | — | — | — | — | — |
+
+## Near term
+
+| ID | Outcome | Acceptance check | Status | Depends on |
+| --- | --- | --- | --- | --- |
+${row}
+
+## Blocked
+
+| ID | Blocker | Needed decision or event | Owner |
+| --- | --- | --- | --- |
+| — | — | — | — |
+`;
+}
+
 function agentslogWith(entries: string): string {
   return `# Agents log
 
@@ -327,15 +349,21 @@ describe('Synchronization (read path, disappeared rows, archive-following, confl
       .expect(200);
     const task = tasks.body.find((t: { externalId: string }) => t.externalId === 'PMH-7');
 
+    // The document renames the task, and the UI renames it too before any
+    // sync has seen the document's change.
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmapWithActiveRow('| PMH-7 | Doc title v2 | check | TODO | — | — |'),
+      'utf-8',
+    );
     await request(server())
       .patch(`/projects/${projectId}/tasks/${task.id}`)
       .set('Authorization', auth())
       .send({ title: 'UI title' })
       .expect(200);
-    writeFileSync(
-      path.join(docsPath, 'Roadmap.md'),
-      roadmapWithActiveRow('| PMH-7 | Doc title v2 | check | TODO | — | — |'),
-      'utf-8',
+    // Write-back never overwrites a cell the document changed concurrently.
+    expect(readFileSync(path.join(docsPath, 'Roadmap.md'), 'utf-8')).toContain(
+      '| PMH-7 | Doc title v2 | check | TODO |',
     );
 
     const firstSync = await request(server())
@@ -365,7 +393,7 @@ describe('Synchronization (read path, disappeared rows, archive-following, confl
     const task = await request(server())
       .post(`/projects/${projectId}/tasks`)
       .set('Authorization', auth())
-      .send({ title: 'Written back task' })
+      .send({ title: 'Written back task', acceptanceCriteria: 'Verified by e2e' })
       .expect(201);
     expect(task.body.externalId).toMatch(/^PMH-\d+$/);
 
@@ -374,5 +402,120 @@ describe('Synchronization (read path, disappeared rows, archive-following, confl
     expect(roadmap).toContain(task.body.externalId);
     expect(roadmap).toContain('Written back task');
     expect(agentslog).toContain(`| ${task.body.externalId} | CREATED`);
+  });
+
+  async function syncedTask(docsPath: string, roadmap: string, externalId: string) {
+    writeFileSync(path.join(docsPath, 'Roadmap.md'), roadmap, 'utf-8');
+    const projectId = await createProjectAt(docsPath);
+    await request(server()).post(`/projects/${projectId}/sync`).set('Authorization', auth()).expect(201);
+    const tasks = await request(server())
+      .get(`/projects/${projectId}/tasks`)
+      .set('Authorization', auth())
+      .expect(200);
+    const task = tasks.body.find((t: { externalId: string }) => t.externalId === externalId);
+    return { projectId, taskId: task.id as string };
+  }
+
+  it('writes a UI title/acceptance edit into the Roadmap row with no Agentslog entry, and the next sync keeps it', async () => {
+    const docsPath = createScratchDocsPath();
+    const { projectId, taskId } = await syncedTask(
+      docsPath,
+      roadmapWithActiveRow('| PMH-8 | Doc title | Doc check | TODO | — | — |'),
+      'PMH-8',
+    );
+    const roadmap = () => readFileSync(path.join(docsPath, 'Roadmap.md'), 'utf-8');
+    const agentslogBefore = readFileSync(path.join(docsPath, 'Agentslog.md'), 'utf-8');
+
+    await request(server())
+      .patch(`/projects/${projectId}/tasks/${taskId}`)
+      .set('Authorization', auth())
+      .send({ title: 'UI title', acceptanceCriteria: 'UI check' })
+      .expect(200);
+    expect(roadmap()).toContain('| PMH-8 | UI title | UI check | TODO | — | — |');
+    expect(readFileSync(path.join(docsPath, 'Agentslog.md'), 'utf-8')).toBe(agentslogBefore);
+
+    // Fields that are not Roadmap columns never touch the document.
+    const beforeOtherEdits = roadmap();
+    await request(server())
+      .patch(`/projects/${projectId}/tasks/${taskId}`)
+      .set('Authorization', auth())
+      .send({ progressPercent: 30, priority: 'LOW' })
+      .expect(200);
+    expect(roadmap()).toBe(beforeOtherEdits);
+
+    const syncRun = await request(server())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth())
+      .expect(201);
+    expect(syncRun.body.summary.conflictsRaised).toBe(0);
+    const after = await request(server())
+      .get(`/projects/${projectId}/tasks/${taskId}`)
+      .set('Authorization', auth())
+      .expect(200);
+    expect(after.body).toMatchObject({ title: 'UI title', acceptanceCriteria: 'UI check' });
+  });
+
+  it('edits a Near term row in place instead of relocating it into Active work', async () => {
+    const docsPath = createScratchDocsPath();
+    const { projectId, taskId } = await syncedTask(
+      docsPath,
+      roadmapWithNearTermRow('| PMH-9 | Later title | later check | TODO | — |'),
+      'PMH-9',
+    );
+
+    await request(server())
+      .patch(`/projects/${projectId}/tasks/${taskId}`)
+      .set('Authorization', auth())
+      .send({ title: 'Later, renamed' })
+      .expect(200);
+    const roadmap = readFileSync(path.join(docsPath, 'Roadmap.md'), 'utf-8');
+    expect(roadmap).toContain('| PMH-9 | Later, renamed | later check | TODO | — |');
+    expect(roadmap.match(/PMH-9/g)).toHaveLength(1);
+
+    const syncRun = await request(server())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth())
+      .expect(201);
+    expect(syncRun.body.summary.conflictsRaised).toBe(0);
+    const after = await request(server())
+      .get(`/projects/${projectId}/tasks/${taskId}`)
+      .set('Authorization', auth())
+      .expect(200);
+    expect(after.body).toMatchObject({ title: 'Later, renamed', roadmapTable: 'NEAR_TERM' });
+  });
+
+  it('writes a title edit back without undoing a document change to another cell, which the next sync applies', async () => {
+    const docsPath = createScratchDocsPath();
+    const { projectId, taskId } = await syncedTask(
+      docsPath,
+      roadmapWithActiveRow('| PMH-10 | Doc title | check | TODO | — | — |'),
+      'PMH-10',
+    );
+
+    // The document moves the task on before any sync has seen it, while the UI renames it.
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmapWithActiveRow('| PMH-10 | Doc title | check | IN PROGRESS | — | — |'),
+      'utf-8',
+    );
+    await request(server())
+      .patch(`/projects/${projectId}/tasks/${taskId}`)
+      .set('Authorization', auth())
+      .send({ title: 'UI title' })
+      .expect(200);
+    expect(readFileSync(path.join(docsPath, 'Roadmap.md'), 'utf-8')).toContain(
+      '| PMH-10 | UI title | check | IN PROGRESS | — | — |',
+    );
+
+    const syncRun = await request(server())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth())
+      .expect(201);
+    expect(syncRun.body.summary.conflictsRaised).toBe(0);
+    const after = await request(server())
+      .get(`/projects/${projectId}/tasks/${taskId}`)
+      .set('Authorization', auth())
+      .expect(200);
+    expect(after.body).toMatchObject({ title: 'UI title', status: 'EN_DESARROLLO' });
   });
 });
