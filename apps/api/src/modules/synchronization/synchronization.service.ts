@@ -29,6 +29,8 @@ interface SyncSummary {
   tableChanged: number;
   completedViaRemoval: number;
   conflictsRaised: number;
+  /** New TaskDependency rows linked from a row's "Depends on" cell (Roadmap GAP-14) — resolved or still dangling on a raw external ref. */
+  dependenciesLinked: number;
 }
 
 /** Fields reconciliation is allowed to touch outside the Blocked table's own columns — the per-field conflict check operates over this set. */
@@ -167,6 +169,7 @@ export class SynchronizationService {
       tableChanged: 0,
       completedViaRemoval: 0,
       conflictsRaised: 0,
+      dependenciesLinked: 0,
     };
 
     // No try/catch here: on a mid-step failure this simply throws out of the
@@ -311,9 +314,12 @@ export class SynchronizationService {
         // updates it (docs/synchronization.md "Removal").
         continue;
       }
+      let taskId: string;
       if (!existing) {
-        await this.createFromRoadmapRow(tx, projectId, row);
+        const created = await this.createFromRoadmapRow(tx, projectId, row);
+        existingByExternalId.set(row.externalId, created);
         summary.tasksCreated += 1;
+        taskId = created.id;
       } else {
         const changed = await this.reconcileExistingRow(
           tx,
@@ -324,8 +330,36 @@ export class SynchronizationService {
         if (changed) {
           summary.tasksUpdated += 1;
         }
+        taskId = existing.id;
       }
+
+      // Additive only (docs/synchronization.md "Depends on" — Roadmap
+      // GAP-14): write-back doesn't reflect dependencies into the document
+      // yet, so a UI-added TaskDependency has no document trace to compare
+      // against — removing on every mismatch would silently destroy it.
+      await this.reconcileDependencies(
+        tx,
+        taskId,
+        row.externalId,
+        row.dependsOnRaw,
+        existingByExternalId,
+        summary,
+      );
     }
+
+    // A row processed earlier than the row it depends on (file order) can
+    // only record a dangling reference — its target isn't in
+    // existingByExternalId yet at that point, even if this very pass goes
+    // on to create it a few rows later. One sweep after the whole file has
+    // been walked resolves every reference that's now resolvable, so a
+    // dependency on a row introduced in this same sync still links in this
+    // same sync rather than needing a follow-up run.
+    await this.resolveDanglingDependencies(
+      tx,
+      projectId,
+      existingByExternalId,
+      summary,
+    );
 
     for (const [externalId, task] of existingByExternalId) {
       if (seenExternalIds.has(externalId)) {
@@ -424,6 +458,7 @@ export class SynchronizationService {
       },
       tx,
     );
+    return task;
   }
 
   /** Step 5. Returns whether anything was actually written. */
@@ -591,5 +626,136 @@ export class SynchronizationService {
       },
     });
     return changed;
+  }
+
+  /**
+   * Step 6 (Roadmap GAP-14, docs/domain-model.md "Depends on"): links each
+   * comma-separated external ID in a row's "Depends on" cell to a
+   * TaskDependency. Called on every reconciled row, hash-match skip or not
+   * — the very first run against a project synced before this feature
+   * existed still needs to backfill every row's dependencies once.
+   *
+   * Idempotent (skips a reference already linked, resolved or dangling) and
+   * additive-only: never removes a TaskDependency, since write-back doesn't
+   * reflect dependencies into the document, so a UI-added one has no
+   * document trace to compare a removal decision against. An unresolvable
+   * external ID (a row not seen *yet* in this same pass, or never) is
+   * stored via `rawExternalRef` with a null `dependsOnTaskId` — upgrading
+   * that once the target is known is `resolveDanglingDependencies`'s job,
+   * not this method's, since a row can be reconciled before the row it
+   * depends on even when both are in the very same document.
+   */
+  private async reconcileDependencies(
+    tx: Prisma.TransactionClient,
+    taskId: string,
+    externalId: string,
+    dependsOnRaw: string | undefined,
+    existingByExternalId: Map<string, { id: string }>,
+    summary: SyncSummary,
+  ): Promise<void> {
+    if (!dependsOnRaw) {
+      return;
+    }
+    const referencedIds = [
+      ...new Set(
+        dependsOnRaw
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0 && s !== externalId), // a row never depends on itself
+      ),
+    ];
+    if (referencedIds.length === 0) {
+      return;
+    }
+
+    const existingDeps = await tx.taskDependency.findMany({
+      where: { taskId },
+      select: { dependsOnTaskId: true, rawExternalRef: true },
+    });
+
+    for (const referencedId of referencedIds) {
+      if (existingDeps.some((d) => d.rawExternalRef === referencedId)) {
+        continue; // already recorded, resolved or dangling — nothing new to do here
+      }
+      const target = existingByExternalId.get(referencedId);
+      if (target && (await this.wouldCreateCycle(tx, taskId, target.id))) {
+        continue; // a document-authoring mistake — skip rather than corrupt the graph
+      }
+      await tx.taskDependency.create({
+        data: {
+          taskId,
+          dependsOnTaskId: target?.id ?? null,
+          rawExternalRef: referencedId,
+        },
+      });
+      summary.dependenciesLinked += 1;
+    }
+  }
+
+  /**
+   * One sweep per sync, after every row has been walked: upgrades any
+   * dangling TaskDependency whose `rawExternalRef` now resolves against
+   * `existingByExternalId` — including a target created a few rows later in
+   * this very pass, which `reconcileDependencies` above cannot see yet when
+   * it first records the reference. Re-checks for a cycle before each
+   * upgrade, same as a fresh link would.
+   */
+  private async resolveDanglingDependencies(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    existingByExternalId: Map<string, { id: string }>,
+    summary: SyncSummary,
+  ): Promise<void> {
+    const dangling = await tx.taskDependency.findMany({
+      where: {
+        dependsOnTaskId: null,
+        rawExternalRef: { not: null },
+        task: { projectId },
+      },
+    });
+    for (const dep of dangling) {
+      const target = existingByExternalId.get(dep.rawExternalRef!);
+      if (!target || target.id === dep.taskId) {
+        continue; // still unresolved, or would now be a self-reference
+      }
+      if (await this.wouldCreateCycle(tx, dep.taskId, target.id)) {
+        continue; // leave it dangling rather than close a cycle
+      }
+      await tx.taskDependency.update({
+        where: { id: dep.id },
+        data: { dependsOnTaskId: target.id },
+      });
+      summary.dependenciesLinked += 1;
+    }
+  }
+
+  /** Bounded DFS mirroring TasksService.assertNoDependencyCycle — adding taskId -> dependsOnTaskId is a cycle iff dependsOnTaskId can already reach taskId. */
+  private async wouldCreateCycle(
+    tx: Prisma.TransactionClient,
+    taskId: string,
+    dependsOnTaskId: string,
+  ): Promise<boolean> {
+    const visited = new Set<string>();
+    const stack = [dependsOnTaskId];
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+      if (current === taskId) {
+        return true;
+      }
+      if (visited.has(current)) {
+        continue;
+      }
+      visited.add(current);
+      const deps = await tx.taskDependency.findMany({
+        where: { taskId: current },
+        select: { dependsOnTaskId: true },
+      });
+      for (const dep of deps) {
+        if (dep.dependsOnTaskId) {
+          stack.push(dep.dependsOnTaskId);
+        }
+      }
+    }
+    return false;
   }
 }

@@ -218,3 +218,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api synchronization.service.ts, notifications.service.ts; test/notifications.e2e-spec.ts
 - Verify: 109 api e2e (x2 stable), 33 api unit green
 - Follow-up: none
+
+## [2026-09-15T16:28:32Z] | claude-code | GAP-14 | DONE
+
+- Summary: Roadmap Depends on -> TaskDependency (domain-model.md): resolves comma-separated external IDs against known Tasks, or stores a dangling rawExternalRef upgraded once the target appears — even later rows in the same sync, via an end-of-run resolution sweep (a per-row-only attempt missed that case). Additive-only (never removes a link) and skips anything that would close a cycle.
+- Files: apps/api synchronization.service.ts (reconcileDependencies, resolveDanglingDependencies, wouldCreateCycle)
+- Verify: 115 api e2e (x2 stable), 33 api unit green
+- Follow-up: Promoted GAP-15 to Active
