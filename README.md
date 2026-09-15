@@ -31,7 +31,10 @@ The seed script creates one HUMAN actor you can log in as at `/login`:
 - Email: `demo-human@pmhybrid.local`
 - Password: `demo1234`
 
-Not a real secret — just seed data for a fresh local database.
+Not a real secret — just seed data for a fresh local database. This actor
+holds the global `ADMIN` role, so it is the one that can add further people
+and AI agents from the **Team** page. Roles and permissions live in seed data:
+re-run `pnpm --filter api prisma:seed` after pulling changes that add them.
 
 ### Demo dataset
 

@@ -1,12 +1,22 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { PERMISSIONS } from '@pmhybrid/shared-types';
+import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
+import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
+import { UpdateUserDto } from './dto/update-user.dto.js';
 import { UsersService } from './users.service.js';
 
-/**
- * Protected by JwtAuthGuard only ("who are you") — no permission-key
- * enforcement yet. That's permissionGuard, FASE-05.
- */
+/** Any authenticated actor can see who is on the team; changing it needs the global actors.manage permission. */
 @UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
@@ -23,7 +33,23 @@ export class UsersController {
   }
 
   @Post()
-  create(@Body() dto: CreateUserDto) {
-    return this.usersService.create(dto);
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.ACTORS_MANAGE)
+  create(
+    @Body() dto: CreateUserDto,
+    @CurrentActorId() requesterActorId: string,
+  ) {
+    return this.usersService.create(dto, requesterActorId);
+  }
+
+  @Patch(':id')
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.ACTORS_MANAGE)
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+    @CurrentActorId() requesterActorId: string,
+  ) {
+    return this.usersService.update(id, dto, requesterActorId);
   }
 }

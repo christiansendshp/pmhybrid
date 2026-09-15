@@ -31,13 +31,6 @@ export interface ProjectMember {
   actor: { id: string; displayName: string; kind: 'HUMAN' | 'AI_AGENT'; email: string | null };
 }
 
-export interface Actor {
-  id: string;
-  displayName: string;
-  email: string | null;
-  isActive: boolean;
-}
-
 @Injectable({ providedIn: 'root' })
 export class ProjectsService {
   private readonly http = inject(HttpClient);
@@ -76,13 +69,5 @@ export class ProjectsService {
     return firstValueFrom(
       this.http.get<string[]>(`${API_BASE_URL}/projects/${projectId}/roles/my-permissions`),
     );
-  }
-
-  listUsers(): Promise<Actor[]> {
-    return firstValueFrom(this.http.get<Actor[]>(`${API_BASE_URL}/users`));
-  }
-
-  listAgents(): Promise<Actor[]> {
-    return firstValueFrom(this.http.get<Actor[]>(`${API_BASE_URL}/agents`));
   }
 }

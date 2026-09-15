@@ -9,8 +9,10 @@ import { DEMO_EMAIL, DEMO_PASSWORD } from './demo-credentials.js';
 const prisma = new PrismaClient();
 
 const SYSTEM_ROLES = ['OWNER', 'PROJECT_ADMIN', 'PROJECT_MANAGER', 'DEVELOPER', 'QA', 'VIEWER', 'AI_AGENT'] as const;
+// Global-scope roles (brief §4 "rol global"), granted with ActorRole.projectId = null.
+const GLOBAL_ROLES = ['ADMIN'] as const;
 
-const PERMISSION_DEFS = [
+const PROJECT_PERMISSION_DEFS = [
   { key: PERMISSIONS.TASK_ASSIGN, description: 'Assign or unassign a task while not EN_DESARROLLO' },
   { key: PERMISSIONS.TASK_STATUS_TRANSITION, description: 'Move a task between ordinary Kanban states' },
   { key: PERMISSIONS.TASK_QA_APPROVE, description: 'Approve QA -> TERMINADA' },
@@ -21,11 +23,20 @@ const PERMISSION_DEFS = [
   { key: PERMISSIONS.PROJECT_MEMBERS_MANAGE, description: 'Add or remove project members' },
   { key: PERMISSIONS.PROJECT_ROLES_MANAGE, description: 'Assign or revoke project-scoped roles' },
 ];
+const GLOBAL_PERMISSION_DEFS = [
+  { key: PERMISSIONS.ACTORS_MANAGE, description: 'Create, edit and deactivate users and AI agents' },
+];
+const PERMISSION_DEFS = [...PROJECT_PERMISSION_DEFS, ...GLOBAL_PERMISSION_DEFS];
+
+const GLOBAL_ROLE_PERMISSIONS: Record<(typeof GLOBAL_ROLES)[number], string[]> = {
+  ADMIN: GLOBAL_PERMISSION_DEFS.map((p) => p.key),
+};
 
 // Minimal default mapping (brief §4 leaves the exact matrix to the app).
+// Project roles only ever carry project permissions — never a global one.
 const ROLE_PERMISSIONS: Record<string, string[]> = {
-  OWNER: PERMISSION_DEFS.map((p) => p.key),
-  PROJECT_ADMIN: PERMISSION_DEFS.map((p) => p.key),
+  OWNER: PROJECT_PERMISSION_DEFS.map((p) => p.key),
+  PROJECT_ADMIN: PROJECT_PERMISSION_DEFS.map((p) => p.key),
   PROJECT_MANAGER: [
     PERMISSIONS.TASK_ASSIGN,
     PERMISSIONS.TASK_STATUS_TRANSITION,
@@ -102,16 +113,13 @@ async function main() {
     permissionsByKey.set(def.key, permission);
   }
 
-  const rolesByName = new Map<string, { id: string }>();
-  for (const roleName of SYSTEM_ROLES) {
+  async function seedRole(name: string, scope: 'GLOBAL' | 'PROJECT', permissionKeys: string[]) {
     const role = await prisma.role.upsert({
-      where: { name_scope: { name: roleName, scope: 'PROJECT' } },
+      where: { name_scope: { name, scope } },
       update: {},
-      create: { name: roleName, scope: 'PROJECT', isSystem: true },
+      create: { name, scope, isSystem: true },
     });
-    rolesByName.set(roleName, role);
-
-    for (const key of ROLE_PERMISSIONS[roleName]) {
+    for (const key of permissionKeys) {
       const permission = permissionsByKey.get(key)!;
       await prisma.rolePermission.upsert({
         where: { roleId_permissionId: { roleId: role.id, permissionId: permission.id } },
@@ -119,6 +127,16 @@ async function main() {
         create: { roleId: role.id, permissionId: permission.id },
       });
     }
+    return role;
+  }
+
+  const rolesByName = new Map<string, { id: string }>();
+  for (const roleName of SYSTEM_ROLES) {
+    rolesByName.set(roleName, await seedRole(roleName, 'PROJECT', ROLE_PERMISSIONS[roleName]));
+  }
+  const globalRolesByName = new Map<string, { id: string }>();
+  for (const roleName of GLOBAL_ROLES) {
+    globalRolesByName.set(roleName, await seedRole(roleName, 'GLOBAL', GLOBAL_ROLE_PERMISSIONS[roleName]));
   }
 
   const humanActor = await prisma.actor.upsert({
@@ -134,6 +152,18 @@ async function main() {
     update: { passwordHash: demoPasswordHash },
     create: { actorId: humanActor.id, authProvider: 'LOCAL', passwordHash: demoPasswordHash },
   });
+
+  // The demo login administers the instance (global ADMIN) — on a fresh
+  // database it is the only actor able to create further users and agents.
+  // Global grants can't use the compound-unique upsert (projectId is NULL),
+  // hence find-then-create; the partial index still rejects duplicates.
+  const adminRole = globalRolesByName.get('ADMIN')!;
+  const adminGrant = await prisma.actorRole.findFirst({
+    where: { actorId: humanActor.id, roleId: adminRole.id, projectId: null },
+  });
+  if (!adminGrant) {
+    await prisma.actorRole.create({ data: { actorId: humanActor.id, roleId: adminRole.id } });
+  }
 
   const agentActor = await prisma.actor.upsert({
     where: { email: 'demo-agent@pmhybrid.local' },
@@ -429,7 +459,7 @@ async function main() {
   console.log('Seed complete:', {
     projects: [selfProject.name, websiteRelaunch.name, mobileApp.name],
     actors: [humanActor.displayName, agentActor.displayName, anaActor.displayName, codexActor.displayName],
-    roles: SYSTEM_ROLES.length,
+    roles: SYSTEM_ROLES.length + GLOBAL_ROLES.length,
     permissions: PERMISSION_DEFS.length,
   });
 }

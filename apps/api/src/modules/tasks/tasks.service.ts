@@ -192,9 +192,13 @@ export class TasksService {
 
     const member = await this.prisma.projectMember.findUnique({
       where: { projectId_actorId: { projectId, actorId } },
+      include: { actor: { select: { isActive: true } } },
     });
     if (!member || !member.isActive) {
       throw new BadRequestException('Assignee must be a project member');
+    }
+    if (!member.actor.isActive) {
+      throw new BadRequestException('Assignee is inactive');
     }
 
     // ASIGNADA literally means "has an assignee" — a PENDIENTE task that

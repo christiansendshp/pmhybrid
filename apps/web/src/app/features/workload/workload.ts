@@ -2,7 +2,8 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
-import { Actor, Project, ProjectsService } from '../../core/projects.service.js';
+import { Actor, ActorsService } from '../../core/actors.service.js';
+import { Project, ProjectsService } from '../../core/projects.service.js';
 import { KANBAN_STATUSES } from '../../core/task-status-policy.js';
 import { TaskStatus } from '../../core/tasks.service.js';
 import { WorkloadRow, WorkloadService } from '../../core/workload.service.js';
@@ -16,6 +17,7 @@ import { WorkloadRow, WorkloadService } from '../../core/workload.service.js';
 export class Workload implements OnInit {
   private readonly workloadService = inject(WorkloadService);
   private readonly projectsService = inject(ProjectsService);
+  private readonly actorsService = inject(ActorsService);
 
   readonly statuses = KANBAN_STATUSES;
   readonly rows = signal<WorkloadRow[]>([]);
@@ -30,8 +32,8 @@ export class Workload implements OnInit {
   async ngOnInit(): Promise<void> {
     const [myProjects, users, agents] = await Promise.all([
       this.projectsService.listMine(),
-      this.projectsService.listUsers(),
-      this.projectsService.listAgents(),
+      this.actorsService.listUsers(),
+      this.actorsService.listAgents(),
     ]);
     this.myProjects.set(myProjects);
     this.actors.set([...users, ...agents]);

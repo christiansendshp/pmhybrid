@@ -8,6 +8,9 @@ export interface CurrentActor {
   displayName: string;
   email: string | null;
   kind: string;
+  avatarUrl: string | null;
+  /** Global permission keys (e.g. actors.manage); project permissions are fetched per project. */
+  permissions: string[];
 }
 
 interface TokenPair {
@@ -30,6 +33,11 @@ export class AuthService {
 
   accessToken(): string | null {
     return this.accessTokenSignal();
+  }
+
+  /** Global permissions only — the server enforces them regardless; this just hides doomed actions. */
+  hasGlobalPermission(key: string): boolean {
+    return this.currentActor()?.permissions?.includes(key) ?? false;
   }
 
   async login(email: string, password: string): Promise<void> {

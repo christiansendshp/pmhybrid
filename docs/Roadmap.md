@@ -5,9 +5,9 @@ Keep active and near-term work only. Verified completed capability belongs in
 
 ## Active work
 
-| ID     | Outcome                         | Acceptance check                                               | Status      | Owner                            | Depends on |
-| ------ | ------------------------------- | -------------------------------------------------------------- | ----------- | -------------------------------- | ---------- |
-| GAP-02 | Administrable actors (brief §3) | e2e: agent/user CRUD; inactive actors rejected at login/assign | IN_PROGRESS | claude-code@2026-09-15T12:45:00Z | —          |
+| ID     | Outcome                           | Acceptance check                                            | Status      | Owner                            | Depends on |
+| ------ | --------------------------------- | ----------------------------------------------------------- | ----------- | -------------------------------- | ---------- |
+| GAP-03 | Shared app shell (brief §21, §30) | one layout/nav for every route; web build + component tests | IN_PROGRESS | claude-code@2026-09-15T13:30:00Z | —          |
 
 <!-- context:end -->
 
@@ -18,7 +18,6 @@ Post-MVP gap backlog derived from a brief-vs-code review on 2026-09-15 (the
 
 | ID     | Outcome                                                                                                                      | Acceptance check                                                          | Status | Depends on |
 | ------ | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------ | ---------- |
-| GAP-03 | Shared app shell (brief §21, §30): one layout/nav, base styles, no per-page duplicated nav                                   | web build + browser check of every route                                  | TODO   | —          |
 | GAP-04 | Full task create/edit (brief §6, §9, §17): required acceptance + parent instance, editable progress/priority/dates/hierarchy | e2e validation cases; Roadmap row reflects UI title/acceptance edits      | TODO   | GAP-01     |
 | GAP-05 | Task removal (brief §25, §31 CRUD) without tripping the disappeared-row hazard                                               | e2e: removed task leaves Roadmap/Agentslog consistent and no conflict     | TODO   | GAP-04     |
 | GAP-06 | Kanban cards with all §15 fields + search, grouping, sorting                                                                 | web unit tests for grouping/sorting; browser check                        | TODO   | GAP-03     |

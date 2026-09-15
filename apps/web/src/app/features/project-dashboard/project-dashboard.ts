@@ -3,7 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
-import { Actor, Project, ProjectMember, ProjectsService } from '../../core/projects.service.js';
+import { Actor, ActorsService } from '../../core/actors.service.js';
+import { Project, ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { SyncRun, SynchronizationService } from '../../core/synchronization.service.js';
 
 @Component({
@@ -21,6 +22,7 @@ import { SyncRun, SynchronizationService } from '../../core/synchronization.serv
 export class ProjectDashboard implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly projectsService = inject(ProjectsService);
+  private readonly actorsService = inject(ActorsService);
   private readonly synchronizationService = inject(SynchronizationService);
 
   readonly project = signal<Project | null>(null);
@@ -41,16 +43,19 @@ export class ProjectDashboard implements OnInit {
       this.projectsService.getById(projectId),
       this.projectsService.listMembers(projectId),
       this.projectsService.myPermissions(projectId),
-      this.projectsService.listUsers(),
-      this.projectsService.listAgents(),
+      this.actorsService.listUsers(),
+      this.actorsService.listAgents(),
     ]);
 
     this.project.set(project);
     this.members.set(members);
     this.canManageMembers.set(permissions.includes('project.members.manage'));
 
+    // Inactive actors can't join a project (the API rejects them), so they're never offered.
     const memberActorIds = new Set(members.map((m) => m.actorId));
-    this.candidateActors.set([...users, ...agents].filter((a) => !memberActorIds.has(a.id)));
+    this.candidateActors.set(
+      [...users, ...agents].filter((a) => a.isActive && !memberActorIds.has(a.id)),
+    );
   }
 
   /** "Sincronizar ahora" (brief §11). */

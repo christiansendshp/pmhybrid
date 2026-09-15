@@ -11,13 +11,14 @@
 
 ## Users and outcomes
 
-| User or role                          | Needed outcome                                                 | Status    | Source        |
-| ------------------------------------- | -------------------------------------------------------------- | --------- | ------------- |
-| OWNER / PROJECT_ADMIN                 | Full control of a project's members, roles, and settings       | CONFIRMED | brief §4      |
-| PROJECT_MANAGER                       | Create/assign/track tasks, resolve conflicts, monitor progress | CONFIRMED | brief §3, §26 |
-| DEVELOPER / QA (human)                | Work assigned tasks through Kanban, update status/progress     | CONFIRMED | brief §7, §17 |
-| AI_AGENT (Codex/Claude/Gemini/custom) | Be assigned tasks and tracked identically to a human actor     | CONFIRMED | brief §3      |
-| VIEWER                                | Read-only visibility into a project                            | CONFIRMED | brief §4      |
+| User or role                          | Needed outcome                                                       | Status    | Source        |
+| ------------------------------------- | -------------------------------------------------------------------- | --------- | ------------- |
+| ADMIN (global)                        | Create, edit and deactivate the humans and AI agents of the instance | CONFIRMED | brief §3, §4  |
+| OWNER / PROJECT_ADMIN                 | Full control of a project's members, roles, and settings             | CONFIRMED | brief §4      |
+| PROJECT_MANAGER                       | Create/assign/track tasks, resolve conflicts, monitor progress       | CONFIRMED | brief §3, §26 |
+| DEVELOPER / QA (human)                | Work assigned tasks through Kanban, update status/progress           | CONFIRMED | brief §7, §17 |
+| AI_AGENT (Codex/Claude/Gemini/custom) | Be assigned tasks and tracked identically to a human actor           | CONFIRMED | brief §3      |
+| VIEWER                                | Read-only visibility into a project                                  | CONFIRMED | brief §4      |
 
 ## Business rules
 
@@ -29,6 +30,8 @@
 | BR-004 | A task cannot be created without indicating which higher-level instance (Phase/Epic/Template/parent Task) it depends on, when applicable                            | CONFIRMED | brief §9                                                   |
 | BR-005 | Progress of a Phase/Epic/Task-with-subtasks is derived from its descendants via a documented strategy, not just a manually entered number, when descendants exist   | CONFIRMED | brief §16-17                                               |
 | BR-006 | Hierarchy levels (Phase/Epic/Template/Subtask) are optional per task, not mandatory                                                                                 | CONFIRMED | brief §5                                                   |
+| BR-007 | An inactive actor cannot sign in, use an already-issued token, join a project, or be assigned a task; an admin cannot deactivate themselves                         | CONFIRMED | brief §3, `apps/api/test/actors.e2e-spec.ts`               |
+| BR-008 | AI agent configuration never stores credentials; secrets come from environment variables                                                                            | CONFIRMED | brief §28, `agent-config.util.ts`                          |
 
 ## Main flows
 

@@ -49,6 +49,19 @@ ProjectMember(projectId, actorId, joinedAt, isActive)
 varying per row. `ProjectMember` stays separate: it answers "who has ever been
 part of this project," independent of role churn, and is its own §23 entity.
 
+Seeded catalog: seven `PROJECT` roles (`OWNER` … `AI_AGENT`) carrying only
+project permissions, and one `GLOBAL` role, `ADMIN`, carrying the global
+`actors.manage` permission (create/edit/deactivate users and AI agents). A
+global role is granted only with `projectId = null` — the project roles
+endpoint refuses it, so no project owner can escalate anyone instance-wide.
+The seeded demo login holds `ADMIN`.
+
+`Actor.isActive = false` (brief §3) blocks login, refresh **and** every
+already-issued access token (checked per request), and the actor can no longer
+join a project or be assigned a task; history and existing assignments stay.
+`AgentProfile.configJson` holds non-secret settings only — credential-looking
+keys are rejected, secrets live in environment variables (brief §28).
+
 **Postgres nuance to carry into the migration**: the natural
 `@@unique([actorId, roleId, projectId])` does **not** deduplicate global grants,
 because `NULL` is treated as distinct in a unique constraint — two rows with

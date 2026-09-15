@@ -40,10 +40,9 @@ export class RolesService {
   }
 
   /**
-   * Project-scoped assignment only (projectId always set here) — no
-   * global-scope role currently exists in the seeded catalog (all seven
-   * system roles are scope=PROJECT), so exposing global assignment over
-   * HTTP is deferred until a global role actually exists to grant.
+   * Project-scoped assignment only (projectId always set here): a GLOBAL
+   * role such as ADMIN is granted outside any project and is refused here,
+   * so a project owner can never escalate someone to instance-wide rights.
    * Idempotent: an existing grant is returned as-is, with no audit entry.
    */
   async assignProjectRole(
@@ -64,6 +63,11 @@ export class RolesService {
     ]);
     if (!role) {
       throw new BadRequestException('No such role');
+    }
+    if (role.scope !== 'PROJECT') {
+      throw new BadRequestException(
+        'Only project-scoped roles can be granted within a project',
+      );
     }
     if (!actor) {
       throw new BadRequestException('No such actor');

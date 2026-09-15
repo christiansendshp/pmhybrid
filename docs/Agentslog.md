@@ -99,3 +99,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: api modules audit/tasks/synchronization/+6, migration audit_event_project_scope, web audit-log + task-detail
 - Verify: lint+build; 55 api e2e, 19 api unit, 23 web green
 - Follow-up: GAP-02
+
+## [2026-09-15T12:48:34Z] | claude-code | GAP-02 | DONE
+
+- Summary: Administrable actors: global ADMIN role + actors.manage (seeded, demo login); users create/edit/deactivate; agents CRUD with provider + non-secret config (credential keys rejected); GET /agents authenticated; inactive actors blocked at login, per-request JWT, membership, assignment; /auth/me global permissions; Team page.
+- Files: api users/agents/auth/roles/members/tasks, seed, shared-types, web team + actors.service
+- Verify: lint+build; 64 api e2e (actors 9), 23 api unit, 28 web green
+- Follow-up: GAP-03

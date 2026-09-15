@@ -1,0 +1,179 @@
+<h1>Team</h1>
+
+<nav>
+  <a routerLink="/dashboard">Dashboard</a>
+  <a routerLink="/projects">My Projects</a>
+  <a routerLink="/workload">Workload</a>
+  <a routerLink="/team">Team</a>
+</nav>
+
+@if (errorMessage()) {
+  <p role="alert">{{ errorMessage() }}</p>
+}
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else {
+  <section>
+    <h2>People</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Status</th>
+          @if (canManage()) {
+            <th>Actions</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (user of users(); track user.id) {
+          <tr>
+            <td>{{ user.displayName }}</td>
+            <td>{{ user.email ?? '—' }}</td>
+            <td>{{ user.isActive ? 'Active' : 'Inactive' }}</td>
+            @if (canManage()) {
+              <td>
+                <button mat-button type="button" (click)="startEdit(user)">Edit</button>
+                @if (!user.isActive) {
+                  <button
+                    mat-button
+                    type="button"
+                    [disabled]="saving()"
+                    (click)="setActive(user, true)"
+                  >
+                    Activate
+                  </button>
+                } @else if (user.id !== currentActorId()) {
+                  <button
+                    mat-button
+                    type="button"
+                    [disabled]="saving()"
+                    (click)="setActive(user, false)"
+                  >
+                    Deactivate
+                  </button>
+                }
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    @if (canManage()) {
+      <form [formGroup]="userForm" (ngSubmit)="createUser()">
+        <h3>Add a person</h3>
+        <mat-form-field>
+          <mat-label>Name</mat-label>
+          <input matInput formControlName="displayName" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Email</mat-label>
+          <input matInput type="email" formControlName="email" autocomplete="off" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Initial password</mat-label>
+          <input matInput type="password" formControlName="password" autocomplete="new-password" />
+        </mat-form-field>
+        <button mat-flat-button type="submit" [disabled]="userForm.invalid || saving()">
+          Add person
+        </button>
+      </form>
+    }
+  </section>
+
+  <section>
+    <h2>AI agents</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Provider</th>
+          <th>Status</th>
+          @if (canManage()) {
+            <th>Actions</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (agent of agents(); track agent.id) {
+          <tr>
+            <td>{{ agent.displayName }}</td>
+            <td>{{ agent.agentProfile?.providerType ?? '—' }}</td>
+            <td>{{ agent.isActive ? 'Active' : 'Inactive' }}</td>
+            @if (canManage()) {
+              <td>
+                <button mat-button type="button" (click)="startEdit(agent)">Edit</button>
+                <button
+                  mat-button
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="setActive(agent, !agent.isActive)"
+                >
+                  {{ agent.isActive ? 'Deactivate' : 'Activate' }}
+                </button>
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    @if (canManage()) {
+      <form [formGroup]="agentForm" (ngSubmit)="createAgent()">
+        <h3>Add an AI agent</h3>
+        <mat-form-field>
+          <mat-label>Name</mat-label>
+          <input matInput formControlName="displayName" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Provider</mat-label>
+          <input
+            matInput
+            formControlName="providerType"
+            placeholder="claude, codex, gemini, custom…"
+          />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Config (JSON, no secrets)</mat-label>
+          <textarea matInput formControlName="config" rows="3"></textarea>
+        </mat-form-field>
+        <button mat-flat-button type="submit" [disabled]="agentForm.invalid || saving()">
+          Add agent
+        </button>
+      </form>
+    }
+  </section>
+
+  @if (editing(); as actor) {
+    <section>
+      <h2>Edit {{ actor.displayName }}</h2>
+      <form [formGroup]="editForm" (ngSubmit)="saveEdit()">
+        <mat-form-field>
+          <mat-label>Name</mat-label>
+          <input matInput formControlName="displayName" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Avatar URL</mat-label>
+          <input matInput formControlName="avatarUrl" />
+        </mat-form-field>
+        @if (actor.kind === 'AI_AGENT') {
+          <mat-form-field>
+            <mat-label>Provider</mat-label>
+            <input matInput formControlName="providerType" />
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Config (JSON, no secrets)</mat-label>
+            <textarea matInput formControlName="config" rows="4"></textarea>
+          </mat-form-field>
+        }
+        <button mat-flat-button type="submit" [disabled]="editForm.invalid || saving()">
+          Save
+        </button>
+        <button mat-button type="button" (click)="cancelEdit()">Cancel</button>
+      </form>
+    </section>
+  }
+}

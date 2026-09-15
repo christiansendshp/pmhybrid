@@ -100,10 +100,11 @@ export class AuditService {
 }
 
 /**
- * The scalar/date fields of `after` whose value differs from `before`, or
- * null if none do (`undefined` in `after` means "not provided"). Sync's
- * per-field conflict check (docs/synchronization.md step 5) reads these key
- * names, so an unchanged field must never appear in newValue.
+ * The fields of `after` whose value differs from `before`, or null if none
+ * do (`undefined` in `after` means "not provided"). Dates compare by instant
+ * and JSON objects by content. Sync's per-field conflict check
+ * (docs/synchronization.md step 5) reads these key names, so an unchanged
+ * field must never appear in newValue.
  */
 export function diffFields(
   before: Record<string, unknown>,
@@ -117,7 +118,7 @@ export function diffFields(
     }
     const from = normalize(before[field]);
     const to = normalize(value);
-    if (from !== to) {
+    if (!sameValue(from, to)) {
       previousValue[field] = from;
       newValue[field] = to;
     }
@@ -127,6 +128,19 @@ export function diffFields(
 
 function normalize(value: unknown): unknown {
   return value instanceof Date ? value.toISOString() : (value ?? null);
+}
+
+function sameValue(a: unknown, b: unknown): boolean {
+  if (a === b) {
+    return true;
+  }
+  return (
+    typeof a === 'object' &&
+    typeof b === 'object' &&
+    a !== null &&
+    b !== null &&
+    JSON.stringify(a) === JSON.stringify(b)
+  );
 }
 
 function toJson(value: Record<string, unknown> | null | undefined) {

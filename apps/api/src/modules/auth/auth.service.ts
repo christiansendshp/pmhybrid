@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
+import { PermissionsResolverService } from '../../common/permissions-resolver.service.js';
 import { EnvConfig } from '../../config/env.validation.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { JwtPayload } from './jwt-payload.interface.js';
@@ -16,6 +17,9 @@ export interface ActorProfile {
   displayName: string;
   email: string | null;
   kind: string;
+  avatarUrl: string | null;
+  /** Global permission keys only — project permissions come from /projects/:id/roles/my-permissions. */
+  permissions: string[];
 }
 
 @Injectable()
@@ -24,6 +28,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService<EnvConfig, true>,
+    private readonly permissionsResolver: PermissionsResolverService,
   ) {}
 
   async login(email: string, password: string): Promise<TokenPair> {
@@ -72,14 +77,17 @@ export class AuthService {
   }
 
   async me(actorId: string): Promise<ActorProfile> {
-    const actor = await this.prisma.actor.findUniqueOrThrow({
-      where: { id: actorId },
-    });
+    const [actor, permissions] = await Promise.all([
+      this.prisma.actor.findUniqueOrThrow({ where: { id: actorId } }),
+      this.permissionsResolver.resolve(actorId),
+    ]);
     return {
       id: actor.id,
       displayName: actor.displayName,
       email: actor.email,
       kind: actor.kind,
+      avatarUrl: actor.avatarUrl,
+      permissions: [...permissions].sort(),
     };
   }
 

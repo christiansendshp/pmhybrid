@@ -24,6 +24,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/workload/workload').then((m) => m.Workload),
   },
   {
+    path: 'team',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/team/team').then((m) => m.Team),
+  },
+  {
     path: 'projects/:projectId',
     canActivate: [authGuard, projectMemberGuard],
     loadComponent: () =>

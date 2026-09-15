@@ -42,6 +42,9 @@ export class ProjectMembersService {
     if (!actor) {
       throw new BadRequestException('No such actor');
     }
+    if (!actor.isActive) {
+      throw new BadRequestException('Inactive actors cannot join a project');
+    }
 
     const existing = await this.prisma.projectMember.findUnique({
       where: { projectId_actorId: { projectId, actorId } },
