@@ -197,3 +197,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: packages/shared-types/permissions.ts, apps/api roles.service.ts + seed.ts
 - Verify: 104 api e2e, 33 api unit, 105 web green
 - Follow-up: none
+
+## [2026-09-15T15:51:37Z] | claude-code | GAP-16 | DONE
+
+- Summary: Frontend component tests (brief §33): kanban/task-detail/workload already had specs from earlier work; only conflicts.spec.ts was missing. Added it: diff rendering, filter toggle, KEEP_LOCAL/KEEP_EXTERNAL/DISMISSED/MANUAL_EDIT (prefill + submit), editable-fields gating, failure surfacing.
+- Files: apps/web/src/app/features/conflicts/conflicts.spec.ts
+- Verify: 113 web green (was 105)
+- Follow-up: Promoted GAP-13 to Active
