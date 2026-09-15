@@ -162,3 +162,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/src/modules/conflicts/conflicts.service.ts, apps/api/test/conflicts.e2e-spec.ts, apps/web/src/app/core/conflict-diff.ts, apps/web/src/app/core/conflict-diff.spec.ts, apps/web/src/app/features/conflicts/*, apps/web/src/app/app.routes.ts, docs/Features.md, docs/Roadmap.md
 - Verify: 88 api e2e, 33 api unit, 76 web; api+web lint/build green
 - Follow-up: Browser check pending the user's own login (credentials policy); GAP-16 will add a conflicts.spec.ts component test
+
+## [2026-09-15T14:59:09Z] | claude-code | GAP-09 | DONE
+
+- Summary: Documents view (brief §10): search with <mark> highlight and section navigation over the documental (raw) view, same search box filters the structured view's rows/entries, revision history per document kind (new GET .../documents/:kind/revisions[/:revisionId] reading DocumentRevision, which synchronization.service.ts already populated but nothing exposed). Raw content now renders line-by-line (not one <pre> blob) so headings and matches can be targeted individually.
+- Files: apps/api/src/modules/roadmap/roadmap.controller.ts, apps/api/src/modules/roadmap/document-kind.util.ts, apps/api/test/documents.e2e-spec.ts, apps/web/src/app/core/document-view.ts, apps/web/src/app/core/document-view.spec.ts, apps/web/src/app/core/documents.service.ts, apps/web/src/app/features/documents-viewer/*, docs/Features.md, docs/Roadmap.md
+- Verify: 92 api e2e, 33 api unit, 88 web; api+web lint/build green
+- Follow-up: Browser check pending the user's own login (credentials policy)

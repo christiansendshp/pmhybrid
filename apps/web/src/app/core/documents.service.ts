@@ -50,6 +50,19 @@ export interface ParsedAgentslog {
   previousSegment?: { archivePath: string; sha256: string };
 }
 
+export type RevisionSource = 'SYNC' | 'UI';
+
+export interface DocumentRevisionSummary {
+  id: string;
+  contentHash: string;
+  source: RevisionSource;
+  capturedAt: string;
+}
+
+export interface DocumentRevisionDetail extends DocumentRevisionSummary {
+  rawContent: string;
+}
+
 /**
  * Read-only documental + structured views (FASE-06). Mirrors
  * apps/api/src/modules/roadmap's RoadmapController — no orchestration or
@@ -77,6 +90,27 @@ export class DocumentsService {
     return firstValueFrom(
       this.http.get<ParsedAgentslog>(
         `${API_BASE_URL}/projects/${projectId}/documents/agentslog/structured`,
+      ),
+    );
+  }
+
+  /** Revision history (brief §10), newest first; empty until the project has synced. */
+  listRevisions(projectId: string, kind: DocumentKind): Promise<DocumentRevisionSummary[]> {
+    return firstValueFrom(
+      this.http.get<DocumentRevisionSummary[]>(
+        `${API_BASE_URL}/projects/${projectId}/documents/${kind}/revisions`,
+      ),
+    );
+  }
+
+  getRevision(
+    projectId: string,
+    kind: DocumentKind,
+    revisionId: string,
+  ): Promise<DocumentRevisionDetail> {
+    return firstValueFrom(
+      this.http.get<DocumentRevisionDetail>(
+        `${API_BASE_URL}/projects/${projectId}/documents/${kind}/revisions/${revisionId}`,
       ),
     );
   }

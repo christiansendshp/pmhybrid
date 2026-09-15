@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './../prisma/demo-credentials.js';
+import { createScratchDocsPath } from './helpers/scratch-docs.js';
 
 // pmhybrid-self, seeded by prisma/seed.ts, points docsPath at this repo's
 // own docs/ — real content, not synthetic fixtures (see seed.ts comment).
@@ -100,5 +101,80 @@ describe('Documents (roadmap parser, e2e)', () => {
     return request(app.getHttpServer())
       .get(`/projects/${SELF_PROJECT_ID}/documents/roadmap/raw`)
       .expect(401);
+  });
+
+  describe('revision history (brief §10)', () => {
+    const server = () => app.getHttpServer();
+    const auth = () => `Bearer ${ownerToken}`;
+
+    async function createProjectAt(docsPath: string) {
+      const res = await request(server())
+        .post('/projects')
+        .set('Authorization', auth())
+        .send({ name: `Documents E2E ${Date.now()}-${Math.random()}`, docsPath })
+        .expect(201);
+      return res.body.id as string;
+    }
+
+    it('is empty for a project that has never synced', async () => {
+      const projectId = await createProjectAt(createScratchDocsPath());
+
+      const res = await request(server())
+        .get(`/projects/${projectId}/documents/roadmap/revisions`)
+        .set('Authorization', auth())
+        .expect(200);
+      expect(res.body).toEqual([]);
+    });
+
+    it('records one revision per synced, content-bearing document, newest first', async () => {
+      const projectId = await createProjectAt(createScratchDocsPath());
+      await request(server()).post(`/projects/${projectId}/sync`).set('Authorization', auth()).expect(201);
+
+      const roadmapRevisions = await request(server())
+        .get(`/projects/${projectId}/documents/roadmap/revisions`)
+        .set('Authorization', auth())
+        .expect(200);
+      expect(roadmapRevisions.body).toHaveLength(1);
+      expect(roadmapRevisions.body[0]).toMatchObject({ source: 'SYNC' });
+      expect(roadmapRevisions.body[0].rawContent).toBeUndefined(); // list omits full content
+
+      // The scratch docs dir has no ProductDescription.md — nothing to revise.
+      const missingKindRevisions = await request(server())
+        .get(`/projects/${projectId}/documents/product-description/revisions`)
+        .set('Authorization', auth())
+        .expect(200);
+      expect(missingKindRevisions.body).toEqual([]);
+    });
+
+    it('fetches one revision by id with its full content, and 404s for a revision from a different document', async () => {
+      const projectId = await createProjectAt(createScratchDocsPath());
+      await request(server()).post(`/projects/${projectId}/sync`).set('Authorization', auth()).expect(201);
+
+      const list = await request(server())
+        .get(`/projects/${projectId}/documents/roadmap/revisions`)
+        .set('Authorization', auth())
+        .expect(200);
+      const revisionId = list.body[0].id as string;
+
+      const one = await request(server())
+        .get(`/projects/${projectId}/documents/roadmap/revisions/${revisionId}`)
+        .set('Authorization', auth())
+        .expect(200);
+      expect(one.body.rawContent).toContain('## Active work');
+
+      // Same id, wrong kind segment — must not leak the roadmap revision's content.
+      await request(server())
+        .get(`/projects/${projectId}/documents/agentslog/revisions/${revisionId}`)
+        .set('Authorization', auth())
+        .expect(404);
+    });
+
+    it('404s for an unknown revision id', async () => {
+      const projectId = await createProjectAt(createScratchDocsPath());
+      await request(server())
+        .get(`/projects/${projectId}/documents/roadmap/revisions/00000000-0000-0000-0000-000000000000`)
+        .set('Authorization', auth())
+        .expect(404);
+    });
   });
 });

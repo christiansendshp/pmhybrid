@@ -1,66 +1,181 @@
-<h2>Documents</h2>
+<header class="page-header">
+  <div>
+    <h2>Documents</h2>
+    <p class="page-header__description">
+      The documental view is exactly what's on disk; the structured view is what the parser reads
+      out of it (brief §10). Search highlights matches in both.
+    </p>
+  </div>
+</header>
 
-<mat-select [ngModel]="selectedKind()" (ngModelChange)="onKindChange($event)">
-  @for (kind of documentKinds; track kind) {
-    <mat-option [value]="kind">{{ kind }}</mat-option>
-  }
-</mat-select>
+<div class="doc-controls">
+  <mat-form-field class="doc-controls__kind">
+    <mat-label>Document</mat-label>
+    <mat-select [ngModel]="selectedKind()" (ngModelChange)="onKindChange($event)">
+      @for (kind of documentKinds; track kind) {
+        <mat-option [value]="kind">{{ kind }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
 
-<mat-button-toggle-group [value]="viewMode()" (change)="onViewModeChange($event.value)">
-  <mat-button-toggle value="documental">Documental</mat-button-toggle>
-  <mat-button-toggle value="structured">Structured</mat-button-toggle>
-</mat-button-toggle-group>
+  <mat-button-toggle-group [value]="viewMode()" (change)="onViewModeChange($event.value)">
+    <mat-button-toggle value="documental">Documental</mat-button-toggle>
+    <mat-button-toggle value="structured">Structured</mat-button-toggle>
+  </mat-button-toggle-group>
+
+  <mat-form-field class="doc-controls__search">
+    <mat-label>Search this document…</mat-label>
+    <input matInput [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" />
+  </mat-form-field>
+</div>
+
+@if (error()) {
+  <p role="alert">{{ error() }}</p>
+}
 
 @if (loading()) {
   <p>Loading…</p>
 }
 
-@if (rawContent(); as content) {
-  <pre>{{ content }}</pre>
-}
+@if (viewMode() === 'documental' && !loading() && displayedContent() !== null) {
+  @if (searchQuery()) {
+    <p class="meta-text" role="status">
+      {{ matchingLineCount() }} matching line{{ matchingLineCount() === 1 ? '' : 's' }}
+    </p>
+  }
+  @if (viewingRevisionId()) {
+    <p class="meta-text" role="status">
+      Viewing a past revision.
+      <button mat-button type="button" (click)="viewCurrent()">Back to current</button>
+    </p>
+  }
+  @if (revisionError()) {
+    <p role="alert">{{ revisionError() }}</p>
+  }
 
-@if (roadmapRows(); as rows) {
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Table</th>
-        <th>Outcome</th>
-        <th>Status (raw -&gt; mapped)</th>
-        <th>Owner</th>
-        <th>Depends on</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (row of rows; track row.externalId) {
-        <tr>
-          <td>{{ row.externalId }}</td>
-          <td>{{ row.table }}</td>
-          <td>{{ row.outcome || row.blocker }}</td>
-          <td>
-            {{ row.statusRaw }}
-            @if (row.statusMapped) {
-              -&gt; {{ row.statusMapped }}
-            }
-          </td>
-          <td>{{ row.ownerName }}</td>
-          <td>{{ row.dependsOnRaw }}</td>
-        </tr>
-      }
-    </tbody>
-  </table>
-}
-
-@if (agentslog(); as log) {
-  <ul>
-    @for (entry of log.entries; track entry.rawEntryHash) {
-      <li>
-        <strong>{{ entry.taskExternalId }}</strong> — {{ entry.statusWord }} —
-        {{ entry.summary }} ({{ entry.agentName }}, {{ entry.timestampFromLog }})
-      </li>
+  <div class="doc-layout">
+    @if (headings().length > 0) {
+      <nav class="doc-outline" aria-label="Sections">
+        <h3>Sections</h3>
+        <ul>
+          @for (heading of headings(); track heading.id) {
+            <li [style.paddingLeft.px]="(heading.level - 1) * 12">
+              <a [href]="'#doc-line-' + heading.id">{{ heading.text }}</a>
+            </li>
+          }
+        </ul>
+      </nav>
     }
-  </ul>
-  @if (log.previousSegment) {
-    <p>Older entries archived at {{ log.previousSegment.archivePath }}</p>
+
+    <div class="doc-content" role="region" aria-label="Document content" tabindex="0">
+      @for (line of contentLines(); track $index) {
+        <div
+          class="doc-line"
+          [id]="headingIdByLine().has($index) ? 'doc-line-' + headingIdByLine().get($index) : null"
+        >
+          @for (segment of segmentsFor(line); track $index) {
+            @if (segment.matched) {
+              <mark>{{ segment.text }}</mark>
+            } @else {
+              <span>{{ segment.text }}</span>
+            }
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <section class="doc-revisions">
+    <h3>Revision history</h3>
+    @if (revisionsLoading()) {
+      <p>Loading…</p>
+    } @else if (revisions().length === 0) {
+      <p class="meta-text">
+        No revisions recorded yet for this document — it changes once the project syncs.
+      </p>
+    } @else {
+      <ul>
+        @for (revision of revisions(); track revision.id) {
+          <li>
+            <button
+              mat-button
+              type="button"
+              [disabled]="viewingRevisionId() === revision.id"
+              (click)="viewRevision(revision.id)"
+            >
+              {{ revision.capturedAt | date: 'medium' }} — {{ revision.source }}
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+} @else if (viewMode() === 'structured') {
+  @if (searchQuery() && (filteredRoadmapRows() || filteredAgentslogEntries())) {
+    <p class="meta-text" role="status">Filtered by "{{ searchQuery() }}"</p>
+  }
+
+  @if (filteredRoadmapRows(); as rows) {
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Table</th>
+          <th>Outcome</th>
+          <th>Status (raw -&gt; mapped)</th>
+          <th>Owner</th>
+          <th>Depends on</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows; track row.externalId) {
+          <tr>
+            <td>{{ row.externalId }}</td>
+            <td>{{ row.table }}</td>
+            <td>{{ row.outcome || row.blocker }}</td>
+            <td>
+              {{ row.statusRaw }}
+              @if (row.statusMapped) {
+                -&gt; {{ row.statusMapped }}
+              }
+            </td>
+            <td>{{ row.ownerName }}</td>
+            <td>{{ row.dependsOnRaw }}</td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="6">
+              {{
+                searchQuery()
+                  ? 'No rows match "' + searchQuery() + '".'
+                  : 'No rows in this table yet.'
+              }}
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+
+  @if (filteredAgentslogEntries(); as entries) {
+    <ul>
+      @for (entry of entries; track entry.rawEntryHash) {
+        <li>
+          <strong>{{ entry.taskExternalId }}</strong> — {{ entry.statusWord }} —
+          {{ entry.summary }} ({{ entry.agentName }}, {{ entry.timestampFromLog }})
+        </li>
+      } @empty {
+        <li class="meta-text">
+          {{
+            searchQuery()
+              ? 'No entries match "' + searchQuery() + '".'
+              : 'No Agentslog entries yet.'
+          }}
+        </li>
+      }
+    </ul>
+    @if (agentslog()?.previousSegment; as previous) {
+      <p class="meta-text">Older entries archived at {{ previous.archivePath }}</p>
+    }
   }
 }

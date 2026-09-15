@@ -12,7 +12,10 @@ import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository
 import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AgentslogParserService } from './agentslog-parser.service.js';
-import { resolveDocumentFilename } from './document-kind.util.js';
+import {
+  resolveDocumentFilename,
+  resolveDocumentKind,
+} from './document-kind.util.js';
 import { RoadmapParserService } from './roadmap-parser.service.js';
 
 /**
@@ -51,6 +54,49 @@ export class RoadmapController {
   async agentslogStructured(@Param('projectId') projectId: string) {
     const content = await this.readDocument(projectId, 'agentslog');
     return this.agentslogParser.parse(content);
+  }
+
+  /**
+   * Revision history (brief §10) — every content-changed snapshot
+   * synchronization.service.ts recorded for this document, newest first.
+   * A project that has never synced simply has none yet: an empty list,
+   * not a 404 (the live file itself may still exist and read fine above).
+   */
+  @Get(':kind/revisions')
+  async revisions(
+    @Param('projectId') projectId: string,
+    @Param('kind') kind: string,
+  ) {
+    const document = await this.prisma.document.findUnique({
+      where: { projectId_kind: { projectId, kind: resolveDocumentKind(kind) } },
+    });
+    if (!document) {
+      return [];
+    }
+    return this.prisma.documentRevision.findMany({
+      where: { documentId: document.id },
+      orderBy: { capturedAt: 'desc' },
+      select: { id: true, contentHash: true, source: true, capturedAt: true },
+    });
+  }
+
+  /** One past revision's full content, for viewing an earlier version of the document. */
+  @Get(':kind/revisions/:revisionId')
+  async revision(
+    @Param('projectId') projectId: string,
+    @Param('kind') kind: string,
+    @Param('revisionId') revisionId: string,
+  ) {
+    const revision = await this.prisma.documentRevision.findFirst({
+      where: {
+        id: revisionId,
+        document: { projectId, kind: resolveDocumentKind(kind) },
+      },
+    });
+    if (!revision) {
+      throw new NotFoundException('Revision not found');
+    }
+    return revision;
   }
 
   private async readDocument(projectId: string, kind: string): Promise<string> {
