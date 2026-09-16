@@ -77,7 +77,7 @@ describe('RolesPage (brief §4 — configurable role permissions)', () => {
     expect(text).toContain('VIEWER');
     expect(text).toContain('ADMIN');
     expect(text).toContain('roles.manage');
-    expect(text).toContain('None'); // VIEWER has no permissions
+    expect(text).toContain('Ninguno'); // VIEWER has no permissions
   });
 
   it('is read-only without roles.manage: no Edit buttons, edit() is inert', async () => {
@@ -87,7 +87,7 @@ describe('RolesPage (brief §4 — configurable role permissions)', () => {
       fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLElement>,
     ).map((b) => b.textContent?.trim());
 
-    expect(buttons).not.toContain('Edit');
+    expect(buttons).not.toContain('Editar');
   });
 
   it('a roles.manage holder can toggle a permission and save the new set', async () => {

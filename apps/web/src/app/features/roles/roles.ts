@@ -84,6 +84,10 @@ export class RolesPage implements OnInit {
     return role.rolePermissions.map((rp) => rp.permission.key).sort();
   }
 
+  scopeLabel(scope: Role['scope']): string {
+    return scope === 'GLOBAL' ? 'Global' : 'Proyecto';
+  }
+
   private async reload(): Promise<void> {
     const [roles, permissions] = await Promise.all([
       this.rolesService.listRoles(),

@@ -65,17 +65,17 @@ describe('AuditLog', () => {
       'p1',
       expect.objectContaining({ limit: 50, cursor: undefined }),
     );
-    expect(text()).toContain('Ana García (HUMAN)');
+    expect(text()).toContain('Ana García (Humano)');
     expect(text()).toContain('title: Old title → New title');
     expect(text()).toContain('SYNC_RUN');
     expect(text()).toContain('trigger: — → MANUAL');
-    expect(text()).not.toContain('Load older');
+    expect(text()).not.toContain('Cargar más antiguos');
   });
 
   it('shows an empty state when nothing matches', async () => {
     listForProject.mockResolvedValue([]);
     const { text } = await render();
-    expect(text()).toContain('No recorded changes match these filters.');
+    expect(text()).toContain('Ningún cambio registrado coincide con estos filtros.');
   });
 
   it('pages backwards from the last event shown, and starts over when a filter changes', async () => {
@@ -86,7 +86,7 @@ describe('AuditLog', () => {
       .mockResolvedValueOnce([]);
 
     const { component, text } = await render();
-    expect(text()).toContain('Load older');
+    expect(text()).toContain('Cargar más antiguos');
 
     await component.loadOlder();
     expect(listForProject).toHaveBeenLastCalledWith(

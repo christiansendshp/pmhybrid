@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isDraggableTransition } from './task-status-policy.js';
+import { isDraggableTransition, statusLabel } from './task-status-policy.js';
 
 describe('isDraggableTransition', () => {
   it('allows dragging a card forward through the board', () => {
@@ -23,5 +23,12 @@ describe('isDraggableTransition', () => {
   it('rejects a transition the policy does not define at all', () => {
     expect(isDraggableTransition('PENDIENTE', 'TERMINADA')).toBe(false);
     expect(isDraggableTransition('QA', 'PENDIENTE')).toBe(false);
+  });
+});
+
+describe('statusLabel', () => {
+  it('replaces the underscore with a space, keeping the Spanish domain term verbatim', () => {
+    expect(statusLabel('EN_DESARROLLO')).toBe('EN DESARROLLO');
+    expect(statusLabel('QA')).toBe('QA');
   });
 });

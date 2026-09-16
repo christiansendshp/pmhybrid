@@ -27,7 +27,11 @@ import {
 } from '../../core/hierarchy.service.js';
 import { describeHttpError } from '../../core/http-error.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
-import { KANBAN_STATUSES, isDraggableTransition } from '../../core/task-status-policy.js';
+import {
+  KANBAN_STATUSES,
+  isDraggableTransition,
+  statusLabel,
+} from '../../core/task-status-policy.js';
 import { TASK_PRIORITIES, TaskCard, TaskStatus, TasksService } from '../../core/tasks.service.js';
 import { TaskForm, TaskFormValue, toCreateTaskInput } from '../../shared/task-form/task-form.js';
 
@@ -147,9 +151,7 @@ export class Kanban implements OnInit {
     return `lane-${laneKey}-${status}`;
   }
 
-  statusLabel(status: TaskStatus): string {
-    return status.replace('_', ' ');
-  }
+  readonly statusLabel = statusLabel;
 
   patchFilters(patch: Partial<BoardFilters>): void {
     this.filters.update((filters) => ({ ...filters, ...patch }));

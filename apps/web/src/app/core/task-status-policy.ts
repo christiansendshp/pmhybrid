@@ -8,6 +8,11 @@ export const KANBAN_STATUSES: TaskStatus[] = [
   'TERMINADA',
 ];
 
+/** Kanban status values are already Spanish domain terms (ADR-002, written verbatim into the Roadmap); only the separator changes for display. */
+export function statusLabel(status: string): string {
+  return status.replace('_', ' ');
+}
+
 /**
  * Mirrors apps/api/src/modules/tasks/task-status-policy.ts — which
  * transitions are legal, for showing/allowing the right controls. The

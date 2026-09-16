@@ -6,6 +6,7 @@ import {
   DashboardService,
   DashboardSummary,
 } from '../../core/dashboard.service.js';
+import { statusLabel } from '../../core/task-status-policy.js';
 
 /** Brief §14 "DASHBOARD PRINCIPAL" — cross-project summary + activity. */
 @Component({
@@ -39,8 +40,5 @@ export class Dashboard implements OnInit {
     }
   }
 
-  /** Kanban status values are already Spanish domain terms (ADR-002); only the separator changes for display. */
-  statusLabel(status: string): string {
-    return status.replace('_', ' ');
-  }
+  readonly statusLabel = statusLabel;
 }

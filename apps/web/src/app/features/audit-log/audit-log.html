@@ -1,23 +1,28 @@
-<h2>Audit</h2>
+<header class="page-header">
+  <div>
+    <h2>Auditoría</h2>
+    <p class="page-header__description">Historial de cambios de este proyecto (brief §25, §31).</p>
+  </div>
+</header>
 
-<div>
+<div class="audit-filters" role="search" aria-label="Filtros de auditoría">
   <mat-select
-    placeholder="Filter by origin…"
+    placeholder="Filtrar por origen…"
     [ngModel]="originFilter()"
     (ngModelChange)="originFilter.set($event); onFilterChange()"
   >
-    <mat-option [value]="null">All origins</mat-option>
+    <mat-option [value]="null">Todos los orígenes</mat-option>
     @for (origin of origins; track origin) {
       <mat-option [value]="origin">{{ origin }}</mat-option>
     }
   </mat-select>
 
   <mat-select
-    placeholder="Filter by entity…"
+    placeholder="Filtrar por entidad…"
     [ngModel]="entityTypeFilter()"
     (ngModelChange)="entityTypeFilter.set($event); onFilterChange()"
   >
-    <mat-option [value]="null">All entities</mat-option>
+    <mat-option [value]="null">Todas las entidades</mat-option>
     @for (entityType of entityTypes; track entityType) {
       <mat-option [value]="entityType">{{ entityType }}</mat-option>
     }
@@ -25,50 +30,58 @@
 </div>
 
 @if (loading() && events().length === 0) {
-  <p>Loading…</p>
+  <p class="meta-text">Cargando…</p>
 } @else if (events().length === 0) {
-  <p>No recorded changes match these filters.</p>
+  <p class="meta-text">Ningún cambio registrado coincide con estos filtros.</p>
 }
 
-<table>
-  <thead>
-    <tr>
-      <th>When</th>
-      <th>Actor</th>
-      <th>Origin</th>
-      <th>Operation</th>
-      <th>Entity</th>
-      <th>Changes</th>
-    </tr>
-  </thead>
-  <tbody>
-    @for (event of events(); track event.id) {
+<div class="table-scroll">
+  <table class="audit-table">
+    <thead>
       <tr>
-        <td>{{ event.occurredAt | date: 'medium' }}</td>
-        <td>{{ event.actor ? event.actor.displayName + ' (' + event.actor.kind + ')' : '—' }}</td>
-        <td>{{ event.origin }}</td>
-        <td>{{ event.operation }}</td>
-        <td>
-          @if (event.entityType === 'Task') {
-            <a [routerLink]="['../tasks', event.entityId]">Task</a>
-          } @else {
-            {{ event.entityType }}
-          }
-        </td>
-        <td>
-          <ul>
-            @for (change of describeChanges(event); track change.field) {
-              <li>{{ change.field }}: {{ change.from }} → {{ change.to }}</li>
-            }
-          </ul>
-        </td>
+        <th>Cuándo</th>
+        <th>Actor</th>
+        <th>Origen</th>
+        <th>Operación</th>
+        <th>Entidad</th>
+        <th>Cambios</th>
       </tr>
-    }
-  </tbody>
-</table>
+    </thead>
+    <tbody>
+      @for (event of events(); track event.id) {
+        <tr>
+          <td>{{ event.occurredAt | date: 'medium' }}</td>
+          <td>
+            {{
+              event.actor
+                ? event.actor.displayName + ' (' + actorKindLabel(event.actor.kind) + ')'
+                : '—'
+            }}
+          </td>
+          <td>{{ event.origin }}</td>
+          <td>{{ event.operation }}</td>
+          <td>
+            @if (event.entityType === 'Task') {
+              <a [routerLink]="['../tasks', event.entityId]">Tarea</a>
+            } @else {
+              {{ event.entityType }}
+            }
+          </td>
+          <td>
+            <ul class="audit-changes">
+              @for (change of describeChanges(event); track change.field) {
+                <li>{{ change.field }}: {{ change.from }} → {{ change.to }}</li>
+              }
+            </ul>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
 
 @if (hasMore()) {
-  <button mat-flat-button type="button" [disabled]="loading()" (click)="loadOlder()">
-    Load older
+  <button mat-button type="button" [disabled]="loading()" (click)="loadOlder()">
+    Cargar más antiguos
   </button>
 }

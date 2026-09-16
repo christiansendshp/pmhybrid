@@ -1,0 +1,24 @@
+.audit-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+
+  mat-select {
+    min-width: 12rem;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--mat-sys-outline);
+    border-radius: var(--radius-sm);
+  }
+}
+
+.audit-table {
+  min-width: 56rem;
+}
+
+.audit-changes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: var(--mat-sys-body-small);
+}

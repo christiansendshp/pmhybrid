@@ -288,3 +288,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: features/team/*, features/my-projects/my-projects.scss, features/workload/workload.scss, styles.scss
 - Verify: 135 web unit green, lint clean, build clean
 - Follow-up: roles, audit, phases-progress still raw
+
+## [2026-09-16T12:12:43Z] | claude-sonnet-5 | GAP-20 roles/audit/progress | IN_PROGRESS
+
+- Summary: Redesigned Roles, Audit and Phases-progress: raw tables/lists -> page-header/table-scroll, Spanish, added Audit's missing scss and Progress's missing loading state+spec. Extracted the 5x-duplicated status.replace('_',' ') into core/task-status-policy.ts statusLabel().
+- Files: features/{roles,audit-log,phases-progress}/_, core/task-status-policy.ts, features/{kanban,workload,dashboard}/_.ts
+- Verify: 139 web unit green, lint clean, build clean
+- Follow-up: kanban/task-detail/conflicts/documents-viewer/project-settings/my-projects/workload need copy pass; full dark-mode QA pass once user logs in

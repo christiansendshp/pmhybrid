@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
+import { actorKindLabel } from '../../core/actor-kind.js';
 import { describeAuditChanges } from '../../core/audit-format.js';
 import { AUDIT_ORIGINS, AuditEvent, AuditOrigin, AuditService } from '../../core/audit.service.js';
 
@@ -26,6 +27,7 @@ const AUDIT_ENTITY_TYPES = [
   selector: 'app-audit-log',
   imports: [DatePipe, FormsModule, RouterLink, MatButtonModule, MatSelectModule],
   templateUrl: './audit-log.html',
+  styleUrl: './audit-log.scss',
 })
 export class AuditLog implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -39,6 +41,7 @@ export class AuditLog implements OnInit {
   readonly originFilter = signal<AuditOrigin | null>(null);
   readonly entityTypeFilter = signal<string | null>(null);
   readonly describeChanges = describeAuditChanges;
+  readonly actorKindLabel = actorKindLabel;
 
   private get projectId(): string {
     return this.route.parent!.snapshot.paramMap.get('projectId')!;

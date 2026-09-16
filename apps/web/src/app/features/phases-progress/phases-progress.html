@@ -1,30 +1,38 @@
-<h2>Phases &amp; Progress</h2>
+<header class="page-header">
+  <div>
+    <h2>Fases y progreso</h2>
+  </div>
+</header>
 
-@if (tree(); as t) {
+@if (loading()) {
+  <p class="meta-text">Cargando…</p>
+} @else if (tree(); as t) {
   <section class="progress-node">
-    <p>Project progress: {{ t.project !== null ? t.project + '%' : 'no data' }}</p>
+    <p>Progreso del proyecto: {{ t.project !== null ? t.project + '%' : 'sin datos' }}</p>
     <ul class="status-counts">
       @for (entry of countsFor(t.statusCounts); track entry.status) {
-        <li>{{ entry.count }} {{ entry.status }}</li>
+        <li>{{ entry.count }} {{ statusLabel(entry.status) }}</li>
       }
     </ul>
   </section>
 
   @for (phase of t.phases; track phase.id) {
     <section class="progress-node">
-      <h3>{{ phase.name }} — {{ phase.progress !== null ? phase.progress + '%' : 'no data' }}</h3>
+      <h3>{{ phase.name }} — {{ phase.progress !== null ? phase.progress + '%' : 'sin datos' }}</h3>
       <ul class="status-counts">
         @for (entry of countsFor(phase.statusCounts); track entry.status) {
-          <li>{{ entry.count }} {{ entry.status }}</li>
+          <li>{{ entry.count }} {{ statusLabel(entry.status) }}</li>
         }
       </ul>
 
       @for (epic of phase.epics; track epic.id) {
         <div class="progress-node progress-node--nested">
-          <h4>{{ epic.name }} — {{ epic.progress !== null ? epic.progress + '%' : 'no data' }}</h4>
+          <h4>
+            {{ epic.name }} — {{ epic.progress !== null ? epic.progress + '%' : 'sin datos' }}
+          </h4>
           <ul class="status-counts">
             @for (entry of countsFor(epic.statusCounts); track entry.status) {
-              <li>{{ entry.count }} {{ entry.status }}</li>
+              <li>{{ entry.count }} {{ statusLabel(entry.status) }}</li>
             }
           </ul>
           <ul>
@@ -45,10 +53,10 @@
 
   @for (epic of t.epics; track epic.id) {
     <section class="progress-node">
-      <h3>{{ epic.name }} — {{ epic.progress !== null ? epic.progress + '%' : 'no data' }}</h3>
+      <h3>{{ epic.name }} — {{ epic.progress !== null ? epic.progress + '%' : 'sin datos' }}</h3>
       <ul class="status-counts">
         @for (entry of countsFor(epic.statusCounts); track entry.status) {
-          <li>{{ entry.count }} {{ entry.status }}</li>
+          <li>{{ entry.count }} {{ statusLabel(entry.status) }}</li>
         }
       </ul>
       <ul>

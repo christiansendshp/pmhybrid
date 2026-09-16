@@ -1,10 +1,10 @@
 <li class="progress-task">
   <a [routerLink]="['../tasks', task().id]">{{ task().name }}</a>
-  <span class="meta-text">— {{ task().status }} — {{ task().progress }}%</span>
+  <span class="meta-text">— {{ statusLabel(task().status) }} — {{ task().progress }}%</span>
   @if (task().subtasks.length > 0) {
     <ul class="status-counts">
       @for (entry of countsFor(task().statusCounts); track entry.status) {
-        <li>{{ entry.count }} {{ entry.status }}</li>
+        <li>{{ entry.count }} {{ statusLabel(entry.status) }}</li>
       }
     </ul>
     <ul>

@@ -14,7 +14,10 @@ import {
 } from '../../core/hierarchy.service.js';
 import { describeHttpError } from '../../core/http-error.js';
 import { Project, ProjectsService } from '../../core/projects.service.js';
-import { KANBAN_STATUSES } from '../../core/task-status-policy.js';
+import {
+  KANBAN_STATUSES,
+  statusLabel as formatStatusLabel,
+} from '../../core/task-status-policy.js';
 import { TaskStatus } from '../../core/tasks.service.js';
 import { WorkloadFilters, WorkloadRow, WorkloadService } from '../../core/workload.service.js';
 
@@ -131,7 +134,7 @@ export class Workload implements OnInit {
   }
 
   statusLabel(status: TaskStatus | null): string {
-    return status ? status.replace('_', ' ') : '';
+    return status ? formatStatusLabel(status) : '';
   }
 
   plural(count: number, noun: string): string {
