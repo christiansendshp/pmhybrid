@@ -111,8 +111,8 @@ describe('Workload (brief §18)', () => {
     );
 
     expect(cells).toEqual([
-      ['Codex', 'AI agent', 'Website Relaunch', 'Build API', 'EN DESARROLLO', '45%'],
-      ['Ana García', 'Human', 'No tasks assigned'],
+      ['Codex', 'Agente IA', 'Website Relaunch', 'Build API', 'EN DESARROLLO', '45%'],
+      ['Ana García', 'Humano', 'No tasks assigned'],
     ]);
     expect(text()).toContain('2 actors · 1 task · 1 idle');
   });

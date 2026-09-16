@@ -6,6 +6,7 @@ import { actorKindLabel } from '../../core/actor-kind.js';
 import { AuthService } from '../../core/auth.service.js';
 import { describeNotification } from '../../core/notification-format.js';
 import { Notification, NotificationsService } from '../../core/notifications.service.js';
+import { ThemeService } from '../../core/theme.service.js';
 
 interface NavItem {
   label: string;
@@ -29,12 +30,13 @@ export class AppShell implements OnInit {
   private readonly router = inject(Router);
   private readonly notificationsService = inject(NotificationsService);
   private readonly main = viewChild.required<ElementRef<HTMLElement>>('main');
+  readonly themeService = inject(ThemeService);
 
   readonly navItems: readonly NavItem[] = [
-    { label: 'Dashboard', path: '/dashboard' },
-    { label: 'My Projects', path: '/projects' },
-    { label: 'Workload', path: '/workload' },
-    { label: 'Team', path: '/team' },
+    { label: 'Panel', path: '/dashboard' },
+    { label: 'Mis proyectos', path: '/projects' },
+    { label: 'Carga de trabajo', path: '/workload' },
+    { label: 'Equipo', path: '/team' },
     { label: 'Roles', path: '/roles' },
   ];
 

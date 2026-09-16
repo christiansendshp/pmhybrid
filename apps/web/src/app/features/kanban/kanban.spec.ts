@@ -99,7 +99,7 @@ describe('Kanban (brief §15)', () => {
       'HIGH',
       'Build › Public API',
       'Codex',
-      'AI agent',
+      'Agente IA',
       '45%',
       'Subtasks 1/2',
       'Depends on 1 · 1 open',

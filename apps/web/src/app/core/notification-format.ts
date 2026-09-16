@@ -7,11 +7,11 @@ export function describeNotification(notification: Notification): string {
     case 'CONFLICTS_DETECTED': {
       const count =
         typeof payload['conflictsRaised'] === 'number' ? payload['conflictsRaised'] : '';
-      return `Sync found ${count} conflict${count === 1 ? '' : 's'} to resolve`;
+      return `La sincronización encontró ${count} conflicto${count === 1 ? '' : 's'} por resolver`;
     }
     case 'SYNC_FAILED': {
-      const error = typeof payload['error'] === 'string' ? payload['error'] : 'Unknown error';
-      return `Sync failed: ${error}`;
+      const error = typeof payload['error'] === 'string' ? payload['error'] : 'Error desconocido';
+      return `Falló la sincronización: ${error}`;
     }
     default:
       return notification.type;

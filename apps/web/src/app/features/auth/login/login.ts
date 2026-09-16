@@ -36,7 +36,7 @@ export class Login {
       await this.authService.login(email, password);
       await this.router.navigateByUrl('/dashboard');
     } catch {
-      this.errorMessage.set('Invalid email or password.');
+      this.errorMessage.set('Email o contraseña inválidos.');
     } finally {
       this.submitting.set(false);
     }

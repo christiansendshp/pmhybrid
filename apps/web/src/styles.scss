@@ -1,7 +1,11 @@
 @use '@angular/material' as mat;
 
-// Operate surface (brief §30): system fonts, one accent reserved for primary actions
-// and the current location, neutral surfaces, light or dark from the OS preference.
+// Operate surface (brief §30; DESIGN.md): system fonts, one accent (azure)
+// reserved for primary actions, the current location, and focus — never
+// decoration. Tertiary (violet) marks AI-agent presence only
+// (.kind-badge[data-kind='AI_AGENT']), never used elsewhere. Light/dark
+// responds to the OS by default; ThemeService overrides `color-scheme` on
+// <html> when the person picks explicitly (see .theme-toggle in app-shell).
 $font-stack: (system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif);
 
 html {
@@ -10,14 +14,15 @@ html {
   @include mat.theme(
     (
       color: (
-        primary: mat.$violet-palette,
+        primary: mat.$azure-palette,
+        tertiary: mat.$violet-palette,
         theme-type: color-scheme,
       ),
       typography: (
         plain-family: $font-stack,
         brand-family: $font-stack,
       ),
-      density: -1,
+      density: -2,
     )
   );
 

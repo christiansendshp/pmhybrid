@@ -85,10 +85,10 @@ describe('AppShell', () => {
 
     expect(root.querySelectorAll('nav')).toHaveLength(1);
     expect(primaryLinks().map((link) => link.textContent?.trim())).toEqual([
-      'Dashboard',
-      'My Projects',
-      'Workload',
-      'Team',
+      'Panel',
+      'Mis proyectos',
+      'Carga de trabajo',
+      'Equipo',
       'Roles',
     ]);
     expect(root.querySelector('main')?.textContent).toContain('page body');
@@ -101,11 +101,11 @@ describe('AppShell', () => {
         .filter((link) => link.getAttribute('aria-current') === 'page')
         .map((link) => link.textContent?.trim());
 
-    expect(current()).toEqual(['Team']);
+    expect(current()).toEqual(['Equipo']);
 
     await harness.navigateByUrl('/projects/p1', AppShell);
     harness.detectChanges();
-    expect(current()).toEqual(['My Projects']);
+    expect(current()).toEqual(['Mis proyectos']);
   });
 
   it('shows who is signed in, with their kind', async () => {
@@ -113,13 +113,13 @@ describe('AppShell', () => {
     const header = root.querySelector('header')?.textContent ?? '';
 
     expect(header).toContain('Ana García');
-    expect(header).toContain('Human');
+    expect(header).toContain('Humano');
   });
 
   it('signs out back to the login page', async () => {
     const { harness, root } = await renderAt('/workload');
     const signOut = Array.from(root.querySelectorAll('button')).find(
-      (button) => button.textContent?.trim() === 'Sign out',
+      (button) => button.textContent?.trim() === 'Cerrar sesión',
     );
 
     signOut!.click();
@@ -127,6 +127,21 @@ describe('AppShell', () => {
 
     expect(logout).toHaveBeenCalledOnce();
     expect(TestBed.inject(Router).url).toBe('/login');
+  });
+
+  it('toggles the color scheme and its own label', async () => {
+    document.documentElement.style.colorScheme = '';
+    const { harness, root } = await renderAt('/dashboard');
+    const toggle = root.querySelector<HTMLButtonElement>('.theme-toggle')!;
+
+    expect(toggle.getAttribute('aria-label')).toBe('Cambiar a tema oscuro');
+
+    toggle.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    expect(document.documentElement.style.colorScheme).toBe('dark');
+    expect(toggle.getAttribute('aria-label')).toBe('Cambiar a tema claro');
   });
 
   it('moves keyboard focus to the main content from the skip link', async () => {
@@ -147,7 +162,7 @@ describe('AppShell', () => {
     await harness.fixture.whenStable();
     harness.detectChanges();
 
-    expect(root.textContent).toContain('No notifications yet.');
+    expect(root.textContent).toContain('Todavía no hay notificaciones.');
   });
 
   it('badges the unread count and lets an unread notification be marked read', async () => {
@@ -165,11 +180,11 @@ describe('AppShell', () => {
     await harness.fixture.whenStable();
     harness.detectChanges();
 
-    expect(root.textContent).toContain('Sync found 2 conflicts to resolve');
-    expect(root.textContent).toContain('Sync failed: boom');
+    expect(root.textContent).toContain('La sincronización encontró 2 conflictos por resolver');
+    expect(root.textContent).toContain('Falló la sincronización: boom');
 
     const markReadButtons = Array.from(root.querySelectorAll('button')).filter(
-      (b) => b.textContent?.trim() === 'Mark read',
+      (b) => b.textContent?.trim() === 'Marcar como leída',
     );
     expect(markReadButtons).toHaveLength(2); // n1 and n2 are unread; n3 already is.
 
@@ -180,7 +195,7 @@ describe('AppShell', () => {
     expect(markRead).toHaveBeenCalledWith('n1');
     expect(
       Array.from(root.querySelectorAll('button')).filter(
-        (b) => b.textContent?.trim() === 'Mark read',
+        (b) => b.textContent?.trim() === 'Marcar como leída',
       ),
     ).toHaveLength(1);
     expect(root.querySelector('.notifications__badge')?.textContent?.trim()).toBe('1');

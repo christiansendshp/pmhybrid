@@ -55,7 +55,7 @@ describe('app routes', () => {
     const { root, url } = await open('/login');
 
     expect(url).toBe('/login');
-    expect(root.querySelector('h1')?.textContent).toContain('Log in');
+    expect(root.querySelector('h1')?.textContent).toContain('Iniciar sesión');
     expect(root.querySelector('nav')).toBeNull();
   });
 

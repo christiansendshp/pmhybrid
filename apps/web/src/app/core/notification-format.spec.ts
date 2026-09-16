@@ -21,7 +21,7 @@ describe('describeNotification (brief §29)', () => {
       describeNotification(
         notification({ type: 'CONFLICTS_DETECTED', payload: { conflictsRaised: 3 } }),
       ),
-    ).toBe('Sync found 3 conflicts to resolve');
+    ).toBe('La sincronización encontró 3 conflictos por resolver');
   });
 
   it('does not pluralize a single conflict', () => {
@@ -29,7 +29,7 @@ describe('describeNotification (brief §29)', () => {
       describeNotification(
         notification({ type: 'CONFLICTS_DETECTED', payload: { conflictsRaised: 1 } }),
       ),
-    ).toBe('Sync found 1 conflict to resolve');
+    ).toBe('La sincronización encontró 1 conflicto por resolver');
   });
 
   it('surfaces the sync failure message', () => {
@@ -37,7 +37,7 @@ describe('describeNotification (brief §29)', () => {
       describeNotification(
         notification({ type: 'SYNC_FAILED', payload: { error: 'ENOENT: no such file' } }),
       ),
-    ).toBe('Sync failed: ENOENT: no such file');
+    ).toBe('Falló la sincronización: ENOENT: no such file');
   });
 
   it('falls back to the raw type for an unknown notification type, instead of rendering empty', () => {
@@ -48,7 +48,7 @@ describe('describeNotification (brief §29)', () => {
 
   it('handles a null payload without throwing', () => {
     expect(describeNotification(notification({ type: 'SYNC_FAILED', payload: null }))).toBe(
-      'Sync failed: Unknown error',
+      'Falló la sincronización: Error desconocido',
     );
   });
 });

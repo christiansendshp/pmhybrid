@@ -267,3 +267,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: docs/api-reference.md
 - Verify: manual re-read of jwt-auth.guard.ts and auth.controller.ts
 - Follow-up: none
+
+## [2026-09-16T11:56:43Z] | claude-sonnet-5 | GAP-20 foundation | IN_PROGRESS
+
+- Summary: New DESIGN.md; replaced Material's stock violet palette with azure/violet (M3, ADR-010); ThemeService adds a persisted light/dark toggle in the app shell; unified shell + login copy to Spanish (actor-kind, notifications, nav labels).
+- Files: apps/web/DESIGN.md, styles.scss, core/theme.service.ts, layout/app-shell/_, features/auth/login/_, core/actor-kind.ts, core/notification-format.ts
+- Verify: 129 web unit green, lint clean, build clean; login verified in browser light+dark
+- Follow-up: redesign remaining raw pages (dashboard, team, roles, audit, phases-progress) next
