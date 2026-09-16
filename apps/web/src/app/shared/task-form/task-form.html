@@ -1,95 +1,95 @@
 <form class="task-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-  <mat-form-field class="task-form__wide">
-    <mat-label>Title</mat-label>
+  <mat-form-field appearance="outline" class="task-form__wide">
+    <mat-label>Título</mat-label>
     <input matInput formControlName="title" />
-    <mat-error>A task needs a title.</mat-error>
+    <mat-error>Una tarea necesita un título.</mat-error>
   </mat-form-field>
 
-  <mat-form-field class="task-form__wide">
-    <mat-label>Acceptance criteria</mat-label>
+  <mat-form-field appearance="outline" class="task-form__wide">
+    <mat-label>Criterio de aceptación</mat-label>
     <textarea matInput formControlName="acceptanceCriteria" rows="2"></textarea>
-    <mat-hint>Written to the Roadmap's Acceptance check column.</mat-hint>
-    <mat-error>Say how this task will be accepted.</mat-error>
+    <mat-hint>Se escribe en la columna Acceptance check del Roadmap.</mat-hint>
+    <mat-error>Indica cómo se aceptará esta tarea.</mat-error>
   </mat-form-field>
 
-  <mat-form-field class="task-form__wide">
-    <mat-label>Depends on (parent instance)</mat-label>
+  <mat-form-field appearance="outline" class="task-form__wide">
+    <mat-label>Depende de (instancia superior)</mat-label>
     <mat-select formControlName="parent">
-      <mat-option value="none">None — project-level task</mat-option>
+      <mat-option value="none">Ninguna — tarea a nivel de proyecto</mat-option>
       @if (hierarchy().phases.length > 0) {
-        <mat-optgroup label="Phases">
+        <mat-optgroup label="Fases">
           @for (phase of hierarchy().phases; track phase.id) {
             <mat-option [value]="'phase:' + phase.id">{{ phase.name }}</mat-option>
           }
         </mat-optgroup>
       }
       @if (hierarchy().epics.length > 0) {
-        <mat-optgroup label="Epics">
+        <mat-optgroup label="Épicas">
           @for (epic of hierarchy().epics; track epic.id) {
             <mat-option [value]="'epic:' + epic.id">{{ epic.name }}</mat-option>
           }
         </mat-optgroup>
       }
       @if (hierarchy().templates.length > 0) {
-        <mat-optgroup label="Templates">
+        <mat-optgroup label="Plantillas">
           @for (template of hierarchy().templates; track template.id) {
             <mat-option [value]="'template:' + template.id">{{ template.name }}</mat-option>
           }
         </mat-optgroup>
       }
       @if (parentTasks().length > 0) {
-        <mat-optgroup label="Parent task">
+        <mat-optgroup label="Tarea superior">
           @for (candidate of parentTasks(); track candidate.id) {
             <mat-option [value]="'task:' + candidate.id">{{ candidate.title }}</mat-option>
           }
         </mat-optgroup>
       }
     </mat-select>
-    <mat-error>Choose what this task depends on, or None.</mat-error>
+    <mat-error>Elige de qué depende esta tarea, o Ninguna.</mat-error>
   </mat-form-field>
 
-  <mat-form-field>
-    <mat-label>Priority</mat-label>
+  <mat-form-field appearance="outline">
+    <mat-label>Prioridad</mat-label>
     <mat-select formControlName="priority">
-      <mat-option [value]="null">No priority</mat-option>
+      <mat-option [value]="null">Sin prioridad</mat-option>
       @for (priority of priorities; track priority) {
         <mat-option [value]="priority">{{ priority }}</mat-option>
       }
     </mat-select>
   </mat-form-field>
 
-  <mat-form-field>
-    <mat-label>Progress %</mat-label>
+  <mat-form-field appearance="outline">
+    <mat-label>Progreso %</mat-label>
     <input matInput type="number" min="0" max="100" step="1" formControlName="progressPercent" />
     @if (progressDerived()) {
-      <mat-hint>Derived from subtasks</mat-hint>
+      <mat-hint>Derivado de las subtareas</mat-hint>
     }
-    <mat-error>A whole number from 0 to 100.</mat-error>
+    <mat-error>Un número entero de 0 a 100.</mat-error>
   </mat-form-field>
 
-  <mat-form-field>
-    <mat-label>Start date</mat-label>
+  <mat-form-field appearance="outline">
+    <mat-label>Fecha de inicio</mat-label>
     <input matInput type="date" formControlName="startDate" />
   </mat-form-field>
 
-  <mat-form-field>
-    <mat-label>Estimated date</mat-label>
+  <mat-form-field appearance="outline">
+    <mat-label>Fecha estimada</mat-label>
     <input matInput type="date" formControlName="estimatedDate" />
   </mat-form-field>
 
-  <mat-form-field>
-    <mat-label>Due date</mat-label>
+  <mat-form-field appearance="outline">
+    <mat-label>Fecha de vencimiento</mat-label>
     <input matInput type="date" formControlName="dueDate" />
   </mat-form-field>
 
-  <mat-form-field class="task-form__wide">
-    <mat-label>Description</mat-label>
+  <mat-form-field appearance="outline" class="task-form__wide">
+    <mat-label>Descripción</mat-label>
     <textarea matInput formControlName="description" rows="3"></textarea>
   </mat-form-field>
 
   @if (form.hasError('datesOutOfOrder')) {
     <p class="task-form__wide" role="alert">
-      The estimated and due dates cannot be before the start date.
+      La fecha estimada y la de vencimiento no pueden ser anteriores a la fecha de inicio.
     </p>
   }
   @if (errorMessage()) {
@@ -98,6 +98,6 @@
 
   <div class="task-form__actions task-form__wide">
     <button mat-flat-button type="submit" [disabled]="submitting()">{{ submitLabel() }}</button>
-    <button mat-button type="button" (click)="cancelled.emit()">Cancel</button>
+    <button mat-button type="button" (click)="cancelled.emit()">Cancelar</button>
   </div>
 </form>

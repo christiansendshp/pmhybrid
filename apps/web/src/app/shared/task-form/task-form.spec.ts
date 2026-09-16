@@ -145,7 +145,7 @@ describe('TaskForm (brief §6, §9)', () => {
     fixture.detectChanges();
 
     expect(saved).toHaveLength(0);
-    expect(text()).toContain('cannot be before the start date');
+    expect(text()).toContain('no pueden ser anteriores a la fecha de inicio');
   });
 
   it('edits a task: prefills it, clears optional fields with null, and leaves the hierarchy alone unless it changed', () => {

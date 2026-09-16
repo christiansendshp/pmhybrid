@@ -135,18 +135,18 @@ function laneOf(
     case 'assignee':
       return card.assignee
         ? { key: card.assignee.id, label: card.assignee.displayName }
-        : { key: NO_LANE, label: 'Unassigned' };
+        : { key: NO_LANE, label: 'Sin asignar' };
     case 'priority':
       return card.priority
         ? { key: card.priority, label: card.priority }
-        : { key: NO_LANE, label: 'No priority' };
+        : { key: NO_LANE, label: 'Sin prioridad' };
     case 'phase': {
       const phase = hierarchy.phases.find((candidate) => candidate.id === card.phaseId);
-      return phase ? { key: phase.id, label: phase.name } : { key: NO_LANE, label: 'No phase' };
+      return phase ? { key: phase.id, label: phase.name } : { key: NO_LANE, label: 'Sin fase' };
     }
     case 'epic': {
       const epic = hierarchy.epics.find((candidate) => candidate.id === card.epicId);
-      return epic ? { key: epic.id, label: epic.name } : { key: NO_LANE, label: 'No epic' };
+      return epic ? { key: epic.id, label: epic.name } : { key: NO_LANE, label: 'Sin épica' };
     }
   }
 }

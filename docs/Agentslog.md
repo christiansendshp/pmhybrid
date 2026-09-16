@@ -302,3 +302,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: features/{my-projects,workload}/*, features/team/team.html
 - Verify: 139 web unit, lint green
 - Follow-up: kanban/task-detail/conflicts/documents-viewer/project-settings still English
+
+## [2026-09-16T12:20:30Z] | claude-sonnet-5 | GAP-20 kanban/task-form | IN_PROGRESS
+
+- Summary: Unified Kanban board (toolbar, card facts, empty states) and the shared task-form to Spanish; translated board.ts's group-label fallbacks (Unassigned/No priority/etc).
+- Files: features/kanban/_, shared/task-form/_, core/board.ts
+- Verify: 139 web unit, lint, build green
+- Follow-up: task-detail/conflicts/documents-viewer/project-settings still English

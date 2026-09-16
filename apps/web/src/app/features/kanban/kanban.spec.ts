@@ -101,16 +101,16 @@ describe('Kanban (brief §15)', () => {
       'Codex',
       'Agente IA',
       '45%',
-      'Subtasks 1/2',
-      'Depends on 1 · 1 open',
-      'Due Oct 10',
-      'Blocked',
+      'Subtareas 1/2',
+      'Depende de 1 · 1 abierta',
+      'Vence Oct 10',
+      'Bloqueada',
     ]) {
       expect(cardText).toContain(expected);
     }
     expect(harness.routeNativeElement!.querySelector('.card--blocked')).not.toBeNull();
     expect(text()).toContain('EN DESARROLLO');
-    expect(text()).toContain('1 of 1 tasks');
+    expect(text()).toContain('1 de 1 tareas');
   });
 
   it('searches by title or Roadmap ID and says when nothing matches', async () => {
@@ -127,17 +127,17 @@ describe('Kanban (brief §15)', () => {
 
     component.patchFilters({ search: 'pmh-2' });
     harness.detectChanges();
-    expect(text()).toContain('1 of 2 tasks');
+    expect(text()).toContain('1 de 2 tareas');
     expect(text()).toContain('Write docs');
     expect(text()).not.toContain('Build API');
 
     component.patchFilters({ search: 'nothing like this' });
     harness.detectChanges();
-    expect(text()).toContain('No tasks match these filters.');
+    expect(text()).toContain('Ninguna tarea coincide con estos filtros.');
 
     component.clearFilters();
     harness.detectChanges();
-    expect(text()).toContain('2 of 2 tasks');
+    expect(text()).toContain('2 de 2 tareas');
   });
 
   it('groups the board into swimlanes', async () => {
@@ -152,7 +152,7 @@ describe('Kanban (brief §15)', () => {
     const laneTitles = Array.from(harness.routeNativeElement!.querySelectorAll('.lane__title')).map(
       (title) => title.textContent?.replace(/\s+/g, ' ').trim(),
     );
-    expect(laneTitles).toEqual(['Codex 1', 'Unassigned 1']);
+    expect(laneTitles).toEqual(['Codex 1', 'Sin asignar 1']);
   });
 
   it('moves a card only on a legal drop, then reloads the board', async () => {

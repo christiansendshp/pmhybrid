@@ -73,7 +73,7 @@ export class TaskForm implements OnInit {
   readonly progressDerived = input(false);
   readonly submitting = input(false);
   readonly errorMessage = input<string | null>(null);
-  readonly submitLabel = input('Create task');
+  readonly submitLabel = input('Crear tarea');
 
   readonly save = output<TaskFormValue>();
   readonly cancelled = output<void>();

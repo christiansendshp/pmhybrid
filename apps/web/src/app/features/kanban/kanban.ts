@@ -141,7 +141,7 @@ export class Kanban implements OnInit {
       this.members.set(members);
       this.hierarchy.set(hierarchy);
     } catch (error) {
-      this.boardError.set(describeHttpError(error, 'The board could not be loaded.'));
+      this.boardError.set(describeHttpError(error, 'No se pudo cargar el tablero.'));
     } finally {
       this.loading.set(false);
     }
@@ -182,7 +182,11 @@ export class Kanban implements OnInit {
       card.dueDate !== null &&
       card.status !== 'TERMINADA' &&
       new Date(card.dueDate).getTime() < Date.now();
-    return { label: overdue ? 'Overdue' : card.dueDate ? 'Due' : 'Estimated', value, overdue };
+    return {
+      label: overdue ? 'Vencida' : card.dueDate ? 'Vence' : 'Estimada',
+      value,
+      overdue,
+    };
   }
 
   async onDrop(event: CdkDragDrop<TaskCard[]>, toStatus: TaskStatus): Promise<void> {
@@ -203,7 +207,7 @@ export class Kanban implements OnInit {
     try {
       await this.tasksService.transition(this.projectId, card.id, toStatus);
     } catch (error) {
-      this.boardError.set(describeHttpError(error, 'The task could not be moved.'));
+      this.boardError.set(describeHttpError(error, 'No se pudo mover la tarea.'));
     }
     await this.reloadCards();
   }
@@ -224,7 +228,7 @@ export class Kanban implements OnInit {
       this.showCreateForm.set(false);
       await this.reloadCards();
     } catch (error) {
-      this.createError.set(describeHttpError(error, 'The task could not be created.'));
+      this.createError.set(describeHttpError(error, 'No se pudo crear la tarea.'));
     } finally {
       this.creating.set(false);
     }
@@ -234,7 +238,7 @@ export class Kanban implements OnInit {
     try {
       this.cards.set(await this.tasksService.listForProject(this.projectId));
     } catch (error) {
-      this.boardError.set(describeHttpError(error, 'The board could not be refreshed.'));
+      this.boardError.set(describeHttpError(error, 'No se pudo actualizar el tablero.'));
     }
   }
 }

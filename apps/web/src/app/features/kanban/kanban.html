@@ -1,7 +1,7 @@
 <div class="board-header">
   <h2 class="board-header__title">Kanban</h2>
   @if (!showCreateForm()) {
-    <button mat-flat-button type="button" (click)="openCreateForm()">New task</button>
+    <button mat-flat-button type="button" (click)="openCreateForm()">Nueva tarea</button>
   }
 </div>
 
@@ -16,36 +16,36 @@
   />
 }
 
-<div class="board-toolbar" role="search" aria-label="Board search and view">
-  <mat-form-field class="board-toolbar__search" subscriptSizing="dynamic">
-    <mat-label>Search</mat-label>
+<div class="board-toolbar" role="search" aria-label="Búsqueda y vista del tablero">
+  <mat-form-field appearance="outline" class="board-toolbar__search" subscriptSizing="dynamic">
+    <mat-label>Buscar</mat-label>
     <input
       matInput
       type="search"
-      placeholder="Title or ID"
+      placeholder="Título o ID"
       [ngModel]="filters().search"
       (ngModelChange)="patchFilters({ search: $event })"
     />
   </mat-form-field>
 
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Assignee</mat-label>
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Responsable</mat-label>
     <mat-select
       [ngModel]="filters().assigneeId"
       (ngModelChange)="patchFilters({ assigneeId: $event })"
     >
-      <mat-option [value]="null">Everyone</mat-option>
-      <mat-option [value]="unassigned">Unassigned</mat-option>
+      <mat-option [value]="null">Todos</mat-option>
+      <mat-option [value]="unassigned">Sin asignar</mat-option>
       @for (member of members(); track member.actorId) {
         <mat-option [value]="member.actorId">{{ member.actor.displayName }}</mat-option>
       }
     </mat-select>
   </mat-form-field>
 
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Priority</mat-label>
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Prioridad</mat-label>
     <mat-select [ngModel]="filters().priority" (ngModelChange)="patchFilters({ priority: $event })">
-      <mat-option [value]="null">Any priority</mat-option>
+      <mat-option [value]="null">Cualquier prioridad</mat-option>
       @for (priority of priorities; track priority) {
         <mat-option [value]="priority">{{ priority }}</mat-option>
       }
@@ -53,10 +53,10 @@
   </mat-form-field>
 
   @if (hierarchy().phases.length > 0) {
-    <mat-form-field subscriptSizing="dynamic">
-      <mat-label>Phase</mat-label>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Fase</mat-label>
       <mat-select [ngModel]="filters().phaseId" (ngModelChange)="patchFilters({ phaseId: $event })">
-        <mat-option [value]="null">Any phase</mat-option>
+        <mat-option [value]="null">Cualquier fase</mat-option>
         @for (phase of hierarchy().phases; track phase.id) {
           <mat-option [value]="phase.id">{{ phase.name }}</mat-option>
         }
@@ -65,10 +65,10 @@
   }
 
   @if (hierarchy().epics.length > 0) {
-    <mat-form-field subscriptSizing="dynamic">
-      <mat-label>Epic</mat-label>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Épica</mat-label>
       <mat-select [ngModel]="filters().epicId" (ngModelChange)="patchFilters({ epicId: $event })">
-        <mat-option [value]="null">Any epic</mat-option>
+        <mat-option [value]="null">Cualquier épica</mat-option>
         @for (epic of hierarchy().epics; track epic.id) {
           <mat-option [value]="epic.id">{{ epic.name }}</mat-option>
         }
@@ -80,37 +80,37 @@
     [ngModel]="filters().blockedOnly"
     (ngModelChange)="patchFilters({ blockedOnly: $event })"
   >
-    Blocked only
+    Solo bloqueadas
   </mat-checkbox>
 
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Group by</mat-label>
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Agrupar por</mat-label>
     <mat-select [ngModel]="groupBy()" (ngModelChange)="groupBy.set($event)">
-      <mat-option value="none">No grouping</mat-option>
-      <mat-option value="assignee">Assignee</mat-option>
-      <mat-option value="phase">Phase</mat-option>
-      <mat-option value="epic">Epic</mat-option>
-      <mat-option value="priority">Priority</mat-option>
+      <mat-option value="none">Sin agrupar</mat-option>
+      <mat-option value="assignee">Responsable</mat-option>
+      <mat-option value="phase">Fase</mat-option>
+      <mat-option value="epic">Épica</mat-option>
+      <mat-option value="priority">Prioridad</mat-option>
     </mat-select>
   </mat-form-field>
 
-  <mat-form-field subscriptSizing="dynamic">
-    <mat-label>Sort by</mat-label>
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Ordenar por</mat-label>
     <mat-select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)">
-      <mat-option value="created">Oldest first</mat-option>
-      <mat-option value="priority">Priority</mat-option>
-      <mat-option value="dueDate">Due date</mat-option>
-      <mat-option value="progress">Least progress</mat-option>
-      <mat-option value="updated">Recently updated</mat-option>
-      <mat-option value="externalId">Roadmap ID</mat-option>
+      <mat-option value="created">Más antiguas primero</mat-option>
+      <mat-option value="priority">Prioridad</mat-option>
+      <mat-option value="dueDate">Fecha de vencimiento</mat-option>
+      <mat-option value="progress">Menor progreso</mat-option>
+      <mat-option value="updated">Actualizadas recientemente</mat-option>
+      <mat-option value="externalId">ID del Roadmap</mat-option>
     </mat-select>
   </mat-form-field>
 
   <span class="meta-text board-toolbar__count" aria-live="polite">
-    {{ visibleCards().length }} of {{ cards().length }} tasks
+    {{ visibleCards().length }} de {{ cards().length }} tareas
   </span>
   @if (filtersActive()) {
-    <button mat-button type="button" (click)="clearFilters()">Clear filters</button>
+    <button mat-button type="button" (click)="clearFilters()">Limpiar filtros</button>
   }
 </div>
 
@@ -119,15 +119,17 @@
 }
 
 @if (loading()) {
-  <p class="meta-text">Loading the board…</p>
+  <p class="meta-text">Cargando el tablero…</p>
 } @else if (cards().length === 0) {
-  <p class="board-empty">No tasks yet. Create the first one, or sync the project's Roadmap.</p>
+  <p class="board-empty">
+    Todavía no hay tareas. Crea la primera, o sincroniza el Roadmap del proyecto.
+  </p>
 } @else if (visibleCards().length === 0) {
-  <p class="board-empty">No tasks match these filters.</p>
+  <p class="board-empty">Ninguna tarea coincide con estos filtros.</p>
 } @else {
   <div class="board" cdkDropListGroup>
     @for (lane of lanes(); track lane.key) {
-      <section class="lane" [attr.aria-label]="groupBy() === 'none' ? 'Board' : lane.label">
+      <section class="lane" [attr.aria-label]="groupBy() === 'none' ? 'Tablero' : lane.label">
         @if (groupBy() !== 'none') {
           <h3 class="lane__title">
             {{ lane.label }} <span class="meta-text">{{ lane.count }}</span>
@@ -158,7 +160,7 @@
                     [class.card--blocked]="isBlocked(card)"
                   >
                     <div class="card__top">
-                      <span class="card__id">{{ card.externalId ?? 'No Roadmap ID' }}</span>
+                      <span class="card__id">{{ card.externalId ?? 'Sin ID de Roadmap' }}</span>
                       @if (card.priority) {
                         <span class="priority" [attr.data-priority]="card.priority">{{
                           card.priority
@@ -176,14 +178,14 @@
                           kindLabel(assignee.kind)
                         }}</span>
                       } @else {
-                        <span class="card__muted">Unassigned</span>
+                        <span class="card__muted">Sin asignar</span>
                       }
                     </div>
                     <div class="card__progress">
                       <span
                         class="card__bar"
                         role="progressbar"
-                        aria-label="Progress"
+                        aria-label="Progreso"
                         aria-valuemin="0"
                         aria-valuemax="100"
                         [attr.aria-valuenow]="card.computedProgress | number: '1.0-0'"
@@ -197,14 +199,16 @@
                     <ul class="card__facts">
                       @if (card.subtaskCounts.total > 0) {
                         <li>
-                          Subtasks {{ card.subtaskCounts.done }}/{{ card.subtaskCounts.total }}
+                          Subtareas {{ card.subtaskCounts.done }}/{{ card.subtaskCounts.total }}
                         </li>
                       }
                       @if (card.dependencyCounts.total > 0) {
                         <li [class.card__alert]="card.dependencyCounts.open > 0">
-                          Depends on {{ card.dependencyCounts.total }}
+                          Depende de {{ card.dependencyCounts.total }}
                           @if (card.dependencyCounts.open > 0) {
-                            · {{ card.dependencyCounts.open }} open
+                            · {{ card.dependencyCounts.open }} abierta{{
+                              card.dependencyCounts.open === 1 ? '' : 's'
+                            }}
                           }
                         </li>
                       }
@@ -214,12 +218,12 @@
                         </li>
                       }
                       @if (card.roadmapTable === 'BLOCKED') {
-                        <li class="card__alert" [attr.title]="card.blockedReason">Blocked</li>
+                        <li class="card__alert" [attr.title]="card.blockedReason">Bloqueada</li>
                       }
                     </ul>
                   </article>
                 } @empty {
-                  <p class="column__empty">No tasks</p>
+                  <p class="column__empty">Sin tareas</p>
                 }
               </div>
             </div>

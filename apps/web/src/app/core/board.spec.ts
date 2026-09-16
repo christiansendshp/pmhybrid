@@ -121,7 +121,7 @@ describe('board (brief §15)', () => {
     expect(lanes.map((lane) => [lane.label, lane.count])).toEqual([
       ['Build', 2],
       ['Launch', 1],
-      ['No phase', 1],
+      ['Sin fase', 1],
     ]);
     expect(lanes[0].columns.EN_DESARROLLO).toEqual([inBuildFirst, inBuildSecond]);
     expect(lanes[1].columns.QA).toEqual([inLaunch]);
@@ -134,10 +134,10 @@ describe('board (brief §15)', () => {
 
     expect(
       groupCards([byCodex, nobody, byAna], 'assignee', HIERARCHY).map((lane) => lane.label),
-    ).toEqual(['Ana García', 'Codex', 'Unassigned']);
+    ).toEqual(['Ana García', 'Codex', 'Sin asignar']);
     expect(
       groupCards([byCodex, nobody, byAna], 'priority', HIERARCHY).map((lane) => lane.label),
-    ).toEqual(['CRITICAL', 'LOW', 'No priority']);
+    ).toEqual(['CRITICAL', 'LOW', 'Sin prioridad']);
     expect(groupCards([byCodex, byAna], 'none', HIERARCHY)).toHaveLength(1);
   });
 });
