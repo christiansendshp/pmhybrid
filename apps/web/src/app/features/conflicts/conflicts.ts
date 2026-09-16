@@ -23,21 +23,21 @@ import {
 const ROADMAP_TABLES = ['ACTIVE', 'NEAR_TERM', 'BLOCKED'] as const;
 
 const FIELD_LABELS: Record<string, string> = {
-  title: 'Outcome (title)',
-  acceptanceCriteria: 'Acceptance check',
-  status: 'Status',
-  rawOwner: 'Owner',
-  roadmapTable: 'Roadmap table',
-  externalId: 'Roadmap ID',
+  title: 'Resultado (título)',
+  acceptanceCriteria: 'Criterio de aceptación',
+  status: 'Estado',
+  rawOwner: 'Propietario',
+  roadmapTable: 'Tabla del Roadmap',
+  externalId: 'ID del Roadmap',
 };
 
 const KIND_EXPLANATIONS: Record<ConflictKind, string> = {
   CONCURRENT_FIELD_EDIT:
-    'The app and the document both changed the same field(s) since the last sync.',
+    'La app y el documento cambiaron el mismo campo (o campos) desde la última sincronización.',
   WRITE_BACK_COLLISION:
-    'Saving this change collided with a document edit to the same field, so it was not written back.',
+    'Guardar este cambio coincidió con una edición del documento sobre el mismo campo, así que no se escribió de vuelta.',
   ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG:
-    "This task's row is no longer in the Roadmap, and no DONE entry was found for it in the Agentslog — it may have been removed another way, or this may be a mistake.",
+    'La fila de esta tarea ya no está en el Roadmap, y no se encontró una entrada DONE para ella en el Agentslog — puede haberse quitado de otra forma, o puede ser un error.',
 };
 
 /** One field of an in-progress MANUAL_EDIT form: its current draft value and how to edit it. */
@@ -155,7 +155,7 @@ export class Conflicts implements OnInit {
       this.editingConflictId.set(null);
       await this.reload();
     } catch (error) {
-      this.resolveError.set(describeHttpError(error, 'The conflict could not be resolved.'));
+      this.resolveError.set(describeHttpError(error, 'No se pudo resolver el conflicto.'));
     } finally {
       this.resolvingId.set(null);
     }
@@ -182,7 +182,7 @@ export class Conflicts implements OnInit {
     try {
       this.conflicts.set(await this.syncService.listConflicts(this.projectId, this.showResolved()));
     } catch (error) {
-      this.error.set(describeHttpError(error, 'Conflicts could not be loaded.'));
+      this.error.set(describeHttpError(error, 'No se pudieron cargar los conflictos.'));
     } finally {
       this.loading.set(false);
     }

@@ -36,11 +36,11 @@ export class ProjectDashboard implements OnInit {
 
   readonly tabs = [
     { label: 'Kanban', path: 'kanban' },
-    { label: 'Progress', path: 'progress' },
-    { label: 'Documents', path: 'documents' },
-    { label: 'Conflicts', path: 'conflicts' },
-    { label: 'Audit', path: 'audit' },
-    { label: 'Settings', path: 'settings' },
+    { label: 'Progreso', path: 'progress' },
+    { label: 'Documentos', path: 'documents' },
+    { label: 'Conflictos', path: 'conflicts' },
+    { label: 'Auditoría', path: 'audit' },
+    { label: 'Configuración', path: 'settings' },
   ] as const;
   readonly kindLabel = actorKindLabel;
 

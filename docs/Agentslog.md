@@ -316,3 +316,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: features/task-detail/*
 - Verify: 139 web unit, lint, build green
 - Follow-up: conflicts/documents-viewer/project-settings still English
+
+## [2026-09-16T12:29:31Z] | claude-sonnet-5 | GAP-20 copy pass 2 | IN_PROGRESS
+
+- Summary: Unified Conflicts, Documents viewer (+first spec, 5 tests), Project Settings and the Project Dashboard shell (members, sync banner, section tabs) to Spanish. Full-app sweep found no remaining English UI copy.
+- Files: features/{conflicts,documents-viewer,project-settings,project-dashboard}/*
+- Verify: 144 web unit, lint, build green
+- Follow-up: none functional; every page now Spanish + on the DESIGN.md system

@@ -1,13 +1,13 @@
 <header class="page-header">
   <div>
-    <h2>Conflicts</h2>
+    <h2>Conflictos</h2>
     <p class="page-header__description">
-      Raised when a synced document and the app changed the same thing, or a Roadmap row disappeared
-      with nothing to prove it finished (brief §26). Nothing here is applied automatically — pick
-      how to resolve each one.
+      Se generan cuando un documento sincronizado y la app cambiaron lo mismo, o una fila del
+      Roadmap desapareció sin nada que demuestre que terminó (brief §26). Nada aquí se aplica
+      automáticamente — elige cómo resolver cada uno.
     </p>
   </div>
-  <div class="page-header__actions filter-toggle" role="group" aria-label="Filter conflicts">
+  <div class="page-header__actions filter-toggle" role="group" aria-label="Filtrar conflictos">
     <button
       mat-button
       type="button"
@@ -15,7 +15,7 @@
       [attr.aria-pressed]="!showResolved()"
       (click)="setFilter(false)"
     >
-      Open
+      Abiertos
     </button>
     <button
       mat-button
@@ -24,7 +24,7 @@
       [attr.aria-pressed]="showResolved()"
       (click)="setFilter(true)"
     >
-      Resolved
+      Resueltos
     </button>
   </div>
 </header>
@@ -37,9 +37,11 @@
 }
 
 @if (loading()) {
-  <p>Loading…</p>
+  <p>Cargando…</p>
 } @else if (conflicts().length === 0) {
-  <p>{{ showResolved() ? 'No resolved conflicts yet.' : 'No open conflicts.' }}</p>
+  <p>
+    {{ showResolved() ? 'Todavía no hay conflictos resueltos.' : 'No hay conflictos abiertos.' }}
+  </p>
 }
 
 @for (conflict of conflicts(); track conflict.id) {
@@ -49,13 +51,13 @@
         <h3>{{ conflict.kind }}</h3>
         <p class="meta-text">
           @if (conflict.entityType === 'Task') {
-            <a [routerLink]="['../tasks', conflict.entityId]">Task</a>
+            <a [routerLink]="['../tasks', conflict.entityId]">Tarea</a>
           } @else {
             {{ conflict.entityType }}
           }
-          — detected {{ conflict.detectedAt | date: 'medium' }}
+          — detectado {{ conflict.detectedAt | date: 'medium' }}
           @if (conflict.resolvedAt) {
-            — resolved {{ conflict.resolvedAt | date: 'medium' }} ({{
+            — resuelto {{ conflict.resolvedAt | date: 'medium' }} ({{
               conflict.resolutionStrategy
             }})
           }
@@ -68,18 +70,18 @@
     <table>
       <thead>
         <tr>
-          <th scope="col">Field</th>
+          <th scope="col">Campo</th>
           <th scope="col">App (local)</th>
-          <th scope="col">Document (external)</th>
+          <th scope="col">Documento (externo)</th>
         </tr>
       </thead>
       <tbody>
         @for (diff of diffFor(conflict); track diff.field) {
           <tr [class.diff-row--changed]="diff.status === 'changed'">
             <th scope="row">{{ labelFor(diff.field) }}</th>
-            <td>{{ diff.status === 'external-only' ? 'Not present locally' : diff.local }}</td>
+            <td>{{ diff.status === 'external-only' ? 'No está localmente' : diff.local }}</td>
             <td>
-              {{ diff.status === 'local-only' ? 'Not present in the document' : diff.external }}
+              {{ diff.status === 'local-only' ? 'No está en el documento' : diff.external }}
             </td>
           </tr>
         }
@@ -108,7 +110,7 @@
                   [ngModelOptions]="{ standalone: true }"
                   (ngModelChange)="setManualValue(field.field, $event)"
                 >
-                  <mat-option [value]="null">None</mat-option>
+                  <mat-option [value]="null">Ninguna</mat-option>
                   @for (table of roadmapTables; track table) {
                     <mat-option [value]="table">{{ table }}</mat-option>
                   }
@@ -125,9 +127,9 @@
           }
           <div class="conflict-card__actions">
             <button mat-flat-button type="submit" [disabled]="resolvingId() === conflict.id">
-              {{ resolvingId() === conflict.id ? 'Saving…' : 'Save manual edit' }}
+              {{ resolvingId() === conflict.id ? 'Guardando…' : 'Guardar edición manual' }}
             </button>
-            <button mat-button type="button" (click)="cancelManualEdit()">Cancel</button>
+            <button mat-button type="button" (click)="cancelManualEdit()">Cancelar</button>
           </div>
         </form>
       } @else {
@@ -138,7 +140,7 @@
             [disabled]="resolvingId() === conflict.id"
             (click)="resolve(conflict, 'KEEP_LOCAL')"
           >
-            Keep app version
+            Conservar versión de la app
           </button>
           @if (
             conflict.externalVersion || conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG'
@@ -149,12 +151,12 @@
               [disabled]="resolvingId() === conflict.id"
               (click)="resolve(conflict, 'KEEP_EXTERNAL')"
             >
-              Keep document version
+              Conservar versión del documento
             </button>
           }
           @if (hasEditableFields(conflict)) {
             <button mat-stroked-button type="button" (click)="startManualEdit(conflict)">
-              Edit manually
+              Editar manualmente
             </button>
           }
           <button
@@ -163,7 +165,7 @@
             [disabled]="resolvingId() === conflict.id"
             (click)="resolve(conflict, 'DISMISSED')"
           >
-            Dismiss
+            Descartar
           </button>
         </div>
       }

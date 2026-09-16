@@ -148,7 +148,7 @@ describe('ProjectDashboard — role assignment (brief §4)', () => {
     const { fixture, component } = await render();
 
     expect(component.canManageRoles()).toBe(false);
-    expect(fixture.nativeElement.textContent).not.toContain('Assign');
+    expect(fixture.nativeElement.textContent).not.toContain('Asignar');
   });
 
   it('assigns a role, reloads assignments and clears the pending selection', async () => {

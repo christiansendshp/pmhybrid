@@ -18,14 +18,14 @@ const PROJECT_UPDATE = 'project.update';
 const NOT_BLANK = /\S/;
 
 const STATUS_LABELS: Record<ProjectStatus, string> = {
-  ACTIVE: 'Active',
-  PAUSED: 'Paused',
-  ARCHIVED: 'Archived',
+  ACTIVE: 'Activo',
+  PAUSED: 'Pausado',
+  ARCHIVED: 'Archivado',
 };
 
 const ROLLUP_LABELS: Record<string, string> = {
-  EQUAL_WEIGHT_AVERAGE: 'Equal-weight average',
-  LEAF_EQUAL_WEIGHT: 'Leaf equal weight',
+  EQUAL_WEIGHT_AVERAGE: 'Promedio de peso igual',
+  LEAF_EQUAL_WEIGHT: 'Peso igual entre hojas',
 };
 
 /**
@@ -112,7 +112,7 @@ export class ProjectSettings {
       this.context.project.set(updated);
       this.saved.set(true);
     } catch (error) {
-      this.errorMessage.set(describeHttpError(error, 'The settings could not be saved.'));
+      this.errorMessage.set(describeHttpError(error, 'No se pudo guardar la configuración.'));
     } finally {
       this.saving.set(false);
     }

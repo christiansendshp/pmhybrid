@@ -11,15 +11,16 @@
   <div class="page-header__actions">
     <span class="meta-text" role="status">
       @if (lastSyncRun(); as run) {
-        Last run: {{ run.status }}
+        Última ejecución: {{ run.status }}
         @if (run.summary) {
-          ({{ run.summary['tasksCreated'] }} created, {{ run.summary['tasksUpdated'] }} updated,
-          {{ run.summary['conflictsRaised'] }} conflicts)
+          ({{ run.summary['tasksCreated'] }} creadas,
+          {{ run.summary['tasksUpdated'] }} actualizadas,
+          {{ run.summary['conflictsRaised'] }} conflictos)
         }
       }
     </span>
     <button mat-flat-button type="button" [disabled]="syncing()" (click)="syncNow()">
-      {{ syncing() ? 'Syncing…' : 'Sync now' }}
+      {{ syncing() ? 'Sincronizando…' : 'Sincronizar ahora' }}
     </button>
   </div>
 </header>
@@ -29,7 +30,7 @@
 }
 
 <section class="members" aria-labelledby="members-heading">
-  <h2 id="members-heading" class="members__heading">Members</h2>
+  <h2 id="members-heading" class="members__heading">Miembros</h2>
   <ul class="members__list">
     @for (member of members(); track member.id) {
       <li class="members__item">
@@ -48,7 +49,7 @@
                 <button
                   mat-icon-button
                   type="button"
-                  [attr.aria-label]="'Revoke ' + assignment.role.name"
+                  [attr.aria-label]="'Revocar ' + assignment.role.name"
                   (click)="revokeRole(assignment)"
                 >
                   ×
@@ -62,8 +63,8 @@
           <div class="members__add-role">
             <mat-select
               class="members__select"
-              [placeholder]="'Add a role for ' + member.actor.displayName"
-              [attr.aria-label]="'Role to assign to ' + member.actor.displayName"
+              [placeholder]="'Agregar un rol para ' + member.actor.displayName"
+              [attr.aria-label]="'Rol para asignar a ' + member.actor.displayName"
               [ngModel]="selectedRoleFor(member.actorId)"
               (ngModelChange)="setSelectedRoleFor(member.actorId, $event)"
             >
@@ -77,7 +78,7 @@
               [disabled]="!selectedRoleFor(member.actorId)"
               (click)="assignRole(member.actorId)"
             >
-              Assign
+              Asignar
             </button>
           </div>
         }
@@ -89,8 +90,8 @@
     <div class="members__add">
       <mat-select
         class="members__select"
-        placeholder="Add a member…"
-        aria-label="Actor to add as a member"
+        placeholder="Agregar un miembro…"
+        aria-label="Actor para agregar como miembro"
         [ngModel]="selectedActorId()"
         (ngModelChange)="selectedActorId.set($event)"
       >
@@ -104,13 +105,13 @@
         [disabled]="!selectedActorId()"
         (click)="addMember()"
       >
-        Add member
+        Agregar miembro
       </button>
     </div>
   }
 </section>
 
-<nav class="tab-nav" aria-label="Project sections">
+<nav class="tab-nav" aria-label="Secciones del proyecto">
   @for (tab of tabs; track tab.path) {
     <a
       class="tab-nav__link"

@@ -68,8 +68,8 @@ describe('Conflicts (brief §26 — resolution UI)', () => {
     const { text } = await render([conflict()]);
 
     expect(text()).toContain('CONCURRENT_FIELD_EDIT');
-    expect(text()).toContain('both changed the same field');
-    expect(text()).toContain('Outcome (title)');
+    expect(text()).toContain('cambiaron el mismo campo');
+    expect(text()).toContain('Resultado (título)');
     expect(text()).toContain('Local title');
     expect(text()).toContain('External title');
   });
@@ -87,9 +87,9 @@ describe('Conflicts (brief §26 — resolution UI)', () => {
     const labels = buttonsFor();
 
     // One conflict has editable fields (title/status), the disappeared-row one doesn't (externalId isn't editable).
-    expect(labels.filter((l) => l === 'Edit manually')).toHaveLength(1);
+    expect(labels.filter((l) => l === 'Editar manualmente')).toHaveLength(1);
     // ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG still offers "keep document version" despite a null externalVersion.
-    expect(labels).toContain('Keep document version');
+    expect(labels).toContain('Conservar versión del documento');
   });
 
   it('resolves KEEP_LOCAL and reloads the list', async () => {
@@ -134,7 +134,7 @@ describe('Conflicts (brief §26 — resolution UI)', () => {
     await component.resolve(conflict(), 'DISMISSED');
     harness.detectChanges();
 
-    expect(text()).toContain('The conflict could not be resolved.');
+    expect(text()).toContain('No se pudo resolver el conflicto.');
     expect(component.resolvingId()).toBeNull();
   });
 
@@ -145,8 +145,8 @@ describe('Conflicts (brief §26 — resolution UI)', () => {
     });
     const { text, buttons } = await render([resolved]);
 
-    expect(text()).toContain('resolved');
-    expect(buttons()).not.toContain('Keep app version');
-    expect(buttons()).not.toContain('Dismiss');
+    expect(text()).toContain('resuelto');
+    expect(buttons()).not.toContain('Conservar versión de la app');
+    expect(buttons()).not.toContain('Descartar');
   });
 });

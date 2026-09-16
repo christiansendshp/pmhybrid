@@ -137,7 +137,7 @@ export class DocumentsViewer implements OnInit {
       );
       this.revisionContent.set(revision.rawContent);
     } catch (error) {
-      this.revisionError.set(describeHttpError(error, 'That revision could not be loaded.'));
+      this.revisionError.set(describeHttpError(error, 'No se pudo cargar esa revisión.'));
       this.viewingRevisionId.set(null);
     }
   }
@@ -172,7 +172,7 @@ export class DocumentsViewer implements OnInit {
         this.agentslog.set(await this.documentsService.getStructuredAgentslog(this.projectId));
       }
     } catch (error) {
-      this.error.set(describeHttpError(error, 'This document could not be loaded.'));
+      this.error.set(describeHttpError(error, 'No se pudo cargar este documento.'));
     } finally {
       this.loading.set(false);
       this.revisionsLoading.set(false);

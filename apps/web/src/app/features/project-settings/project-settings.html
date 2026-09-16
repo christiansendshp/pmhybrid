@@ -1,56 +1,56 @@
 <section aria-labelledby="settings-heading">
-  <h2 id="settings-heading" class="settings__title">Settings</h2>
+  <h2 id="settings-heading" class="settings__title">Configuración</h2>
   @if (!canEdit()) {
     <p class="meta-text">
-      You can read these settings; changing them needs the project.update permission.
+      Puedes leer esta configuración; para cambiarla necesitas el permiso project.update.
     </p>
   }
 
   <form class="settings" [formGroup]="form" (ngSubmit)="save()" novalidate>
-    <mat-form-field class="settings__wide">
-      <mat-label>Name</mat-label>
+    <mat-form-field appearance="outline" class="settings__wide">
+      <mat-label>Nombre</mat-label>
       <input matInput formControlName="name" />
-      <mat-error>A project needs a name.</mat-error>
+      <mat-error>Un proyecto necesita un nombre.</mat-error>
     </mat-form-field>
 
-    <mat-form-field class="settings__wide">
-      <mat-label>Description</mat-label>
+    <mat-form-field appearance="outline" class="settings__wide">
+      <mat-label>Descripción</mat-label>
       <textarea matInput formControlName="description" rows="2"></textarea>
     </mat-form-field>
 
-    <mat-form-field>
-      <mat-label>Status</mat-label>
+    <mat-form-field appearance="outline">
+      <mat-label>Estado</mat-label>
       <mat-select formControlName="status">
         @for (status of statuses; track status) {
           <mat-option [value]="status">{{ statusLabels[status] }}</mat-option>
         }
       </mat-select>
-      <mat-hint>Paused and archived projects are not synced on a schedule.</mat-hint>
+      <mat-hint>Los proyectos pausados o archivados no se sincronizan por horario.</mat-hint>
     </mat-form-field>
 
-    <mat-form-field>
-      <mat-label>Sync every (minutes)</mat-label>
+    <mat-form-field appearance="outline">
+      <mat-label>Sincronizar cada (minutos)</mat-label>
       <input matInput type="number" min="1" step="1" formControlName="syncIntervalMinutes" />
-      <mat-error>A whole number of at least 1 minute.</mat-error>
+      <mat-error>Un número entero de al menos 1 minuto.</mat-error>
     </mat-form-field>
 
-    <mat-form-field class="settings__wide">
-      <mat-label>Docs path</mat-label>
+    <mat-form-field appearance="outline" class="settings__wide">
+      <mat-label>Ruta de documentos</mat-label>
       <input matInput formControlName="docsPath" />
-      <mat-hint>The folder that holds this project's Roadmap.md and Agentslog.md.</mat-hint>
-      <mat-error>The docs path cannot be empty.</mat-error>
+      <mat-hint>La carpeta con el Roadmap.md y Agentslog.md de este proyecto.</mat-hint>
+      <mat-error>La ruta de documentos no puede estar vacía.</mat-error>
     </mat-form-field>
 
-    <mat-form-field class="settings__wide">
-      <mat-label>Repository URL</mat-label>
+    <mat-form-field appearance="outline" class="settings__wide">
+      <mat-label>URL del repositorio</mat-label>
       <input matInput type="url" formControlName="repoUrl" />
     </mat-form-field>
 
     @if (project(); as p) {
       <dl class="settings__facts settings__wide">
-        <dt>Progress rollup</dt>
+        <dt>Cálculo de progreso</dt>
         <dd>{{ rollupLabel() }}</dd>
-        <dt>Created</dt>
+        <dt>Creado</dt>
         <dd>{{ p.createdAt | date: 'mediumDate' }}</dd>
       </dl>
     }
@@ -59,16 +59,16 @@
       <p class="settings__wide" role="alert">{{ errorMessage() }}</p>
     }
     @if (saved()) {
-      <p class="settings__wide meta-text" role="status">Settings saved.</p>
+      <p class="settings__wide meta-text" role="status">Configuración guardada.</p>
     }
 
     @if (canEdit()) {
       <div class="settings__actions settings__wide">
         <button mat-flat-button type="submit" [disabled]="saving() || form.pristine">
-          {{ saving() ? 'Saving…' : 'Save settings' }}
+          {{ saving() ? 'Guardando…' : 'Guardar configuración' }}
         </button>
         <button mat-button type="button" [disabled]="form.pristine" (click)="discard()">
-          Discard changes
+          Descartar cambios
         </button>
       </div>
     }

@@ -48,9 +48,9 @@ describe('ProjectSettings', () => {
       docsPath: './site-docs',
     });
     expect(component.form.disabled).toBe(true);
-    expect(text()).toContain('changing them needs the project.update permission');
-    expect(text()).toContain('Equal-weight average');
-    expect(text()).not.toContain('Save settings');
+    expect(text()).toContain('para cambiarla necesitas el permiso project.update');
+    expect(text()).toContain('Promedio de peso igual');
+    expect(text()).not.toContain('Guardar configuración');
   });
 
   it('saves trimmed settings, clears emptied optional fields and updates the project header', async () => {
@@ -72,7 +72,7 @@ describe('ProjectSettings', () => {
     });
     expect(context.project()?.name).toBe('Site 2.0');
     expect(component.form.pristine).toBe(true);
-    expect(text()).toContain('Settings saved.');
+    expect(text()).toContain('Configuración guardada.');
   });
 
   it('refuses invalid settings and shows why a save failed', async () => {
@@ -91,6 +91,6 @@ describe('ProjectSettings', () => {
     fixture.detectChanges();
 
     expect(component.errorMessage()).toBeTruthy();
-    expect(text()).not.toContain('Settings saved.');
+    expect(text()).not.toContain('Configuración guardada.');
   });
 });
