@@ -323,3 +323,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: features/{conflicts,documents-viewer,project-settings,project-dashboard}/*
 - Verify: 144 web unit, lint, build green
 - Follow-up: none functional; every page now Spanish + on the DESIGN.md system
+
+## [2026-09-16T12:31:07Z] | claude-sonnet-5 | GAP-20 | DONE
+
+- Summary: Full frontend redesign closed: real M3 palette+theme toggle, every page (12 features) on the shared component system, all copy Spanish, 3 new spec files for previously-untested pages. Features.md F30.
+- Files: apps/web/DESIGN.md, docs/Features.md, docs/Roadmap.md
+- Verify: 144 web unit, lint, build green across every commit
+- Follow-up: browser-verified only up to login (unauthenticated); full visual check needs user's own login
