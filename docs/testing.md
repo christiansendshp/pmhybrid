@@ -24,10 +24,17 @@ pnpm -r lint            # oxlint (api) + eslint (web)
 pnpm -r build            # nest build + ng build (also the closest thing to a typecheck gate)
 ```
 
-`pnpm test:e2e` needs `apps/api/.env`'s `DATABASE_URL` pointing at a
-migrated, seeded Postgres (`docker compose up -d`, then
-`pnpm prisma:migrate` and `pnpm prisma:seed` from the repo root) — most
-specs log in as the seeded demo actor (`prisma/demo-credentials.ts`).
+`pnpm test:e2e` needs a migrated, seeded Postgres — most specs log in as the
+seeded demo actor (`prisma/demo-credentials.ts`). Outside CI it runs against
+its own `pmhybrid_test` database, never `apps/api/.env`'s `DATABASE_URL`
+(see "Local e2e database" below) — one-time setup:
+
+```bash
+docker compose up -d                        # from the repo root
+pnpm --filter api test:e2e:db:setup          # creates/migrates/seeds pmhybrid_test
+```
+
+Re-run `test:e2e:db:setup` after adding a new Prisma migration.
 
 ## e2e conventions worth knowing before adding a spec
 
@@ -35,13 +42,17 @@ specs log in as the seeded demo actor (`prisma/demo-credentials.ts`).
   in `beforeEach`/`afterEach` — expensive, but gives every spec file a clean
   slate isolated from the others' in-memory state (not from the shared
   database — see below).
-- **The database is shared across the whole suite and never reset between
-  runs.** The seeded demo actor accumulates real rows (projects, tasks,
-  notifications) across every run this session has ever done. Scope
-  assertions to IDs your own test created — never assert "the list does NOT
-  contain X" against a shared resource's full history; it will eventually
-  pick up stale rows from an earlier run. `notifications.e2e-spec.ts` and
-  `roadmap-dependencies.e2e-spec.ts` show this pattern (scoping by
+- **Local e2e database.** `vitest.config.e2e.ts` points local (non-CI) runs
+  at a separate `pmhybrid_test` database (`test.env.DATABASE_URL`, gated on
+  `!process.env.CI`) instead of the dev database `docker compose`/the API dev
+  server use. Every e2e spec creates several throwaway projects with no
+  cleanup — before this, that meant every local `test:e2e` run leaked dozens
+  of "... E2E ..." rows straight into "My Projects" in the actual app. One-
+  time setup: `pnpm --filter api test:e2e:db:setup`. It is still shared
+  _across e2e runs_ and never reset between them, same as before — scope
+  assertions to IDs your own test created; never assert "the list does NOT
+  contain X" against a shared resource's full history. `notifications.e2e-spec.ts`
+  and `roadmap-dependencies.e2e-spec.ts` show this pattern (scoping by
   `syncRunId`/target id, not by type alone).
 - Tests that write to a Roadmap document use `createScratchDocsPath()`
   (`test/helpers/scratch-docs.ts`) — a fresh temp directory per test, never
@@ -68,5 +79,7 @@ specs log in as the seeded demo actor (`prisma/demo-credentials.ts`).
 `.github/workflows/ci.yml` (Roadmap GAP-17) runs `lint` → `build` → unit
 tests → `prisma migrate deploy` + `prisma db seed` → `test:e2e`, on every
 push and PR against `main`/`develop`, against a fresh `postgres:17-alpine`
-service container — so the shared-database caveat above never applies to a
-CI run, only to a local machine's long-lived dev database.
+service container (its own `DATABASE_URL`, set at the job's `env:` level —
+`vitest.config.e2e.ts`'s `pmhybrid_test` override only applies outside CI) —
+so the "shared, never reset" caveat above never applies to a CI run, only to
+the long-lived local `pmhybrid_test` database.

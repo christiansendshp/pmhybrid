@@ -358,3 +358,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: api git-providers module, web filesystem-browser.service + folder-browser-dialog, my-projects, project-settings, docs
 - Verify: check OK; 153 web + 39 api unit; 129/130 e2e (1 pre-existing, unrelated); lint+build clean
 - Follow-up: browser click-through still pending the user's own login
+
+## [2026-09-16T15:49:18Z] | claude-sonnet-5 | test-db-isolation | DONE
+
+- Summary: Wiped 76 leftover e2e-created projects from the dev DB (kept only the user's own: PM Hub self, SMARTRH). Root cause: local test:e2e shared apps/api/.env's DATABASE_URL with the dev server. Fixed: vitest.config.e2e.ts now points non-CI runs at an isolated pmhybrid_test DB
+- Files: apps/api/vitest.config.e2e.ts, apps/api/package.json (test:e2e:db:setup), docs/{testing.md,Stack_Tecnologies.md,Features.md} (ADR-011)
+- Verify: check OK; 130/130 e2e pass against pmhybrid_test; dev DB project count confirmed unchanged (2) before and after a full e2e run; lint clean
+- Follow-up: none

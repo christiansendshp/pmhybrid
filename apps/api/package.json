@@ -21,6 +21,7 @@
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
+    "test:e2e:db:setup": "cross-env DATABASE_URL=postgresql://pmhybrid:pmhybrid@localhost:5436/pmhybrid_test?schema=public CI=true prisma migrate deploy && cross-env DATABASE_URL=postgresql://pmhybrid:pmhybrid@localhost:5436/pmhybrid_test?schema=public prisma db seed",
     "prisma:migrate": "cross-env CI=true prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "prisma db seed",
