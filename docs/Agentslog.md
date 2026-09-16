@@ -330,3 +330,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/web/DESIGN.md, docs/Features.md, docs/Roadmap.md
 - Verify: 144 web unit, lint, build green across every commit
 - Follow-up: browser-verified only up to login (unauthenticated); full visual check needs user's own login
+
+## [2026-09-16T14:23:59Z] | claude-sonnet-5 | doc-audit | DONE
+
+- Summary: Full audit per user request (skillProyectDocument prompt): verified all 6 docs against running code, not just internal consistency. Fixed 4 real drifts: BR-002 said EN DESARROLLO (space), code writes EN_DESARROLLO verbatim; Stack.md module list had a phantom AgentLogs module and was missing Dashboard/Workload/Health; Commands table had bootstrap-era test counts (1+3) vs actual (144 web/35 api unit/127 e2e); JWT_EXPIRES_IN wrongly marked Required=yes (has a coded default).
+- Files: docs/ProductDescription.md, docs/Stack_Tecnologies.md
+- Verify: check: OK; all 45 Features.md file citations resolve; F-row count matches stated 30; rotate not needed (46 entries, 28KB)
+- Follow-up: none

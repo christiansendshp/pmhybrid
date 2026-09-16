@@ -23,40 +23,44 @@
 
 ## Architecture anchors
 
-| Concern    | Current truth                                                                                                                                                                             | Authoritative artifact    |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| Boundaries | NestJS modules: Auth, Users, Projects, ProjectMembers, Roles, Tasks, Phases, Epics, Templates, Agents, Roadmap, AgentLogs, Synchronization, GitProviders, Audit, Notifications, Conflicts | `docs/architecture.md`    |
-| Data flow  | Managed-project documents <-> Synchronization module <-> PostgreSQL <-> API <-> Angular; documents are read/written via a decoupled `ProjectRepositoryProvider`                           | `docs/synchronization.md` |
-| Security   | JWT auth, RBAC via Role/Permission/ActorRole, secrets via env vars only (never in DB configJson)                                                                                          | `docs/permissions.md`     |
+| Concern    | Current truth                                                                                                                                                                                               | Authoritative artifact    |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| Boundaries | NestJS modules: Auth, Users, Agents, Projects, ProjectMembers, Roles, Phases, Epics, Templates, Tasks, Roadmap, Synchronization, GitProviders, Audit, Notifications, Conflicts, Dashboard, Workload, Health | `docs/architecture.md`    |
+| Data flow  | Managed-project documents <-> Synchronization module <-> PostgreSQL <-> API <-> Angular; documents are read/written via a decoupled `ProjectRepositoryProvider`                                             | `docs/synchronization.md` |
+| Security   | JWT auth, RBAC via Role/Permission/ActorRole, secrets via env vars only (never in DB configJson)                                                                                                            | `docs/permissions.md`     |
 
 ## Commands
 
-| Purpose       | Command                                      | Status                                                                                                         |
-| ------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Test          | `pnpm -r test`                               | CONFIRMED — 1 (web) + 3 (api) tests pass                                                                       |
-| E2E           | `pnpm test:e2e`                              | CONFIRMED — `/health` e2e passes against live Postgres                                                         |
-| Lint or check | `pnpm -r lint`                               | CONFIRMED — clean on all 3 packages                                                                            |
-| Build         | `pnpm -r build`                              | CONFIRMED — clean on all 3 packages                                                                            |
-| DB up         | `docker compose up -d`                       | CONFIRMED — Postgres 17 healthy on `127.0.0.1:5436` (5432 was occupied by an unrelated container on this host) |
-| Migrate       | `pnpm --filter api prisma:migrate`           | CONFIRMED — see ADR-003 for the CI=true fix                                                                    |
-| Seed          | `pnpm --filter api prisma:seed`              | CONFIRMED — row counts verified via psql                                                                       |
-| API dev       | `pnpm --filter api dev` (→ `GET /health`)    | CONFIRMED — 200, `{"status":"ok","info":{"db":{"status":"up"}}}`                                               |
-| Web dev       | `pnpm --filter web dev` (→ `localhost:4200`) | CONFIRMED — 200, all 9 lazy routes resolve                                                                     |
+| Purpose       | Command                                        | Status                                                                                                         |
+| ------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Test          | `pnpm -r test`                                 | CONFIRMED — 144 web unit + 35 api unit pass (2026-09-16)                                                       |
+| E2E           | `pnpm test:e2e`                                | CONFIRMED — 127 api e2e pass, stable across 2 consecutive runs (`docs/testing.md`)                             |
+| Lint or check | `pnpm -r lint`                                 | CONFIRMED — clean on all 3 packages (oxlint api, ESLint web)                                                   |
+| Build         | `pnpm -r build`                                | CONFIRMED — clean on all 3 packages                                                                            |
+| DB up         | `docker compose up -d`                         | CONFIRMED — Postgres 17 healthy on `127.0.0.1:5436` (5432 was occupied by an unrelated container on this host) |
+| Migrate       | `pnpm --filter api prisma:migrate`             | CONFIRMED — see ADR-003 for the CI=true fix                                                                    |
+| Reset + seed  | `prisma migrate reset --force` (in `apps/api`) | CONFIRMED — drops, reapplies all 6 migrations, reseeds (roles/permissions/demo actors + 3 demo projects)       |
+| API dev       | `pnpm --filter api dev` (→ `GET /health`)      | CONFIRMED — 200, `{"status":"ok","info":{"db":{"status":"up"}}}`                                               |
+| Web dev       | `pnpm --filter web dev` (→ `localhost:4200`)   | CONFIRMED — 200, all 14 lazy routes resolve                                                                    |
 
 ## Environment variables
 
 Names and purpose only; never store real values.
 
-| Name                          | Purpose                                                                                  | Required |
-| ----------------------------- | ---------------------------------------------------------------------------------------- | -------- |
-| DATABASE_URL                  | Postgres connection string for Prisma                                                    | yes      |
-| JWT_SECRET                    | Signing secret for access/refresh tokens                                                 | yes      |
-| JWT_EXPIRES_IN                | Access token lifetime                                                                    | yes      |
-| JWT_REFRESH_EXPIRES_IN        | Refresh token lifetime                                                                   | no       |
-| PORT                          | API listen port                                                                          | no       |
-| SYNC_DEFAULT_INTERVAL_MINUTES | Default project sync interval                                                            | no       |
-| SYNC_SCHEDULER_ENABLED        | Scheduled sync on (default) or off; manual sync always works; the e2e suite sets `false` | no       |
-| GIT_PROVIDER_TYPE             | Selects the ProjectRepositoryProvider implementation (`local` for MVP)                   | no       |
+| Name                          | Purpose                                                                                              | Required |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------- | -------- |
+| DATABASE_URL                  | Postgres connection string for Prisma                                                                | yes      |
+| JWT_SECRET                    | Signing secret for access/refresh tokens                                                             | yes      |
+| JWT_EXPIRES_IN                | Access token lifetime (defaults to `15m` when unset)                                                 | no       |
+| JWT_REFRESH_EXPIRES_IN        | Refresh token lifetime (defaults to `7d` when unset)                                                 | no       |
+| PORT                          | API listen port (defaults to `3000` when unset)                                                      | no       |
+| SYNC_DEFAULT_INTERVAL_MINUTES | Default project sync interval (defaults to `5` when unset)                                           | no       |
+| SYNC_SCHEDULER_ENABLED        | Scheduled sync on (default) or off; manual sync always works; the e2e suite sets `false`             | no       |
+| GIT_PROVIDER_TYPE             | Selects the ProjectRepositoryProvider implementation (defaults to `local`, the only one implemented) | no       |
+
+Validated by `apps/api/src/config/env.validation.ts` (`REQUIRED_KEYS`); only
+`DATABASE_URL` and `JWT_SECRET` throw at startup if missing, everything else
+has a coded default.
 
 ## Decisions
 
