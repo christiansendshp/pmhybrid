@@ -337,3 +337,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: docs/ProductDescription.md, docs/Stack_Tecnologies.md
 - Verify: check: OK; all 45 Features.md file citations resolve; F-row count matches stated 30; rotate not needed (46 entries, 28KB)
 - Follow-up: none
+
+## [2026-09-16T14:34:37Z] | claude-sonnet-5 | roadmap-gap-review | DONE
+
+- Summary: Fresh brief-vs-code review (full re-read of the original brief) surfaced 6 genuine gaps, added as GAP-21..26 in Roadmap Near term: rollup strategy has no UI despite full API support (S16); dependency write-back is read-only, not bidirectional like every other field (S8); only one Project Repository Provider exists (S20 wants GitHub next); API-key writes never audit as origin API (GAP-15 follow-up); no automated a11y testing exists; WebSocket/webhooks/MCP are 0% built (brief itself defers these, priority among them left UNKNOWN).
+- Files: docs/Roadmap.md
+- Verify: check: OK; each item verified against actual code (DTOs, provider impls, audit enum, a11y tooling, webhook/MCP grep) before being listed
+- Follow-up: user or product decision needed to prioritize GAP-26's three integrations
