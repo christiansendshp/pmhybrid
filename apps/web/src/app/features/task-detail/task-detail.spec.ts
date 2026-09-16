@@ -184,8 +184,8 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
 
     const { text } = await render();
 
-    expect(text()).toContain('No Agentslog entries for this task yet.');
-    expect(text()).toContain('No recorded changes yet.');
+    expect(text()).toContain('Todavía no hay entradas de Agentslog para esta tarea.');
+    expect(text()).toContain('Todavía no hay cambios registrados.');
   });
 
   it('shows every task field, including where it sits in the hierarchy', async () => {
@@ -207,7 +207,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     expect(text()).toContain('PMH-1');
     expect(text()).toContain('Endpoints documented');
     expect(text()).toContain('HIGH');
-    expect(text()).toContain('Phase: Build · Epic: Public API');
+    expect(text()).toContain('Fase: Build · Épica: Public API');
     expect(text()).toContain('Oct 10, 2026');
     expect(text()).toContain('Public endpoints only');
   });
@@ -217,10 +217,10 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     listAudit.mockResolvedValue([]);
     const { harness, component, text } = await render();
 
-    expect(text()).toContain('Remove task');
+    expect(text()).toContain('Quitar tarea');
     component.confirmingDelete.set(true);
     harness.detectChanges();
-    expect(text()).toContain('Remove it from the board and the Roadmap?');
+    expect(text()).toContain('¿Quitarla del tablero y del Roadmap?');
 
     await component.deleteTask();
 
@@ -235,7 +235,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     const { component, text } = await render();
 
     expect(component.canDelete()).toBe(false);
-    expect(text()).not.toContain('Remove task');
+    expect(text()).not.toContain('Quitar tarea');
 
     remove.mockRejectedValueOnce(
       new HttpErrorResponse({ status: 403, error: { message: 'Missing permission: task.delete' } }),

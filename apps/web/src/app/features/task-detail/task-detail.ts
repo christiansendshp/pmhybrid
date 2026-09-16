@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
+import { actorKindLabel } from '../../core/actor-kind.js';
 import { describeAuditChanges } from '../../core/audit-format.js';
 import { AuditEvent, AuditService } from '../../core/audit.service.js';
 import {
@@ -14,7 +15,7 @@ import {
 } from '../../core/hierarchy.service.js';
 import { describeHttpError } from '../../core/http-error.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
-import { LEGAL_NEXT_STATUSES } from '../../core/task-status-policy.js';
+import { LEGAL_NEXT_STATUSES, statusLabel } from '../../core/task-status-policy.js';
 import {
   Task,
   TaskDetail as TaskDetailModel,
@@ -64,6 +65,8 @@ export class TaskDetail implements OnInit {
   readonly deleting = signal(false);
   readonly deleteError = signal<string | null>(null);
   readonly describeChanges = describeAuditChanges;
+  readonly actorKindLabel = actorKindLabel;
+  readonly statusLabel = statusLabel;
 
   readonly otherTasks = computed(() =>
     this.allTasks().filter((task) => task.id !== this.task()?.id),
@@ -77,14 +80,14 @@ export class TaskDetail implements OnInit {
     }
     const { phases, epics, templates } = this.hierarchy();
     const entries = [
-      { label: 'Phase', value: phases.find((phase) => phase.id === task.phaseId)?.name },
-      { label: 'Epic', value: epics.find((epic) => epic.id === task.epicId)?.name },
+      { label: 'Fase', value: phases.find((phase) => phase.id === task.phaseId)?.name },
+      { label: 'Épica', value: epics.find((epic) => epic.id === task.epicId)?.name },
       {
-        label: 'Template',
+        label: 'Plantilla',
         value: templates.find((template) => template.id === task.templateId)?.name,
       },
       {
-        label: 'Parent task',
+        label: 'Tarea superior',
         value: this.allTasks().find((other) => other.id === task.parentTaskId)?.title,
       },
     ];
@@ -208,7 +211,7 @@ export class TaskDetail implements OnInit {
       await this.tasksService.remove(this.projectId, this.taskId);
       await this.router.navigate(['kanban'], { relativeTo: this.route.parent });
     } catch (error) {
-      this.deleteError.set(describeHttpError(error, 'The task could not be removed.'));
+      this.deleteError.set(describeHttpError(error, 'No se pudo eliminar la tarea.'));
       this.confirmingDelete.set(false);
     } finally {
       this.deleting.set(false);
@@ -226,7 +229,7 @@ export class TaskDetail implements OnInit {
       await this.reload();
       this.allTasks.set(await this.tasksService.listForProject(this.projectId));
     } catch (error) {
-      this.formError.set(describeHttpError(error, 'The change could not be saved.'));
+      this.formError.set(describeHttpError(error, 'No se pudo guardar el cambio.'));
     } finally {
       this.saving.set(false);
     }

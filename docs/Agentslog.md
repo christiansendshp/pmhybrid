@@ -309,3 +309,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: features/kanban/_, shared/task-form/_, core/board.ts
 - Verify: 139 web unit, lint, build green
 - Follow-up: task-detail/conflicts/documents-viewer/project-settings still English
+
+## [2026-09-16T12:22:55Z] | claude-sonnet-5 | GAP-20 task-detail | IN_PROGRESS
+
+- Summary: Unified Task Detail to Spanish (details, transitions, assignee, subtasks, dependencies, agent activity, history); now shows assignee kind and status labels via the shared helpers instead of raw enum text.
+- Files: features/task-detail/*
+- Verify: 139 web unit, lint, build green
+- Follow-up: conflicts/documents-viewer/project-settings still English

@@ -1,15 +1,15 @@
 @if (task(); as t) {
   <header class="page-header">
     <div>
-      <p class="meta-text task-id">{{ t.externalId ?? 'Not in the Roadmap yet' }}</p>
+      <p class="meta-text task-id">{{ t.externalId ?? 'Todavía no está en el Roadmap' }}</p>
       <h2 class="task-title">{{ t.title }}</h2>
     </div>
     @if (!editing()) {
       <div class="page-header__actions">
-        <button mat-stroked-button type="button" (click)="startEditing()">Edit task</button>
+        <button mat-stroked-button type="button" (click)="startEditing()">Editar tarea</button>
         @if (canDelete()) {
           @if (confirmingDelete()) {
-            <span class="meta-text">Remove it from the board and the Roadmap?</span>
+            <span class="meta-text">¿Quitarla del tablero y del Roadmap?</span>
             <button
               mat-flat-button
               class="danger-button"
@@ -17,9 +17,11 @@
               [disabled]="deleting()"
               (click)="deleteTask()"
             >
-              {{ deleting() ? 'Removing…' : 'Remove task' }}
+              {{ deleting() ? 'Quitando…' : 'Quitar tarea' }}
             </button>
-            <button mat-button type="button" (click)="confirmingDelete.set(false)">Keep it</button>
+            <button mat-button type="button" (click)="confirmingDelete.set(false)">
+              Conservar
+            </button>
           } @else {
             <button
               mat-button
@@ -28,7 +30,7 @@
               [attr.aria-describedby]="t.subtasks.length > 0 ? 'remove-hint' : null"
               (click)="confirmingDelete.set(true)"
             >
-              Remove task
+              Quitar tarea
             </button>
           }
         }
@@ -36,12 +38,14 @@
     }
   </header>
   @if (canDelete() && t.subtasks.length > 0 && !editing()) {
-    <p id="remove-hint" class="meta-text">Remove or move its subtasks before removing this task.</p>
+    <p id="remove-hint" class="meta-text">
+      Quita o mueve sus subtareas antes de quitar esta tarea.
+    </p>
   }
   @if (deleteError()) {
     <p role="alert">{{ deleteError() }}</p>
   }
-  <p>Status: {{ t.status }} — Progress: {{ t.computedProgress }}%</p>
+  <p>Estado: {{ statusLabel(t.status) }} — Progreso: {{ t.computedProgress }}%</p>
 
   @if (editing()) {
     <app-task-form
@@ -51,46 +55,46 @@
       [progressDerived]="t.subtasks.length > 0"
       [submitting]="saving()"
       [errorMessage]="formError()"
-      submitLabel="Save changes"
+      submitLabel="Guardar cambios"
       (save)="saveEdit($event)"
       (cancelled)="editing.set(false)"
     />
   } @else {
     <section>
-      <h3>Details</h3>
+      <h3>Detalles</h3>
       <dl class="details">
-        <dt>Acceptance criteria</dt>
+        <dt>Criterio de aceptación</dt>
         <dd>{{ t.acceptanceCriteria ?? '—' }}</dd>
-        <dt>Priority</dt>
+        <dt>Prioridad</dt>
         <dd>{{ t.priority ?? '—' }}</dd>
-        <dt>Progress</dt>
+        <dt>Progreso</dt>
         <dd>
           @if (t.subtasks.length > 0) {
-            Derived from subtasks
+            Derivado de las subtareas
           } @else if (t.progressPercent !== null) {
             {{ t.progressPercent }}%
           } @else {
-            From status
+            Según el estado
           }
         </dd>
-        <dt>Depends on</dt>
+        <dt>Depende de</dt>
         <dd>
           @for (entry of placement(); track entry.label; let last = $last) {
             {{ entry.label }}: {{ entry.value }}{{ last ? '' : ' · ' }}
           } @empty {
-            Project level
+            Nivel de proyecto
           }
         </dd>
-        <dt>Start date</dt>
+        <dt>Fecha de inicio</dt>
         <dd>{{ (t.startDate | date: 'mediumDate' : 'UTC') ?? '—' }}</dd>
-        <dt>Estimated date</dt>
+        <dt>Fecha estimada</dt>
         <dd>{{ (t.estimatedDate | date: 'mediumDate' : 'UTC') ?? '—' }}</dd>
-        <dt>Due date</dt>
+        <dt>Fecha de vencimiento</dt>
         <dd>{{ (t.dueDate | date: 'mediumDate' : 'UTC') ?? '—' }}</dd>
-        <dt>Created</dt>
+        <dt>Creada</dt>
         <dd>{{ t.createdAt | date: 'medium' }}</dd>
         @if (t.description) {
-          <dt>Description</dt>
+          <dt>Descripción</dt>
           <dd>{{ t.description }}</dd>
         }
       </dl>
@@ -98,17 +102,25 @@
   }
 
   <section>
-    <h3>Transition</h3>
+    <h3>Transición</h3>
     @for (status of legalNextStatuses(); track status) {
-      <button mat-flat-button type="button" (click)="transition(status)">{{ status }}</button>
+      <button mat-flat-button type="button" (click)="transition(status)">
+        {{ statusLabel(status) }}
+      </button>
     }
   </section>
 
   <section>
-    <h3>Assignee</h3>
-    <p>{{ t.assignee ? t.assignee.displayName + ' (' + t.assignee.kind + ')' : 'Unassigned' }}</p>
+    <h3>Responsable</h3>
+    <p>
+      {{
+        t.assignee
+          ? t.assignee.displayName + ' (' + actorKindLabel(t.assignee.kind) + ')'
+          : 'Sin asignar'
+      }}
+    </p>
     <mat-select
-      placeholder="Assign to…"
+      placeholder="Asignar a…"
       [ngModel]="selectedAssigneeId()"
       (ngModelChange)="selectedAssigneeId.set($event)"
     >
@@ -117,16 +129,17 @@
       }
     </mat-select>
     <button mat-flat-button type="button" [disabled]="!selectedAssigneeId()" (click)="assign()">
-      Assign
+      Asignar
     </button>
   </section>
 
   <section>
-    <h3>Subtasks</h3>
+    <h3>Subtareas</h3>
     <ul>
       @for (subtask of t.subtasks; track subtask.id) {
         <li>
-          <a [routerLink]="['../', subtask.id]">{{ subtask.title }}</a> — {{ subtask.status }}
+          <a [routerLink]="['../', subtask.id]">{{ subtask.title }}</a> —
+          {{ statusLabel(subtask.status) }}
         </li>
       }
     </ul>
@@ -137,24 +150,24 @@
         [parentTaskId]="t.id"
         [submitting]="saving()"
         [errorMessage]="formError()"
-        submitLabel="Add subtask"
+        submitLabel="Agregar subtarea"
         (save)="createSubtask($event)"
         (cancelled)="addingSubtask.set(false)"
       />
     } @else {
-      <button mat-stroked-button type="button" (click)="startSubtask()">Add subtask</button>
+      <button mat-stroked-button type="button" (click)="startSubtask()">Agregar subtarea</button>
     }
   </section>
 
   <section>
-    <h3>Dependencies</h3>
+    <h3>Dependencias</h3>
     <ul>
       @for (dep of t.dependencies; track dep.id) {
         <li>{{ dep.dependsOnTask ? dep.dependsOnTask.title : dep.rawExternalRef }}</li>
       }
     </ul>
     <mat-select
-      placeholder="Depends on…"
+      placeholder="Depende de…"
       [ngModel]="selectedDependsOnId()"
       (ngModelChange)="selectedDependsOnId.set($event)"
     >
@@ -168,14 +181,14 @@
       [disabled]="!selectedDependsOnId()"
       (click)="addDependency()"
     >
-      Add dependency
+      Agregar dependencia
     </button>
   </section>
 
   <section>
-    <h3>Agent activity</h3>
+    <h3>Actividad de agentes</h3>
     @if (t.agentLogEvents.length === 0) {
-      <p>No Agentslog entries for this task yet.</p>
+      <p>Todavía no hay entradas de Agentslog para esta tarea.</p>
     }
     <ul>
       @for (entry of t.agentLogEvents; track entry.id) {
@@ -189,15 +202,15 @@
   </section>
 
   <section>
-    <h3>History</h3>
+    <h3>Historial</h3>
     @if (history().length === 0) {
-      <p>No recorded changes yet.</p>
+      <p>Todavía no hay cambios registrados.</p>
     }
     <ul>
       @for (event of history(); track event.id) {
         <li>
           {{ event.occurredAt | date: 'medium' }} —
-          {{ event.actor ? event.actor.displayName : 'system' }} — {{ event.operation }} ({{
+          {{ event.actor ? event.actor.displayName : 'sistema' }} — {{ event.operation }} ({{
             event.origin
           }})
           <ul>
