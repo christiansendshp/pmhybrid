@@ -210,3 +210,30 @@ th {
     color: var(--mat-sys-on-tertiary-container);
   }
 }
+
+// A dense data table wider than its container scrolls instead of squeezing (.projects,
+// .workload, .team-table, ...) — the table element itself sets its own min-width.
+.table-scroll {
+  overflow-x: auto;
+}
+
+.status-badge {
+  padding-inline: var(--space-2);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 999px;
+  font: var(--mat-sys-label-small);
+  white-space: nowrap;
+
+  &[data-status='ACTIVE'] {
+    border-color: transparent;
+    background: var(--mat-sys-secondary-container);
+    color: var(--mat-sys-on-secondary-container);
+  }
+
+  &[data-status='INACTIVE'],
+  &[data-status='REVOKED'] {
+    border-color: transparent;
+    background: var(--mat-sys-surface-container-highest);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}

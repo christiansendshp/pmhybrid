@@ -1,180 +1,211 @@
-<h1>Team</h1>
+<header class="page-header">
+  <div>
+    <h1>Equipo</h1>
+    <p class="page-header__description">
+      Personas y agentes IA de la instancia, y sus claves de API.
+    </p>
+  </div>
+</header>
 
 @if (errorMessage()) {
   <p role="alert">{{ errorMessage() }}</p>
 }
 
 @if (loading()) {
-  <p>Loading…</p>
+  <p class="meta-text">Cargando…</p>
 } @else {
-  <section>
-    <h2>People</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Status</th>
-          @if (canManage()) {
-            <th>Actions</th>
-          }
-        </tr>
-      </thead>
-      <tbody>
-        @for (user of users(); track user.id) {
+  <section class="team-section">
+    <h2>Personas</h2>
+    <div class="table-scroll">
+      <table class="team-table" aria-label="Personas">
+        <thead>
           <tr>
-            <td>{{ user.displayName }}</td>
-            <td>{{ user.email ?? '—' }}</td>
-            <td>{{ user.isActive ? 'Active' : 'Inactive' }}</td>
+            <th scope="col">Nombre</th>
+            <th scope="col">Email</th>
+            <th scope="col">Estado</th>
             @if (canManage()) {
-              <td>
-                <button mat-button type="button" (click)="startEdit(user)">Edit</button>
-                @if (!user.isActive) {
-                  <button
-                    mat-button
-                    type="button"
-                    [disabled]="saving()"
-                    (click)="setActive(user, true)"
-                  >
-                    Activate
-                  </button>
-                } @else if (user.id !== currentActorId()) {
-                  <button
-                    mat-button
-                    type="button"
-                    [disabled]="saving()"
-                    (click)="setActive(user, false)"
-                  >
-                    Deactivate
-                  </button>
-                }
-              </td>
+              <th scope="col">Acciones</th>
             }
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @for (user of users(); track user.id) {
+            <tr>
+              <td>{{ user.displayName }}</td>
+              <td>{{ user.email ?? '—' }}</td>
+              <td>
+                <span
+                  class="status-badge"
+                  [attr.data-status]="user.isActive ? 'ACTIVE' : 'INACTIVE'"
+                >
+                  {{ user.isActive ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              @if (canManage()) {
+                <td class="team-table__actions">
+                  <button mat-button type="button" (click)="startEdit(user)">Editar</button>
+                  @if (!user.isActive) {
+                    <button
+                      mat-button
+                      type="button"
+                      [disabled]="saving()"
+                      (click)="setActive(user, true)"
+                    >
+                      Activar
+                    </button>
+                  } @else if (user.id !== currentActorId()) {
+                    <button
+                      mat-button
+                      type="button"
+                      [disabled]="saving()"
+                      (click)="setActive(user, false)"
+                    >
+                      Desactivar
+                    </button>
+                  }
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
 
     @if (canManage()) {
-      <form [formGroup]="userForm" (ngSubmit)="createUser()">
-        <h3>Add a person</h3>
-        <mat-form-field>
-          <mat-label>Name</mat-label>
+      <form class="team-form" [formGroup]="userForm" (ngSubmit)="createUser()">
+        <h3>Agregar una persona</h3>
+        <mat-form-field appearance="outline">
+          <mat-label>Nombre</mat-label>
           <input matInput formControlName="displayName" />
         </mat-form-field>
-        <mat-form-field>
+        <mat-form-field appearance="outline">
           <mat-label>Email</mat-label>
           <input matInput type="email" formControlName="email" autocomplete="off" />
         </mat-form-field>
-        <mat-form-field>
-          <mat-label>Initial password</mat-label>
+        <mat-form-field appearance="outline">
+          <mat-label>Contraseña inicial</mat-label>
           <input matInput type="password" formControlName="password" autocomplete="new-password" />
         </mat-form-field>
         <button mat-flat-button type="submit" [disabled]="userForm.invalid || saving()">
-          Add person
+          Agregar persona
         </button>
       </form>
     }
   </section>
 
-  <section>
-    <h2>AI agents</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Provider</th>
-          <th>Status</th>
-          @if (canManage()) {
-            <th>Actions</th>
-          }
-        </tr>
-      </thead>
-      <tbody>
-        @for (agent of agents(); track agent.id) {
+  <section class="team-section">
+    <h2>Agentes IA</h2>
+    <div class="table-scroll">
+      <table class="team-table" aria-label="Agentes IA">
+        <thead>
           <tr>
-            <td>{{ agent.displayName }}</td>
-            <td>{{ agent.agentProfile?.providerType ?? '—' }}</td>
-            <td>{{ agent.isActive ? 'Active' : 'Inactive' }}</td>
+            <th scope="col">Nombre</th>
+            <th scope="col">Proveedor</th>
+            <th scope="col">Estado</th>
             @if (canManage()) {
-              <td>
-                <button mat-button type="button" (click)="startEdit(agent)">Edit</button>
-                <button
-                  mat-button
-                  type="button"
-                  [disabled]="saving()"
-                  (click)="setActive(agent, !agent.isActive)"
-                >
-                  {{ agent.isActive ? 'Deactivate' : 'Activate' }}
-                </button>
-              </td>
+              <th scope="col">Acciones</th>
             }
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @for (agent of agents(); track agent.id) {
+            <tr>
+              <td>
+                {{ agent.displayName }}
+                <span class="kind-badge" data-kind="AI_AGENT">Agente IA</span>
+              </td>
+              <td>{{ agent.agentProfile?.providerType ?? '—' }}</td>
+              <td>
+                <span
+                  class="status-badge"
+                  [attr.data-status]="agent.isActive ? 'ACTIVE' : 'INACTIVE'"
+                >
+                  {{ agent.isActive ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              @if (canManage()) {
+                <td class="team-table__actions">
+                  <button mat-button type="button" (click)="startEdit(agent)">Editar</button>
+                  <button
+                    mat-button
+                    type="button"
+                    [disabled]="saving()"
+                    (click)="setActive(agent, !agent.isActive)"
+                  >
+                    {{ agent.isActive ? 'Desactivar' : 'Activar' }}
+                  </button>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
 
     @if (canManage()) {
-      <form [formGroup]="agentForm" (ngSubmit)="createAgent()">
-        <h3>Add an AI agent</h3>
-        <mat-form-field>
-          <mat-label>Name</mat-label>
+      <form class="team-form" [formGroup]="agentForm" (ngSubmit)="createAgent()">
+        <h3>Agregar un agente IA</h3>
+        <mat-form-field appearance="outline">
+          <mat-label>Nombre</mat-label>
           <input matInput formControlName="displayName" />
         </mat-form-field>
-        <mat-form-field>
-          <mat-label>Provider</mat-label>
+        <mat-form-field appearance="outline">
+          <mat-label>Proveedor</mat-label>
           <input
             matInput
             formControlName="providerType"
             placeholder="claude, codex, gemini, custom…"
           />
         </mat-form-field>
-        <mat-form-field>
-          <mat-label>Config (JSON, no secrets)</mat-label>
+        <mat-form-field appearance="outline" class="team-form__wide">
+          <mat-label>Configuración (JSON, sin secretos)</mat-label>
           <textarea matInput formControlName="config" rows="3"></textarea>
         </mat-form-field>
         <button mat-flat-button type="submit" [disabled]="agentForm.invalid || saving()">
-          Add agent
+          Agregar agente
         </button>
       </form>
     }
   </section>
 
   @if (editing(); as actor) {
-    <section>
-      <h2>Edit {{ actor.displayName }}</h2>
-      <form [formGroup]="editForm" (ngSubmit)="saveEdit()">
-        <mat-form-field>
-          <mat-label>Name</mat-label>
+    <section class="team-section team-section--edit">
+      <h2>Editar a {{ actor.displayName }}</h2>
+      <form class="team-form" [formGroup]="editForm" (ngSubmit)="saveEdit()">
+        <mat-form-field appearance="outline">
+          <mat-label>Nombre</mat-label>
           <input matInput formControlName="displayName" />
         </mat-form-field>
-        <mat-form-field>
-          <mat-label>Avatar URL</mat-label>
+        <mat-form-field appearance="outline">
+          <mat-label>URL del avatar</mat-label>
           <input matInput formControlName="avatarUrl" />
         </mat-form-field>
         @if (actor.kind === 'AI_AGENT') {
-          <mat-form-field>
-            <mat-label>Provider</mat-label>
+          <mat-form-field appearance="outline">
+            <mat-label>Proveedor</mat-label>
             <input matInput formControlName="providerType" />
           </mat-form-field>
-          <mat-form-field>
-            <mat-label>Config (JSON, no secrets)</mat-label>
+          <mat-form-field appearance="outline" class="team-form__wide">
+            <mat-label>Configuración (JSON, sin secretos)</mat-label>
             <textarea matInput formControlName="config" rows="4"></textarea>
           </mat-form-field>
         }
-        <button mat-flat-button type="submit" [disabled]="editForm.invalid || saving()">
-          Save
-        </button>
-        <button mat-button type="button" (click)="cancelEdit()">Cancel</button>
+        <div class="team-form__actions">
+          <button mat-flat-button type="submit" [disabled]="editForm.invalid || saving()">
+            Guardar
+          </button>
+          <button mat-button type="button" (click)="cancelEdit()">Cancelar</button>
+        </div>
       </form>
     </section>
 
     @if (actor.kind === 'AI_AGENT') {
-      <section>
-        <h2>API keys</h2>
-        <p>
-          Lets {{ actor.displayName }} authenticate directly against the API with an
-          <code>X-API-Key</code> header, instead of a human login (brief §27, §28).
+      <section class="team-section team-section--edit">
+        <h2>Claves de API</h2>
+        <p class="page-header__description">
+          Permite que {{ actor.displayName }} se autentique directamente contra la API con un
+          encabezado <code>X-API-Key</code>, en lugar de un inicio de sesión humano (brief §27,
+          §28).
         </p>
 
         @if (keyErrorMessage()) {
@@ -182,63 +213,72 @@
         }
 
         @if (justCreatedKey(); as created) {
-          <div role="alert">
-            <p>
-              <strong>Copy this key now — it will not be shown again.</strong>
-            </p>
+          <div class="new-key" role="alert">
+            <p><strong>Copiá esta clave ahora — no se volverá a mostrar.</strong></p>
             <code>{{ created.key }}</code>
-            <button mat-button type="button" (click)="copyKey(created.key)">Copy</button>
+            <button mat-button type="button" (click)="copyKey(created.key)">Copiar</button>
           </div>
         }
 
         @if (keysLoading()) {
-          <p>Loading…</p>
+          <p class="meta-text">Cargando…</p>
         } @else if (agentKeys().length === 0) {
-          <p>No API keys yet.</p>
+          <p class="meta-text">Todavía no hay claves de API.</p>
         } @else {
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Prefix</th>
-                <th>Created</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (key of agentKeys(); track key.id) {
+          <div class="table-scroll">
+            <table class="team-table" aria-label="Claves de API">
+              <thead>
                 <tr>
-                  <td>{{ key.name ?? '—' }}</td>
-                  <td>
-                    <code>pmh_{{ key.prefix }}…</code>
-                  </td>
-                  <td>{{ key.createdAt | date: 'medium' }}</td>
-                  <td>{{ key.revokedAt ? 'Revoked' : 'Active' }}</td>
-                  <td>
-                    @if (!key.revokedAt) {
-                      <button
-                        mat-button
-                        type="button"
-                        [disabled]="keysLoading()"
-                        (click)="revokeKey(actor.id, key)"
-                      >
-                        Revoke
-                      </button>
-                    }
-                  </td>
+                  <th scope="col">Nombre</th>
+                  <th scope="col">Prefijo</th>
+                  <th scope="col">Creada</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col">Acciones</th>
                 </tr>
-              }
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                @for (key of agentKeys(); track key.id) {
+                  <tr>
+                    <td>{{ key.name ?? '—' }}</td>
+                    <td>
+                      <code>pmh_{{ key.prefix }}…</code>
+                    </td>
+                    <td>{{ key.createdAt | date: 'medium' }}</td>
+                    <td>
+                      <span
+                        class="status-badge"
+                        [attr.data-status]="key.revokedAt ? 'REVOKED' : 'ACTIVE'"
+                      >
+                        {{ key.revokedAt ? 'Revocada' : 'Activa' }}
+                      </span>
+                    </td>
+                    <td>
+                      @if (!key.revokedAt) {
+                        <button
+                          mat-button
+                          type="button"
+                          [disabled]="keysLoading()"
+                          (click)="revokeKey(actor.id, key)"
+                        >
+                          Revocar
+                        </button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
         }
 
-        <form [formGroup]="keyForm" (ngSubmit)="createKey(actor.id)">
-          <mat-form-field>
-            <mat-label>Key name (optional)</mat-label>
-            <input matInput formControlName="name" placeholder="CI pipeline, staging bot…" />
+        <form class="team-form" [formGroup]="keyForm" (ngSubmit)="createKey(actor.id)">
+          <mat-form-field appearance="outline">
+            <mat-label>Nombre de la clave (opcional)</mat-label>
+            <input matInput formControlName="name" placeholder="CI, bot de staging…" />
           </mat-form-field>
-          <button mat-flat-button type="submit" [disabled]="keysLoading()">Generate new key</button>
+          <button mat-flat-button type="submit" [disabled]="keysLoading()">
+            Generar nueva clave
+          </button>
         </form>
       </section>
     }

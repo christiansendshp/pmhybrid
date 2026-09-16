@@ -21,6 +21,7 @@ const INVALID_CONFIG = Symbol('invalid-config');
   selector: 'app-team',
   imports: [ReactiveFormsModule, DatePipe, MatButtonModule, MatFormFieldModule, MatInputModule],
   templateUrl: './team.html',
+  styleUrl: './team.scss',
 })
 export class Team implements OnInit {
   private readonly actorsService = inject(ActorsService);
@@ -88,7 +89,7 @@ export class Team implements OnInit {
     const { displayName, providerType, config } = this.agentForm.getRawValue();
     const parsedConfig = parseConfig(config);
     if (parsedConfig === INVALID_CONFIG) {
-      this.errorMessage.set('Config must be a JSON object.');
+      this.errorMessage.set('La configuración debe ser un objeto JSON.');
       return;
     }
     await this.applyChange(async () => {
@@ -186,7 +187,7 @@ export class Team implements OnInit {
     if (actor.kind === 'AI_AGENT') {
       const parsedConfig = parseConfig(config);
       if (parsedConfig === INVALID_CONFIG) {
-        this.errorMessage.set('Config must be a JSON object.');
+        this.errorMessage.set('La configuración debe ser un objeto JSON.');
         return;
       }
       input.providerType = providerType || undefined;

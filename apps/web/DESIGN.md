@@ -172,9 +172,17 @@ applied elsewhere.
   `surface-container-highest`; `AI_AGENT` uses `tertiary-container`. This is
   the one place tertiary appears; keep it that way so the color stays a
   reliable "this touched an agent" signal.
-- **`.status-counts`** — compact pill row for status/permission-key lists.
-- **`.table-scroll` + a scoped table class** (`.projects`, `.workload`, …) —
-  every dense data table: sticky-free, horizontally scrollable on overflow,
+- **`.status-counts`** — compact pill row for status/permission-key lists;
+  `.status-counts__alert` (error-container tones) marks a blocked/overdue
+  count inside the same row.
+- **`.status-badge[data-status]`** (global, `styles.scss`) — a bordered pill
+  for a single entity's own status (project ACTIVE/PAUSED/ARCHIVED, actor
+  ACTIVE/INACTIVE, API key ACTIVE/REVOKED). `ACTIVE` fills with
+  `secondary-container`; every inactive/terminal state shares one neutral
+  treatment — don't invent a new color per status name.
+- **`.table-scroll` + a scoped table class** (`.projects`, `.workload`,
+  `.team-table`, …) — every dense data table: `.table-scroll` (global,
+  horizontal overflow only) wraps a table that sets its own `min-width`;
   `.num` right-aligned tabular columns, a `.alert` modifier for an overdue/
   open-conflict cell.
 - **`.theme-toggle`** (`app-shell.scss`) — icon-only button, inline SVG

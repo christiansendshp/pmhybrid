@@ -73,7 +73,7 @@ describe('app routes', () => {
 
     expect(url).toBe('/team');
     expect(root.querySelectorAll('nav')).toHaveLength(1);
-    expect(root.querySelector('main h1')?.textContent).toContain('Team');
+    expect(root.querySelector('main h1')?.textContent).toContain('Equipo');
   });
 
   it('opens the dashboard for the bare root', async () => {

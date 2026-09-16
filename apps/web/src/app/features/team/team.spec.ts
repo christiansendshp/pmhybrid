@@ -95,10 +95,10 @@ describe('Team (brief §3 — administrable actors)', () => {
     expect(text).toContain('Ana García');
     expect(text).toContain('Codex');
     expect(text).toContain('codex');
-    expect(text).toContain('Add person');
-    expect(text).toContain('Add agent');
+    expect(text).toContain('Agregar persona');
+    expect(text).toContain('Agregar agente');
     // Ana and Codex can be deactivated; the signed-in admin's own row cannot.
-    expect(buttons().filter((label) => label === 'Deactivate')).toHaveLength(2);
+    expect(buttons().filter((label) => label === 'Desactivar')).toHaveLength(2);
   });
 
   it('is read-only without the actors.manage permission', async () => {
@@ -107,8 +107,8 @@ describe('Team (brief §3 — administrable actors)', () => {
     const text = fixture.nativeElement.textContent as string;
 
     expect(text).toContain('Ana García');
-    expect(text).not.toContain('Add person');
-    expect(buttons()).not.toContain('Deactivate');
+    expect(text).not.toContain('Agregar persona');
+    expect(buttons()).not.toContain('Desactivar');
   });
 
   it('creates an agent with its JSON config parsed, and refuses a config that is not a JSON object', async () => {
@@ -134,7 +134,7 @@ describe('Team (brief §3 — administrable actors)', () => {
     });
     await component.createAgent();
     expect(actorsService.createAgent).toHaveBeenCalledTimes(1);
-    expect(component.errorMessage()).toBe('Config must be a JSON object.');
+    expect(component.errorMessage()).toBe('La configuración debe ser un objeto JSON.');
   });
 
   it('deactivates through the actor-specific endpoint and surfaces the API validation message', async () => {

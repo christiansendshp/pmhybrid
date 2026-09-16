@@ -281,3 +281,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: features/dashboard/*, styles.scss
 - Verify: 135 web unit, lint, build green
 - Follow-up: team/roles/audit/phases-progress still raw; rest need palette+copy pass
+
+## [2026-09-16T12:06:40Z] | claude-sonnet-5 | GAP-20 team | IN_PROGRESS
+
+- Summary: Redesigned Team: was raw h1/table/form, no page-header; now uses page-header/table-scroll/status-badge (promoted table-scroll+status-badge to global styles.scss, deduped from my-projects/workload), Spanish copy.
+- Files: features/team/*, features/my-projects/my-projects.scss, features/workload/workload.scss, styles.scss
+- Verify: 135 web unit green, lint clean, build clean
+- Follow-up: roles, audit, phases-progress still raw

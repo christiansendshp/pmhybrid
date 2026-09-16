@@ -19,10 +19,6 @@
   color: var(--mat-sys-on-surface-variant);
 }
 
-.table-scroll {
-  overflow-x: auto;
-}
-
 .projects {
   min-width: 56rem;
 
@@ -53,20 +49,6 @@
   color: var(--mat-sys-on-surface-variant);
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.status-badge {
-  padding-inline: var(--space-2);
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 999px;
-  font: var(--mat-sys-label-small);
-  white-space: nowrap;
-
-  &[data-status='ACTIVE'] {
-    border-color: transparent;
-    background: var(--mat-sys-secondary-container);
-    color: var(--mat-sys-on-secondary-container);
-  }
 }
 
 .progress {
