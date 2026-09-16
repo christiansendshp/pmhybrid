@@ -62,6 +62,7 @@ transform: true })` — unknown fields are stripped, not rejected; typed
 | `/dashboard`                              | dashboard             | Cross-project summary + activity feeds                                  |
 | `/workload`                               | workload              | Cross-project per-actor task view                                       |
 | `/notifications`                          | notifications         | `:id/read`                                                              |
+| `/filesystem-browser`                     | git-providers         | `browse` — server-side folder picker for `docsPath` (Roadmap GAP-27)    |
 
 Every `/projects/:projectId/...` route (except `/projects` itself) sits
 behind `ProjectMemberGuard`: a non-member is refused before any handler runs,

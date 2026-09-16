@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProjectWithSummary, ProjectsService } from '../../core/projects.service.js';
 import { MyProjects } from './my-projects.js';
@@ -33,13 +35,16 @@ function project(overrides: Partial<ProjectWithSummary> = {}): ProjectWithSummar
 
 describe('MyProjects (brief §19)', () => {
   let listMine: ReturnType<typeof vi.fn>;
+  let dialogOpen: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     listMine = vi.fn();
+    dialogOpen = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         { provide: ProjectsService, useValue: { listMine, create: vi.fn() } },
+        { provide: MatDialog, useValue: { open: dialogOpen } },
       ],
     });
   });
@@ -90,5 +95,36 @@ describe('MyProjects (brief §19)', () => {
     const { text } = await render();
 
     expect(text()).toContain('Todavía no eres miembro de ningún proyecto.');
+  });
+
+  it('fills docsPath from the folder browser dialog (Roadmap GAP-27)', async () => {
+    listMine.mockResolvedValue([]);
+    dialogOpen.mockReturnValue({ afterClosed: () => of('C:\\Users\\me\\my-project-docs') });
+    const fixture = TestBed.createComponent(MyProjects);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const component = fixture.componentInstance;
+
+    component.openCreateForm();
+    component.browseDocsPath();
+
+    expect(dialogOpen).toHaveBeenCalledTimes(1);
+    expect(component.form.controls.docsPath.value).toBe('C:\\Users\\me\\my-project-docs');
+    expect(component.form.controls.docsPath.dirty).toBe(true);
+  });
+
+  it('leaves docsPath untouched when the folder browser dialog is cancelled', async () => {
+    listMine.mockResolvedValue([]);
+    dialogOpen.mockReturnValue({ afterClosed: () => of(undefined) });
+    const fixture = TestBed.createComponent(MyProjects);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const component = fixture.componentInstance;
+
+    component.openCreateForm();
+    component.form.controls.docsPath.setValue('./kept-as-is');
+    component.browseDocsPath();
+
+    expect(component.form.controls.docsPath.value).toBe('./kept-as-is');
   });
 });

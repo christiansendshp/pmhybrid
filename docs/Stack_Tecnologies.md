@@ -31,32 +31,33 @@
 
 ## Commands
 
-| Purpose       | Command                                        | Status                                                                                                         |
-| ------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Test          | `pnpm -r test`                                 | CONFIRMED — 144 web unit + 35 api unit pass (2026-09-16)                                                       |
-| E2E           | `pnpm test:e2e`                                | CONFIRMED — 127 api e2e pass, stable across 2 consecutive runs (`docs/testing.md`)                             |
-| Lint or check | `pnpm -r lint`                                 | CONFIRMED — clean on all 3 packages (oxlint api, ESLint web)                                                   |
-| Build         | `pnpm -r build`                                | CONFIRMED — clean on all 3 packages                                                                            |
-| DB up         | `docker compose up -d`                         | CONFIRMED — Postgres 17 healthy on `127.0.0.1:5436` (5432 was occupied by an unrelated container on this host) |
-| Migrate       | `pnpm --filter api prisma:migrate`             | CONFIRMED — see ADR-003 for the CI=true fix                                                                    |
-| Reset + seed  | `prisma migrate reset --force` (in `apps/api`) | CONFIRMED — drops, reapplies all 6 migrations, reseeds (roles/permissions/demo actors + 3 demo projects)       |
-| API dev       | `pnpm --filter api dev` (→ `GET /health`)      | CONFIRMED — 200, `{"status":"ok","info":{"db":{"status":"up"}}}`                                               |
-| Web dev       | `pnpm --filter web dev` (→ `localhost:4200`)   | CONFIRMED — 200, all 14 lazy routes resolve                                                                    |
+| Purpose       | Command                                        | Status                                                                                                                                                           |
+| ------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Test          | `pnpm -r test`                                 | CONFIRMED — 153 web unit + 39 api unit pass (2026-09-16)                                                                                                         |
+| E2E           | `pnpm test:e2e`                                | CONFIRMED — 129/130 api e2e pass; the one failure needs `demo-website-relaunch` reseeded (removed by this session's data wipe, `Agentslog.md`), not a regression |
+| Lint or check | `pnpm -r lint`                                 | CONFIRMED — clean on all 3 packages (oxlint api, ESLint web)                                                                                                     |
+| Build         | `pnpm -r build`                                | CONFIRMED — clean on all 3 packages                                                                                                                              |
+| DB up         | `docker compose up -d`                         | CONFIRMED — Postgres 17 healthy on `127.0.0.1:5436` (5432 was occupied by an unrelated container on this host)                                                   |
+| Migrate       | `pnpm --filter api prisma:migrate`             | CONFIRMED — see ADR-003 for the CI=true fix                                                                                                                      |
+| Reset + seed  | `prisma migrate reset --force` (in `apps/api`) | CONFIRMED — drops, reapplies all 6 migrations, reseeds (roles/permissions/demo actors + 3 demo projects)                                                         |
+| API dev       | `pnpm --filter api dev` (→ `GET /health`)      | CONFIRMED — 200, `{"status":"ok","info":{"db":{"status":"up"}}}`                                                                                                 |
+| Web dev       | `pnpm --filter web dev` (→ `localhost:4200`)   | CONFIRMED — 200, all 14 lazy routes resolve                                                                                                                      |
 
 ## Environment variables
 
 Names and purpose only; never store real values.
 
-| Name                          | Purpose                                                                                              | Required |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------- | -------- |
-| DATABASE_URL                  | Postgres connection string for Prisma                                                                | yes      |
-| JWT_SECRET                    | Signing secret for access/refresh tokens                                                             | yes      |
-| JWT_EXPIRES_IN                | Access token lifetime (defaults to `15m` when unset)                                                 | no       |
-| JWT_REFRESH_EXPIRES_IN        | Refresh token lifetime (defaults to `7d` when unset)                                                 | no       |
-| PORT                          | API listen port (defaults to `3000` when unset)                                                      | no       |
-| SYNC_DEFAULT_INTERVAL_MINUTES | Default project sync interval (defaults to `5` when unset)                                           | no       |
-| SYNC_SCHEDULER_ENABLED        | Scheduled sync on (default) or off; manual sync always works; the e2e suite sets `false`             | no       |
-| GIT_PROVIDER_TYPE             | Selects the ProjectRepositoryProvider implementation (defaults to `local`, the only one implemented) | no       |
+| Name                          | Purpose                                                                                                               | Required |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------- | -------- |
+| DATABASE_URL                  | Postgres connection string for Prisma                                                                                 | yes      |
+| JWT_SECRET                    | Signing secret for access/refresh tokens                                                                              | yes      |
+| JWT_EXPIRES_IN                | Access token lifetime (defaults to `15m` when unset)                                                                  | no       |
+| JWT_REFRESH_EXPIRES_IN        | Refresh token lifetime (defaults to `7d` when unset)                                                                  | no       |
+| PORT                          | API listen port (defaults to `3000` when unset)                                                                       | no       |
+| SYNC_DEFAULT_INTERVAL_MINUTES | Default project sync interval (defaults to `5` when unset)                                                            | no       |
+| SYNC_SCHEDULER_ENABLED        | Scheduled sync on (default) or off; manual sync always works; the e2e suite sets `false`                              | no       |
+| GIT_PROVIDER_TYPE             | Selects the ProjectRepositoryProvider implementation (defaults to `local`, the only one implemented)                  | no       |
+| PROJECT_DOCS_BROWSE_ROOT      | Confines the docsPath folder picker (Roadmap GAP-27) to this directory (defaults to the API process's home directory) | no       |
 
 Validated by `apps/api/src/config/env.validation.ts` (`REQUIRED_KEYS`); only
 `DATABASE_URL` and `JWT_SECRET` throw at startup if missing, everything else

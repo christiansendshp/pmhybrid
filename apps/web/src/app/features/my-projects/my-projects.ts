@@ -3,10 +3,12 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { describeHttpError } from '../../core/http-error.js';
 import { ProjectWithSummary, ProjectsService } from '../../core/projects.service.js';
+import { FolderBrowserDialog } from '../../shared/folder-browser-dialog/folder-browser-dialog.js';
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'Activo',
@@ -32,6 +34,7 @@ const STATUS_LABELS: Record<string, string> = {
 export class MyProjects implements OnInit {
   private readonly projectsService = inject(ProjectsService);
   private readonly fb = inject(FormBuilder);
+  private readonly dialog = inject(MatDialog);
 
   readonly projects = signal<ProjectWithSummary[]>([]);
   readonly loading = signal(true);
@@ -63,6 +66,17 @@ export class MyProjects implements OnInit {
   cancelCreate(): void {
     this.form.reset();
     this.showCreateForm.set(false);
+  }
+
+  browseDocsPath(): void {
+    const initialPath = this.form.controls.docsPath.value.trim() || undefined;
+    const dialogRef = this.dialog.open(FolderBrowserDialog, { data: { initialPath } });
+    dialogRef.afterClosed().subscribe((chosenPath?: string) => {
+      if (chosenPath) {
+        this.form.controls.docsPath.setValue(chosenPath);
+        this.form.controls.docsPath.markAsDirty();
+      }
+    });
   }
 
   private async reload(): Promise<void> {

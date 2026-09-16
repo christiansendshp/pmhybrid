@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -13,6 +14,7 @@ import {
   ProjectStatus,
   ProjectsService,
 } from '../../core/projects.service.js';
+import { FolderBrowserDialog } from '../../shared/folder-browser-dialog/folder-browser-dialog.js';
 
 const PROJECT_UPDATE = 'project.update';
 const NOT_BLANK = /\S/;
@@ -50,6 +52,7 @@ export class ProjectSettings {
   private readonly context = inject(ProjectContext);
   private readonly projectsService = inject(ProjectsService);
   private readonly fb = inject(FormBuilder);
+  private readonly dialog = inject(MatDialog);
 
   readonly statuses = PROJECT_STATUSES;
   readonly statusLabels = STATUS_LABELS;
@@ -116,6 +119,17 @@ export class ProjectSettings {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  browseDocsPath(): void {
+    const initialPath = this.form.controls.docsPath.value.trim() || undefined;
+    const dialogRef = this.dialog.open(FolderBrowserDialog, { data: { initialPath } });
+    dialogRef.afterClosed().subscribe((chosenPath?: string) => {
+      if (chosenPath) {
+        this.form.controls.docsPath.setValue(chosenPath);
+        this.form.controls.docsPath.markAsDirty();
+      }
+    });
   }
 
   discard(): void {

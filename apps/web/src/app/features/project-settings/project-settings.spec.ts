@@ -1,5 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
+import { of } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProjectContext } from '../../core/project-context.js';
 import { Project, ProjectsService } from '../../core/projects.service.js';
@@ -19,11 +21,17 @@ const PROJECT: Project = {
 
 describe('ProjectSettings', () => {
   let update: ReturnType<typeof vi.fn>;
+  let dialogOpen: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     update = vi.fn();
+    dialogOpen = vi.fn();
     TestBed.configureTestingModule({
-      providers: [ProjectContext, { provide: ProjectsService, useValue: { update } }],
+      providers: [
+        ProjectContext,
+        { provide: ProjectsService, useValue: { update } },
+        { provide: MatDialog, useValue: { open: dialogOpen } },
+      ],
     });
   });
 
@@ -92,5 +100,26 @@ describe('ProjectSettings', () => {
 
     expect(component.errorMessage()).toBeTruthy();
     expect(text()).not.toContain('Configuración guardada.');
+  });
+
+  it('offers "Explorar…" only when editable, and it fills docsPath from the dialog (Roadmap GAP-27)', () => {
+    dialogOpen.mockReturnValue({ afterClosed: () => of('C:\\repos\\site-docs') });
+    const { component, text } = render(['project.update']);
+
+    expect(text()).toContain('Explorar…');
+    component.browseDocsPath();
+
+    expect(dialogOpen).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ data: { initialPath: './site-docs' } }),
+    );
+    expect(component.form.controls.docsPath.value).toBe('C:\\repos\\site-docs');
+    expect(component.form.controls.docsPath.dirty).toBe(true);
+  });
+
+  it('hides "Explorar…" without project.update', () => {
+    const { text } = render([]);
+
+    expect(text()).not.toContain('Explorar…');
   });
 });

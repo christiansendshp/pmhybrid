@@ -23,6 +23,7 @@
     <mat-form-field appearance="outline">
       <mat-label>Ruta de documentos</mat-label>
       <input matInput formControlName="docsPath" placeholder="./my-project-docs" />
+      <button matSuffix mat-button type="button" (click)="browseDocsPath()">Explorar…</button>
       <mat-hint>La carpeta con el Roadmap.md y Agentslog.md del proyecto.</mat-hint>
       <mat-error>Dónde viven los documentos del proyecto.</mat-error>
     </mat-form-field>

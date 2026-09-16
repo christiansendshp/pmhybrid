@@ -344,3 +344,17 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: docs/Roadmap.md
 - Verify: check: OK; each item verified against actual code (DTOs, provider impls, audit enum, a11y tooling, webhook/MCP grep) before being listed
 - Follow-up: user or product decision needed to prioritize GAP-26's three integrations
+
+## [2026-09-16T14:55:58.322Z] | Demo Human | GAP-21 | IN_PROGRESS
+
+- Summary: Started: Progress rollup strategy is configurable on the API (`progressRollupStrategy` in create/update project DTOs) but never exposed in the UI — every project silently gets the schema default, unchangeable (brief §16 "estrategia configurable")
+- Files: —
+- Verify: —
+- Follow-up: —
+
+## [2026-09-16T15:13:41Z] | claude-sonnet-5 | GAP-27 | DONE
+
+- Summary: docsPath folder picker: GET /filesystem-browser/browse (auth-only, root-confined) lists subfolders + flags Roadmap.md/Agentslog.md presence; Explorar... dialog wired into create-project and Project Settings
+- Files: api git-providers module, web filesystem-browser.service + folder-browser-dialog, my-projects, project-settings, docs
+- Verify: check OK; 153 web + 39 api unit; 129/130 e2e (1 pre-existing, unrelated); lint+build clean
+- Follow-up: browser click-through still pending the user's own login

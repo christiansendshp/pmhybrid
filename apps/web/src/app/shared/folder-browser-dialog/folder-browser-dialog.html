@@ -1,0 +1,56 @@
+<h2 matDialogTitle>Elegir carpeta de documentos</h2>
+
+<mat-dialog-content class="folder-browser">
+  @if (loading()) {
+    <p class="meta-text">Cargando…</p>
+  } @else if (errorMessage()) {
+    <p role="alert">{{ errorMessage() }}</p>
+  } @else if (current(); as result) {
+    <div class="folder-browser__path">
+      <button
+        mat-button
+        type="button"
+        class="folder-browser__up"
+        [disabled]="!result.parentPath"
+        (click)="up()"
+      >
+        ↑ Subir
+      </button>
+      <code class="folder-browser__current">{{ result.path }}</code>
+    </div>
+
+    @if (result.directories.length > 0) {
+      <ul class="folder-browser__list" aria-label="Subcarpetas">
+        @for (dir of result.directories; track dir.path) {
+          <li>
+            <button mat-button type="button" class="folder-browser__entry" (click)="open(dir.path)">
+              {{ dir.name }}
+            </button>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="meta-text">Esta carpeta no tiene subcarpetas.</p>
+    }
+
+    <ul class="folder-browser__docs" aria-label="Documentos encontrados en esta carpeta">
+      @for (doc of result.documents; track doc.kind) {
+        <li [class.folder-browser__doc--found]="doc.found">
+          {{ doc.found ? '✓' : '—' }} {{ doc.filename }}
+        </li>
+      }
+    </ul>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" matDialogClose>Cancelar</button>
+  <button
+    mat-flat-button
+    type="button"
+    [disabled]="loading() || !!errorMessage()"
+    (click)="select()"
+  >
+    Elegir esta carpeta
+  </button>
+</mat-dialog-actions>

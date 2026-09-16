@@ -69,3 +69,18 @@ A route with none of `@RequirePermission` still requires the guards above it
 in the chain (`JwtAuthGuard`, and `ProjectMemberGuard` where present) — "no
 permission required" means any authenticated member, never "no auth
 required."
+
+## Filesystem browser trust boundary (Roadmap GAP-27)
+
+`GET /filesystem-browser/browse` (backs the `docsPath` folder picker on
+create-project and Project Settings) requires only `JwtAuthGuard` — no
+`RequirePermission`, since `POST /projects` itself needs no permission beyond
+being authenticated, and this endpoint only supports that same flow. It
+returns directory **names** (never file content) confined to
+`PROJECT_DOCS_BROWSE_ROOT` (defaults to the API process's home directory) —
+that root confinement, not a permission check, is the actual safeguard
+against using it to enumerate the whole disk. Any authenticated actor can
+already point `docsPath` at an arbitrary folder the API process can read and
+have its `Roadmap.md`/`Agentslog.md` content synced and displayed back to
+project members with zero extra permission — this endpoint adds no new
+content exposure, only a bounded, read-only directory listing.

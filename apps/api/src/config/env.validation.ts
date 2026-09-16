@@ -1,3 +1,5 @@
+import { homedir } from 'node:os';
+
 export interface EnvConfig {
   DATABASE_URL: string;
   JWT_SECRET: string;
@@ -8,6 +10,8 @@ export interface EnvConfig {
   /** Scheduled sync on or off; manual sync always works. The e2e suite turns it off. */
   SYNC_SCHEDULER_ENABLED: boolean;
   GIT_PROVIDER_TYPE: string;
+  /** Filesystem browser (docsPath picker) is confined to this directory and its descendants. */
+  PROJECT_DOCS_BROWSE_ROOT: string;
 }
 
 const REQUIRED_KEYS: Array<keyof EnvConfig> = ['DATABASE_URL', 'JWT_SECRET'];
@@ -39,5 +43,6 @@ export function validateEnv(
     SYNC_SCHEDULER_ENABLED:
       raw.SYNC_SCHEDULER_ENABLED?.toLowerCase() !== 'false',
     GIT_PROVIDER_TYPE: raw.GIT_PROVIDER_TYPE ?? 'local',
+    PROJECT_DOCS_BROWSE_ROOT: raw.PROJECT_DOCS_BROWSE_ROOT ?? homedir(),
   };
 }

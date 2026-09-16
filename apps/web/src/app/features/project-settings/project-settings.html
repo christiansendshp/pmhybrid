@@ -37,6 +37,9 @@
     <mat-form-field appearance="outline" class="settings__wide">
       <mat-label>Ruta de documentos</mat-label>
       <input matInput formControlName="docsPath" />
+      @if (canEdit()) {
+        <button matSuffix mat-button type="button" (click)="browseDocsPath()">Explorar…</button>
+      }
       <mat-hint>La carpeta con el Roadmap.md y Agentslog.md de este proyecto.</mat-hint>
       <mat-error>La ruta de documentos no puede estar vacía.</mat-error>
     </mat-form-field>
