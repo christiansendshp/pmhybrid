@@ -214,7 +214,7 @@
 
         @if (justCreatedKey(); as created) {
           <div class="new-key" role="alert">
-            <p><strong>Copiá esta clave ahora — no se volverá a mostrar.</strong></p>
+            <p><strong>Copia esta clave ahora — no se volverá a mostrar.</strong></p>
             <code>{{ created.key }}</code>
             <button mat-button type="button" (click)="copyKey(created.key)">Copiar</button>
           </div>

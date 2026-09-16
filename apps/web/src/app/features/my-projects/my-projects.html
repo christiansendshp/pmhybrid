@@ -1,37 +1,39 @@
 <header class="page-header">
   <div>
-    <h1>My Projects</h1>
-    <p class="page-header__description">Every project you are a member of, at a glance.</p>
+    <h1>Mis proyectos</h1>
+    <p class="page-header__description">
+      Todos los proyectos de los que eres miembro, de un vistazo.
+    </p>
   </div>
   @if (!showCreateForm()) {
     <div class="page-header__actions">
-      <button mat-flat-button type="button" (click)="openCreateForm()">New project</button>
+      <button mat-flat-button type="button" (click)="openCreateForm()">Nuevo proyecto</button>
     </div>
   }
 </header>
 
 @if (showCreateForm()) {
   <form class="create-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-    <mat-form-field>
-      <mat-label>Name</mat-label>
+    <mat-form-field appearance="outline">
+      <mat-label>Nombre</mat-label>
       <input matInput formControlName="name" />
-      <mat-error>A project needs a name.</mat-error>
+      <mat-error>Un proyecto necesita un nombre.</mat-error>
     </mat-form-field>
 
-    <mat-form-field>
-      <mat-label>Docs path</mat-label>
+    <mat-form-field appearance="outline">
+      <mat-label>Ruta de documentos</mat-label>
       <input matInput formControlName="docsPath" placeholder="./my-project-docs" />
-      <mat-hint>The folder with the project's Roadmap.md and Agentslog.md.</mat-hint>
-      <mat-error>Where the project's documents live.</mat-error>
+      <mat-hint>La carpeta con el Roadmap.md y Agentslog.md del proyecto.</mat-hint>
+      <mat-error>Dónde viven los documentos del proyecto.</mat-error>
     </mat-form-field>
 
-    <mat-form-field class="create-form__wide">
-      <mat-label>Description</mat-label>
+    <mat-form-field appearance="outline" class="create-form__wide">
+      <mat-label>Descripción</mat-label>
       <input matInput formControlName="description" />
     </mat-form-field>
 
-    <mat-form-field class="create-form__wide">
-      <mat-label>Repository URL</mat-label>
+    <mat-form-field appearance="outline" class="create-form__wide">
+      <mat-label>URL del repositorio</mat-label>
       <input matInput type="url" formControlName="repoUrl" />
     </mat-form-field>
 
@@ -41,9 +43,9 @@
 
     <div class="create-form__actions create-form__wide">
       <button mat-flat-button type="submit" [disabled]="creating()">
-        {{ creating() ? 'Creating…' : 'Create project' }}
+        {{ creating() ? 'Creando…' : 'Crear proyecto' }}
       </button>
-      <button mat-button type="button" (click)="cancelCreate()">Cancel</button>
+      <button mat-button type="button" (click)="cancelCreate()">Cancelar</button>
     </div>
   </form>
 }
@@ -53,24 +55,25 @@
 }
 
 @if (loading()) {
-  <p class="meta-text">Loading your projects…</p>
+  <p class="meta-text">Cargando tus proyectos…</p>
 } @else if (projects().length === 0 && !loadError()) {
   <p class="empty">
-    You are not a member of any project yet. Create one, or ask a project owner to add you.
+    Todavía no eres miembro de ningún proyecto. Crea uno, o pide a quien lo administre que te
+    agregue.
   </p>
 } @else if (projects().length > 0) {
   <div class="table-scroll">
-    <table class="projects" aria-label="My projects">
+    <table class="projects" aria-label="Mis proyectos">
       <thead>
         <tr>
-          <th scope="col">Project</th>
-          <th scope="col">Status</th>
-          <th scope="col">Progress</th>
-          <th scope="col" class="num">Active tasks</th>
-          <th scope="col" class="num">Overdue</th>
-          <th scope="col" class="num">Active agents</th>
-          <th scope="col" class="num">Open conflicts</th>
-          <th scope="col">Last sync</th>
+          <th scope="col">Proyecto</th>
+          <th scope="col">Estado</th>
+          <th scope="col">Progreso</th>
+          <th scope="col" class="num">Tareas activas</th>
+          <th scope="col" class="num">Vencidas</th>
+          <th scope="col" class="num">Agentes activos</th>
+          <th scope="col" class="num">Conflictos abiertos</th>
+          <th scope="col">Última sincronización</th>
         </tr>
       </thead>
       <tbody>
@@ -98,7 +101,7 @@
                   {{ project.summary.progress | number: '1.0-0' }}%
                 </span>
               } @else {
-                <span class="meta-text">No tasks</span>
+                <span class="meta-text">Sin tareas</span>
               }
             </td>
             <td class="num">{{ project.summary.activeTasks }}</td>
@@ -114,7 +117,7 @@
                 {{ run.finishedAt ?? run.startedAt | date: 'MMM d, HH:mm' }}
                 <span class="meta-text">{{ run.status }}</span>
               } @else {
-                <span class="meta-text">Never</span>
+                <span class="meta-text">Nunca</span>
               }
             </td>
           </tr>

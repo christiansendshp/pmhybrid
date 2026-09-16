@@ -291,7 +291,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 
 ## [2026-09-16T12:12:43Z] | claude-sonnet-5 | GAP-20 roles/audit/progress | IN_PROGRESS
 
-- Summary: Redesigned Roles, Audit and Phases-progress: raw tables/lists -> page-header/table-scroll, Spanish, added Audit's missing scss and Progress's missing loading state+spec. Extracted the 5x-duplicated status.replace('_',' ') into core/task-status-policy.ts statusLabel().
-- Files: features/{roles,audit-log,phases-progress}/_, core/task-status-policy.ts, features/{kanban,workload,dashboard}/_.ts
-- Verify: 139 web unit green, lint clean, build clean
-- Follow-up: kanban/task-detail/conflicts/documents-viewer/project-settings/my-projects/workload need copy pass; full dark-mode QA pass once user logs in
+- Summary: Roles/Audit/Phases-progress: raw -> page-header/table-scroll, Spanish. Extracted 5x-duplicated status.replace('_',' ') into task-status-policy.ts statusLabel().
+- Files: features/{roles,audit-log,phases-progress}/_, core/task-status-policy.ts
+- Verify: 139 web unit, lint, build green
+- Follow-up: copy pass on remaining pages; dark-mode QA once user logs in
+
+## [2026-09-16T12:16:08Z] | claude-sonnet-5 | GAP-20 copy pass 1 | IN_PROGRESS
+
+- Summary: My Projects/Workload/Team key panel unified to Spanish; workload's plural() no longer assumes English +s.
+- Files: features/{my-projects,workload}/*, features/team/team.html
+- Verify: 139 web unit, lint green
+- Follow-up: kanban/task-detail/conflicts/documents-viewer/project-settings still English

@@ -90,7 +90,7 @@ export class Workload implements OnInit {
       this.myProjects.set(myProjects);
       this.actors.set([...users, ...agents]);
     } catch (error) {
-      this.error.set(describeHttpError(error, 'The filters could not be loaded.'));
+      this.error.set(describeHttpError(error, 'No se pudieron cargar los filtros.'));
     }
     await this.reload();
   }
@@ -137,8 +137,8 @@ export class Workload implements OnInit {
     return status ? formatStatusLabel(status) : '';
   }
 
-  plural(count: number, noun: string): string {
-    return `${count} ${noun}${count === 1 ? '' : 's'}`;
+  plural(count: number, singular: string, plural: string): string {
+    return `${count} ${count === 1 ? singular : plural}`;
   }
 
   private async reload(): Promise<void> {
@@ -147,7 +147,7 @@ export class Workload implements OnInit {
       this.rows.set(await this.workloadService.getWorkload(this.filters()));
       this.error.set(null);
     } catch (error) {
-      this.error.set(describeHttpError(error, 'The workload could not be loaded.'));
+      this.error.set(describeHttpError(error, 'No se pudo cargar la carga de trabajo.'));
     } finally {
       this.loading.set(false);
     }

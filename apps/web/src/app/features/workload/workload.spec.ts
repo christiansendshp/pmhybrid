@@ -112,9 +112,9 @@ describe('Workload (brief §18)', () => {
 
     expect(cells).toEqual([
       ['Codex', 'Agente IA', 'Website Relaunch', 'Build API', 'EN DESARROLLO', '45%'],
-      ['Ana García', 'Humano', 'No tasks assigned'],
+      ['Ana García', 'Humano', 'Sin tareas asignadas'],
     ]);
-    expect(text()).toContain('2 actors · 1 task · 1 idle');
+    expect(text()).toContain('2 actores · 1 tarea · 1 inactivo');
   });
 
   it('offers phase and epic filters within a chosen project, and resets them with the project', async () => {

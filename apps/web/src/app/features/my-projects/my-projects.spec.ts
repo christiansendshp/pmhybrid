@@ -63,7 +63,7 @@ describe('MyProjects (brief §19)', () => {
     );
 
     expect(cells[0]).toContain('Website Relaunch');
-    expect(cells.slice(1, 7)).toEqual(['Active', '45%', '3', '1', '2', '0']);
+    expect(cells.slice(1, 7)).toEqual(['Activo', '45%', '3', '1', '2', '0']);
     expect(cells[7]).toContain('SUCCESS');
     expect(root.querySelector('a.projects__name')?.getAttribute('href')).toBe('/projects/p1');
     expect(root.querySelectorAll('td.alert')).toHaveLength(1);
@@ -79,9 +79,9 @@ describe('MyProjects (brief §19)', () => {
 
     const { text } = await render();
 
-    expect(text()).toContain('Paused');
-    expect(text()).toContain('No tasks');
-    expect(text()).toContain('Never');
+    expect(text()).toContain('Pausado');
+    expect(text()).toContain('Sin tareas');
+    expect(text()).toContain('Nunca');
   });
 
   it('explains the empty state', async () => {
@@ -89,6 +89,6 @@ describe('MyProjects (brief §19)', () => {
 
     const { text } = await render();
 
-    expect(text()).toContain('You are not a member of any project yet.');
+    expect(text()).toContain('Todavía no eres miembro de ningún proyecto.');
   });
 });

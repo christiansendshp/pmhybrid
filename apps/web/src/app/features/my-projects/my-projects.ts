@@ -9,9 +9,9 @@ import { describeHttpError } from '../../core/http-error.js';
 import { ProjectWithSummary, ProjectsService } from '../../core/projects.service.js';
 
 const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: 'Active',
-  PAUSED: 'Paused',
-  ARCHIVED: 'Archived',
+  ACTIVE: 'Activo',
+  PAUSED: 'Pausado',
+  ARCHIVED: 'Archivado',
 };
 
 /** Brief §19 "MY PROJECTS": every project the user belongs to, its summary, and a quick way in. */
@@ -71,7 +71,7 @@ export class MyProjects implements OnInit {
     try {
       this.projects.set(await this.projectsService.listMine());
     } catch (error) {
-      this.loadError.set(describeHttpError(error, 'Your projects could not be loaded.'));
+      this.loadError.set(describeHttpError(error, 'No se pudieron cargar tus proyectos.'));
     } finally {
       this.loading.set(false);
     }
@@ -95,7 +95,7 @@ export class MyProjects implements OnInit {
       this.cancelCreate();
       await this.reload();
     } catch (error) {
-      this.errorMessage.set(describeHttpError(error, 'The project could not be created.'));
+      this.errorMessage.set(describeHttpError(error, 'No se pudo crear el proyecto.'));
     } finally {
       this.creating.set(false);
     }
