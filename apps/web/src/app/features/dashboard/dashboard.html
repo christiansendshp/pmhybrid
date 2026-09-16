@@ -1,74 +1,154 @@
-<h1>Dashboard</h1>
+<header class="page-header">
+  <div>
+    <h1>Panel</h1>
+    <p class="page-header__description">
+      Resumen de tus proyectos activos y la actividad más reciente.
+    </p>
+  </div>
+</header>
+
+@if (error()) {
+  <p role="alert">{{ error() }}</p>
+}
 
 @if (loading()) {
-  <p>Loading…</p>
-}
+  <p class="meta-text">Cargando el panel…</p>
+} @else {
+  @if (summary(); as s) {
+    <section class="dashboard-summary" aria-label="Resumen">
+      <div class="dashboard-summary__figures">
+        <div class="figure">
+          <span class="figure__value">{{ s.activeProjects }}</span>
+          <span class="figure__label">proyectos activos</span>
+        </div>
+        <div class="figure">
+          <span class="figure__value">{{ s.totalTasks }}</span>
+          <span class="figure__label">tareas totales</span>
+        </div>
+        <div class="figure">
+          <span class="figure__value">{{
+            s.globalProgress !== null ? s.globalProgress + '%' : '—'
+          }}</span>
+          <span class="figure__label">avance global</span>
+        </div>
+      </div>
 
-@if (summary(); as s) {
-  <section>
-    <h2>Resumen</h2>
-    <ul>
-      <li>Active projects: {{ s.activeProjects }}</li>
-      <li>Total tasks: {{ s.totalTasks }}</li>
-      <li>Pendiente: {{ s.pendiente }}</li>
-      <li>Asignada: {{ s.asignada }}</li>
-      <li>En desarrollo: {{ s.enDesarrollo }}</li>
-      <li>QA: {{ s.qa }}</li>
-      <li>Terminada: {{ s.terminada }}</li>
-      <li>Bloqueadas: {{ s.blocked }}</li>
-      <li>Avance global: {{ s.globalProgress !== null ? s.globalProgress + '%' : 'no data' }}</li>
-    </ul>
-  </section>
-}
+      <ul class="status-counts">
+        <li>{{ s.pendiente }} Pendiente</li>
+        <li>{{ s.asignada }} Asignada</li>
+        <li>{{ s.enDesarrollo }} En desarrollo</li>
+        <li>{{ s.qa }} QA</li>
+        <li>{{ s.terminada }} Terminada</li>
+        @if (s.blocked > 0) {
+          <li class="status-counts__alert">
+            {{ s.blocked }} bloqueada{{ s.blocked === 1 ? '' : 's' }}
+          </li>
+        }
+      </ul>
+    </section>
+  }
 
-@if (activity(); as a) {
-  <section>
-    <h2>Actividad</h2>
+  @if (activity(); as a) {
+    <section class="activity" aria-label="Actividad reciente">
+      <h2>Actividad reciente</h2>
+      <div class="activity__grid">
+        <div class="activity__group">
+          <h3>Últimas tareas modificadas</h3>
+          @if (a.recentlyModifiedTasks.length === 0) {
+            <p class="meta-text">Sin cambios recientes.</p>
+          } @else {
+            <ul class="activity__list">
+              @for (task of a.recentlyModifiedTasks; track task.id) {
+                <li>
+                  <span class="activity__primary">{{ task.title }}</span>
+                  <span class="meta-text"
+                    >{{ statusLabel(task.status) }} · {{ task.updatedAt | date: 'short' }}</span
+                  >
+                </li>
+              }
+            </ul>
+          }
+        </div>
 
-    <h3>Últimas tareas modificadas</h3>
-    <ul>
-      @for (task of a.recentlyModifiedTasks; track task.id) {
-        <li>{{ task.title }} — {{ task.status }} ({{ task.updatedAt }})</li>
-      }
-    </ul>
+        <div class="activity__group">
+          <h3>Últimos cambios de estado</h3>
+          @if (a.recentStatusChanges.length === 0) {
+            <p class="meta-text">Sin cambios recientes.</p>
+          } @else {
+            <ul class="activity__list">
+              @for (change of a.recentStatusChanges; track change.id) {
+                <li>
+                  <span class="activity__primary"
+                    >{{ change.previousValue ? statusLabel(change.previousValue.status) : '—' }} →
+                    {{ change.newValue ? statusLabel(change.newValue.status) : '—' }}</span
+                  >
+                  <span class="meta-text">{{ change.occurredAt | date: 'short' }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </div>
 
-    <h3>Últimos cambios de estado</h3>
-    <ul>
-      @for (change of a.recentStatusChanges; track change.id) {
-        <li>
-          {{ change.previousValue?.status }} -&gt; {{ change.newValue?.status }} ({{
-            change.occurredAt
-          }})
-        </li>
-      }
-    </ul>
+        <div class="activity__group">
+          <h3>Últimas asignaciones</h3>
+          @if (a.recentAssignments.length === 0) {
+            <p class="meta-text">Sin cambios recientes.</p>
+          } @else {
+            <ul class="activity__list">
+              @for (assignment of a.recentAssignments; track assignment.id) {
+                <li>
+                  <span class="activity__primary"
+                    >{{ assignment.task.title }} → {{ assignment.actor.displayName }}</span
+                  >
+                  <span class="meta-text">{{ assignment.assignedAt | date: 'short' }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </div>
 
-    <h3>Últimas asignaciones</h3>
-    <ul>
-      @for (assignment of a.recentAssignments; track assignment.id) {
-        <li>
-          {{ assignment.task.title }} -&gt; {{ assignment.actor.displayName }} ({{
-            assignment.assignedAt
-          }})
-        </li>
-      }
-    </ul>
+        <div class="activity__group">
+          <h3>Últimos eventos de agentes IA</h3>
+          @if (a.recentAgentEvents.length === 0) {
+            <p class="meta-text">Sin cambios recientes.</p>
+          } @else {
+            <ul class="activity__list">
+              @for (event of a.recentAgentEvents; track event.id) {
+                <li>
+                  <span class="activity__primary"
+                    >{{ event.agentName }}
+                    @if (event.taskExternalId) {
+                      — {{ event.taskExternalId }}
+                    }
+                    — {{ event.statusWord }}</span
+                  >
+                  <span class="meta-text"
+                    >{{ event.summary }} · {{ event.createdAt | date: 'short' }}</span
+                  >
+                </li>
+              }
+            </ul>
+          }
+        </div>
 
-    <h3>Últimos eventos de agentes IA</h3>
-    <ul>
-      @for (event of a.recentAgentEvents; track event.id) {
-        <li>
-          {{ event.agentName }} — {{ event.taskExternalId }} — {{ event.statusWord }} —
-          {{ event.summary }} ({{ event.createdAt }})
-        </li>
-      }
-    </ul>
-
-    <h3>Últimos cambios en documentos</h3>
-    <ul>
-      @for (revision of a.recentDocumentChanges; track revision.id) {
-        <li>{{ revision.document.kind }} — {{ revision.source }} ({{ revision.capturedAt }})</li>
-      }
-    </ul>
-  </section>
+        <div class="activity__group">
+          <h3>Últimos cambios en documentos</h3>
+          @if (a.recentDocumentChanges.length === 0) {
+            <p class="meta-text">Sin cambios recientes.</p>
+          } @else {
+            <ul class="activity__list">
+              @for (revision of a.recentDocumentChanges; track revision.id) {
+                <li>
+                  <span class="activity__primary">{{ revision.document.kind }}</span>
+                  <span class="meta-text"
+                    >{{ revision.source }} · {{ revision.capturedAt | date: 'short' }}</span
+                  >
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+    </section>
+  }
 }
