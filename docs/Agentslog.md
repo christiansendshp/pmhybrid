@@ -365,3 +365,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/vitest.config.e2e.ts, apps/api/package.json (test:e2e:db:setup), docs/{testing.md,Stack_Tecnologies.md,Features.md} (ADR-011)
 - Verify: check OK; 130/130 e2e pass against pmhybrid_test; dev DB project count confirmed unchanged (2) before and after a full e2e run; lint clean
 - Follow-up: none
+
+## [2026-09-17T11:44:14Z] | claude-sonnet-5 | dev-server-stability | DONE
+
+- Summary: Fixed the API dev server's repeated MODULE_NOT_FOUND crash (user-reported, happened 3x this session): nest-cli's deleteOutDir wiped the live watch process's dist/ whenever nest build ran concurrently. dev/start:dev/start:debug now compile into a separate dist-watch via tsconfig.watch.json
+- Files: apps/api/tsconfig.watch.json, apps/api/package.json, .gitignore, docs/Stack_Tecnologies.md (ADR-012)
+- Verify: lint clean; 39 api unit pass; stress test: ran pnpm -r build against a live dev server, health stayed 200 throughout, no restart/crash (previously reproduced the crash 2x)
+- Follow-up: none
