@@ -1,5 +1,13 @@
-import { RoadmapTable } from '@pmhybrid/shared-types';
+import { RoadmapTable, TaskStatus } from '@pmhybrid/shared-types';
 import { findRoadmapTableLineRange, splitRow } from './markdown-table.util.js';
+import {
+  appendRoadmapYamlEntry,
+  extractRoadmapYamlEntries,
+  looksLikeNewFormatRoadmap,
+  mapTaskStatusToNewStatus,
+  removeRoadmapYamlEntry,
+  replaceEntryYamlBlock,
+} from './roadmap-yaml-entry.util.js';
 
 /** Strips characters that would corrupt the pipe-table format (skill's own clean_field() convention, docs/synchronization.md write-back step 3). */
 export function sanitizeField(value: string): string {
@@ -32,6 +40,10 @@ export function upsertLifecycleRoadmapRow(
     dependsOn: string;
   },
 ): string {
+  if (looksLikeNewFormatRoadmap(markdown)) {
+    return upsertLifecycleRoadmapEntry(markdown, externalId, fields);
+  }
+
   const lines = markdown.split(/\r?\n/);
   const cellByHeader: Record<string, string> = {
     ID: sanitizeField(externalId),
@@ -89,6 +101,10 @@ export function replaceRoadmapRowCells(
   externalId: string,
   cellsByHeader: Record<string, string>,
 ): { markdown: string; replaced: string[] } | null {
+  if (looksLikeNewFormatRoadmap(markdown)) {
+    return replaceRoadmapEntryFields(markdown, externalId, cellsByHeader);
+  }
+
   const lines = markdown.split(/\r?\n/);
   for (const kind of Object.values(RoadmapTable)) {
     const range = findRoadmapTableLineRange(lines, kind);
@@ -129,6 +145,10 @@ export function removeRoadmapRow(
   markdown: string,
   externalId: string,
 ): string | null {
+  if (looksLikeNewFormatRoadmap(markdown)) {
+    return removeRoadmapYamlEntry(markdown, externalId);
+  }
+
   const lines = markdown.split(/\r?\n/);
   for (const kind of Object.values(RoadmapTable)) {
     const range = findRoadmapTableLineRange(lines, kind);
@@ -157,4 +177,124 @@ function renderRow(
 ): string {
   const cells = headers.map((header) => cellByHeader[header] ?? '—');
   return `| ${cells.join(' | ')} |`;
+}
+
+function parseDependsOnList(dependsOn: string): string[] | undefined {
+  const trimmed = dependsOn.trim();
+  if (!trimmed || trimmed === '—') {
+    return undefined;
+  }
+  return trimmed
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
+/** Owner-cell convention (docs/roadmap-parser.md): "Name@timestamp" is an AI agent, a bare name is a human. */
+function applyOwnerCellToPlainData(
+  data: Record<string, unknown>,
+  ownerCell: string,
+): void {
+  const trimmed = ownerCell.trim();
+  if (!trimmed || trimmed === '—') {
+    return;
+  }
+  const at = trimmed.lastIndexOf('@');
+  if (at !== -1) {
+    data.assigned_agent = trimmed.slice(0, at).trim();
+    data.executor = 'AI';
+  } else {
+    data.owner = { type: 'HUMAN', name: trimmed };
+  }
+}
+
+/** New-format sibling of `upsertLifecycleRoadmapRow` — same "whichever entry already holds this id, else append" contract. */
+function upsertLifecycleRoadmapEntry(
+  markdown: string,
+  externalId: string,
+  fields: {
+    outcome: string;
+    acceptanceCheck: string;
+    status: string;
+    owner: string;
+    dependsOn: string;
+  },
+): string {
+  const entries = extractRoadmapYamlEntries(markdown);
+  const entry = entries.find((candidate) => candidate.id === externalId);
+  const nowIso = new Date().toISOString();
+  const newStatus = mapTaskStatusToNewStatus(fields.status as TaskStatus);
+  const ownerCell = sanitizeField(fields.owner);
+
+  if (entry) {
+    return replaceEntryYamlBlock(markdown, entry, (doc) => {
+      doc.set('status', newStatus);
+      doc.set('updated_at', nowIso);
+      const trimmedOwner = ownerCell.trim();
+      if (trimmedOwner && trimmedOwner !== '—') {
+        const at = trimmedOwner.lastIndexOf('@');
+        if (at !== -1) {
+          doc.set('assigned_agent', trimmedOwner.slice(0, at).trim());
+          doc.set('executor', 'AI');
+        } else {
+          doc.set('owner', { type: 'HUMAN', name: trimmedOwner });
+        }
+      }
+    });
+  }
+
+  const data: Record<string, unknown> = {
+    id: externalId,
+    type: 'TASK',
+    title: sanitizeField(fields.outcome),
+    status: newStatus,
+    description: sanitizeField(fields.outcome),
+    acceptance_criteria: fields.acceptanceCheck
+      ? [
+          {
+            id: 'AC-1',
+            description: sanitizeField(fields.acceptanceCheck),
+            status: 'pending',
+          },
+        ]
+      : undefined,
+    depends_on: parseDependsOnList(fields.dependsOn),
+    created_at: nowIso,
+    updated_at: nowIso,
+  };
+  applyOwnerCellToPlainData(data, ownerCell);
+  return appendRoadmapYamlEntry(markdown, data);
+}
+
+/** New-format sibling of `replaceRoadmapRowCells`. Returns null when no entry with this id exists. */
+function replaceRoadmapEntryFields(
+  markdown: string,
+  externalId: string,
+  cellsByHeader: Record<string, string>,
+): { markdown: string; replaced: string[] } | null {
+  const entries = extractRoadmapYamlEntries(markdown);
+  const entry = entries.find((candidate) => candidate.id === externalId);
+  if (!entry) {
+    return null;
+  }
+
+  const replaced: string[] = [];
+  const updatedMarkdown = replaceEntryYamlBlock(markdown, entry, (doc) => {
+    if ('Outcome' in cellsByHeader) {
+      doc.set('title', sanitizeField(cellsByHeader.Outcome) || entry.id);
+      replaced.push('Outcome');
+    }
+    if ('Acceptance check' in cellsByHeader) {
+      const text = sanitizeField(cellsByHeader['Acceptance check']);
+      doc.set(
+        'acceptance_criteria',
+        text ? [{ id: 'AC-1', description: text, status: 'pending' }] : [],
+      );
+      replaced.push('Acceptance check');
+    }
+    if (replaced.length > 0) {
+      doc.set('updated_at', new Date().toISOString());
+    }
+  });
+  return { markdown: updatedMarkdown, replaced };
 }

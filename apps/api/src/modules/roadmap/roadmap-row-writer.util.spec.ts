@@ -4,6 +4,7 @@ import {
   replaceRoadmapRowCells,
   upsertLifecycleRoadmapRow,
 } from './roadmap-row-writer.util.js';
+import { extractRoadmapYamlEntries } from './roadmap-yaml-entry.util.js';
 
 const ROADMAP = `# Roadmap
 
@@ -183,5 +184,117 @@ describe('removeRoadmapRow', () => {
 
   it('returns null for a row no table holds', () => {
     expect(removeRoadmapRow(ROADMAP, 'PMH-99')).toBeNull();
+  });
+});
+
+const NEW_FORMAT_ROADMAP = `# Roadmap
+
+## Plan
+
+### TASK-42 — Add sync-strategy selector
+
+\`\`\`yaml
+id: TASK-42
+type: TASK
+title: Add sync-strategy selector
+status: READY
+depends_on:
+  - TASK-31
+acceptance_criteria:
+  - id: AC-1
+    description: Original criterion.
+    status: pending
+\`\`\`
+
+## Cross-cutting
+
+### GAP-05 — Some other entry
+
+\`\`\`yaml
+id: GAP-05
+type: GAP
+title: Some other entry
+status: BACKLOG
+\`\`\`
+`;
+
+describe('upsertLifecycleRoadmapRow (new format)', () => {
+  it('updates only the target entry, leaving every other entry byte-for-byte untouched', () => {
+    const updated = upsertLifecycleRoadmapRow(NEW_FORMAT_ROADMAP, 'TASK-42', {
+      outcome: 'Add sync-strategy selector',
+      acceptanceCheck: 'Original criterion.',
+      status: 'EN_DESARROLLO',
+      owner: 'claude@2026-09-17T12:00:00Z',
+      dependsOn: 'TASK-31',
+    });
+
+    const entries = extractRoadmapYamlEntries(updated);
+    const task42 = entries.find((e) => e.id === 'TASK-42')!;
+    expect(task42.data.status).toBe('IN_PROGRESS');
+    expect(task42.data.assigned_agent).toBe('claude');
+    expect(task42.data.executor).toBe('AI');
+    // GAP-05's block is untouched.
+    expect(updated).toContain('### GAP-05 — Some other entry');
+    const gap05 = entries.find((e) => e.id === 'GAP-05')!;
+    expect(gap05.data.status).toBe('BACKLOG');
+  });
+
+  it('appends a brand-new entry to Cross-cutting when the id does not exist yet', () => {
+    const updated = upsertLifecycleRoadmapRow(NEW_FORMAT_ROADMAP, 'PMH-9', {
+      outcome: 'Brand new task',
+      acceptanceCheck: 'n/a',
+      status: 'PENDIENTE',
+      owner: '—',
+      dependsOn: '—',
+    });
+
+    const entries = extractRoadmapYamlEntries(updated);
+    const created = entries.find((e) => e.id === 'PMH-9')!;
+    expect(created).toBeDefined();
+    expect(created.type).toBe('TASK');
+    expect(created.data.status).toBe('BACKLOG');
+    expect(created.data.title).toBe('Brand new task');
+    // Existing entries still present.
+    expect(entries.map((e) => e.id)).toContain('TASK-42');
+  });
+});
+
+describe('replaceRoadmapRowCells (new format)', () => {
+  it('rewrites only title and acceptance_criteria, preserving every other field', () => {
+    const result = replaceRoadmapRowCells(NEW_FORMAT_ROADMAP, 'TASK-42', {
+      Outcome: 'Renamed task',
+      'Acceptance check': 'New criterion.',
+    });
+
+    expect(result?.replaced).toEqual(['Outcome', 'Acceptance check']);
+    const entries = extractRoadmapYamlEntries(result!.markdown);
+    const task42 = entries.find((e) => e.id === 'TASK-42')!;
+    expect(task42.data.title).toBe('Renamed task');
+    expect(task42.data.acceptance_criteria).toEqual([
+      { id: 'AC-1', description: 'New criterion.', status: 'pending' },
+    ]);
+    // depends_on, untouched by this edit, survives verbatim.
+    expect(task42.data.depends_on).toEqual(['TASK-31']);
+  });
+
+  it('returns null for an id no entry holds', () => {
+    expect(
+      replaceRoadmapRowCells(NEW_FORMAT_ROADMAP, 'PMH-99', { Outcome: 'x' }),
+    ).toBeNull();
+  });
+});
+
+describe('removeRoadmapRow (new format)', () => {
+  it('removes the whole entry (heading + block) and leaves the rest intact', () => {
+    const updated = removeRoadmapRow(NEW_FORMAT_ROADMAP, 'TASK-42');
+    expect(updated).not.toBeNull();
+    expect(updated).not.toContain('TASK-42');
+    expect(updated).toContain('### GAP-05 — Some other entry');
+    const entries = extractRoadmapYamlEntries(updated!);
+    expect(entries.map((e) => e.id)).toEqual(['GAP-05']);
+  });
+
+  it('returns null for an id no entry holds', () => {
+    expect(removeRoadmapRow(NEW_FORMAT_ROADMAP, 'PMH-99')).toBeNull();
   });
 });

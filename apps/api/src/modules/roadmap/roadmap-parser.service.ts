@@ -4,6 +4,11 @@ import {
   discriminateRoadmapTable,
   extractMarkdownTables,
 } from './markdown-table.util.js';
+import {
+  extractRoadmapYamlEntries,
+  looksLikeNewFormatRoadmap,
+  roadmapYamlEntryToRow,
+} from './roadmap-yaml-entry.util.js';
 
 export interface ParsedRoadmapRow {
   externalId: string;
@@ -71,14 +76,25 @@ function isPlaceholder(value: string): boolean {
 }
 
 /**
- * Parses Roadmap.md's three tables (Active work / Near term / Blocked),
- * discriminating by column signature rather than heading text
- * (docs/roadmap-parser.md). Read-only — no orchestration, no persistence;
- * that's synchronization.module (FASE-08).
+ * Parses Roadmap.md, either the old three-table format (Active work / Near
+ * term / Blocked, discriminated by column signature rather than heading
+ * text — docs/roadmap-parser.md) or the new per-entry YAML format
+ * (project-documentation skill v2, references/roadmap-schema.md), detected
+ * by a positive signal (an entry heading immediately followed by a `yaml`
+ * fence) rather than by "the old parser found nothing" — a new-format file
+ * fed to the old table extractor silently yields zero tables, which must
+ * not be mistaken for a genuinely empty old-format document (that would
+ * make every task in the project look removed to the reconciliation sweep).
+ * Read-only — no orchestration, no persistence; that's synchronization.module
+ * (FASE-08).
  */
 @Injectable()
 export class RoadmapParserService {
   parse(rawMarkdown: string): ParsedRoadmapRow[] {
+    if (looksLikeNewFormatRoadmap(rawMarkdown)) {
+      return extractRoadmapYamlEntries(rawMarkdown).map(roadmapYamlEntryToRow);
+    }
+
     const tables = extractMarkdownTables(rawMarkdown);
     const results: ParsedRoadmapRow[] = [];
 
