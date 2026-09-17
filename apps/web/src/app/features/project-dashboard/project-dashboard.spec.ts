@@ -76,6 +76,7 @@ function assignment(overrides: Partial<RoleAssignment> = {}): RoleAssignment {
 
 describe('ProjectDashboard — role assignment (brief §4)', () => {
   const ana = actor({ id: 'a1', displayName: 'Ana García' });
+  const carla = actor({ id: 'a2', displayName: 'Carla Díaz', email: 'carla@pmhybrid.local' });
   const devRole = role({ id: 'r-dev', name: 'DEVELOPER' });
   const qaRole = role({ id: 'r-qa', name: 'QA' });
   const adminGlobalRole = role({ id: 'r-admin', name: 'ADMIN', scope: 'GLOBAL' });
@@ -86,15 +87,28 @@ describe('ProjectDashboard — role assignment (brief §4)', () => {
     assign: ReturnType<typeof vi.fn>;
     revoke: ReturnType<typeof vi.fn>;
   };
+  let projectsService: {
+    getById: ReturnType<typeof vi.fn>;
+    listMembers: ReturnType<typeof vi.fn>;
+    myPermissions: ReturnType<typeof vi.fn>;
+    addMember: ReturnType<typeof vi.fn>;
+  };
   let permissions: string[];
 
   beforeEach(() => {
-    permissions = ['project.roles.manage'];
+    permissions = ['project.roles.manage', 'project.members.manage'];
     rolesService = {
       listRoles: vi.fn().mockResolvedValue([devRole, qaRole, adminGlobalRole]),
       listAssignments: vi.fn().mockResolvedValue([assignment({ id: 'ar1', roleId: 'r-dev' })]),
       assign: vi.fn().mockResolvedValue(assignment({ id: 'ar2', roleId: 'r-qa' })),
       revoke: vi.fn().mockResolvedValue(undefined),
+    };
+    projectsService = {
+      getById: vi.fn().mockResolvedValue(PROJECT),
+      listMembers: vi.fn().mockResolvedValue([member(ana)]),
+      // Reads `permissions` lazily so a test can reassign it after beforeEach runs.
+      myPermissions: vi.fn().mockImplementation(() => Promise.resolve(permissions)),
+      addMember: vi.fn().mockResolvedValue(member(carla)),
     };
 
     TestBed.configureTestingModule({
@@ -104,19 +118,11 @@ describe('ProjectDashboard — role assignment (brief §4)', () => {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: convertToParamMap({ projectId: 'p1' }) } },
         },
-        {
-          provide: ProjectsService,
-          useValue: {
-            getById: vi.fn().mockResolvedValue(PROJECT),
-            listMembers: vi.fn().mockResolvedValue([member(ana)]),
-            // Reads `permissions` lazily so a test can reassign it after beforeEach runs.
-            myPermissions: vi.fn().mockImplementation(() => Promise.resolve(permissions)),
-          },
-        },
+        { provide: ProjectsService, useValue: projectsService },
         {
           provide: ActorsService,
           useValue: {
-            listUsers: vi.fn().mockResolvedValue([ana]),
+            listUsers: vi.fn().mockResolvedValue([ana, carla]),
             listAgents: vi.fn().mockResolvedValue([]),
           },
         },
@@ -186,6 +192,44 @@ describe('ProjectDashboard — role assignment (brief §4)', () => {
     component.setSelectedRoleFor('a1', 'r-qa');
     await component.assignRole('a1');
 
+    expect(component.roleErrorMessage()).toBe('No such role');
+  });
+
+  it('adds a member and assigns the chosen role in one action', async () => {
+    const { component } = await render();
+    expect(component.candidateActors().map((a) => a.id)).toEqual(['a2']);
+
+    component.selectedActorId.set('a2');
+    component.selectedNewMemberRoleId.set('r-qa');
+    await component.addMember();
+
+    expect(projectsService.addMember).toHaveBeenCalledWith('p1', 'a2');
+    expect(rolesService.assign).toHaveBeenCalledWith('p1', 'a2', 'r-qa');
+    expect(component.selectedActorId()).toBeNull();
+    expect(component.selectedNewMemberRoleId()).toBeNull();
+  });
+
+  it('adds a member with no role when none was picked', async () => {
+    const { component } = await render();
+
+    component.selectedActorId.set('a2');
+    await component.addMember();
+
+    expect(projectsService.addMember).toHaveBeenCalledWith('p1', 'a2');
+    expect(rolesService.assign).not.toHaveBeenCalled();
+  });
+
+  it('keeps the member added even if assigning its role fails, and surfaces the error', async () => {
+    rolesService.assign.mockRejectedValueOnce(
+      new HttpErrorResponse({ status: 400, error: { message: 'No such role' } }),
+    );
+    const { component } = await render();
+
+    component.selectedActorId.set('a2');
+    component.selectedNewMemberRoleId.set('r-qa');
+    await component.addMember();
+
+    expect(projectsService.addMember).toHaveBeenCalledWith('p1', 'a2');
     expect(component.roleErrorMessage()).toBe('No such role');
   });
 });

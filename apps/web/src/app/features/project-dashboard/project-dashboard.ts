@@ -49,6 +49,8 @@ export class ProjectDashboard implements OnInit {
   readonly candidateActors = signal<Actor[]>([]);
   readonly canManageMembers = signal(false);
   readonly selectedActorId = signal<string | null>(null);
+  /** Role picked in the same "add a member" form — optional, assigned right after the member is added. */
+  readonly selectedNewMemberRoleId = signal<string | null>(null);
   readonly syncing = signal(false);
   readonly lastSyncRun = signal<SyncRun | null>(null);
 
@@ -144,13 +146,27 @@ export class ProjectDashboard implements OnInit {
     }
   }
 
+  /** Adds the selected actor as a member and, when a role was also picked, assigns it in the same action. */
   async addMember(): Promise<void> {
     const actorId = this.selectedActorId();
     if (!actorId) {
       return;
     }
+    this.roleErrorMessage.set(null);
     await this.projectsService.addMember(this.projectId, actorId);
+
+    const roleId = this.selectedNewMemberRoleId();
+    if (roleId) {
+      try {
+        await this.rolesService.assign(this.projectId, actorId, roleId);
+      } catch (error) {
+        this.roleErrorMessage.set(describeHttpError(error));
+      }
+      this.roleAssignments.set(await this.rolesService.listAssignments(this.projectId));
+    }
+
     this.selectedActorId.set(null);
+    this.selectedNewMemberRoleId.set(null);
     this.members.set(await this.projectsService.listMembers(this.projectId));
     const memberActorIds = new Set(this.members().map((m) => m.actorId));
     this.candidateActors.set(this.candidateActors().filter((a) => !memberActorIds.has(a.id)));

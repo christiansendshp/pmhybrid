@@ -99,6 +99,19 @@
           <mat-option [value]="actor.id">{{ actor.displayName }}</mat-option>
         }
       </mat-select>
+      @if (canManageRoles() && projectRoles().length > 0) {
+        <mat-select
+          class="members__select"
+          placeholder="Rol (opcional)"
+          aria-label="Rol para asignar al nuevo miembro"
+          [ngModel]="selectedNewMemberRoleId()"
+          (ngModelChange)="selectedNewMemberRoleId.set($event)"
+        >
+          @for (role of projectRoles(); track role.id) {
+            <mat-option [value]="role.id">{{ role.name }}</mat-option>
+          }
+        </mat-select>
+      }
       <button
         mat-stroked-button
         type="button"

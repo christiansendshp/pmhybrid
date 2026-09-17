@@ -372,3 +372,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/tsconfig.watch.json, apps/api/package.json, .gitignore, docs/Stack_Tecnologies.md (ADR-012)
 - Verify: lint clean; 39 api unit pass; stress test: ran pnpm -r build against a live dev server, health stayed 200 throughout, no restart/crash (previously reproduced the crash 2x)
 - Follow-up: none
+
+## [2026-09-17T12:03:38Z] | claude-sonnet-5 | collaborator-role-onestep | DONE
+
+- Summary: Combined adding a project member and assigning its role into one action: the 'add member' form now has an optional role select alongside the actor select, assigning the role right after the member is added
+- Files: apps/web/src/app/features/project-dashboard/{project-dashboard.ts,project-dashboard.html}, docs/Features.md (F25)
+- Verify: 156 web unit pass (9 in project-dashboard.spec.ts, 3 new); lint+build clean; dev server stayed healthy through a concurrent build
+- Follow-up: per-member role add/revoke for existing members is unchanged
