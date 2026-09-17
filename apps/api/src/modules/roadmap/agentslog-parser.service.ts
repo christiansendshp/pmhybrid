@@ -7,9 +7,14 @@ export interface ParsedAgentLogEntry {
   taskExternalId: string;
   statusWord: string;
   summary: string;
+  /** '' when the bullet is absent (project-documentation skill v2's format omits Files when there's nothing to name). */
   files: string;
+  /** '' when the bullet is absent (skill v2 only requires it for a DONE entry). */
   verify: string;
+  /** '' when the bullet is absent — skill v2's format has no Follow-up bullet at all; only the old (pre-v2) format writes one. */
   followUp: string;
+  /** "CATEGORY - detail"; only present on a skill v2 PAUSE entry. Not yet persisted by AgentslogIngestionService (no DB column) — surfaced here so a caller can use it without another parser change. */
+  pause?: string;
   rawEntryHash: string;
 }
 
@@ -24,14 +29,19 @@ export interface ParsedAgentslog {
 }
 
 const ENTRY_HEADER = /^## \[(.+?)\] \| (.+?) \| (.+?) \| (.+)$/;
-const BULLET = /^- (Summary|Files|Verify|Follow-up): (.*)$/;
+const BULLET = /^- (Summary|Files|Verify|Follow-up|Pause): (.*)$/;
 
 /**
- * Parses Agentslog.md's fixed entry format (docs/roadmap-parser.md,
- * docs/skillProyectDocument-analysis.md §7). Read-only — does not follow
- * the "## Previous segment" rotation pointer into docs/history/ itself
- * (that ingestion belongs to the full reconciliation in FASE-08); it only
- * surfaces the pointer so a caller can decide to fetch it.
+ * Parses Agentslog.md's entry format, accepting both the pre-v2 shape
+ * (Summary/Files/Verify/Follow-up, all four always present — still what
+ * write-back.service.ts emits) and the project-documentation skill v2 shape
+ * (Summary required, Files optional, Verify required only for DONE, Pause
+ * required only for PAUSE, no Follow-up bullet at all). An entry is accepted
+ * once it has a Summary bullet; whichever of the other four bullets follow
+ * are captured, in any subset. Read-only — does not follow the "## Previous
+ * segment" rotation pointer into docs/history/ itself (that ingestion
+ * belongs to the full reconciliation in FASE-08); it only surfaces the
+ * pointer so a caller can decide to fetch it.
  */
 @Injectable()
 export class AgentslogParserService {
@@ -89,9 +99,13 @@ export class AgentslogParserService {
         j += 1;
       }
 
-      while (j < lines.length && bullets['Follow-up'] === undefined) {
+      // A bullet name repeating (rather than an unrecognized line) also ends
+      // the block — each bullet appears at most once per entry, so a repeat
+      // means we've run past this entry's fields (e.g. into the next
+      // malformed/hand-edited one) rather than that more of them remain.
+      while (j < lines.length) {
         const bulletMatch = lines[j].match(BULLET);
-        if (!bulletMatch) {
+        if (!bulletMatch || bullets[bulletMatch[1]] !== undefined) {
           break;
         }
         bullets[bulletMatch[1]] = bulletMatch[2];
@@ -99,21 +113,17 @@ export class AgentslogParserService {
         j += 1;
       }
 
-      if (
-        bullets['Summary'] !== undefined &&
-        bullets['Files'] !== undefined &&
-        bullets['Verify'] !== undefined &&
-        bullets['Follow-up'] !== undefined
-      ) {
+      if (bullets['Summary'] !== undefined) {
         entries.push({
           timestampFromLog,
           agentName,
           taskExternalId,
           statusWord,
           summary: bullets['Summary'],
-          files: bullets['Files'],
-          verify: bullets['Verify'],
-          followUp: bullets['Follow-up'],
+          files: bullets['Files'] ?? '',
+          verify: bullets['Verify'] ?? '',
+          followUp: bullets['Follow-up'] ?? '',
+          pause: bullets['Pause'],
           rawEntryHash: createHash('sha256')
             .update(entryLines.join('\n'))
             .digest('hex'),

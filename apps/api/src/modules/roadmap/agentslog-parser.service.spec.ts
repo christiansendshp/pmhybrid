@@ -76,3 +76,90 @@ describe('AgentslogParserService', () => {
     });
   });
 });
+
+describe('AgentslogParserService — skill v2 format (Pause bullet, no Follow-up)', () => {
+  const parser = new AgentslogParserService();
+
+  it('parses a PAUSE entry with a Pause bullet and no Follow-up, instead of silently dropping it', () => {
+    const log = `# Agents log
+
+## Entries
+
+## [2026-09-17T10:00:00Z] | claude | TASK-42 | PAUSE
+
+- Summary: blocked on a decision
+- Pause: BLOQUEO - waiting on DEC-007
+`;
+    const { entries } = parser.parse(log);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      taskExternalId: 'TASK-42',
+      statusWord: 'PAUSE',
+      summary: 'blocked on a decision',
+      pause: 'BLOQUEO - waiting on DEC-007',
+      files: '',
+      verify: '',
+      followUp: '',
+    });
+  });
+
+  it('parses a DONE entry with only Summary/Verify (Files omitted, no Follow-up)', () => {
+    const log = `# Agents log
+
+## Entries
+
+## [2026-09-17T11:00:00Z] | claude | TASK-43 | DONE
+
+- Summary: shipped it
+- Verify: pnpm test -> green
+`;
+    const { entries } = parser.parse(log);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      taskExternalId: 'TASK-43',
+      statusWord: 'DONE',
+      summary: 'shipped it',
+      verify: 'pnpm test -> green',
+      files: '',
+      followUp: '',
+    });
+    expect(entries[0].pause).toBeUndefined();
+  });
+
+  it('still parses an old-format entry (all four bullets, no Pause) unchanged', () => {
+    const log = `# Agents log
+
+## Entries
+
+## [2026-09-17T12:00:00Z] | claude | TASK-44 | DONE
+
+- Summary: old-format entry
+- Files: a.ts
+- Verify: ok
+- Follow-up: none
+`;
+    const { entries } = parser.parse(log);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      summary: 'old-format entry',
+      files: 'a.ts',
+      verify: 'ok',
+      followUp: 'none',
+    });
+    expect(entries[0].pause).toBeUndefined();
+  });
+
+  it('a bullet name repeating ends the block rather than overwriting or running on', () => {
+    const log = `# Agents log
+
+## Entries
+
+## [2026-09-17T13:00:00Z] | claude | TASK-45 | DONE
+
+- Summary: first value
+- Summary: second value should not be reached
+`;
+    const { entries } = parser.parse(log);
+    expect(entries[0].summary).toBe('first value');
+  });
+});

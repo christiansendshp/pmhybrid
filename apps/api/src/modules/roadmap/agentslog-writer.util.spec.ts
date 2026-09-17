@@ -49,4 +49,46 @@ describe('appendAgentslogEntry', () => {
     });
     expect(updated).toContain('- Summary: first');
   });
+
+  it('writes a Pause bullet and no Follow-up when pause is given instead of followUp', () => {
+    const updated = appendAgentslogEntry(LOG, {
+      timestampIso: '2026-01-02T00:00:00Z',
+      agentName: 'claude-code',
+      taskExternalId: 'PMH-2',
+      statusWord: 'PAUSE',
+      summary: 'blocked',
+      files: '',
+      verify: '',
+      pause: 'BLOQUEO - waiting on DEC-007',
+    });
+
+    expect(updated).toContain('- Pause: BLOQUEO - waiting on DEC-007');
+    const newBlock = updated.slice(updated.indexOf('PMH-2'));
+    expect(newBlock).not.toContain('Follow-up');
+
+    const parsed = new AgentslogParserService().parse(updated);
+    expect(parsed.entries[1]).toMatchObject({
+      taskExternalId: 'PMH-2',
+      statusWord: 'PAUSE',
+      pause: 'BLOQUEO - waiting on DEC-007',
+    });
+  });
+
+  it('writes neither Follow-up nor Pause when neither is given', () => {
+    const updated = appendAgentslogEntry(LOG, {
+      timestampIso: '2026-01-02T00:00:00Z',
+      agentName: 'claude-code',
+      taskExternalId: 'PMH-2',
+      statusWord: 'IN_PROGRESS',
+      summary: 'started',
+      files: '',
+      verify: '',
+    });
+
+    const newBlock = updated.slice(updated.indexOf('PMH-2'));
+    expect(newBlock).not.toContain('Follow-up');
+    expect(newBlock).not.toContain('Pause');
+    const parsed = new AgentslogParserService().parse(updated);
+    expect(parsed.entries[1].summary).toBe('started');
+  });
 });

@@ -8,27 +8,39 @@ export interface AgentslogEntryInput {
   summary: string;
   files: string;
   verify: string;
-  followUp: string;
+  /** Old-format bullet; omit to write a skill-v2-shaped entry (that format has no Follow-up bullet at all). */
+  followUp?: string;
+  /** Skill v2's "CATEGORY - detail" bullet, required for a PAUSE entry (references/workflow.md); omit otherwise. */
+  pause?: string;
 }
 
 /**
- * Appends one entry to the end of Agentslog.md, matching the skill's fixed
- * format exactly (docs/roadmap-parser.md). Append-only — an existing entry
- * is never rewritten, matching the ledger's own append-only contract.
+ * Appends one entry to the end of Agentslog.md. Always writes Summary/Files/
+ * Verify; Follow-up and Pause are each written only when provided, so a
+ * caller can produce either the old fixed four-bullet shape (pass
+ * `followUp`, as write-back.service.ts still does) or the skill v2 shape
+ * (pass `pause` for a PAUSE entry, omit both for anything else). Append-only
+ * — an existing entry is never rewritten, matching the ledger's own
+ * append-only contract.
  */
 export function appendAgentslogEntry(
   markdown: string,
   entry: AgentslogEntryInput,
 ): string {
-  const block = [
+  const lines = [
     `## [${entry.timestampIso}] | ${sanitizeField(entry.agentName)} | ${sanitizeField(entry.taskExternalId)} | ${sanitizeField(entry.statusWord)}`,
     '',
     `- Summary: ${sanitizeField(entry.summary)}`,
     `- Files: ${sanitizeField(entry.files)}`,
     `- Verify: ${sanitizeField(entry.verify)}`,
-    `- Follow-up: ${sanitizeField(entry.followUp)}`,
-  ].join('\n');
+  ];
+  if (entry.followUp !== undefined) {
+    lines.push(`- Follow-up: ${sanitizeField(entry.followUp)}`);
+  }
+  if (entry.pause !== undefined) {
+    lines.push(`- Pause: ${sanitizeField(entry.pause)}`);
+  }
 
   const trimmed = markdown.replace(/\s+$/, '');
-  return `${trimmed}\n\n${block}\n`;
+  return `${trimmed}\n\n${lines.join('\n')}\n`;
 }
