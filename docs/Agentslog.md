@@ -379,3 +379,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/web/src/app/features/project-dashboard/{project-dashboard.ts,project-dashboard.html}, docs/Features.md (F25)
 - Verify: 156 web unit pass (9 in project-dashboard.spec.ts, 3 new); lint+build clean; dev server stayed healthy through a concurrent build
 - Follow-up: per-member role add/revoke for existing members is unchanged
+
+## [2026-09-17T13:50:40Z] | claude | skill-v2-install | DONE
+
+- Summary: Installed project-documentation skill v2 (multiagent claim/pause/done protocol, root AGENTS.md, new Roadmap YAML schema). Wrote AGENTS.md by hand from the new template with real project facts; retired docs/Agents.md; CLAUDE.md now redirects to AGENTS.md via the skill link command.
+- Files: AGENTS.md,CLAUDE.md,docs/Agents.md(removed),.claude/skills/project-documentation/**
+- Verify: sh .claude/skills/project-documentation/scripts/project_docs.sh init . && check .
+- Follow-up: Roadmap.md deliberately kept in the OLD table format: converting it now would break PM Hub's own RoadmapParserService, which syncs this repo's docs/ every 5 min via the live dev scheduler (docsPath=self). check is expected to fail with MIGRATION REQUIRED: docs/Roadmap.md and Features/log cross-reference errors (Features.md's 31 rows and dozens of historical log IDs predate this schema) until the app's parser/writer is rewritten for the new schema and Features.md is retrofitted with log cross-references - both tracked as separate future work, not silently absorbed here.
