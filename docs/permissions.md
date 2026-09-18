@@ -138,3 +138,24 @@ for whichever project's `docsPath` names the pushed repository — the exact
 same reconciliation a member's own "Sincronizar ahora" click runs, so this
 endpoint grants no capability beyond what an authenticated project member
 already has; it only removes the wait for the next scheduled poll.
+
+## MCP server auth and project scoping (Roadmap GAP-30)
+
+`POST /mcp` is guarded by `ApiKeyGuard` alone, not `JwtAuthGuard` — this
+endpoint exists specifically for MCP-capable agent clients (the ticket's own
+wording), and `ApiKeyGuard` already restricts to `AI_AGENT` actors, so a
+person's JWT is never accepted here. Each of the four tools
+(`list_tasks`/`get_task`/`update_task`/`transition_task`) calls
+`assertProjectMember` with the same actor id and the tool call's own
+`projectId` argument before touching `TasksService` — the equivalent of
+`ProjectMemberGuard`, done by hand because a JSON-RPC tool call has no
+`:projectId` route param for a `CanActivate` guard to read. A tool call
+against a project the caller isn't a member of returns a normal
+`CallToolResult` with `isError: true` ("Not a member of this project"),
+never a 403 or a thrown exception — an MCP transport failure would look
+like a bug to the calling agent, where this is expected, actionable
+feedback. Every write goes through `TasksService`'s own methods unchanged,
+so `update_task`/`transition_task` get the exact same audit trail and
+(for `transition_task`) the exact same per-transition permission check
+(`task.status.transition` etc.) a person's REST call would — MCP is a new
+transport onto existing authorization, not a second one.

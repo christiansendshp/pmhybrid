@@ -23,6 +23,7 @@ import { RoadmapModule } from './modules/roadmap/roadmap.module.js';
 import { SynchronizationModule } from './modules/synchronization/synchronization.module.js';
 import { GitProvidersModule } from './modules/git-providers/git-providers.module.js';
 import { GithubWebhookModule } from './modules/github-webhook/github-webhook.module.js';
+import { McpModule } from './modules/mcp/mcp.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
@@ -54,6 +55,7 @@ import { HealthModule } from './modules/health/health.module.js';
     SynchronizationModule,
     GitProvidersModule,
     GithubWebhookModule,
+    McpModule,
     AuditModule,
     RealtimeModule,
     NotificationsModule,

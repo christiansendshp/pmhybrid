@@ -50,27 +50,28 @@ PMHYBRID/
 Each module is small and cohesive (brief §22, §34 — no premature abstraction,
 no oversized modules):
 
-| Module                         | Responsibility                                                                               |
-| ------------------------------ | -------------------------------------------------------------------------------------------- |
-| `auth`                         | JWT issuance/verification, login                                                             |
-| `users`                        | Human actor management (thin layer over `Actor`/`UserCredential`)                            |
-| `agents`                       | AI agent actor management (`Actor`/`AgentProfile`)                                           |
-| `projects`                     | Project CRUD, settings (sync interval, docs path, rollup strategy)                           |
-| `project-members`              | Membership records, independent of role grants                                               |
-| `roles`                        | Role/Permission/ActorRole CRUD, permission checks                                            |
-| `phases`, `epics`, `templates` | Optional hierarchy rungs                                                                     |
-| `tasks`                        | Task CRUD, subtasks (self-referential), dependencies, assignment, Kanban transition policy   |
-| `roadmap`                      | `RoadmapParserService`, `AgentslogParserService` — parsing only, no orchestration            |
-| `synchronization`              | Scheduler, reconciliation algorithm, write-back orchestration                                |
-| `git-providers`                | `ProjectRepositoryProvider` interface + `LocalFsGitProvider`/`GitHubGitProvider`             |
-| `github-webhook`               | `POST /webhooks/github` — verifies GitHub's signature, triggers `synchronization`'s runSync  |
-| `audit`                        | `AuditEvent` recording inside callers' transactions + project audit trail read API           |
-| `notifications`                | `Notification` recording, subscribes to domain events                                        |
-| `realtime`                     | Ticket-based WS handshake + `NotificationsGateway`'s per-actor push (Roadmap GAP-26)         |
-| `conflicts`                    | `Conflict` CRUD and resolution endpoints                                                     |
-| `dashboard`                    | Cross-project summary + activity feed (brief §14) — aggregate, not project-scoped            |
-| `workload`                     | Cross-project per-actor task list (brief §19) — `projectId` is an optional filter, not scope |
-| `health`                       | Liveness/readiness (`@nestjs/terminus` + Prisma check)                                       |
+| Module                         | Responsibility                                                                                    |
+| ------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `auth`                         | JWT issuance/verification, login                                                                  |
+| `users`                        | Human actor management (thin layer over `Actor`/`UserCredential`)                                 |
+| `agents`                       | AI agent actor management (`Actor`/`AgentProfile`)                                                |
+| `projects`                     | Project CRUD, settings (sync interval, docs path, rollup strategy)                                |
+| `project-members`              | Membership records, independent of role grants                                                    |
+| `roles`                        | Role/Permission/ActorRole CRUD, permission checks                                                 |
+| `phases`, `epics`, `templates` | Optional hierarchy rungs                                                                          |
+| `tasks`                        | Task CRUD, subtasks (self-referential), dependencies, assignment, Kanban transition policy        |
+| `roadmap`                      | `RoadmapParserService`, `AgentslogParserService` — parsing only, no orchestration                 |
+| `synchronization`              | Scheduler, reconciliation algorithm, write-back orchestration                                     |
+| `git-providers`                | `ProjectRepositoryProvider` interface + `LocalFsGitProvider`/`GitHubGitProvider`                  |
+| `github-webhook`               | `POST /webhooks/github` — verifies GitHub's signature, triggers `synchronization`'s runSync       |
+| `mcp`                          | `POST /mcp` — MCP tools for agent task ops, thin adapters over `tasks`'s methods (Roadmap GAP-30) |
+| `audit`                        | `AuditEvent` recording inside callers' transactions + project audit trail read API                |
+| `notifications`                | `Notification` recording, subscribes to domain events                                             |
+| `realtime`                     | Ticket-based WS handshake + `NotificationsGateway`'s per-actor push (Roadmap GAP-26)              |
+| `conflicts`                    | `Conflict` CRUD and resolution endpoints                                                          |
+| `dashboard`                    | Cross-project summary + activity feed (brief §14) — aggregate, not project-scoped                 |
+| `workload`                     | Cross-project per-actor task list (brief §19) — `projectId` is an optional filter, not scope      |
+| `health`                       | Liveness/readiness (`@nestjs/terminus` + Prisma check)                                            |
 
 `roadmap` (parsing) and `synchronization` (orchestration) are deliberately
 separate modules — parsing is a pure function of document text, orchestration
@@ -131,8 +132,13 @@ so a dropped push only delays the badge, it never loses a notification.
 GAP-26 picked WebSockets first for having existing groundwork (this
 section, and the "no push" known limitation); GitHub webhook ingestion
 (`webhooks/github`, Roadmap GAP-29 — `docs/synchronization.md` "Trigger")
-followed it, extending GAP-23's `GitHubGitProvider`. An MCP server (the
-remaining brief §27/§29 item) stays unbuilt as GAP-30.
+followed it, extending GAP-23's `GitHubGitProvider`. The brief §27/§29 trio
+closes with an MCP server (`mcp` module, Roadmap GAP-30): `list_tasks`/
+`get_task`/`update_task`/`transition_task` tools over a stateless
+Streamable HTTP endpoint, thin adapters over `tasks`'s existing service
+methods rather than a new authorization model (`docs/Stack_Tecnologies.md`
+ADR-017). Its "comment" verb is out of scope, split off as GAP-31 — see
+`docs/Roadmap.md`.
 
 ## Frontend structure
 
