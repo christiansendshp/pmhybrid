@@ -1,11 +1,21 @@
 import { DatePipe } from '@angular/common';
-import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { actorKindLabel } from '../../core/actor-kind.js';
 import { AuthService } from '../../core/auth.service.js';
 import { describeNotification } from '../../core/notification-format.js';
 import { Notification, NotificationsService } from '../../core/notifications.service.js';
+import { RealtimeService } from '../../core/realtime.service.js';
 import { ThemeService } from '../../core/theme.service.js';
 
 interface NavItem {
@@ -16,8 +26,10 @@ interface NavItem {
 /**
  * The one frame around every signed-in route (brief §21, §30): primary
  * navigation, who is signed in, and sign-out. `/login` renders outside it.
- * Also owns the notifications indicator (brief §29) — no push in MVP, so
- * the list is fetched once on load and refreshed each time the panel opens.
+ * Also owns the notifications indicator (brief §29): fetched once on load,
+ * refreshed each time the panel opens, and pushed live over
+ * `RealtimeService` (Roadmap GAP-26) — a push just triggers a refetch, the
+ * REST list stays the source of truth for what a notification looks like.
  */
 @Component({
   selector: 'app-shell',
@@ -29,8 +41,15 @@ export class AppShell implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly notificationsService = inject(NotificationsService);
+  private readonly realtimeService = inject(RealtimeService);
   private readonly main = viewChild.required<ElementRef<HTMLElement>>('main');
   readonly themeService = inject(ThemeService);
+
+  private readonly notificationsPushEffect = effect(() => {
+    if (this.realtimeService.notificationsChanged() > 0) {
+      void this.reloadNotifications();
+    }
+  });
 
   readonly navItems: readonly NavItem[] = [
     { label: 'Panel', path: '/dashboard' },

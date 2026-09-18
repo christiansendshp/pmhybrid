@@ -442,3 +442,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/web/playwright.config.a11y.mts, apps/web/a11y/, apps/web/src/app/features/{documents-viewer,conflicts}/*.html, .github/workflows/ci.yml, docs/testing.md, docs/Stack_Tecnologies.md (ADR-014)
 - Verify: lint clean; build clean; unit 72 api + 158 web; e2e 135/135; a11y 6/6
 - Follow-up: GAP-26 still needs a human pick among WebSockets/webhooks/MCP; a11y coverage could broaden past the 5 current pages later
+
+## [2026-09-18T14:29:05Z] | claude | GAP-26 | DONE
+
+- Summary: NotificationsGateway pushes live over WebSockets (plain ws package via onApplicationBootstrap/HttpAdapterHost, not @nestjs/websockets decorator which crashed all e2e specs by probing for socket.io); ticket-based handshake auth (POST /realtime/ticket, single-use, 15s TTL); RealtimeService (web) refetches notifications on push, reconnects on drop. Picked WebSockets first of the brief GAP-26 trio per ADR-015; webhooks/MCP split to GAP-29/GAP-30
+- Files: apps/api/src/modules/realtime/, apps/api/src/modules/notifications/notifications.service.ts, apps/web/src/app/core/realtime.service.ts, apps/web/src/app/layout/app-shell/app-shell.ts, packages/shared-types/src/realtime-message.ts, docs/architecture.md, docs/Stack_Tecnologies.md (ADR-015), docs/permissions.md
+- Verify: lint clean; build clean; unit 82 api + 164 web; e2e 140/140; a11y 6/6
+- Follow-up: GAP-29 (GitHub webhooks) and GAP-30 (MCP server) remain TODO, no strong asymmetry between them for an autonomous pick

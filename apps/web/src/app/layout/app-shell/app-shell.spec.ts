@@ -5,6 +5,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthService } from '../../core/auth.service.js';
 import { Notification, NotificationsService } from '../../core/notifications.service.js';
+import { RealtimeService } from '../../core/realtime.service.js';
 import { AppShell } from './app-shell.js';
 
 @Component({ template: '<p>page body</p>' })
@@ -27,11 +28,13 @@ describe('AppShell', () => {
   let logout: ReturnType<typeof vi.fn>;
   let list: ReturnType<typeof vi.fn>;
   let markRead: ReturnType<typeof vi.fn>;
+  let notificationsChanged: ReturnType<typeof signal<number>>;
 
   beforeEach(() => {
     logout = vi.fn();
     list = vi.fn().mockResolvedValue([]);
     markRead = vi.fn();
+    notificationsChanged = signal(0);
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -64,6 +67,7 @@ describe('AppShell', () => {
           },
         },
         { provide: NotificationsService, useValue: { list, markRead } },
+        { provide: RealtimeService, useValue: { notificationsChanged } },
       ],
     });
   });
@@ -199,5 +203,17 @@ describe('AppShell', () => {
       ),
     ).toHaveLength(1);
     expect(root.querySelector('.notifications__badge')?.textContent?.trim()).toBe('1');
+  });
+
+  it('refetches notifications when RealtimeService signals a push (Roadmap GAP-26)', async () => {
+    const { harness } = await renderAt('/dashboard');
+    expect(list).toHaveBeenCalledTimes(1);
+
+    list.mockResolvedValue([notification({ id: 'n4', readAt: null })]);
+    notificationsChanged.set(1);
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    expect(list).toHaveBeenCalledTimes(2);
   });
 });

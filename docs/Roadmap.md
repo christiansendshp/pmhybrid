@@ -18,20 +18,23 @@ Post-MVP gap backlog derived from a brief-vs-code review on 2026-09-15
 a fresh brief-vs-code review done 2026-09-16 against the original brief
 (`Prompt — Desarrollo de Project Management Hub Humano + IA.md`), covering
 what the brief asks for that the app does not yet do. GAP-21 is DONE (see
-`Features.md` F32); GAP-22 is DONE (see `Features.md` F33); GAP-24 is DONE (see `Features.md` F34); GAP-23 is DONE (see `Features.md` F35); GAP-25 is DONE (see `Features.md` F36); GAP-26 is not started — see the note below the table for why it stays for a human pick.
+`Features.md` F32); GAP-22 is DONE (see `Features.md` F33); GAP-24 is DONE (see `Features.md` F34); GAP-23 is DONE (see `Features.md` F35); GAP-25 is DONE (see `Features.md` F36); GAP-26 is DONE for its WebSockets slice (see `Features.md` F37); the GitHub-webhooks and MCP-server slices it named split off below as GAP-29/GAP-30.
 
 ## Near term
 
-| ID     | Outcome                                                                                                                                                                                                                                                                                     | Acceptance check                                                                                                                         | Status | Depends on |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------- |
-| GAP-26 | Real-time push (WebSockets), GitHub webhook ingestion, and an MCP server for agent task operations are all explicitly "prepare the architecture, build later" in the brief (§27, §29) — currently zero code for any of the three; **relative priority among them is UNKNOWN, not inferred** | User or product decision picks which of the three to build first; that one gets its own GAP with a concrete acceptance check once chosen | TODO   | —          |
+| ID     | Outcome                                                                                                                                                                                                              | Acceptance check                                                                                                                                                   | Status | Depends on |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ | ---------- |
+| GAP-29 | GitHub webhook ingestion (brief §27, §29) — currently zero code; letting an external `push` to a GitHub-backed project's repo (Roadmap GAP-23) trigger a sync instead of waiting for the next scheduled poll         | A webhook endpoint verifies GitHub's signature, maps the payload to the right project, and triggers the same sync path a scheduled/manual run uses; docs updated   | TODO   | GAP-23     |
+| GAP-30 | An MCP server exposing agent task operations (brief §27, §29) — currently zero code; would let an MCP-capable agent client call PM Hub task operations directly instead of only via the REST API + API keys (GAP-15) | An MCP server (stdio or HTTP transport) exposes at least task read/update/comment operations, authenticated via the existing agent API key mechanism; docs updated | TODO   | —          |
 
-GAP-26 is deliberately not picked up autonomously even though nothing
-formally blocks it: its own acceptance check already names the missing
-input as a "user or product decision" among three independent subsystems
-with no shared code — there is no single "most coherent" default among
-them the way there was for GAP-23's docsPath encoding or GAP-25's page/tool
-choices. It is one human go-ahead away from TODO → IN_PROGRESS.
+GAP-29 and GAP-30 are the two GAP-26 named but did not build: GAP-26 itself
+picked WebSockets first because two independent in-repo signals already
+pointed at it (`docs/architecture.md`'s already-wired event-emitter, and
+Features.md's already-documented "no push" limitation) — ADR-015,
+`docs/Stack_Tecnologies.md`. Webhooks and MCP have no equivalent existing
+groundwork; either is a reasonable next pick with no single "most coherent"
+default between them, so both stay `TODO` for a human (or a later pass) to
+prioritize rather than being picked arbitrarily.
 
 ## Blocked
 

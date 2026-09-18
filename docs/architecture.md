@@ -109,13 +109,24 @@ roll back with the mutation it describes, so services call
 per-field conflict check depends on those rows existing the moment a UI edit
 commits.
 
-Side effects that may lag (notifications, a future WebSocket gateway for brief
-§27/§29) are the ones meant to hang off `@nestjs/event-emitter` events, without
-touching business logic — no gateway is built in MVP. Concretely,
+Side effects that may lag (notifications) hang off `@nestjs/event-emitter`
+events, without touching business logic. Concretely,
 `SynchronizationService.runSync` emits `sync.completed`/`sync.failed` (with
 `emitAsync`, awaited) only after its own reconciliation transaction has
 resolved; `NotificationsService` is the only listener, and excludes whoever
 directly triggered that run from the fan-out.
+
+The WebSocket gateway anticipated above is built (Roadmap GAP-26):
+`NotificationsGateway` (`realtime` module) pushes a content-free "go
+refetch" signal to a pushed actor's open sockets right after
+`NotificationsService` persists their `Notification` rows, over a
+plain `ws.WebSocketServer` attached via `HttpAdapterHost` rather than
+`@nestjs/websockets`' gateway decorator (see `docs/Stack_Tecnologies.md`
+ADR-015 for why, and `docs/permissions.md` for the ticket-based handshake
+auth). GitHub webhook ingestion and an MCP server (the other two brief
+§27/§29 items) remain unbuilt — GAP-26 picked WebSockets first for having
+existing groundwork (this section, and the "no push" known limitation);
+whichever gets built next becomes its own GAP.
 
 ## Frontend structure
 

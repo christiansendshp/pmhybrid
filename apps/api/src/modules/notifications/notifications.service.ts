@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { NotificationsGateway } from '../realtime/notifications.gateway.js';
 
 interface SyncCompletedPayload {
   projectId: string;
@@ -22,14 +23,18 @@ interface SyncFailedPayload {
 /**
  * Subscribes to domain events (docs/architecture.md "side effects that may
  * lag... hang off event-emitter events, without touching business logic").
- * MVP ships internal notifications only (brief §29) — no push, the UI polls
- * on demand.
+ * Pushed live over `NotificationsGateway` when the recipient has an open
+ * socket (Roadmap GAP-26); the REST list stays authoritative either way, so
+ * a client that never connects (or missed the push) still sees it next poll.
  */
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly gateway: NotificationsGateway,
+  ) {}
 
   findAllForActor(actorId: string) {
     return this.prisma.notification.findMany({
@@ -115,6 +120,13 @@ export class NotificationsService {
           payload,
         })),
       });
+      await Promise.all(
+        members.map((m) =>
+          this.gateway.pushToActor(m.actorId, {
+            type: 'notifications.changed',
+          }),
+        ),
+      );
     } catch (error) {
       // Best-effort side channel — never let a notification failure look
       // like the sync itself failed.

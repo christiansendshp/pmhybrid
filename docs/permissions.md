@@ -106,3 +106,19 @@ already point `docsPath` at an arbitrary folder the API process can read and
 have its `Roadmap.md`/`Agentslog.md` content synced and displayed back to
 project members with zero extra permission — this endpoint adds no new
 content exposure, only a bounded, read-only directory listing.
+
+## Realtime WebSocket handshake (Roadmap GAP-26)
+
+A third auth path alongside JWT (UI) and API keys (agents, GAP-24): a
+WebSocket upgrade request can't carry an `Authorization` header, so
+`JwtAuthGuard` can't protect `notifications.gateway.ts`'s connection
+directly. `POST /realtime/ticket` (behind `JwtAuthGuard`, same as any other
+endpoint) mints a random single-use ticket good for 15s, scoped to the
+caller's own actor id; the gateway redeems it once on connect and closes the
+socket (code 4001) if it's missing, unknown, already redeemed, or expired.
+`isActive` is re-checked both at connect time and again before every push
+(closes with code 4003 if inactive) — the same guarantee `JwtStrategy`
+gives per-request (ADR-008), adapted for a connection that can outlive a
+deactivation. A push only ever reaches the actor id the ticket was minted
+for; there is no broadcast, so this can never leak another actor's
+notification activity.
