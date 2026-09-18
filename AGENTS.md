@@ -85,28 +85,9 @@ name: <agent>}`, `decision_date`, `status: DECIDED`.
 
 ## Migration status (2026-09-18)
 
-`docs/Roadmap.md` is intentionally still in the pre-rewrite table format
-(`## Active work` / `## Near term` / `## Blocked`), not yet the per-entry
-YAML schema this skill version defines (`references/roadmap-schema.md`).
+`docs/Roadmap.md` is now the per-entry YAML schema (Roadmap GAP-28,
+`Features.md` F41); `claim`/`pause`/`done` work on it directly.
 
-The app's parser/writer already round-trips both formats — dual-format
-read+write landed and is regression-tested (Roadmap GAP-28; see
-`roadmap-parser.service.ts`, `roadmap-yaml-entry.util.ts`,
-`roadmap-row-writer.util.ts`, `agentslog-parser.service.ts`/
-`agentslog-writer.util.ts` and their `.spec.ts` files). Converting this
-file is deferred for a different reason: this repository is itself a
-project managed by the PM Hub app being built here (`docsPath` = this
-repo's `docs/`), synced on a 5-minute schedule by the running dev server.
-`roadmapYamlEntryToRow` maps every non-blocked entry to `RoadmapTable.ACTIVE`
-(the new schema has no ACTIVE/NEAR_TERM split), so converting while that
-scheduler is live would move every current Near-term row to Active against
-real `Task` records mid-edit, racing a process this session does not own
-and cannot verify against. Do the conversion only with that scheduler
-stopped (or coordinated with whoever runs it) — a human, or a session that
-owns that process — never against a live tick.
-
-`check` separately fails on the Features/log cross-reference errors
-(`log ID ... not found in Roadmap or Features`, `Features ID ... has no
-DONE entry in the log`) until that retrofit is done (tracked separately,
-out of GAP-28's scope) — that failure is expected and documented, not a bug
-to silence.
+`check` still fails on two known, tracked gaps, not bugs to silence: the
+Features/log cross-reference retrofit (out of GAP-28's scope), and the
+8 KiB context budget (see `TECH_DEBT-01` in `Roadmap.md` for the numbers).

@@ -498,3 +498,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20260918160955_add_task_comments/, apps/api/src/modules/tasks/task-comments.service.ts, apps/api/src/modules/tasks/task-comments.controller.ts, apps/api/src/modules/tasks/dto/create-task-comment.dto.ts, apps/api/src/modules/tasks/tasks.module.ts, apps/api/src/modules/mcp/mcp-tools.ts, apps/api/src/modules/mcp/mcp.controller.ts, apps/api/test/task-comments.e2e-spec.ts, apps/api/test/mcp.e2e-spec.ts, docs/domain-model.md, docs/architecture.md, docs/permissions.md, docs/Stack_Tecnologies.md (ADR-019), docs/Roadmap.md, docs/Features.md (F40)
 - Verify: pnpm --filter api build clean, pnpm --filter api lint clean, pnpm --filter api test 97/97, pnpm --filter api test:e2e 159/159
 - Follow-up: none
+
+## [2026-09-18T19:14:41Z] | Claude | GAP-28 | DONE
+
+- Summary: Converted docs/Roadmap.md to the new per-entry schema, GAP-28's last acceptance criterion. Confirmed no dev server running, got explicit user sign-off first. Checked dev DB blast radius (7 tracked Tasks; only GAP-26 unresolved, has a pending terminal log entry, resolves safely). Filed BUG-01 (detector can't see an empty new-format file) rather than fixing it here. Detail: Features.md F41.
+- Files: docs/Roadmap.md, docs/Agentslog.md, docs/Features.md, AGENTS.md
+- Verify: build clean; parsed live docs/Roadmap.md via node -e: new-format=true, 1 row (BUG-01), GAP-28 row gone
+- Follow-up: none
