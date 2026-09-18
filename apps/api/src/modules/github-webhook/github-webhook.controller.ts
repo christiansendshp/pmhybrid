@@ -45,6 +45,9 @@ interface GitHubPushPayload {
  * never equal or prefix a GitHub `owner/repo` full name, so an unmatched
  * repository already triggers zero syncs without a separate mode check —
  * one precondition (a configured secret) instead of two.
+ *
+ * The HTTP response never waits for a matched project's sync to finish —
+ * see the comment above the `runSync` call for why.
  */
 @Controller('webhooks/github')
 export class GithubWebhookController {
@@ -85,25 +88,48 @@ export class GithubWebhookController {
     const payload = request.body as GitHubPushPayload;
     const fullName = payload.repository?.full_name;
     if (!fullName) {
+      // The likeliest cause is the webhook configured with content type
+      // `application/x-www-form-urlencoded` instead of `application/json`
+      // (docs/synchronization.md "Trigger") — GitHub then sends the
+      // payload as a form field, signature verification still passes
+      // (it only needs the raw bytes), but there is no `body.repository`
+      // to read. Without this line that misconfiguration is invisible:
+      // GitHub shows a green delivery and nothing ever syncs.
+      this.logger.warn(
+        'Received a signed push event with no repository.full_name in the body — check the webhook is configured with content type application/json',
+      );
       return { matchedProjects: 0 };
     }
 
     const projects = await this.findProjectsForRepo(fullName);
-    await Promise.all(
-      projects.map((project) =>
-        this.synchronizationService
-          .runSync(project.id, 'WEBHOOK')
-          .catch((error: unknown) => {
-            // Mirrors SyncSchedulerService.tick(): one project's sync
-            // failure (already persisted as its own FAILED SyncRun) must
-            // never fail the webhook response or block another matched
-            // project's sync in the same delivery.
-            this.logger.error(
-              `Webhook-triggered sync failed for project ${project.id} (${fullName}): ${String(error)}`,
-            );
-          }),
-      ),
-    );
+    if (projects.length === 0) {
+      this.logger.warn(
+        `Received a signed push for "${fullName}" but no project's docsPath names that repository`,
+      );
+      return { matchedProjects: 0 };
+    }
+
+    // Not awaited: under GIT_PROVIDER_TYPE=github, runSync makes several
+    // sequential api.github.com round-trips per project and can hold a
+    // pg_advisory_xact_lock a concurrent scheduled tick already has — easily
+    // past GitHub's ~10s delivery timeout, especially multiplied across
+    // several matched projects. GitHub would then show a failed delivery
+    // for a sync that succeeded anyway. The response only reports how many
+    // projects were matched; each sync's own outcome lives in its SyncRun
+    // row exactly like a scheduled/manual run's does.
+    for (const project of projects) {
+      void this.synchronizationService
+        .runSync(project.id, 'WEBHOOK')
+        .catch((error: unknown) => {
+          // Mirrors SyncSchedulerService.tick(): one project's sync
+          // failure (already persisted as its own FAILED SyncRun) must
+          // never fail the webhook response or block another matched
+          // project's sync in the same delivery.
+          this.logger.error(
+            `Webhook-triggered sync failed for project ${project.id} (${fullName}): ${String(error)}`,
+          );
+        });
+    }
     return { matchedProjects: projects.length };
   }
 

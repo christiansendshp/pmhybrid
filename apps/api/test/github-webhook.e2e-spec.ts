@@ -55,6 +55,24 @@ describe('GitHub webhook ingestion (Roadmap GAP-29 — e2e)', () => {
     return res.body as { trigger: string; status: string }[];
   }
 
+  // The controller doesn't await a matched project's runSync (it would
+  // otherwise risk exceeding GitHub's webhook delivery timeout — see the
+  // comment in github-webhook.controller.ts), so the SyncRun row appears
+  // some short, unbounded time after the POST response, not before it.
+  async function waitForSyncRun(
+    projectId: string,
+    timeoutMs = 5000,
+  ): Promise<{ trigger: string; status: string }[]> {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const runs = await syncRunsFor(projectId);
+      if (runs.length > 0 || Date.now() > deadline) {
+        return runs;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
+
   it('rejects a delivery with an invalid signature', async () => {
     const body = JSON.stringify({ repository: { full_name: 'acme/widgets' } });
     await request(server())
@@ -115,7 +133,7 @@ describe('GitHub webhook ingestion (Roadmap GAP-29 — e2e)', () => {
       .expect(200);
     expect(res.body).toEqual({ matchedProjects: 1 });
 
-    const runs = await syncRunsFor(projectId);
+    const runs = await waitForSyncRun(projectId);
     expect(runs).toHaveLength(1);
     expect(runs[0]).toMatchObject({ trigger: 'WEBHOOK', status: 'SUCCESS' });
   });

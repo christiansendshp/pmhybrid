@@ -15,7 +15,18 @@ and write-back that consume the parser's output.
   verifies GitHub's `X-Hub-Signature-256`, then syncs every `Project` whose
   `docsPath` names the pushed repository (see `docs/permissions.md`'s
   "GitHub webhook trust boundary" for the auth model) — a `push` no longer
-  waits for the next scheduled tick.
+  waits for the next scheduled tick. To wire one up: on the GitHub repo,
+  Settings -> Webhooks -> Add webhook, Payload URL
+  `https://<api-host>/webhooks/github`, **content type
+  `application/json`** (not "urlencoded" — that puts the payload in a
+  `payload` form field instead of the JSON body, which passes signature
+  verification but silently never matches a project, logged as a warning),
+  secret matching the API's `GITHUB_WEBHOOK_SECRET`, "Just the push event."
+  The response only reports how many projects matched — it does not wait
+  for their sync to finish (GitHub's own delivery timeout is short, and a
+  `GIT_PROVIDER_TYPE=github` sync makes several sequential GitHub API
+  calls); check that project's own sync-run history for the outcome, same
+  as a scheduled or manual run.
 
 All three paths call the same `SynchronizationService.runSync(projectId, trigger)`, with `trigger` recorded on the resulting `SyncRun` (`SCHEDULED`/`MANUAL`/`WEBHOOK`). The scheduled path can be switched off with `SYNC_SCHEDULER_ENABLED=false`; the e2e suite does, and triggers sync explicitly.
 
