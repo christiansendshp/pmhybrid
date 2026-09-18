@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { DocumentKind, Prisma } from '@prisma/client';
+import type { Task, TaskDependency } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { RoadmapParserService } from '../roadmap/roadmap-parser.service.js';
@@ -124,6 +125,114 @@ export class WriteBackService {
       },
       { timeout: 20000, maxWait: 10000 },
     );
+  }
+
+  /**
+   * Dependency write-back (Roadmap GAP-22, docs/synchronization.md
+   * "Dependencies"): renders the task's full current dependency set into its
+   * Roadmap row's "Depends on" cell — the read direction (document ->
+   * TaskDependency, additive-only) already existed; this is the missing
+   * write direction. No Agentslog entry: like a field edit, adding a
+   * dependency never makes a row vanish, so the ledger-first ordering has
+   * nothing to protect. A task with no externalId yet (never write-back'd)
+   * or whose row has disappeared from the document is left alone — its
+   * dependencies will render on its next real write-back or the next time a
+   * row exists for it.
+   */
+  async recordDependencyAdded(
+    projectId: string,
+    taskId: string,
+    requesterActorId: string,
+  ) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`;
+        return this.dependencyAddedLocked(
+          tx,
+          projectId,
+          taskId,
+          requesterActorId,
+        );
+      },
+      { timeout: 20000, maxWait: 10000 },
+    );
+  }
+
+  private async dependencyAddedLocked(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    taskId: string,
+    requesterActorId: string,
+  ): Promise<Task> {
+    const project = await tx.project.findUniqueOrThrow({
+      where: { id: projectId },
+    });
+    const task = await tx.task.findUniqueOrThrow({
+      where: { id: taskId },
+      include: {
+        dependencies: {
+          include: { dependsOnTask: { select: { externalId: true } } },
+        },
+      },
+    });
+    if (!task.externalId) {
+      return task;
+    }
+
+    const roadmapContent = await this.repositoryProvider.readFile(
+      project.docsPath,
+      DOCUMENT_FILENAMES.ROADMAP,
+    );
+    const written = replaceRoadmapRowCells(roadmapContent, task.externalId, {
+      'Depends on': renderDependsOnCell(task.dependencies),
+    });
+    if (!written || written.replaced.length === 0) {
+      // No table holds this row (removed, or it's a Blocked row, which has
+      // no "Depends on" column) — nothing to write.
+      return task;
+    }
+
+    await this.repositoryProvider.writeFile(
+      project.docsPath,
+      DOCUMENT_FILENAMES.ROADMAP,
+      written.markdown,
+    );
+    await this.recordDocumentRevision(
+      tx,
+      projectId,
+      'ROADMAP',
+      DOCUMENT_FILENAMES.ROADMAP,
+      written.markdown,
+    );
+
+    const writtenRow = this.roadmapParser
+      .parse(written.markdown)
+      .find((row) => row.externalId === task.externalId);
+    let result: Task = task;
+    if (writtenRow) {
+      result = await tx.task.update({
+        where: { id: task.id },
+        data: {
+          lastSyncedContentHash: rowContentHash(writtenRow),
+          lastSyncedAt: new Date(),
+        },
+      });
+    }
+
+    await this.audit.record(
+      {
+        projectId,
+        actorId: requesterActorId,
+        entityType: 'Task',
+        entityId: task.id,
+        operation: 'WRITE_BACK',
+        origin: 'UI',
+        newValue: { trigger: 'DEPENDENCY_ADD' },
+      },
+      tx,
+    );
+
+    return result;
   }
 
   private async removalLocked(
@@ -470,6 +579,15 @@ export class WriteBackService {
       assignee?.kind === 'AI_AGENT'
         ? `${assignee.displayName}@${new Date().toISOString()}`
         : (assignee?.displayName ?? '');
+    // Fetched fresh rather than carried on `task` (Roadmap GAP-22): a
+    // lifecycle write-back must render the task's actual current
+    // dependencies, not blank the cell — this row already exists, so the
+    // document may well have a "Depends on" value a status change etc.
+    // must not silently erase.
+    const dependencies = await tx.taskDependency.findMany({
+      where: { taskId: task.id },
+      include: { dependsOnTask: { select: { externalId: true } } },
+    });
     const updatedRoadmap = upsertLifecycleRoadmapRow(
       roadmapContent,
       externalId,
@@ -478,7 +596,7 @@ export class WriteBackService {
         acceptanceCheck: task.acceptanceCriteria ?? '',
         status: task.status, // verbatim Kanban state (ADR-002) — never mapped back to TODO/DONE
         owner: ownerCell,
-        dependsOn: '—',
+        dependsOn: renderDependsOnCell(dependencies),
       },
     );
     await this.repositoryProvider.writeFile(
@@ -580,4 +698,22 @@ function summaryFor(trigger: WriteBackTrigger, title: string): string {
     case 'LOCKED_REASSIGN':
       return `Reassigned while in progress: ${title}`;
   }
+}
+
+/**
+ * A task's full dependency set as a "Depends on" cell value — each
+ * dependency by its resolved target's externalId, or its rawExternalRef when
+ * unresolved. Sorted so the cell is stable across writes regardless of the
+ * order dependencies were added in (avoids a spurious diff on every add).
+ */
+function renderDependsOnCell(
+  dependencies: (TaskDependency & {
+    dependsOnTask: { externalId: string | null } | null;
+  })[],
+): string {
+  const ids = dependencies
+    .map((d) => d.dependsOnTask?.externalId ?? d.rawExternalRef)
+    .filter((id): id is string => Boolean(id))
+    .sort();
+  return ids.length > 0 ? ids.join(', ') : '—';
 }

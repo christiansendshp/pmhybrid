@@ -103,8 +103,11 @@ segment` section with an archive path + SHA-256), ingest the referenced
 ## Agentslog ingestion
 
 Entries matched on `## [ISO8601] | agent | TASK-ID | status-word` followed by
-exactly four bullets (`Summary`/`Files`/`Verify`/`Follow-up`), per the skill's
-own entry format (`docs/skillProyectDocument-analysis.md` §7). Ingestion is
+a `Summary` bullet and whichever of `Files`/`Verify`/`Follow-up`/`Pause`
+follow it, in any subset — the old skill format always wrote all four except
+`Pause`; the project-documentation skill v2 format has no `Follow-up` bullet
+at all and only writes `Verify`/`Pause` when the entry's status calls for
+them (`references/workflow.md`). Ingestion is
 idempotent via the unique `rawEntryHash`, so re-parsing an overlapping
 revision (e.g. across a rotation boundary) is safe. `taskExternalId` is
 correlated to `Task.externalId` within the same project to backfill `taskId`.
@@ -135,7 +138,12 @@ locked reassignment):
    just `Owner` (the same assignee field as every other table,
    `docs/roadmap-parser.md` "Owner cell parsing") plus its own
    `Blocker`/`Needed decision or event`, which write-back never touches. The
-   Kanban status is written **verbatim** — `Task.status`'s own enum spelling
+   `Depends on` cell is rendered from the task's actual current
+   `TaskDependency` set — each entry by its resolved target's `externalId`,
+   or its `rawExternalRef` when unresolved, sorted for a stable cell content
+   regardless of add order (Roadmap GAP-22; see "Dependencies" below for the
+   dedicated add-triggered write-back). The Kanban status is written
+   **verbatim** — `Task.status`'s own enum spelling
    (`EN_DESARROLLO`, `QA`, ...) — `check_docs()` only validates heading
    presence, never cell values, so no round-trip mapping back to `TODO`/`DONE`
    is needed on write (ADR-002, `docs/Stack_Tecnologies.md`). If the assignee
@@ -175,6 +183,25 @@ progress and hierarchy are not Roadmap columns and never touch the document.
 - The written row becomes the task's `lastSyncedContentHash` only if the row
   carried no unreconciled document change; otherwise the next sync still
   applies or contests the document's changes to the row's other cells.
+
+### Dependencies
+
+Adding a `TaskDependency` via `POST /projects/:id/tasks/:taskId/dependencies`
+(Roadmap GAP-22) re-renders the task's whole current dependency set into its
+row's `Depends on` cell, the same way every other lifecycle write-back does
+(step 4 above) — not just the one dependency that was added, so the cell
+always reflects the task's true current set even if it drifted for any
+reason. No Agentslog entry, for the same reason as a field edit: an addition
+never makes a row vanish. A task with no `externalId` yet, or whose row has
+disappeared from the document, is left alone — its dependencies render on
+its next real write-back.
+
+There is still no removal write-back (no dependency-removal endpoint exists
+at all yet), which is why `reconcileDependencies`'s read-side reconciliation
+(step 5, "Disappeared rows" doesn't apply here — dependencies are reconciled
+per-row regardless of hash match) stays additive-only: a reference missing
+from a cell isn't reliable evidence it was intentionally removed rather than
+just never written back.
 
 ### Removal
 

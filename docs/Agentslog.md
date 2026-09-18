@@ -414,3 +414,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/web/src/app/core/projects.service.ts,apps/web/src/app/features/my-projects/{my-projects.ts,my-projects.html,my-projects.spec.ts},apps/web/src/app/features/project-settings/{project-settings.ts,project-settings.html,project-settings.spec.ts},apps/api/test/projects.e2e-spec.ts,docs/Features.md,docs/Roadmap.md
 - Verify: pnpm -r test (220 passed: 158 web + 62 api unit); pnpm test:e2e (131/131 passed); oxlint + eslint clean
 - Follow-up: none
+
+## [2026-09-18T13:06:28Z] | claude | GAP-22 | DONE
+
+- Summary: Dependency write-back: adding a TaskDependency now renders the task's full dependency set into its Roadmap row's Depends on cell (WriteBackService.recordDependencyAdded), sorted for stability. Found + fixed a real pre-existing bug along the way: every lifecycle write-back (writeBackLocked) hardcoded the cell to em-dash, silently blanking any dependency a prior write had rendered - fixed by fetching+rendering the task's actual dependencies there too. Also added Depends on support to the new-format writer (replaceRoadmapEntryFields) and updated stale code comments/docs (synchronization.service.ts, docs/synchronization.md new Dependencies section, roadmap-dependencies.e2e-spec.ts docblock) that described the old one-way limitation. Still addition-only - no removal endpoint exists, out of scope. Moved to Features.md F33.
+- Files: apps/api/src/modules/synchronization/write-back.service.ts,apps/api/src/modules/synchronization/synchronization.service.ts,apps/api/src/modules/roadmap/roadmap-row-writer.util.ts,apps/api/src/modules/tasks/tasks.service.ts,apps/api/test/roadmap-dependencies.e2e-spec.ts,docs/synchronization.md,docs/Features.md,docs/Roadmap.md
+- Verify: pnpm -r test (220 passed); pnpm test:e2e (133/133 passed); oxlint clean
+- Follow-up: none

@@ -455,7 +455,7 @@ export class TasksService {
       await this.assertNoDependencyCycle(taskId, dto.dependsOnTaskId);
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       const dependency = await tx.taskDependency.create({
         data: {
           taskId,
@@ -483,6 +483,11 @@ export class TasksService {
       );
       return dependency;
     });
+    return this.writeBack.recordDependencyAdded(
+      projectId,
+      taskId,
+      requesterActorId,
+    );
   }
 
   /**

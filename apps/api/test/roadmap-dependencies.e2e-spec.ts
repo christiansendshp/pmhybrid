@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -36,10 +36,13 @@ ${rows.join('\n')}
 
 /**
  * Roadmap "Depends on" reconciliation (Roadmap GAP-14, docs/domain-model.md
- * TaskDependency). Additive-only by design (see synchronization.service.ts
- * reconcileDependencies) — never removes a link sync didn't create, since
- * write-back doesn't reflect dependencies into the document, so there is no
- * document trace to compare a removal decision against.
+ * TaskDependency) and its write-back direction (Roadmap GAP-22 — see
+ * write-back.service.ts recordDependencyAdded, docs/synchronization.md
+ * "Dependencies"). Read-side reconciliation stays additive-only (see
+ * synchronization.service.ts reconcileDependencies) — never removes a link
+ * sync didn't create, since there's still no removal write-back, so a
+ * reference missing from a cell isn't reliable evidence it was intentionally
+ * removed.
  */
 describe('Roadmap "Depends on" reconciliation (e2e)', () => {
   let app: INestApplication<App>;
@@ -183,7 +186,8 @@ describe('Roadmap "Depends on" reconciliation (e2e)', () => {
     let e = await getTaskByExternalId(projectId, 'PMH-E');
     expect(e.dependencies).toHaveLength(1); // not duplicated
 
-    // A UI-added dependency the document says nothing about.
+    // A UI-added dependency — write-back (Roadmap GAP-22) renders it into
+    // the document immediately, as part of the add itself, not on the next sync.
     const base = await getTaskByExternalId(projectId, 'PMH-BASE2');
     await request(server())
       .post(`/projects/${projectId}/tasks/${base.id}/dependencies`)
@@ -191,7 +195,12 @@ describe('Roadmap "Depends on" reconciliation (e2e)', () => {
       .send({ rawExternalRef: 'EXTERNAL-TICKET-9' })
       .expect(201);
 
-    await sync(projectId); // the document still doesn't mention this dependency
+    const roadmapAfterAdd = readFileSync(path.join(docsPath, 'Roadmap.md'), 'utf-8');
+    expect(roadmapAfterAdd).toContain(
+      '| PMH-BASE2 | Base | check | TODO | — | EXTERNAL-TICKET-9 |',
+    );
+
+    await sync(projectId); // idempotent: the document already names it
 
     const baseAfter = await getTaskByExternalId(projectId, 'PMH-BASE2');
     expect(
@@ -291,5 +300,83 @@ describe('Roadmap "Depends on" reconciliation (e2e)', () => {
     expect(g.dependencies).toHaveLength(1);
     expect(g.dependencies[0].dependsOnTaskId).toBe(h.id);
     expect(h.dependencies).toHaveLength(0);
+  });
+
+  it('renders every dependency into the cell, sorted, regardless of the order they were added (Roadmap GAP-22)', async () => {
+    const docsPath = createScratchDocsPath();
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmapWithActiveRows(
+        '| PMH-J | Depends on two things | check | TODO | — | — |',
+        '| PMH-K | First dep | check | TODO | — | — |',
+        '| PMH-L | Second dep | check | TODO | — | — |',
+      ),
+      'utf-8',
+    );
+    const projectId = await createProjectAt(docsPath);
+    await sync(projectId);
+    const j = await getTaskByExternalId(projectId, 'PMH-J');
+    const k = await getTaskByExternalId(projectId, 'PMH-K');
+    const l = await getTaskByExternalId(projectId, 'PMH-L');
+
+    // Added in reverse alphabetical order — the rendered cell must not
+    // depend on add order.
+    await request(server())
+      .post(`/projects/${projectId}/tasks/${j.id}/dependencies`)
+      .set('Authorization', auth())
+      .send({ dependsOnTaskId: l.id })
+      .expect(201);
+    await request(server())
+      .post(`/projects/${projectId}/tasks/${j.id}/dependencies`)
+      .set('Authorization', auth())
+      .send({ dependsOnTaskId: k.id })
+      .expect(201);
+
+    const roadmap = readFileSync(path.join(docsPath, 'Roadmap.md'), 'utf-8');
+    expect(roadmap).toContain(
+      '| PMH-J | Depends on two things | check | TODO | — | PMH-K, PMH-L |',
+    );
+  });
+
+  it('a later lifecycle write-back (status transition) never blanks an already-rendered "Depends on" cell', async () => {
+    const docsPath = createScratchDocsPath();
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmapWithActiveRows(
+        '| PMH-M | Depends on base | check | TODO | — | — |',
+        '| PMH-N | Base | check | TODO | — | — |',
+      ),
+      'utf-8',
+    );
+    const projectId = await createProjectAt(docsPath);
+    await sync(projectId);
+    const m = await getTaskByExternalId(projectId, 'PMH-M');
+    const n = await getTaskByExternalId(projectId, 'PMH-N');
+
+    await request(server())
+      .post(`/projects/${projectId}/tasks/${m.id}/dependencies`)
+      .set('Authorization', auth())
+      .send({ dependsOnTaskId: n.id })
+      .expect(201);
+
+    const me = await request(server()).get('/auth/me').set('Authorization', auth()).expect(200);
+    await request(server())
+      .post(`/projects/${projectId}/tasks/${m.id}/assign`)
+      .set('Authorization', auth())
+      .send({ actorId: me.body.id })
+      .expect(201);
+    await request(server())
+      .post(`/projects/${projectId}/tasks/${m.id}/transition`)
+      .set('Authorization', auth())
+      .send({ status: 'EN_DESARROLLO' })
+      .expect(201);
+
+    const roadmap = readFileSync(path.join(docsPath, 'Roadmap.md'), 'utf-8');
+    const row = roadmap.split('\n').find((line) => line.startsWith('| PMH-M '));
+    expect(row).toBeDefined();
+    const cells = (row as string).split('|').map((cell) => cell.trim());
+    // | (empty) | ID | Outcome | Acceptance check | Status | Owner | Depends on | (empty) |
+    expect(cells[4]).toBe('EN_DESARROLLO');
+    expect(cells[6]).toBe('PMH-N');
   });
 });

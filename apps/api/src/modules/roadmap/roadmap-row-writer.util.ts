@@ -292,6 +292,13 @@ function replaceRoadmapEntryFields(
       );
       replaced.push('Acceptance check');
     }
+    if ('Depends on' in cellsByHeader) {
+      doc.set(
+        'depends_on',
+        parseDependsOnList(cellsByHeader['Depends on']) ?? [],
+      );
+      replaced.push('Depends on');
+    }
     if (replaced.length > 0) {
       doc.set('updated_at', new Date().toISOString());
     }

@@ -333,10 +333,12 @@ export class SynchronizationService {
         taskId = existing.id;
       }
 
-      // Additive only (docs/synchronization.md "Depends on" — Roadmap
-      // GAP-14): write-back doesn't reflect dependencies into the document
-      // yet, so a UI-added TaskDependency has no document trace to compare
-      // against — removing on every mismatch would silently destroy it.
+      // Additive only (docs/synchronization.md "Dependencies" — Roadmap
+      // GAP-14/GAP-22): write-back renders a task's dependency set into its
+      // row on add (GAP-22), but there's no removal write-back yet, so a
+      // dependency missing from the cell isn't reliable evidence it was
+      // actually removed — removing on every mismatch could still silently
+      // destroy a real one.
       await this.reconcileDependencies(
         tx,
         projectId,
@@ -637,9 +639,10 @@ export class SynchronizationService {
    * existed still needs to backfill every row's dependencies once.
    *
    * Idempotent (skips a reference already linked, resolved or dangling) and
-   * additive-only: never removes a TaskDependency, since write-back doesn't
-   * reflect dependencies into the document, so a UI-added one has no
-   * document trace to compare a removal decision against. An unresolvable
+   * additive-only: never removes a TaskDependency. Write-back renders a
+   * task's dependency set into its row on add (Roadmap GAP-22), but there's
+   * no removal write-back yet, so a reference missing from the cell isn't
+   * reliable evidence of an intentional removal. An unresolvable
    * external ID (a row not seen *yet* in this same pass, or never) is
    * stored via `rawExternalRef` with a null `dependsOnTaskId` — upgrading
    * that once the target is known is `resolveDanglingDependencies`'s job,
