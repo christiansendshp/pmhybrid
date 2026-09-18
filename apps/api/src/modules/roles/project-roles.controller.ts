@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
+import { CurrentAuditOrigin } from '../../common/decorators/current-audit-origin.decorator.js';
+import type { AuditOrigin } from '@prisma/client';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
 import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
@@ -41,12 +43,14 @@ export class ProjectRolesController {
     @Param('projectId') projectId: string,
     @Body() dto: AssignRoleDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
     return this.rolesService.assignProjectRole(
       projectId,
       dto.actorId,
       dto.roleId,
       requesterActorId,
+      origin,
     );
   }
 
@@ -57,11 +61,13 @@ export class ProjectRolesController {
     @Param('projectId') projectId: string,
     @Param('actorRoleId') actorRoleId: string,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
     return this.rolesService.revokeAssignment(
       projectId,
       actorRoleId,
       requesterActorId,
+      origin,
     );
   }
 }

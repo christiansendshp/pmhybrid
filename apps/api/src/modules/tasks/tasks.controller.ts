@@ -11,6 +11,8 @@ import {
 } from '@nestjs/common';
 import { PERMISSIONS, TaskStatus } from '@pmhybrid/shared-types';
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
+import { CurrentAuditOrigin } from '../../common/decorators/current-audit-origin.decorator.js';
+import type { AuditOrigin } from '@prisma/client';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
 import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
@@ -65,8 +67,9 @@ export class TasksController {
     @Param('projectId') projectId: string,
     @Body() dto: CreateTaskDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
-    return this.tasksService.create(projectId, dto, requesterActorId);
+    return this.tasksService.create(projectId, dto, requesterActorId, origin);
   }
 
   @Patch(':taskId')
@@ -75,8 +78,15 @@ export class TasksController {
     @Param('taskId') taskId: string,
     @Body() dto: UpdateTaskDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
-    return this.tasksService.update(projectId, taskId, dto, requesterActorId);
+    return this.tasksService.update(
+      projectId,
+      taskId,
+      dto,
+      requesterActorId,
+      origin,
+    );
   }
 
   @Delete(':taskId')
@@ -86,8 +96,14 @@ export class TasksController {
     @Param('projectId') projectId: string,
     @Param('taskId') taskId: string,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
-    return this.tasksService.remove(projectId, taskId, requesterActorId);
+    return this.tasksService.remove(
+      projectId,
+      taskId,
+      requesterActorId,
+      origin,
+    );
   }
 
   @Post(':taskId/assign')
@@ -96,12 +112,14 @@ export class TasksController {
     @Param('taskId') taskId: string,
     @Body() dto: AssignTaskDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
     return this.tasksService.assign(
       projectId,
       taskId,
       dto.actorId,
       requesterActorId,
+      origin,
     );
   }
 
@@ -111,12 +129,14 @@ export class TasksController {
     @Param('taskId') taskId: string,
     @Body() dto: TransitionTaskDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
     return this.tasksService.transition(
       projectId,
       taskId,
       dto.status,
       requesterActorId,
+      origin,
     );
   }
 
@@ -126,12 +146,14 @@ export class TasksController {
     @Param('taskId') taskId: string,
     @Body() dto: AddDependencyDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
     return this.tasksService.addDependency(
       projectId,
       taskId,
       dto,
       requesterActorId,
+      origin,
     );
   }
 }

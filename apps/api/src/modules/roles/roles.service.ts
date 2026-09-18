@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { AuditOrigin } from '@prisma/client';
 import {
   GLOBAL_PERMISSION_KEYS,
   PERMISSIONS,
@@ -48,6 +49,7 @@ export class RolesService {
     roleId: string,
     permissionKeys: string[],
     requesterActorId: string,
+    origin: AuditOrigin = 'UI',
   ) {
     const role = await this.prisma.role.findUnique({ where: { id: roleId } });
     if (!role) {
@@ -119,7 +121,7 @@ export class RolesService {
           entityType: 'Role',
           entityId: roleId,
           operation: 'ROLE_PERMISSIONS_UPDATE',
-          origin: 'UI',
+          origin,
           previousValue: { permissionKeys: previousKeys },
           newValue: { permissionKeys: uniqueKeys },
         },
@@ -160,6 +162,7 @@ export class RolesService {
     actorId: string,
     roleId: string,
     requesterActorId: string,
+    origin: AuditOrigin = 'UI',
   ) {
     const existing = await this.prisma.actorRole.findUnique({
       where: { actorId_roleId_projectId: { actorId, roleId, projectId } },
@@ -194,7 +197,7 @@ export class RolesService {
           entityType: 'ActorRole',
           entityId: assignment.id,
           operation: 'ROLE_ASSIGN',
-          origin: 'UI',
+          origin,
           newValue: {
             actorId,
             displayName: actor.displayName,
@@ -212,6 +215,7 @@ export class RolesService {
     projectId: string,
     actorRoleId: string,
     requesterActorId: string,
+    origin: AuditOrigin = 'UI',
   ) {
     const assignment = await this.prisma.actorRole.findUnique({
       where: { id: actorRoleId },
@@ -232,7 +236,7 @@ export class RolesService {
           entityType: 'ActorRole',
           entityId: actorRoleId,
           operation: 'ROLE_REVOKE',
-          origin: 'UI',
+          origin,
           previousValue: {
             actorId: assignment.actorId,
             displayName: assignment.actor.displayName,

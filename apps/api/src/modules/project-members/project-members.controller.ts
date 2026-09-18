@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
+import { CurrentAuditOrigin } from '../../common/decorators/current-audit-origin.decorator.js';
+import type { AuditOrigin } from '@prisma/client';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
 import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
@@ -33,11 +35,13 @@ export class ProjectMembersController {
     @Param('projectId') projectId: string,
     @Body() dto: AddMemberDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
     return this.projectMembersService.addMember(
       projectId,
       dto.actorId,
       requesterActorId,
+      origin,
     );
   }
 
@@ -48,11 +52,13 @@ export class ProjectMembersController {
     @Param('projectId') projectId: string,
     @Param('actorId') actorId: string,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
     return this.projectMembersService.removeMember(
       projectId,
       actorId,
       requesterActorId,
+      origin,
     );
   }
 }

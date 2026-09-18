@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { AuditOrigin } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
 import { CreateEpicDto } from './dto/create-epic.dto.js';
@@ -34,6 +35,7 @@ export class EpicsService {
     projectId: string,
     dto: CreateEpicDto,
     requesterActorId: string,
+    origin: AuditOrigin = 'UI',
   ) {
     if (dto.phaseId) {
       await this.assertPhaseInProject(projectId, dto.phaseId);
@@ -47,7 +49,7 @@ export class EpicsService {
           entityType: 'Epic',
           entityId: epic.id,
           operation: 'CREATE',
-          origin: 'UI',
+          origin,
           newValue: diffFields({}, { ...dto })?.newValue,
         },
         tx,
@@ -61,6 +63,7 @@ export class EpicsService {
     id: string,
     dto: UpdateEpicDto,
     requesterActorId: string,
+    origin: AuditOrigin = 'UI',
   ) {
     const epic = await this.findById(projectId, id);
     if (dto.phaseId) {
@@ -81,7 +84,7 @@ export class EpicsService {
           entityType: 'Epic',
           entityId: id,
           operation: 'UPDATE',
-          origin: 'UI',
+          origin,
           ...diff,
         },
         tx,

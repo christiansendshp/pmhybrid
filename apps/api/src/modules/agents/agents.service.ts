@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { AuditOrigin, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
 import { findSecretLikeKeys } from './agent-config.util.js';
@@ -53,7 +53,11 @@ export class AgentsService {
     return agent;
   }
 
-  async create(dto: CreateAgentDto, requesterActorId: string) {
+  async create(
+    dto: CreateAgentDto,
+    requesterActorId: string,
+    origin: AuditOrigin = 'UI',
+  ) {
     assertNoSecrets(dto.config);
     await this.assertEmailAvailable(dto.email);
     return this.prisma.$transaction(async (tx) => {
@@ -79,7 +83,7 @@ export class AgentsService {
           entityType: 'Actor',
           entityId: agent.id,
           operation: 'CREATE',
-          origin: 'UI',
+          origin,
           newValue: diffFields({}, { kind: agent.kind, ...snapshot(agent) })
             ?.newValue,
         },
@@ -89,7 +93,12 @@ export class AgentsService {
     });
   }
 
-  async update(id: string, dto: UpdateAgentDto, requesterActorId: string) {
+  async update(
+    id: string,
+    dto: UpdateAgentDto,
+    requesterActorId: string,
+    origin: AuditOrigin = 'UI',
+  ) {
     const agent = await this.findById(id);
     assertNoSecrets(dto.config);
     if (dto.email && dto.email !== agent.email) {
@@ -148,7 +157,7 @@ export class AgentsService {
           entityType: 'Actor',
           entityId: id,
           operation: 'UPDATE',
-          origin: 'UI',
+          origin,
           ...diff,
         },
         tx,

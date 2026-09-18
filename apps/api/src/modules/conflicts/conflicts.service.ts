@@ -3,7 +3,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ConflictResolutionKind, TaskStatus } from '@prisma/client';
+import {
+  AuditOrigin,
+  ConflictResolutionKind,
+  TaskStatus,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { NOT_BLANK } from '../tasks/dto/create-task.dto.js';
@@ -92,6 +96,7 @@ export class ConflictsService {
     id: string,
     dto: ResolveConflictDto,
     requesterActorId: string,
+    origin: AuditOrigin = 'UI',
   ) {
     const conflict = await this.findById(projectId, id);
     if (conflict.resolvedAt) {
@@ -120,7 +125,7 @@ export class ConflictsService {
           entityType: conflict.entityType,
           entityId: conflict.entityId,
           operation: 'CONFLICT_RESOLVED',
-          origin: 'UI',
+          origin,
           previousValue: conflict.localVersion as Record<string, unknown>,
           newValue: {
             conflictId: conflict.id,

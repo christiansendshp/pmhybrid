@@ -70,6 +70,28 @@ in the chain (`JwtAuthGuard`, and `ProjectMemberGuard` where present) — "no
 permission required" means any authenticated member, never "no auth
 required."
 
+## Audit origin by auth method (Roadmap GAP-24)
+
+`JwtStrategy` and `ApiKeyGuard` both set `JwtPayload.authMethod` (`'JWT'` for
+a person's `Authorization: Bearer` login, `'API_KEY'` for an agent's
+`X-API-Key`) — see "Enforcement layers" above. Every HTTP-triggered mutation
+now reads it via the `@CurrentAuditOrigin()` param decorator
+(`apps/api/src/common/decorators/current-audit-origin.decorator.ts`) and
+records the matching `AuditEvent.origin`: `UI` for a person, `API` for an
+agent's key. This is separate from the `ROADMAP`/`SYNC`/`SYSTEM` origins
+`SynchronizationService`/`WriteBackService` record for document-triggered or
+internal changes — those never go through an HTTP request, so they have no
+`authMethod` to read and are unaffected by this.
+
+Per-field conflict detection (`docs/synchronization.md` step 5) treats `UI`
+and `API` identically — both are "a local edit that must contest a document
+change," as opposed to `ROADMAP`/`SYNC`, which are the document's own side.
+
+An API key management write (`API_KEY_CREATE`/`API_KEY_REVOKE`,
+`agent-api-keys.service.ts`) records the key's own id as `entityId` — not the
+owning agent `Actor`'s id, which the key's id previously sat behind, only
+visible inside the event's `newValue` blob.
+
 ## Filesystem browser trust boundary (Roadmap GAP-27)
 
 `GET /filesystem-browser/browse` (backs the `docsPath` folder picker on

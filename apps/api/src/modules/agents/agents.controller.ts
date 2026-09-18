@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
+import { CurrentAuditOrigin } from '../../common/decorators/current-audit-origin.decorator.js';
+import type { AuditOrigin } from '@prisma/client';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
 import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
@@ -38,8 +40,9 @@ export class AgentsController {
   create(
     @Body() dto: CreateAgentDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
-    return this.agentsService.create(dto, requesterActorId);
+    return this.agentsService.create(dto, requesterActorId, origin);
   }
 
   @Patch(':id')
@@ -49,7 +52,8 @@ export class AgentsController {
     @Param('id') id: string,
     @Body() dto: UpdateAgentDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
-    return this.agentsService.update(id, dto, requesterActorId);
+    return this.agentsService.update(id, dto, requesterActorId, origin);
   }
 }

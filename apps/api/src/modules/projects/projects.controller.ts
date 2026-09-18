@@ -8,6 +8,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
+import { CurrentAuditOrigin } from '../../common/decorators/current-audit-origin.decorator.js';
+import type { AuditOrigin } from '@prisma/client';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
 import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
@@ -35,8 +37,12 @@ export class ProjectsController {
   }
 
   @Post()
-  create(@Body() dto: CreateProjectDto, @CurrentActorId() actorId: string) {
-    return this.projectsService.create(dto, actorId);
+  create(
+    @Body() dto: CreateProjectDto,
+    @CurrentActorId() actorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
+  ) {
+    return this.projectsService.create(dto, actorId, origin);
   }
 
   @Patch(':projectId')
@@ -46,7 +52,13 @@ export class ProjectsController {
     @Param('projectId') projectId: string,
     @Body() dto: UpdateProjectDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
-    return this.projectsService.update(projectId, dto, requesterActorId);
+    return this.projectsService.update(
+      projectId,
+      dto,
+      requesterActorId,
+      origin,
+    );
   }
 }

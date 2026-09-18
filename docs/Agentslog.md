@@ -421,3 +421,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/src/modules/synchronization/write-back.service.ts,apps/api/src/modules/synchronization/synchronization.service.ts,apps/api/src/modules/roadmap/roadmap-row-writer.util.ts,apps/api/src/modules/tasks/tasks.service.ts,apps/api/test/roadmap-dependencies.e2e-spec.ts,docs/synchronization.md,docs/Features.md,docs/Roadmap.md
 - Verify: pnpm -r test (220 passed); pnpm test:e2e (133/133 passed); oxlint clean
 - Follow-up: none
+
+## [2026-09-18T13:32:01Z] | claude | GAP-24 | DONE
+
+- Summary: Threaded JwtPayload.authMethod through to AuditEvent.origin: new @CurrentAuditOrigin() decorator (mirrors @CurrentActorId()) reads authMethod off request.user, controllers pass it to service methods (new trailing optional origin: AuditOrigin = 'UI' param, non-breaking default), 26 audit.record() call sites across 11 services+13 controllers now record origin:'API' for X-API-Key writes vs 'UI' for JWT. Also fixed per-field conflict detection query in synchronization.service.ts that only checked origin:'UI' - now checks origin in [UI, API] so an agent's API-key edit still correctly contests a document change. API_KEY_CREATE/REVOKE now audit entityType:'ApiKey'/entityId=key's own id instead of the owning agent Actor. Mechanical multi-file part delegated to a background agent with a fully-specified pattern (proven on one file pair first), then verified/fixed (entityType mismatch it flagged) and tested by me.
+- Files: apps/api/src/common/decorators/current-audit-origin.decorator.ts,apps/api/src/modules/{conflicts,agents,projects,users,project-members,phases,epics,tasks,roles,templates}/_.service.ts,apps/api/src/modules/{conflicts,agents,projects,users,project-members,phases,epics,tasks,roles}/_.controller.ts,apps/api/src/modules/synchronization/synchronization.service.ts,apps/api/test/{audit,api-keys}.e2e-spec.ts,docs/permissions.md,docs/Features.md,docs/Roadmap.md
+- Verify: pnpm -r test (220 passed); pnpm test:e2e (135/135 passed); oxlint + tsc clean
+- Follow-up: none

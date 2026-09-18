@@ -535,13 +535,15 @@ export class SynchronizationService {
       if (incomingFields.length > 0) {
         // A null lastSyncedAt (a UI-origin task never synced before) means
         // every prior local edit is in play, not none of them — comparing
-        // against epoch rather than skipping the check on null.
+        // against epoch rather than skipping the check on null. Both UI and
+        // API (Roadmap GAP-24) count as "local" here — an agent's API-key
+        // edit must contest a document change exactly like a person's.
         const since = task.lastSyncedAt ?? new Date(0);
         const uiEdits = await tx.auditEvent.findMany({
           where: {
             entityType: 'Task',
             entityId: task.id,
-            origin: 'UI',
+            origin: { in: ['UI', 'API'] },
             occurredAt: { gt: since },
           },
         });

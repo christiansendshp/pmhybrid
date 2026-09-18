@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { TaskStatus } from '@pmhybrid/shared-types';
+import type { AuditOrigin } from '@prisma/client';
 import { PermissionsResolverService } from '../../common/permissions-resolver.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
@@ -148,6 +149,7 @@ export class TasksService {
     projectId: string,
     dto: CreateTaskDto,
     requesterActorId: string,
+    origin: AuditOrigin = 'UI',
   ) {
     await this.assertHierarchy(projectId, dto);
     assertDateOrder(dto);
@@ -169,7 +171,7 @@ export class TasksService {
           entityType: 'Task',
           entityId: created.id,
           operation: 'CREATE',
-          origin: 'UI',
+          origin,
           newValue: diffFields({}, fields)?.newValue,
         },
         tx,
@@ -196,6 +198,7 @@ export class TasksService {
     taskId: string,
     dto: UpdateTaskDto,
     requesterActorId: string,
+    origin: AuditOrigin = 'UI',
   ) {
     const task = await this.getOwned(projectId, taskId);
     const patch = dto as TaskPatch;
@@ -252,7 +255,7 @@ export class TasksService {
           entityType: 'Task',
           entityId: taskId,
           operation: onlyProgress ? 'PROGRESS_CHANGE' : 'UPDATE',
-          origin: 'UI',
+          origin,
           ...diff,
         },
         tx,
@@ -289,6 +292,7 @@ export class TasksService {
     taskId: string,
     actorId: string,
     requesterActorId: string,
+    origin: AuditOrigin = 'UI',
   ) {
     const task = await this.getOwned(projectId, taskId);
 
@@ -345,7 +349,7 @@ export class TasksService {
             status: task.status,
           },
           newValue: { assigneeActorId: actorId, status: nextStatus },
-          origin: 'UI',
+          origin,
         },
         tx,
       );
@@ -374,6 +378,7 @@ export class TasksService {
     taskId: string,
     toStatus: TaskStatus,
     requesterActorId: string,
+    origin: AuditOrigin = 'UI',
   ) {
     const task = await this.getOwned(projectId, taskId);
 
@@ -411,7 +416,7 @@ export class TasksService {
           operation: 'STATUS_CHANGE',
           previousValue: { status: task.status },
           newValue: { status: toStatus },
-          origin: 'UI',
+          origin,
         },
         tx,
       );
@@ -444,6 +449,7 @@ export class TasksService {
     taskId: string,
     dto: AddDependencyDto,
     requesterActorId: string,
+    origin: AuditOrigin = 'UI',
   ) {
     await this.getOwned(projectId, taskId);
 
@@ -470,7 +476,7 @@ export class TasksService {
           entityType: 'Task',
           entityId: taskId,
           operation: 'DEPENDENCY_ADD',
-          origin: 'UI',
+          origin,
           newValue: diffFields(
             {},
             {
@@ -497,7 +503,12 @@ export class TasksService {
    * (docs/synchronization.md "Removal"). A task with live subtasks is refused,
    * so no subtask is left under a parent nobody can see.
    */
-  async remove(projectId: string, taskId: string, requesterActorId: string) {
+  async remove(
+    projectId: string,
+    taskId: string,
+    requesterActorId: string,
+    origin: AuditOrigin = 'UI',
+  ) {
     const task = await this.getOwned(projectId, taskId);
     const subtaskCount = await this.prisma.task.count({
       where: { parentTaskId: taskId, deletedAt: null },
@@ -527,7 +538,7 @@ export class TasksService {
           entityType: 'Task',
           entityId: taskId,
           operation: 'DELETE',
-          origin: 'UI',
+          origin,
           previousValue: {
             externalId: task.externalId,
             title: task.title,

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { TaskStatus } from '@prisma/client';
+import { AuditOrigin, TaskStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
 import { ProgressRollupService } from '../tasks/progress-rollup.service.js';
@@ -97,7 +97,11 @@ export class ProjectsService {
    * ActorRole, and a ProjectMember row, both created in the same
    * transaction as the project itself.
    */
-  async create(dto: CreateProjectDto, creatorActorId: string) {
+  async create(
+    dto: CreateProjectDto,
+    creatorActorId: string,
+    origin: AuditOrigin = 'UI',
+  ) {
     const ownerRole = await this.prisma.role.findUniqueOrThrow({
       where: { name_scope: { name: 'OWNER', scope: 'PROJECT' } },
     });
@@ -130,7 +134,7 @@ export class ProjectsService {
           entityType: 'Project',
           entityId: project.id,
           operation: 'CREATE',
-          origin: 'UI',
+          origin,
           newValue: diffFields(
             {},
             {
@@ -150,7 +154,12 @@ export class ProjectsService {
   }
 
   /** Audits only the settings that actually changed; a no-op PATCH writes nothing. */
-  async update(id: string, dto: UpdateProjectDto, requesterActorId: string) {
+  async update(
+    id: string,
+    dto: UpdateProjectDto,
+    requesterActorId: string,
+    origin: AuditOrigin = 'UI',
+  ) {
     const project = await this.findById(id);
     const diff = diffFields(project as unknown as Record<string, unknown>, {
       ...dto,
@@ -167,7 +176,7 @@ export class ProjectsService {
           entityType: 'Project',
           entityId: id,
           operation: 'UPDATE',
-          origin: 'UI',
+          origin,
           ...diff,
         },
         tx,

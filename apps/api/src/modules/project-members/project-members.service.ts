@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { AuditOrigin } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 
@@ -35,6 +36,7 @@ export class ProjectMembersService {
     projectId: string,
     actorId: string,
     requesterActorId: string,
+    origin: AuditOrigin = 'UI',
   ) {
     const actor = await this.prisma.actor.findUnique({
       where: { id: actorId },
@@ -68,7 +70,7 @@ export class ProjectMembersService {
           entityType: 'ProjectMember',
           entityId: member.id,
           operation: 'MEMBER_ADD',
-          origin: 'UI',
+          origin,
           newValue: {
             actorId,
             displayName: actor.displayName,
@@ -86,6 +88,7 @@ export class ProjectMembersService {
     projectId: string,
     actorId: string,
     requesterActorId: string,
+    origin: AuditOrigin = 'UI',
   ) {
     const existing = await this.prisma.projectMember.findUnique({
       where: { projectId_actorId: { projectId, actorId } },
@@ -109,7 +112,7 @@ export class ProjectMembersService {
           entityType: 'ProjectMember',
           entityId: member.id,
           operation: 'MEMBER_REMOVE',
-          origin: 'UI',
+          origin,
           previousValue: {
             actorId,
             displayName: existing.actor.displayName,

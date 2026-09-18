@@ -8,6 +8,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
+import { CurrentAuditOrigin } from '../../common/decorators/current-audit-origin.decorator.js';
+import type { AuditOrigin } from '@prisma/client';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { ConflictsService } from './conflicts.service.js';
@@ -40,7 +42,14 @@ export class ConflictsController {
     @Param('id') id: string,
     @Body() dto: ResolveConflictDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
-    return this.conflictsService.resolve(projectId, id, dto, requesterActorId);
+    return this.conflictsService.resolve(
+      projectId,
+      id,
+      dto,
+      requesterActorId,
+      origin,
+    );
   }
 }

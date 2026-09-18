@@ -11,6 +11,8 @@ import {
 } from '@nestjs/common';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
+import { CurrentAuditOrigin } from '../../common/decorators/current-audit-origin.decorator.js';
+import type { AuditOrigin } from '@prisma/client';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
 import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
@@ -43,8 +45,9 @@ export class AgentApiKeysController {
     @Param('agentId') agentId: string,
     @Body() dto: CreateApiKeyDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
-    return this.apiKeysService.create(agentId, dto, requesterActorId);
+    return this.apiKeysService.create(agentId, dto, requesterActorId, origin);
   }
 
   @Delete(':keyId')
@@ -54,7 +57,8 @@ export class AgentApiKeysController {
     @Param('agentId') agentId: string,
     @Param('keyId') keyId: string,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
-    return this.apiKeysService.revoke(agentId, keyId, requesterActorId);
+    return this.apiKeysService.revoke(agentId, keyId, requesterActorId, origin);
   }
 }

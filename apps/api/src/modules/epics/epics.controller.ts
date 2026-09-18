@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
+import { CurrentAuditOrigin } from '../../common/decorators/current-audit-origin.decorator.js';
+import type { AuditOrigin } from '@prisma/client';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
 import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
@@ -39,8 +41,9 @@ export class EpicsController {
     @Param('projectId') projectId: string,
     @Body() dto: CreateEpicDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
-    return this.epicsService.create(projectId, dto, requesterActorId);
+    return this.epicsService.create(projectId, dto, requesterActorId, origin);
   }
 
   @Patch(':id')
@@ -51,7 +54,14 @@ export class EpicsController {
     @Param('id') id: string,
     @Body() dto: UpdateEpicDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
-    return this.epicsService.update(projectId, id, dto, requesterActorId);
+    return this.epicsService.update(
+      projectId,
+      id,
+      dto,
+      requesterActorId,
+      origin,
+    );
   }
 }

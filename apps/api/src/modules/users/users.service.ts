@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
+import type { AuditOrigin } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
@@ -50,7 +51,11 @@ export class UsersService {
     return user;
   }
 
-  async create(dto: CreateUserDto, requesterActorId: string) {
+  async create(
+    dto: CreateUserDto,
+    requesterActorId: string,
+    origin: AuditOrigin = 'UI',
+  ) {
     if (await this.prisma.actor.findUnique({ where: { email: dto.email } })) {
       throw new ConflictException('Email already in use');
     }
@@ -75,7 +80,7 @@ export class UsersService {
           entityType: 'Actor',
           entityId: user.id,
           operation: 'CREATE',
-          origin: 'UI',
+          origin,
           newValue: diffFields(
             {},
             {
@@ -93,7 +98,12 @@ export class UsersService {
   }
 
   /** Deactivation (brief §3 "estado activo/inactivo") blocks login and every already-issued access token. */
-  async update(id: string, dto: UpdateUserDto, requesterActorId: string) {
+  async update(
+    id: string,
+    dto: UpdateUserDto,
+    requesterActorId: string,
+    origin: AuditOrigin = 'UI',
+  ) {
     const user = await this.findById(id);
     if (dto.isActive === false && id === requesterActorId) {
       throw new BadRequestException('You cannot deactivate yourself');
@@ -117,7 +127,7 @@ export class UsersService {
           entityType: 'Actor',
           entityId: id,
           operation: 'UPDATE',
-          origin: 'UI',
+          origin,
           ...diff,
         },
         tx,

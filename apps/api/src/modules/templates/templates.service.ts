@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { AuditOrigin } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
 import { CreateTemplateDto } from './dto/create-template.dto.js';
@@ -36,6 +37,7 @@ export class TemplatesService {
     projectId: string,
     dto: CreateTemplateDto,
     requesterActorId: string,
+    origin: AuditOrigin = 'UI',
   ) {
     if (dto.epicId) {
       await this.assertEpicInProject(projectId, dto.epicId);
@@ -51,7 +53,7 @@ export class TemplatesService {
           entityType: 'Template',
           entityId: template.id,
           operation: 'CREATE',
-          origin: 'UI',
+          origin,
           newValue: diffFields({}, { ...dto })?.newValue,
         },
         tx,
@@ -65,6 +67,7 @@ export class TemplatesService {
     id: string,
     dto: UpdateTemplateDto,
     requesterActorId: string,
+    origin: AuditOrigin = 'UI',
   ) {
     const template = await this.findById(projectId, id);
     if (dto.epicId) {
@@ -85,7 +88,7 @@ export class TemplatesService {
           entityType: 'Template',
           entityId: id,
           operation: 'UPDATE',
-          origin: 'UI',
+          origin,
           ...diff,
         },
         tx,

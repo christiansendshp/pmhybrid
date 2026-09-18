@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
+import { CurrentAuditOrigin } from '../../common/decorators/current-audit-origin.decorator.js';
+import type { AuditOrigin } from '@prisma/client';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
 import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
@@ -40,8 +42,9 @@ export class PhasesController {
     @Param('projectId') projectId: string,
     @Body() dto: CreatePhaseDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
-    return this.phasesService.create(projectId, dto, requesterActorId);
+    return this.phasesService.create(projectId, dto, requesterActorId, origin);
   }
 
   @Patch(':id')
@@ -52,7 +55,14 @@ export class PhasesController {
     @Param('id') id: string,
     @Body() dto: UpdatePhaseDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
-    return this.phasesService.update(projectId, id, dto, requesterActorId);
+    return this.phasesService.update(
+      projectId,
+      id,
+      dto,
+      requesterActorId,
+      origin,
+    );
   }
 }

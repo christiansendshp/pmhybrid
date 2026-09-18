@@ -169,6 +169,27 @@ describe('Agent API keys (e2e)', () => {
       .expect(404);
   });
 
+  it('audits key creation and revocation against the key itself, not the owning agent (Roadmap GAP-24)', async () => {
+    const agent = await createAgent();
+    const minted = await mintKey(agent.id, 'audited-key');
+
+    const created = await prisma.auditEvent.findFirst({
+      where: { operation: 'API_KEY_CREATE', entityId: minted.id },
+    });
+    expect(created).toMatchObject({ entityType: 'ApiKey', entityId: minted.id });
+    expect(created?.newValue).toMatchObject({ name: 'audited-key' });
+
+    await request(server())
+      .delete(`/agents/${agent.id}/keys/${minted.id}`)
+      .set('Authorization', auth())
+      .expect(200);
+
+    const revoked = await prisma.auditEvent.findFirst({
+      where: { operation: 'API_KEY_REVOKE', entityId: minted.id },
+    });
+    expect(revoked).toMatchObject({ entityType: 'ApiKey', entityId: minted.id });
+  });
+
   it('refuses key management to a caller without actors.manage', async () => {
     const email = `${unique('member')}@pmhybrid.local`;
     await request(server())

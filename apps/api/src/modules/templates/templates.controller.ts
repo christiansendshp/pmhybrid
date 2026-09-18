@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
+import { CurrentAuditOrigin } from '../../common/decorators/current-audit-origin.decorator.js';
+import type { AuditOrigin } from '@prisma/client';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
 import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
@@ -39,8 +41,14 @@ export class TemplatesController {
     @Param('projectId') projectId: string,
     @Body() dto: CreateTemplateDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
-    return this.templatesService.create(projectId, dto, requesterActorId);
+    return this.templatesService.create(
+      projectId,
+      dto,
+      requesterActorId,
+      origin,
+    );
   }
 
   @Patch(':id')
@@ -51,7 +59,14 @@ export class TemplatesController {
     @Param('id') id: string,
     @Body() dto: UpdateTemplateDto,
     @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
-    return this.templatesService.update(projectId, id, dto, requesterActorId);
+    return this.templatesService.update(
+      projectId,
+      id,
+      dto,
+      requesterActorId,
+      origin,
+    );
   }
 }

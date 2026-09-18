@@ -247,6 +247,41 @@ describe('Audit trail (brief §25 — e2e)', () => {
     expect(secondPage[0].id).toBe(all[1].id);
   });
 
+  it('records origin: API for a write authenticated with X-API-Key, and origin: UI for a person (Roadmap GAP-24)', async () => {
+    const agent = await request(server())
+      .post('/agents')
+      .set('Authorization', auth())
+      .send({ displayName: `Audit Agent ${Date.now()}`, providerType: 'custom' })
+      .expect(201);
+    const minted = await request(server())
+      .post(`/agents/${agent.body.id}/keys`)
+      .set('Authorization', auth())
+      .send({})
+      .expect(201);
+    await request(server())
+      .post(`/projects/${projectId}/members`)
+      .set('Authorization', auth())
+      .send({ actorId: agent.body.id })
+      .expect(201);
+
+    await request(server())
+      .post(`/projects/${projectId}/tasks`)
+      .set('X-API-Key', minted.body.key)
+      .send({ title: 'Task via API key', acceptanceCriteria: 'Verified by e2e' })
+      .expect(201);
+    await request(server())
+      .post(`/projects/${projectId}/tasks`)
+      .set('Authorization', auth())
+      .send({ title: 'Task via JWT', acceptanceCriteria: 'Verified by e2e' })
+      .expect(201);
+
+    const events = await auditTrail('entityType=Task&operation=CREATE');
+    const viaKey = events.find((e) => e.newValue?.title === 'Task via API key');
+    const viaJwt = events.find((e) => e.newValue?.title === 'Task via JWT');
+    expect(viaKey?.origin).toBe('API');
+    expect(viaJwt?.origin).toBe('UI');
+  });
+
   it('validates filters and denies the trail to non-members', async () => {
     await request(server())
       .get(`/projects/${projectId}/audit?origin=BOGUS`)

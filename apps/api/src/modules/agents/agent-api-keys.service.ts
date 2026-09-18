@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { AuditOrigin } from '@prisma/client';
 import { generateApiKey } from '../auth/api-key-crypto.util.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
@@ -38,6 +39,7 @@ export class AgentApiKeysService {
     agentId: string,
     dto: CreateApiKeyDto,
     requesterActorId: string,
+    origin: AuditOrigin = 'UI',
   ) {
     await this.assertAgentExists(agentId);
     const generated = generateApiKey();
@@ -55,10 +57,10 @@ export class AgentApiKeysService {
         {
           projectId: null,
           actorId: requesterActorId,
-          entityType: 'Actor',
-          entityId: agentId,
+          entityType: 'ApiKey',
+          entityId: created.id,
           operation: 'API_KEY_CREATE',
-          origin: 'UI',
+          origin,
           newValue: diffFields(
             {},
             {
@@ -75,7 +77,12 @@ export class AgentApiKeysService {
     });
   }
 
-  async revoke(agentId: string, keyId: string, requesterActorId: string) {
+  async revoke(
+    agentId: string,
+    keyId: string,
+    requesterActorId: string,
+    origin: AuditOrigin = 'UI',
+  ) {
     await this.assertAgentExists(agentId);
     const existing = await this.prisma.apiKey.findFirst({
       where: { id: keyId, actorId: agentId },
@@ -97,10 +104,10 @@ export class AgentApiKeysService {
         {
           projectId: null,
           actorId: requesterActorId,
-          entityType: 'Actor',
-          entityId: agentId,
+          entityType: 'ApiKey',
+          entityId: revoked.id,
           operation: 'API_KEY_REVOKE',
-          origin: 'UI',
+          origin,
           newValue: diffFields(
             { apiKeyId: revoked.id, revokedAt: null },
             { apiKeyId: revoked.id, revokedAt: revoked.revokedAt },
