@@ -15,6 +15,7 @@ function fakeContext(
       },
     } as unknown as McpToolContext['prisma'],
     tasksService: {} as McpToolContext['tasksService'],
+    taskCommentsService: {} as McpToolContext['taskCommentsService'],
     actorId: 'actor-1',
     ...overrides,
   };

@@ -4,11 +4,13 @@ import { TaskPriority, TaskStatus } from '@pmhybrid/shared-types';
 import { z } from 'zod';
 import { assertProjectMember } from '../../common/guards/project-member.guard.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { TaskCommentsService } from '../tasks/task-comments.service.js';
 import { TasksService } from '../tasks/tasks.service.js';
 
 export interface McpToolContext {
   prisma: PrismaService;
   tasksService: TasksService;
+  taskCommentsService: TaskCommentsService;
   actorId: string;
 }
 
@@ -43,11 +45,12 @@ export async function guarded(
  * §27/§29). Thin adapters over `TasksService`'s existing methods — same
  * permission checks, same audit trail, same `origin: 'API'` GAP-24 already
  * gives an agent's `X-API-Key` REST call — this is a new transport onto
- * behavior that already exists, not a new authorization model. The
- * ticket's third named verb, "comment," has no existing model or service to
- * adapt (there is no comment concept anywhere in this app yet) and is
- * deferred to its own ticket (Roadmap GAP-31) rather than built here as an
- * MCP-only capability no human-facing surface can read.
+ * behavior that already exists, not a new authorization model.
+ *
+ * `add_comment`/`list_comments` (Roadmap GAP-31) are the ticket's third
+ * named verb, adapted over `TaskCommentsService` the same way -- built with
+ * a REST surface (`TaskCommentsController`) from the start, so a human can
+ * always read what an agent writes here, not an MCP-only capability.
  */
 export function registerTaskTools(
   server: McpServer,
@@ -128,6 +131,40 @@ export function registerTaskTools(
           projectId,
           taskId,
           status,
+          ctx.actorId,
+          'API',
+        ),
+      ),
+  );
+
+  server.registerTool(
+    'list_comments',
+    {
+      description: "List a task's comments, oldest first.",
+      inputSchema: { projectId: z.string(), taskId: z.string() },
+    },
+    ({ projectId, taskId }) =>
+      guarded(ctx, projectId, () =>
+        ctx.taskCommentsService.list(projectId, taskId),
+      ),
+  );
+
+  server.registerTool(
+    'add_comment',
+    {
+      description: 'Add a comment to a task.',
+      inputSchema: {
+        projectId: z.string(),
+        taskId: z.string(),
+        body: z.string().min(1),
+      },
+    },
+    ({ projectId, taskId, body }) =>
+      guarded(ctx, projectId, () =>
+        ctx.taskCommentsService.add(
+          projectId,
+          taskId,
+          { body },
           ctx.actorId,
           'API',
         ),

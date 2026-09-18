@@ -137,8 +137,12 @@ closes with an MCP server (`mcp` module, Roadmap GAP-30): `list_tasks`/
 `get_task`/`update_task`/`transition_task` tools over a stateless
 Streamable HTTP endpoint, thin adapters over `tasks`'s existing service
 methods rather than a new authorization model (`docs/Stack_Tecnologies.md`
-ADR-017). Its "comment" verb is out of scope, split off as GAP-31 — see
-`docs/Roadmap.md`.
+ADR-017). Its "comment" verb was split off as GAP-31 (`docs/Roadmap.md`) and
+is now DONE too: a `TaskComment` model plus `TaskCommentsController`/
+`Service` (still inside the `tasks` module) and two more MCP tools,
+`list_comments`/`add_comment` (`docs/Stack_Tecnologies.md` ADR-019). It is
+deliberately not doc-sourced — no write-back to Roadmap.md/Agentslog.md,
+unlike everything else `tasks` mutates.
 
 ## Frontend structure
 
@@ -154,7 +158,10 @@ and `team` are top-level children (post-login landing is `/dashboard`);
 routes nested under `/projects/:projectId`. `core/` holds guards, interceptors
 and API services, including the Signals-based `AuthService`; `shared/` holds
 cross-feature UI such as the task create/edit form used by the Kanban and the
-task detail. Global tokens and
+task detail. `task-detail` renders every task sub-resource except comments —
+`TaskComment` (Roadmap GAP-31) has a REST endpoint and an MCP tool but no
+Angular view yet, recorded here per that ticket's own acceptance check
+rather than silently built or silently skipped. Global tokens and
 shared page classes (`page-header`, `tab-nav`, `kind-badge`) live in
 `src/styles.scss` on top of the Angular Material theme.
 

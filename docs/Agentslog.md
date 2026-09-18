@@ -491,3 +491,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/src/modules/roadmap/roadmap-row-writer.util.ts, apps/api/src/modules/roadmap/roadmap-row-writer.util.spec.ts, docs/Roadmap.md, docs/Stack_Tecnologies.md
 - Verify: pnpm --filter api test (97 pass), pnpm --filter api test:e2e (154 pass), pnpm --filter api lint, pnpm --filter api build all green
 - Pause: BLOQUEO - Remaining scope is converting this repo's own docs/Roadmap.md to the new YAML schema, which requires the live dev server's 5-minute sync scheduler to be stopped or coordinated first (it acts on real Task records for this repo's own project entry) -- not something this session can safely do unilaterally. GAP-28 stays EN_DESARROLLO; next_action recorded in its Roadmap.md row.
+
+## [2026-09-18T16:18:11Z] | Claude | GAP-31 | DONE
+
+- Summary: Built task comments: TaskComment model (append-only, real Actor FK author, distinct from AgentLogEvent's document-sync mirror), GET/POST /projects/:projectId/tasks/:taskId/comments (membership-gated only, matching the ticket's any-member wording), and list_comments/add_comment MCP tools reusing the same TaskCommentsService. REST POST added beyond the ticket's literal minimum for symmetry (advisor-reviewed). No write-back, no notifications, no Angular view -- none asked for; documented as a known limitation instead of silently built or skipped.
+- Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20260918160955_add_task_comments/, apps/api/src/modules/tasks/task-comments.service.ts, apps/api/src/modules/tasks/task-comments.controller.ts, apps/api/src/modules/tasks/dto/create-task-comment.dto.ts, apps/api/src/modules/tasks/tasks.module.ts, apps/api/src/modules/mcp/mcp-tools.ts, apps/api/src/modules/mcp/mcp.controller.ts, apps/api/test/task-comments.e2e-spec.ts, apps/api/test/mcp.e2e-spec.ts, docs/domain-model.md, docs/architecture.md, docs/permissions.md, docs/Stack_Tecnologies.md (ADR-019), docs/Roadmap.md, docs/Features.md (F40)
+- Verify: pnpm --filter api build clean, pnpm --filter api lint clean, pnpm --filter api test 97/97, pnpm --filter api test:e2e 159/159
+- Follow-up: none

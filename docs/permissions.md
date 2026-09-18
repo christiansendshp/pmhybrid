@@ -159,3 +159,18 @@ so `update_task`/`transition_task` get the exact same audit trail and
 (for `transition_task`) the exact same per-transition permission check
 (`task.status.transition` etc.) a person's REST call would — MCP is a new
 transport onto existing authorization, not a second one.
+
+## Task comments (Roadmap GAP-31)
+
+`TaskCommentsController` (`GET`/`POST /projects/:projectId/tasks/:taskId/
+comments`) sits behind `JwtAuthGuard`+`ProjectMemberGuard` only, same as
+`TasksController`'s create/update/dependency routes — no `@RequirePermission`
+gate, since the ticket's own wording is "any authenticated member can read
+them" and this app makes the same "any member can edit" call for every
+other task sub-resource that isn't assign/transition/delete. `add_comment`/
+`list_comments` (the MCP tools, `mcp-tools.ts`) go through the same
+`assertProjectMember`+`guarded()` pattern GAP-30's tools use, calling the
+same `TaskCommentsService` a REST request would. `AuditOrigin` follows the
+same rule as every other write: `UI` for a person's JWT, `API` for an
+agent's key (MCP tools hardcode `'API'`, matching `update_task`/
+`transition_task`).

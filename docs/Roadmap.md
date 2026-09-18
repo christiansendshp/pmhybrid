@@ -22,9 +22,9 @@ what the brief asks for that the app does not yet do. GAP-21 is DONE (see
 
 ## Near term
 
-| ID     | Outcome                                                                                        | Acceptance check                                                                                                                                                                                                                              | Status | Depends on |
-| ------ | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------- |
-| GAP-31 | Task comments — GAP-30's "comment" verb, deferred rather than built MCP-only (see prose below) | A `TaskComment` model with a REST endpoint (`JwtAuthGuard`+`ProjectMemberGuard`, same as every other task sub-resource) so any authenticated member can read them, plus an MCP tool; docs updated on whether an Angular view renders them yet | TODO   | —          |
+| ID  | Outcome | Acceptance check | Status | Depends on |
+| --- | ------- | ---------------- | ------ | ---------- |
+| —   | —       | —                | —      | —          |
 
 GAP-29 and GAP-30 are the two GAP-26 named but did not build: GAP-26 itself
 picked WebSockets first because two independent in-repo signals already
@@ -48,8 +48,22 @@ consumer is an MCP agent — data a human member could never see or read
 back. That crosses from "missing implementation detail" into "affects
 product behavior" (AGENTS.md's escalation line), so rather than silently
 skipping the verb or quietly building an MCP-only comment feature, it is
-named explicitly and split off as GAP-31 above, scoped to include the REST
+named explicitly and split off as GAP-31, scoped to include the REST
 surface a real feature needs, not just the MCP one.
+
+GAP-31 is DONE (`Features.md` F40, ADR-019): a `TaskComment` model, a
+dedicated `TaskCommentsController`/`Service` (`GET`/`POST` under
+`/projects/:projectId/tasks/:taskId/comments`, membership-gated only, no
+extra permission — matching the ticket's own "any authenticated member"
+wording), and two MCP tools (`list_comments`, `add_comment`) reusing the
+same service. REST `POST` is a deliberate addition beyond the ticket's
+literal minimum (MCP-write, REST-read only) — chosen for symmetry, since a
+thread only agents could write to is the same asymmetry that got GAP-30's
+"comment" verb escalated in the first place. No document write-back, no
+notifications, and no Angular view were added — none are asked for by the
+acceptance check, and the last is recorded here per its own "docs updated
+on whether a view renders them" clause rather than silently built or
+silently skipped.
 
 ## Blocked
 

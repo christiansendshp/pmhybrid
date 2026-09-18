@@ -163,6 +163,16 @@ Task(
   read-optimized current+historical index for the Workload view, while
   `AuditEvent` is a generic append-only log across all entity types. Same
   underlying fact recorded twice on purpose, for two different query shapes.
+- `TaskComment(id, taskId, authorActorId, body, createdAt)` (Roadmap GAP-31)
+  — a live, append-only comment thread any project member writes directly
+  through the app (REST `POST`, human; MCP `add_comment`, agent), read back
+  via REST `GET`/MCP `list_comments`. Deliberately distinct from
+  `AgentLogEvent` below: that model is a one-way, read-only mirror of
+  `Agentslog.md` entries populated by document ingestion (`agentName` is a
+  denormalized string there, since a log's author need not be a registered
+  `Actor`), while `TaskComment` is a direct interactive write path with no
+  document counterpart — never read from or written back to `Roadmap.md`/
+  `Agentslog.md` (see `docs/Stack_Tecnologies.md` ADR-019).
 - Creating and editing a task from the app (brief §6, §9, `TasksService`):
   `title` and `acceptanceCriteria` are required and can change but never be
   cleared; every other field is optional and cleared with `null`. Hierarchy

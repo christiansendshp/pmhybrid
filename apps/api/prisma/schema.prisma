@@ -40,6 +40,7 @@ model Actor {
   notifications    Notification[]
   resolvedConflicts Conflict[]      @relation("ConflictResolvedBy")
   apiKeys          ApiKey[]
+  taskComments     TaskComment[]    @relation("CommentAuthor")
 }
 
 model UserCredential {
@@ -264,6 +265,7 @@ model Task {
   dependents      TaskDependency[] @relation("DependsOnTask")
   assignments     TaskAssignment[]
   agentLogEvents  AgentLogEvent[]
+  comments        TaskComment[]
 
   @@unique([projectId, externalId])
   @@index([projectId, status])
@@ -289,6 +291,26 @@ model TaskAssignment {
   assignedByActorId String
   assignedBy        Actor     @relation("AssignmentBy", fields: [assignedByActorId], references: [id])
   reason            String?
+}
+
+// Roadmap GAP-31: a live, interactive comment thread any project member
+// (human via REST, agent via MCP) writes directly through the app. Distinct
+// from AgentLogEvent, which is a one-way, read-only mirror of Agentslog.md
+// entries populated by document ingestion (agentName is a denormalized
+// string there, not an Actor FK, since a log's author need not be a
+// registered Actor) -- TaskComment has no document counterpart by design
+// (see docs/Stack_Tecnologies.md ADR-019) and is never written back to
+// Roadmap.md/Agentslog.md.
+model TaskComment {
+  id             String   @id @default(uuid())
+  taskId         String
+  task           Task     @relation(fields: [taskId], references: [id])
+  authorActorId  String
+  author         Actor    @relation("CommentAuthor", fields: [authorActorId], references: [id])
+  body           String
+  createdAt      DateTime @default(now())
+
+  @@index([taskId, createdAt])
 }
 
 // ---------------------------------------------------------------------------

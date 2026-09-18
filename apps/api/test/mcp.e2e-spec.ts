@@ -116,7 +116,9 @@ describe('MCP server for agent task operations (e2e)', () => {
 
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
+      'add_comment',
       'get_task',
+      'list_comments',
       'list_tasks',
       'transition_task',
       'update_task',
@@ -142,6 +144,31 @@ describe('MCP server for agent task operations (e2e)', () => {
     });
     const tasks = JSON.parse(text(listed as CallToolResult)) as { id: string }[];
     expect(tasks.some((t) => t.id === taskId)).toBe(true);
+  });
+
+  it('adds a comment via add_comment and reads it back via list_comments', async () => {
+    const { agentId, apiKey } = await createAgentWithKey();
+    const projectId = await createProjectWithMember(agentId);
+    const taskId = await createTask(projectId, 'Needs a comment');
+    const client = await connectedClient(apiKey);
+
+    const added = await client.callTool({
+      name: 'add_comment',
+      arguments: { projectId, taskId, body: 'Started investigating.' },
+    });
+    expect(added.isError).not.toBe(true);
+    expect(JSON.parse(text(added as CallToolResult)).body).toBe(
+      'Started investigating.',
+    );
+
+    const listed = await client.callTool({
+      name: 'list_comments',
+      arguments: { projectId, taskId },
+    });
+    const comments = JSON.parse(text(listed as CallToolResult)) as {
+      body: string;
+    }[];
+    expect(comments.map((c) => c.body)).toEqual(['Started investigating.']);
   });
 
   it('updates a task via update_task, reusing TasksService.update unchanged', async () => {

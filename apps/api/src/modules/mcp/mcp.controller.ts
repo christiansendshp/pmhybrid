@@ -16,6 +16,7 @@ import { ApiKeyGuard } from '../auth/guards/api-key.guard.js';
 import { JwtPayload } from '../auth/jwt-payload.interface.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { registerTaskTools } from './mcp-tools.js';
+import { TaskCommentsService } from '../tasks/task-comments.service.js';
 import { TasksService } from '../tasks/tasks.service.js';
 
 const METHOD_NOT_ALLOWED_BODY = {
@@ -25,11 +26,10 @@ const METHOD_NOT_ALLOWED_BODY = {
 };
 
 /**
- * MCP server for agent task operations (Roadmap GAP-30, brief §27/§29):
- * lets an MCP-capable agent client call `list_tasks`/`get_task`/
- * `update_task`/`transition_task` directly, instead of only via the REST
- * API + API keys (GAP-15). See `mcp-tools.ts` for why "comment" (this
- * ticket's third named verb) is deferred to GAP-31.
+ * MCP server for agent task operations (Roadmap GAP-30/GAP-31, brief
+ * §27/§29): lets an MCP-capable agent client call `list_tasks`/`get_task`/
+ * `update_task`/`transition_task`/`list_comments`/`add_comment` directly,
+ * instead of only via the REST API + API keys (GAP-15).
  *
  * `ApiKeyGuard` alone, not `JwtAuthGuard`: this endpoint exists specifically
  * for agent clients (the ticket's own wording), and `ApiKeyGuard` already
@@ -56,6 +56,7 @@ export class McpController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tasksService: TasksService,
+    private readonly taskCommentsService: TaskCommentsService,
   ) {}
 
   @Post()
@@ -65,6 +66,7 @@ export class McpController {
     registerTaskTools(server, {
       prisma: this.prisma,
       tasksService: this.tasksService,
+      taskCommentsService: this.taskCommentsService,
       actorId,
     });
     const transport = new StreamableHTTPServerTransport({
