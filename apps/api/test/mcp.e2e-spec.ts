@@ -1,6 +1,8 @@
 import type { AddressInfo } from 'node:net';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -173,6 +175,44 @@ describe('MCP server for agent task operations (e2e)', () => {
     });
     expect(result.isError).toBe(true);
     expect(text(result as CallToolResult)).toMatch(/Missing permission/);
+  });
+
+  it('closes the per-request McpServer/transport pair once the response completes (no leak)', async () => {
+    const { apiKey } = await createAgentWithKey();
+    const serverCloseSpy = vi.spyOn(McpServer.prototype, 'close');
+    const transportCloseSpy = vi.spyOn(StreamableHTTPServerTransport.prototype, 'close');
+    const client = await connectedClient(apiKey);
+
+    await client.listTools();
+    // res.on('close', ...) fires asynchronously after the HTTP response
+    // itself has fully completed -- give the event loop one more tick.
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(serverCloseSpy).toHaveBeenCalled();
+    expect(transportCloseSpy).toHaveBeenCalled();
+    serverCloseSpy.mockRestore();
+    transportCloseSpy.mockRestore();
+  });
+
+  it('applies the raised per-route throttle (300/min) rather than the global 100/min default', async () => {
+    const { apiKey } = await createAgentWithKey();
+    const body = JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'ping',
+      id: 1,
+    });
+
+    const responses = await Promise.all(
+      Array.from({ length: 120 }, () =>
+        request(server())
+          .post('/mcp')
+          .set('X-API-Key', apiKey)
+          .set('Content-Type', 'application/json')
+          .set('Accept', 'application/json, text/event-stream')
+          .send(body),
+      ),
+    );
+    expect(responses.some((res) => res.status === 429)).toBe(false);
   });
 
   it('returns a protocol-level isError result when the caller is not a member of the project', async () => {

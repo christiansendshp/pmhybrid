@@ -71,12 +71,17 @@ export class McpController {
       sessionIdGenerator: undefined,
     });
     try {
-      await server.connect(transport);
-      await transport.handleRequest(req, res, req.body);
+      // Registered before handleRequest, not after: for a non-streaming
+      // JSON reply, `handleRequest` resolves only once the response is
+      // already written, and 'close' can already have fired by then — a
+      // listener attached afterward attaches to an already-closed
+      // response and never runs, leaking this server/transport pair.
       res.on('close', () => {
         void transport.close();
         void server.close();
       });
+      await server.connect(transport);
+      await transport.handleRequest(req, res, req.body);
     } catch (error) {
       this.logger.error(`MCP request handling failed: ${String(error)}`);
       if (!res.headersSent) {
