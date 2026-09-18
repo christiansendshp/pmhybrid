@@ -227,8 +227,21 @@ function upsertLifecycleRoadmapEntry(
   const ownerCell = sanitizeField(fields.owner);
 
   if (entry) {
+    const currentStatus =
+      typeof entry.data.status === 'string'
+        ? entry.data.status.trim().toUpperCase()
+        : undefined;
+    const isCurrentlyBlocked = currentStatus === 'BLOCKED';
     return replaceEntryYamlBlock(markdown, entry, (doc) => {
-      doc.set('status', newStatus);
+      // Mirrors the old format's Blocked table, which has no Status column
+      // at all — a lifecycle write-back against a row already there can
+      // only ever touch Owner. A new-format entry with `status: BLOCKED`
+      // gets the same treatment: `status`/`blocked_by` pass through
+      // unchanged so an unrelated write-back (e.g. a task's own status
+      // change elsewhere) can't silently clear the blocked state.
+      if (!isCurrentlyBlocked) {
+        doc.set('status', newStatus);
+      }
       doc.set('updated_at', nowIso);
       const trimmedOwner = ownerCell.trim();
       if (trimmedOwner && trimmedOwner !== '—') {

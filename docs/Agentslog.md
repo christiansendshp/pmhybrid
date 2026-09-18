@@ -484,3 +484,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/src/modules/mcp/mcp.controller.ts, apps/api/test/mcp.e2e-spec.ts, docs/Stack_Tecnologies.md
 - Verify: pnpm --filter api test 96/96, pnpm test:e2e 154/154, pnpm -r lint clean, pnpm -r build clean. Commit f005af7.
 - Follow-up: Next: GAP-28 (dual-format Roadmap/Agentslog parsing, EN_DESARROLLO, the only Active work entry and what blocks project_docs check from passing) is the next pending point per advisor -- an in-progress item takes priority over new scope like GAP-31. Do not convert this repo's own Roadmap.md to the new schema in the same pass; land dual-format read+write with tests first.
+
+## [2026-09-18T15:58:55Z] | Claude | GAP-28 | DONE_PARTIAL
+
+- Summary: Investigated GAP-28: dual-format Roadmap/Agentslog read+write already implemented and tested; found and fixed a real parity bug where upsertLifecycleRoadmapEntry unconditionally overwrote status on BLOCKED new-format entries
+- Files: apps/api/src/modules/roadmap/roadmap-row-writer.util.ts,apps/api/src/modules/roadmap/roadmap-row-writer.util.spec.ts,docs/Roadmap.md,docs/Stack_Tecnologies.md
+- Verify: pnpm --filter api test (97 pass), pnpm --filter api test:e2e (154 pass), pnpm --filter api lint, pnpm --filter api build all green
+- Follow-up: Remaining: convert docs/Roadmap.md itself to the new YAML schema (deliberately separate pass, see ADR-018/GAP-28 entry); GAP-28 stays EN_DESARROLLO

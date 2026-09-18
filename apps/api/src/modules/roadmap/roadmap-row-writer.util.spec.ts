@@ -257,6 +257,44 @@ describe('upsertLifecycleRoadmapRow (new format)', () => {
     // Existing entries still present.
     expect(entries.map((e) => e.id)).toContain('TASK-42');
   });
+
+  it('leaves a BLOCKED entry blocked, mirroring the old format Blocked table having no Status column', () => {
+    const blockedRoadmap = `# Roadmap
+
+## Cross-cutting
+
+### GAP-07 — Needs a decision first
+
+\`\`\`yaml
+id: GAP-07
+type: GAP
+title: Needs a decision first
+status: BLOCKED
+blocked_by:
+  - DEC-003
+owner:
+  type: HUMAN
+  name: Christian
+\`\`\`
+`;
+
+    const updated = upsertLifecycleRoadmapRow(blockedRoadmap, 'GAP-07', {
+      outcome: 'Needs a decision first',
+      acceptanceCheck: 'n/a',
+      status: 'EN_DESARROLLO',
+      owner: 'claude@2026-09-18T00:00:00Z',
+      dependsOn: '—',
+    });
+
+    const entries = extractRoadmapYamlEntries(updated);
+    const gap07 = entries.find((e) => e.id === 'GAP-07')!;
+    // Status and blocked_by pass through untouched...
+    expect(gap07.data.status).toBe('BLOCKED');
+    expect(gap07.data.blocked_by).toEqual(['DEC-003']);
+    // ...but Owner still updates, same as the old format's Blocked row.
+    expect(gap07.data.assigned_agent).toBe('claude');
+    expect(gap07.data.executor).toBe('AI');
+  });
 });
 
 describe('replaceRoadmapRowCells (new format)', () => {
