@@ -477,3 +477,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/src/modules/mcp/*, apps/api/src/common/guards/project-member.guard.ts, apps/api/src/app.module.ts, apps/api/package.json (+@modelcontextprotocol/sdk, zod), docs/{Stack_Tecnologies,architecture,permissions,Roadmap,Features}.md
 - Verify: pnpm --filter api test 96/96, pnpm test:e2e 152/152, pnpm -r lint clean, pnpm -r build clean.
 - Follow-up: GAP-31 (task comments, with a REST endpoint this time) and GAP-28 (dual-format Roadmap/Agentslog parsing, EN_DESARROLLO) are the next pending points; continue scanning backlog/docs for further items.
+
+## [2026-09-18T15:46:54Z] | Claude | GAP-30 | DONE
+
+- Summary: Follow-up fix (advisor review after GAP-30 shipped): res.on('close') was registered AFTER awaiting transport.handleRequest, but for a non-streaming reply that resolves only once the response is already written -- close can already have fired by then, so the listener never ran and every MCP request leaked its McpServer+transport pair. Moved registration before connect/handleRequest. Also added e2e verification for two things asserted but never checked: the close handler actually fires (spy on McpServer.prototype.close / StreamableHTTPServerTransport.prototype.close) and the @Throttle 300/min override actually applies to /mcp instead of silently falling back to the global 100/min (120 rapid requests, none 429).
+- Files: apps/api/src/modules/mcp/mcp.controller.ts, apps/api/test/mcp.e2e-spec.ts, docs/Stack_Tecnologies.md
+- Verify: pnpm --filter api test 96/96, pnpm test:e2e 154/154, pnpm -r lint clean, pnpm -r build clean. Commit f005af7.
+- Follow-up: Next: GAP-28 (dual-format Roadmap/Agentslog parsing, EN_DESARROLLO, the only Active work entry and what blocks project_docs check from passing) is the next pending point per advisor -- an in-progress item takes priority over new scope like GAP-31. Do not convert this repo's own Roadmap.md to the new schema in the same pass; land dual-format read+write with tests first.
