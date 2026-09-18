@@ -400,3 +400,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/src/modules/roadmap/agentslog-parser.service.ts,apps/api/src/modules/roadmap/agentslog-writer.util.ts,apps/api/src/modules/roadmap/agentslog-parser.service.spec.ts,apps/api/src/modules/roadmap/agentslog-writer.util.spec.ts
 - Verify: pnpm -r test (218 passed); pnpm test:e2e still blocked - Docker Desktop's WSL2 backend is stuck (docker-desktop distro Stopped), tried Docker Desktop restart + wsl --shutdown + wsl --update, all failed or hung; needs a reboot or Docker Desktop repair, user's call
 - Follow-up: Two commits (GAP-28 phase 1 + phase 2) both local-only, not pushed, until pnpm test:e2e passes covering both. Do not push or start further phases until the e2e gate clears - synchronization.e2e-spec.ts is the suite that exercises the exact sync paths both phases touch.
+
+## [2026-09-18T11:56:36Z] | claude | GAP-28 | IN_PROGRESS
+
+- Summary: Docker/WSL2 recovered (wsl --update fixed the stuck docker-desktop distro). pnpm test:e2e now green: 21/21 files, 130/130 tests, confirmed twice independently. Pushed both pending commits (e3c8e51 phase 1, 28a2245 phase 2) to origin/develop.
+- Files: none - infra recovery + push only
+- Verify: pnpm test:e2e (130/130 passed); git push origin develop -> 7dd864e..28a2245
+- Follow-up: Roadmap.md itself still not converted to the new schema (deferred, self-sync risk unchanged - see AGENTS.md Migration status note); Features.md/log cross-reference retrofit still separate, out of scope. Moving to next backlog item: GAP-21 (progress rollup strategy UI exposure).
