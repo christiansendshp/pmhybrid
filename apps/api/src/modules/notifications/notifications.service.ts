@@ -99,8 +99,9 @@ export class NotificationsService {
     payload: Prisma.InputJsonValue,
     excludeActorId?: string,
   ): Promise<void> {
+    let members: { actorId: string }[];
     try {
-      const members = await this.prisma.projectMember.findMany({
+      members = await this.prisma.projectMember.findMany({
         where: {
           projectId,
           isActive: true,
@@ -120,19 +121,26 @@ export class NotificationsService {
           payload,
         })),
       });
-      await Promise.all(
-        members.map((m) =>
-          this.gateway.pushToActor(m.actorId, {
-            type: 'notifications.changed',
-          }),
-        ),
-      );
     } catch (error) {
-      // Best-effort side channel — never let a notification failure look
-      // like the sync itself failed.
       this.logger.error(
         `Failed to create ${type} notifications for project ${projectId}: ${String(error)}`,
       );
+      return;
     }
+
+    // Isolated from the persistence try/catch above: a push failure (dead
+    // socket, actor lookup hiccup) must never be logged as if the
+    // notifications themselves failed to save — they didn't.
+    await Promise.all(
+      members.map((m) =>
+        this.gateway
+          .pushToActor(m.actorId, { type: 'notifications.changed' })
+          .catch((error: unknown) => {
+            this.logger.error(
+              `Failed to push realtime notification to actor ${m.actorId}: ${String(error)}`,
+            );
+          }),
+      ),
+    );
   }
 }
