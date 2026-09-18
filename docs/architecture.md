@@ -62,7 +62,7 @@ no oversized modules):
 | `tasks`                        | Task CRUD, subtasks (self-referential), dependencies, assignment, Kanban transition policy   |
 | `roadmap`                      | `RoadmapParserService`, `AgentslogParserService` — parsing only, no orchestration            |
 | `synchronization`              | Scheduler, reconciliation algorithm, write-back orchestration                                |
-| `git-providers`                | `ProjectRepositoryProvider` interface + `LocalFsGitProvider` (MVP)                           |
+| `git-providers`                | `ProjectRepositoryProvider` interface + `LocalFsGitProvider`/`GitHubGitProvider`             |
 | `audit`                        | `AuditEvent` recording inside callers' transactions + project audit trail read API           |
 | `notifications`                | `Notification` recording, subscribes to domain events                                        |
 | `conflicts`                    | `Conflict` CRUD and resolution endpoints                                                     |
@@ -81,8 +81,18 @@ Three areas are built behind an interface/strategy from day one so they can
 grow without touching call sites:
 
 1. **`ProjectRepositoryProvider`** (`git-providers` module): `readFile`,
-   `writeFile`, `listRevisions`. MVP ships `LocalFsGitProvider` only; GitHub/
-   GitLab/Bitbucket providers are additive later.
+   `writeFile`, `listRevisions`. `LocalFsGitProvider` (local disk) and
+   `GitHubGitProvider` (GitHub REST API, Roadmap GAP-23) both implement it
+   unchanged; GitLab/Bitbucket providers are additive later. Selected
+   process-wide by `GIT_PROVIDER_TYPE` (`local` default, or `github`), not
+   per-project — `git-providers.module.ts` builds only the selected one so
+   `GitHubGitProvider`'s fail-fast `GITHUB_TOKEN` check never runs for local
+   deployments. Because the interface takes only `(docsPath, relativePath)`
+   with no project id or repo-URL parameter, a GitHub-backed `Project.docsPath`
+   holds `"owner/repo"` or `"owner/repo/subpath"` instead of a local path —
+   `Project.repoUrl` stays informational only (see the provider's own doc
+   comment for the full reasoning). The docsPath filesystem browser (GAP-27)
+   only makes sense for `local` and refuses with 409 otherwise.
 2. **`ProgressRollupStrategy`** (`tasks` module): selected per-project via
    `Project.progressRollupStrategy`. MVP implements `EQUAL_WEIGHT_AVERAGE`
    only; `LEAF_EQUAL_WEIGHT` is a documented, not-yet-built alternative behind

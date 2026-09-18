@@ -12,6 +12,8 @@ export interface EnvConfig {
   GIT_PROVIDER_TYPE: string;
   /** Filesystem browser (docsPath picker) is confined to this directory and its descendants. */
   PROJECT_DOCS_BROWSE_ROOT: string;
+  /** GitHub REST API token used only when GIT_PROVIDER_TYPE=github (Roadmap GAP-23). */
+  GITHUB_TOKEN: string;
 }
 
 const REQUIRED_KEYS: Array<keyof EnvConfig> = ['DATABASE_URL', 'JWT_SECRET'];
@@ -44,5 +46,6 @@ export function validateEnv(
       raw.SYNC_SCHEDULER_ENABLED?.toLowerCase() !== 'false',
     GIT_PROVIDER_TYPE: raw.GIT_PROVIDER_TYPE ?? 'local',
     PROJECT_DOCS_BROWSE_ROOT: raw.PROJECT_DOCS_BROWSE_ROOT ?? homedir(),
+    GITHUB_TOKEN: raw.GITHUB_TOKEN ?? '',
   };
 }

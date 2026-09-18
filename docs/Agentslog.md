@@ -428,3 +428,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/src/common/decorators/current-audit-origin.decorator.ts,apps/api/src/modules/{conflicts,agents,projects,users,project-members,phases,epics,tasks,roles,templates}/_.service.ts,apps/api/src/modules/{conflicts,agents,projects,users,project-members,phases,epics,tasks,roles}/_.controller.ts,apps/api/src/modules/synchronization/synchronization.service.ts,apps/api/test/{audit,api-keys}.e2e-spec.ts,docs/permissions.md,docs/Features.md,docs/Roadmap.md
 - Verify: pnpm -r test (220 passed); pnpm test:e2e (135/135 passed); oxlint + tsc clean
 - Follow-up: none
+
+## [2026-09-18T13:51:00Z] | claude | GAP-23 | DONE
+
+- Summary: GitHubGitProvider implements ProjectRepositoryProvider against GitHub REST API v3 (fetch, no new dep); GIT_PROVIDER_TYPE=github selects it process-wide via a manual-new factory so the fail-fast GITHUB_TOKEN check never runs for local deployments; GitHub docsPath repurposed as owner/repo[/subpath] slug (ADR-013); filesystem browser now 409s when provider isn't local
+- Files: apps/api/src/modules/git-providers/github-git-provider.service.ts, git-providers.module.ts, filesystem-browser.service.ts, env.validation.ts, .env.example, docs/architecture.md, docs/Stack_Tecnologies.md, docs/Features.md
+- Verify: lint clean; build clean; unit 72/72 (api) + 158/158 (web); e2e 135/135
+- Follow-up: GAP-25 (a11y automation) and GAP-26 (WebSockets/webhooks/MCP priority) both need a human go-ahead before an agent picks them up, per Roadmap.md's note

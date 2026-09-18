@@ -1,6 +1,10 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { EnvConfig } from '../../config/env.validation.js';
 import {
@@ -40,6 +44,12 @@ export interface BrowseDirectoryResult {
  * project creation itself needs no extra permission, so this endpoint only
  * requires being authenticated, and the root confinement is the actual
  * safeguard (docs/permissions.md).
+ *
+ * Only meaningful when GIT_PROVIDER_TYPE=local: it browses the API server's
+ * own disk to fill in a `docsPath` that, under GIT_PROVIDER_TYPE=github,
+ * means an "owner/repo/subpath" slug instead (Roadmap GAP-23) — a local
+ * disk browse can't produce that, so this refuses outright rather than
+ * silently returning folders that don't mean what the picker implies.
  */
 @Injectable()
 export class FilesystemBrowserService {
@@ -48,6 +58,13 @@ export class FilesystemBrowserService {
   async browse(
     requestedPath: string | undefined,
   ): Promise<BrowseDirectoryResult> {
+    if (
+      this.configService.get('GIT_PROVIDER_TYPE', { infer: true }) !== 'local'
+    ) {
+      throw new ConflictException(
+        'The filesystem browser is only available when GIT_PROVIDER_TYPE=local',
+      );
+    }
     const root = path.resolve(
       this.configService.get('PROJECT_DOCS_BROWSE_ROOT', { infer: true }),
     );

@@ -17,7 +17,9 @@ describe('FilesystemBrowserService', () => {
     writeFileSync(path.join(root, 'project-a', 'Roadmap.md'), '# Roadmap');
     // No Agentslog.md here — a real "not fully set up yet" folder.
 
-    const config = { get: () => root };
+    const config = {
+      get: (key: string) => (key === 'GIT_PROVIDER_TYPE' ? 'local' : root),
+    };
     service = new FilesystemBrowserService(
       config as unknown as ConfigService<EnvConfig, true>,
     );
@@ -57,5 +59,17 @@ describe('FilesystemBrowserService', () => {
     await expect(
       service.browse(path.join(root, 'does-not-exist')),
     ).rejects.toThrow(/not found/);
+  });
+
+  it('refuses to browse when GIT_PROVIDER_TYPE is not local (Roadmap GAP-23)', async () => {
+    const githubConfig = {
+      get: (key: string) => (key === 'GIT_PROVIDER_TYPE' ? 'github' : root),
+    };
+    const githubService = new FilesystemBrowserService(
+      githubConfig as unknown as ConfigService<EnvConfig, true>,
+    );
+    await expect(githubService.browse(undefined)).rejects.toThrow(
+      /only available when GIT_PROVIDER_TYPE=local/,
+    );
   });
 });
