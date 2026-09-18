@@ -54,10 +54,10 @@ describe('ProjectSettings', () => {
       status: 'ACTIVE',
       syncIntervalMinutes: 5,
       docsPath: './site-docs',
+      progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
     });
     expect(component.form.disabled).toBe(true);
     expect(text()).toContain('para cambiarla necesitas el permiso project.update');
-    expect(text()).toContain('Promedio de peso igual');
     expect(text()).not.toContain('Guardar configuración');
   });
 
@@ -77,10 +77,26 @@ describe('ProjectSettings', () => {
       syncIntervalMinutes: 5,
       docsPath: './site-docs',
       repoUrl: 'https://example.test/site',
+      progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
     });
     expect(context.project()?.name).toBe('Site 2.0');
     expect(component.form.pristine).toBe(true);
     expect(text()).toContain('Configuración guardada.');
+  });
+
+  it('changes the progress rollup strategy and saves it (Roadmap GAP-21)', async () => {
+    const { component, context } = render(['project.update']);
+    update.mockResolvedValue({ ...PROJECT, progressRollupStrategy: 'LEAF_EQUAL_WEIGHT' });
+
+    component.form.patchValue({ progressRollupStrategy: 'LEAF_EQUAL_WEIGHT' });
+    component.form.markAsDirty();
+    await component.save();
+
+    expect(update).toHaveBeenCalledWith(
+      'p1',
+      expect.objectContaining({ progressRollupStrategy: 'LEAF_EQUAL_WEIGHT' }),
+    );
+    expect(context.project()?.progressRollupStrategy).toBe('LEAF_EQUAL_WEIGHT');
   });
 
   it('refuses invalid settings and shows why a save failed', async () => {

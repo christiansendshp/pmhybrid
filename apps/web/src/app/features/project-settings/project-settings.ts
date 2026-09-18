@@ -9,8 +9,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { describeHttpError } from '../../core/http-error.js';
 import { ProjectContext } from '../../core/project-context.js';
 import {
+  PROGRESS_ROLLUP_STRATEGIES,
+  PROGRESS_ROLLUP_STRATEGY_LABELS,
   PROJECT_STATUSES,
   Project,
+  ProgressRollupStrategy,
   ProjectStatus,
   ProjectsService,
 } from '../../core/projects.service.js';
@@ -23,11 +26,6 @@ const STATUS_LABELS: Record<ProjectStatus, string> = {
   ACTIVE: 'Activo',
   PAUSED: 'Pausado',
   ARCHIVED: 'Archivado',
-};
-
-const ROLLUP_LABELS: Record<string, string> = {
-  EQUAL_WEIGHT_AVERAGE: 'Promedio de peso igual',
-  LEAF_EQUAL_WEIGHT: 'Peso igual entre hojas',
 };
 
 /**
@@ -56,12 +54,10 @@ export class ProjectSettings {
 
   readonly statuses = PROJECT_STATUSES;
   readonly statusLabels = STATUS_LABELS;
+  readonly rollupStrategies = PROGRESS_ROLLUP_STRATEGIES;
+  readonly rollupStrategyLabels = PROGRESS_ROLLUP_STRATEGY_LABELS;
   readonly project = this.context.project;
   readonly canEdit = computed(() => this.context.permissions().includes(PROJECT_UPDATE));
-  readonly rollupLabel = computed(() => {
-    const strategy = this.project()?.progressRollupStrategy ?? '';
-    return ROLLUP_LABELS[strategy] ?? strategy;
-  });
   readonly saving = signal(false);
   readonly saved = signal(false);
   readonly errorMessage = signal<string | null>(null);
@@ -73,6 +69,7 @@ export class ProjectSettings {
     syncIntervalMinutes: [5, [Validators.required, Validators.min(1), Validators.pattern(/^\d+$/)]],
     docsPath: ['', [Validators.required, Validators.pattern(NOT_BLANK)]],
     repoUrl: [''],
+    progressRollupStrategy: ['EQUAL_WEIGHT_AVERAGE' as ProgressRollupStrategy],
   });
 
   constructor() {
@@ -110,6 +107,7 @@ export class ProjectSettings {
         syncIntervalMinutes: Number(value.syncIntervalMinutes),
         docsPath: value.docsPath.trim(),
         repoUrl: value.repoUrl.trim() || null,
+        progressRollupStrategy: value.progressRollupStrategy,
       });
       this.form.markAsPristine();
       this.context.project.set(updated);
@@ -150,5 +148,6 @@ function toFormValue(project: Project) {
     syncIntervalMinutes: project.syncIntervalMinutes,
     docsPath: project.docsPath,
     repoUrl: project.repoUrl ?? '',
+    progressRollupStrategy: project.progressRollupStrategy as ProgressRollupStrategy,
   };
 }

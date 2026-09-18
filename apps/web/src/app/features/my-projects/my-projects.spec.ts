@@ -127,4 +127,32 @@ describe('MyProjects (brief §19)', () => {
 
     expect(component.form.controls.docsPath.value).toBe('./kept-as-is');
   });
+
+  it('defaults the progress rollup strategy and sends the chosen one on create (Roadmap GAP-21)', async () => {
+    listMine.mockResolvedValue([]);
+    const create = vi.fn().mockResolvedValue(project());
+    TestBed.overrideProvider(ProjectsService, {
+      useValue: { listMine, create },
+    });
+    const fixture = TestBed.createComponent(MyProjects);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const component = fixture.componentInstance;
+
+    component.openCreateForm();
+    expect(component.form.controls.progressRollupStrategy.value).toBe('EQUAL_WEIGHT_AVERAGE');
+
+    component.form.setValue({
+      name: 'New Project',
+      description: '',
+      docsPath: './new-docs',
+      repoUrl: '',
+      progressRollupStrategy: 'LEAF_EQUAL_WEIGHT',
+    });
+    await component.submit();
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ progressRollupStrategy: 'LEAF_EQUAL_WEIGHT' }),
+    );
+  });
 });

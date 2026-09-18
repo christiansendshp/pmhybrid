@@ -38,6 +38,16 @@
       <input matInput type="url" formControlName="repoUrl" />
     </mat-form-field>
 
+    <mat-form-field appearance="outline">
+      <mat-label>Cálculo de progreso</mat-label>
+      <mat-select formControlName="progressRollupStrategy">
+        @for (strategy of rollupStrategies; track strategy) {
+          <mat-option [value]="strategy">{{ rollupStrategyLabels[strategy] }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint>Se puede cambiar después desde la configuración del proyecto.</mat-hint>
+    </mat-form-field>
+
     @if (errorMessage()) {
       <p class="create-form__wide" role="alert">{{ errorMessage() }}</p>
     }

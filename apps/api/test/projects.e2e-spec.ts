@@ -178,6 +178,39 @@ describe('Projects / RBAC (e2e)', () => {
     await patch({ name: 'Taken over' }, outsiderToken).expect(403);
   });
 
+  it('accepts a progress rollup strategy on create and lets it be changed via update (Roadmap GAP-21)', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/projects')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        name: 'Rollup Project',
+        docsPath: './rollup-docs',
+        progressRollupStrategy: 'LEAF_EQUAL_WEIGHT',
+      })
+      .expect(201);
+    expect(created.body.progressRollupStrategy).toBe('LEAF_EQUAL_WEIGHT');
+
+    const defaulted = await request(app.getHttpServer())
+      .post('/projects')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ name: 'Default Rollup Project', docsPath: './default-rollup-docs' })
+      .expect(201);
+    expect(defaulted.body.progressRollupStrategy).toBe('EQUAL_WEIGHT_AVERAGE');
+
+    const updated = await request(app.getHttpServer())
+      .patch(`/projects/${created.body.id}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE' })
+      .expect(200);
+    expect(updated.body.progressRollupStrategy).toBe('EQUAL_WEIGHT_AVERAGE');
+
+    await request(app.getHttpServer())
+      .patch(`/projects/${created.body.id}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ progressRollupStrategy: 'NOT_A_STRATEGY' })
+      .expect(400);
+  });
+
   it('summarises each of my projects for the multi-project view (brief §19)', async () => {
     const auth = `Bearer ${ownerToken}`;
     const created = await request(app.getHttpServer())

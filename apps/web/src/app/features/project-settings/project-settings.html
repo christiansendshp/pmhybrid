@@ -34,6 +34,16 @@
       <mat-error>Un número entero de al menos 1 minuto.</mat-error>
     </mat-form-field>
 
+    <mat-form-field appearance="outline">
+      <mat-label>Cálculo de progreso</mat-label>
+      <mat-select formControlName="progressRollupStrategy">
+        @for (strategy of rollupStrategies; track strategy) {
+          <mat-option [value]="strategy">{{ rollupStrategyLabels[strategy] }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint>Cómo se promedia el progreso de fases y épicas a partir de sus hijos.</mat-hint>
+    </mat-form-field>
+
     <mat-form-field appearance="outline" class="settings__wide">
       <mat-label>Ruta de documentos</mat-label>
       <input matInput formControlName="docsPath" />
@@ -51,8 +61,6 @@
 
     @if (project(); as p) {
       <dl class="settings__facts settings__wide">
-        <dt>Cálculo de progreso</dt>
-        <dd>{{ rollupLabel() }}</dd>
         <dt>Creado</dt>
         <dd>{{ p.createdAt | date: 'mediumDate' }}</dd>
       </dl>

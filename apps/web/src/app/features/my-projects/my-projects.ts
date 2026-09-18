@@ -6,8 +6,15 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { describeHttpError } from '../../core/http-error.js';
-import { ProjectWithSummary, ProjectsService } from '../../core/projects.service.js';
+import {
+  PROGRESS_ROLLUP_STRATEGIES,
+  PROGRESS_ROLLUP_STRATEGY_LABELS,
+  ProgressRollupStrategy,
+  ProjectWithSummary,
+  ProjectsService,
+} from '../../core/projects.service.js';
 import { FolderBrowserDialog } from '../../shared/folder-browser-dialog/folder-browser-dialog.js';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -27,6 +34,7 @@ const STATUS_LABELS: Record<string, string> = {
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
   ],
   templateUrl: './my-projects.html',
   styleUrl: './my-projects.scss',
@@ -43,11 +51,15 @@ export class MyProjects implements OnInit {
   readonly errorMessage = signal<string | null>(null);
   readonly showCreateForm = signal(false);
 
+  readonly rollupStrategies = PROGRESS_ROLLUP_STRATEGIES;
+  readonly rollupStrategyLabels = PROGRESS_ROLLUP_STRATEGY_LABELS;
+
   readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.pattern(/\S/)]],
     description: [''],
     docsPath: ['', [Validators.required, Validators.pattern(/\S/)]],
     repoUrl: [''],
+    progressRollupStrategy: ['EQUAL_WEIGHT_AVERAGE' as ProgressRollupStrategy],
   });
 
   async ngOnInit(): Promise<void> {
@@ -98,13 +110,15 @@ export class MyProjects implements OnInit {
     }
     this.creating.set(true);
     this.errorMessage.set(null);
-    const { name, description, docsPath, repoUrl } = this.form.getRawValue();
+    const { name, description, docsPath, repoUrl, progressRollupStrategy } =
+      this.form.getRawValue();
     try {
       await this.projectsService.create({
         name: name.trim(),
         description: description.trim() || undefined,
         docsPath: docsPath.trim(),
         repoUrl: repoUrl.trim() || undefined,
+        progressRollupStrategy,
       });
       this.cancelCreate();
       await this.reload();

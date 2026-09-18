@@ -407,3 +407,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: none - infra recovery + push only
 - Verify: pnpm test:e2e (130/130 passed); git push origin develop -> 7dd864e..28a2245
 - Follow-up: Roadmap.md itself still not converted to the new schema (deferred, self-sync risk unchanged - see AGENTS.md Migration status note); Features.md/log cross-reference retrofit still separate, out of scope. Moving to next backlog item: GAP-21 (progress rollup strategy UI exposure).
+
+## [2026-09-18T12:51:35Z] | claude | GAP-21 | DONE
+
+- Summary: Exposed progressRollupStrategy in the UI (mat-select on My Projects' create form, default EQUAL_WEIGHT_AVERAGE; editable on Project Settings, was read-only). Backend DTOs/service already validated+stored the field end-to-end, no API change needed. LEAF_EQUAL_WEIGHT remains accepted/stored but not yet computed differently (ProgressRollupService still EQUAL_WEIGHT_AVERAGE-only) - documented as a known limitation, not implemented here, matching the ticket's scope. Moved to Features.md F32; removed from Roadmap.md Near term.
+- Files: apps/web/src/app/core/projects.service.ts,apps/web/src/app/features/my-projects/{my-projects.ts,my-projects.html,my-projects.spec.ts},apps/web/src/app/features/project-settings/{project-settings.ts,project-settings.html,project-settings.spec.ts},apps/api/test/projects.e2e-spec.ts,docs/Features.md,docs/Roadmap.md
+- Verify: pnpm -r test (220 passed: 158 web + 62 api unit); pnpm test:e2e (131/131 passed); oxlint + eslint clean
+- Follow-up: none

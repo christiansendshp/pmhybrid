@@ -20,6 +20,25 @@ export type ProjectStatus = 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
 
 export const PROJECT_STATUSES: readonly ProjectStatus[] = ['ACTIVE', 'PAUSED', 'ARCHIVED'];
 
+/**
+ * Brief §16-17: how a parent's progress is rolled up from its children.
+ * `LEAF_EQUAL_WEIGHT` is accepted end-to-end (validated, stored, selectable
+ * here) but ProgressRollupService only implements EQUAL_WEIGHT_AVERAGE's
+ * math today (docs/architecture.md) — selecting it records the intent
+ * without yet changing a computed number.
+ */
+export type ProgressRollupStrategy = 'EQUAL_WEIGHT_AVERAGE' | 'LEAF_EQUAL_WEIGHT';
+
+export const PROGRESS_ROLLUP_STRATEGIES: readonly ProgressRollupStrategy[] = [
+  'EQUAL_WEIGHT_AVERAGE',
+  'LEAF_EQUAL_WEIGHT',
+];
+
+export const PROGRESS_ROLLUP_STRATEGY_LABELS: Record<ProgressRollupStrategy, string> = {
+  EQUAL_WEIGHT_AVERAGE: 'Promedio de peso igual',
+  LEAF_EQUAL_WEIGHT: 'Peso igual entre hojas',
+};
+
 /** Brief §19: what My Projects shows for each project. */
 export interface ProjectSummary {
   progress: number | null;
@@ -42,6 +61,7 @@ export interface CreateProjectInput {
   description?: string;
   repoUrl?: string;
   docsPath: string;
+  progressRollupStrategy?: ProgressRollupStrategy;
 }
 
 /** `null` clears the description or repository URL. */
@@ -52,6 +72,7 @@ export interface UpdateProjectInput {
   docsPath?: string;
   syncIntervalMinutes?: number;
   status?: ProjectStatus;
+  progressRollupStrategy?: ProgressRollupStrategy;
 }
 
 export interface ProjectMember {
