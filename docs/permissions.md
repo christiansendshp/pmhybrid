@@ -122,3 +122,19 @@ gives per-request (ADR-008), adapted for a connection that can outlive a
 deactivation. A push only ever reaches the actor id the ticket was minted
 for; there is no broadcast, so this can never leak another actor's
 notification activity.
+
+## GitHub webhook trust boundary (Roadmap GAP-29)
+
+`POST /webhooks/github` carries neither a JWT nor an API key — GitHub can't
+attach either — so it is the one endpoint in this app with no
+`JwtAuthGuard`/`ApiKeyGuard` at all. Its authentication is
+`X-Hub-Signature-256`: an HMAC-SHA256 over the exact request bytes, keyed
+with `GITHUB_WEBHOOK_SECRET`, checked with `crypto.timingSafeEqual`. A
+request with a missing, malformed, or wrong-key signature is rejected (401)
+before its payload is ever read; if `GITHUB_WEBHOOK_SECRET` itself is unset,
+every request is rejected (503) rather than silently accepted unsigned. Once
+verified, the only side effect is calling `SynchronizationService.runSync`
+for whichever project's `docsPath` names the pushed repository — the exact
+same reconciliation a member's own "Sincronizar ahora" click runs, so this
+endpoint grants no capability beyond what an authenticated project member
+already has; it only removes the wait for the next scheduled poll.

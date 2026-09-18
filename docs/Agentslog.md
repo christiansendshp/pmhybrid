@@ -449,3 +449,17 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/src/modules/realtime/, apps/api/src/modules/notifications/notifications.service.ts, apps/web/src/app/core/realtime.service.ts, apps/web/src/app/layout/app-shell/app-shell.ts, packages/shared-types/src/realtime-message.ts, docs/architecture.md, docs/Stack_Tecnologies.md (ADR-015), docs/permissions.md
 - Verify: lint clean; build clean; unit 82 api + 164 web; e2e 140/140; a11y 6/6
 - Follow-up: GAP-29 (GitHub webhooks) and GAP-30 (MCP server) remain TODO, no strong asymmetry between them for an autonomous pick
+
+## [2026-09-18T14:40:18Z] | Claude | GAP-26 | DONE
+
+- Summary: Fix: isolate WS push failures (pushToActor) from notification-persistence errors in notifyProjectMembers — a stale socket or actor-lookup hiccup no longer logs as a failed notification create, since createMany already committed by the time push is attempted. Also tightened the docs/architecture.md realtime paragraph into one coherent flow.
+- Files: apps/api/src/modules/notifications/notifications.service.ts, docs/architecture.md
+- Verify: pnpm --filter api test 82/82, pnpm test:e2e 140/140, pnpm -r lint clean, pnpm -r build clean. Commit f39b0fc, pushed fc113fa..f39b0fc.
+- Follow-up: Next: GAP-29 (GitHub webhooks) picked as the next autonomous target over GAP-30 (MCP server) — depends on GAP-23 already built, narrower acceptance criteria.
+
+## [2026-09-18T15:05:12Z] | Claude | GAP-29 | DONE
+
+- Summary: GitHub webhook ingestion: POST /webhooks/github verifies X-Hub-Signature-256 (HMAC-SHA256 over req.rawBody, timingSafeEqual), then runs SynchronizationService.runSync(projectId,'WEBHOOK') for every project whose docsPath names the pushed repo's full_name (exact JS-string prefix match, not Prisma startsWith -- Postgres LIKE treats backslash as its escape char, so a repo/docsPath with \, %, or _ silently failed to match; caught by the new e2e spec). New SyncTrigger.WEBHOOK enum value + migration. Non-push events (ping) and a matched project's own sync failure are both no-ops, never failing the delivery. ADR-016 (Stack_Tecnologies.md); permissions.md 'GitHub webhook trust boundary'; synchronization.md Trigger section updated. Picked over GAP-30 per Roadmap.md's recorded reasoning (extends GAP-23, narrower acceptance check).
+- Files: apps/api/src/modules/github-webhook/_, apps/api/src/main.ts, apps/api/src/config/env.validation.ts, apps/api/prisma/schema.prisma+migration, apps/api/src/modules/synchronization/_, apps/api/src/app.module.ts, docs/{Stack_Tecnologies,permissions,synchronization,architecture,Roadmap,Features}.md
+- Verify: pnpm --filter api test 92/92, pnpm test:e2e 145/145, pnpm -r lint clean, pnpm -r build clean.
+- Follow-up: Next: GAP-30 (MCP server) is the only remaining brief §27/§29 item; otherwise continue scanning backlog/docs for the next pending point.

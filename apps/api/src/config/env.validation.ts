@@ -14,6 +14,8 @@ export interface EnvConfig {
   PROJECT_DOCS_BROWSE_ROOT: string;
   /** GitHub REST API token used only when GIT_PROVIDER_TYPE=github (Roadmap GAP-23). */
   GITHUB_TOKEN: string;
+  /** HMAC secret for verifying `/webhooks/github` deliveries (Roadmap GAP-29); empty disables the endpoint. */
+  GITHUB_WEBHOOK_SECRET: string;
 }
 
 const REQUIRED_KEYS: Array<keyof EnvConfig> = ['DATABASE_URL', 'JWT_SECRET'];
@@ -47,5 +49,6 @@ export function validateEnv(
     GIT_PROVIDER_TYPE: raw.GIT_PROVIDER_TYPE ?? 'local',
     PROJECT_DOCS_BROWSE_ROOT: raw.PROJECT_DOCS_BROWSE_ROOT ?? homedir(),
     GITHUB_TOKEN: raw.GITHUB_TOKEN ?? '',
+    GITHUB_WEBHOOK_SECRET: raw.GITHUB_WEBHOOK_SECRET ?? '',
   };
 }

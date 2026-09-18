@@ -14,6 +14,9 @@ export default defineConfig({
       // earlier runs left behind) and contend with the tests for locks.
       // Tests trigger sync explicitly instead.
       SYNC_SCHEDULER_ENABLED: 'false',
+      // A fixed test secret so github-webhook.e2e-spec.ts can sign requests
+      // the running app will accept; no other spec touches this endpoint.
+      GITHUB_WEBHOOK_SECRET: 'test-webhook-secret',
       // Every e2e spec creates several throwaway projects with no cleanup —
       // outside CI (whose Postgres service container is fresh per run and
       // discarded after), that used to leak straight into the same database

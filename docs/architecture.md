@@ -63,8 +63,10 @@ no oversized modules):
 | `roadmap`                      | `RoadmapParserService`, `AgentslogParserService` — parsing only, no orchestration            |
 | `synchronization`              | Scheduler, reconciliation algorithm, write-back orchestration                                |
 | `git-providers`                | `ProjectRepositoryProvider` interface + `LocalFsGitProvider`/`GitHubGitProvider`             |
+| `github-webhook`               | `POST /webhooks/github` — verifies GitHub's signature, triggers `synchronization`'s runSync  |
 | `audit`                        | `AuditEvent` recording inside callers' transactions + project audit trail read API           |
 | `notifications`                | `Notification` recording, subscribes to domain events                                        |
+| `realtime`                     | Ticket-based WS handshake + `NotificationsGateway`'s per-actor push (Roadmap GAP-26)         |
 | `conflicts`                    | `Conflict` CRUD and resolution endpoints                                                     |
 | `dashboard`                    | Cross-project summary + activity feed (brief §14) — aggregate, not project-scoped            |
 | `workload`                     | Cross-project per-actor task list (brief §19) — `projectId` is an optional filter, not scope |
@@ -126,10 +128,11 @@ never mislabelled as a persistence failure: the rows are already committed
 by the time the push is attempted, and the REST list stays authoritative —
 opening the notifications panel (or the next app load) always refetches it,
 so a dropped push only delays the badge, it never loses a notification.
-GitHub webhook ingestion and an MCP server (the other two
-brief §27/§29 items) remain unbuilt — GAP-26 picked WebSockets first for
-having existing groundwork (this section, and the "no push" known
-limitation); whichever gets built next becomes its own GAP.
+GAP-26 picked WebSockets first for having existing groundwork (this
+section, and the "no push" known limitation); GitHub webhook ingestion
+(`webhooks/github`, Roadmap GAP-29 — `docs/synchronization.md` "Trigger")
+followed it, extending GAP-23's `GitHubGitProvider`. An MCP server (the
+remaining brief §27/§29 item) stays unbuilt as GAP-30.
 
 ## Frontend structure
 

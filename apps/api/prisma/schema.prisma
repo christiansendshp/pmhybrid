@@ -312,6 +312,7 @@ enum RevisionSource {
 enum SyncTrigger {
   SCHEDULED
   MANUAL
+  WEBHOOK
 }
 
 enum SyncStatus {

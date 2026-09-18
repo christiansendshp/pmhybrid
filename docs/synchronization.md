@@ -11,8 +11,13 @@ and write-back that consume the parser's output.
 - **Scheduled**: a `@nestjs/schedule` minute tick checks every active
   `Project` where `now - lastSyncedAt >= syncIntervalMinutes`.
 - **Manual**: `POST /projects/:id/sync` ("Sincronizar ahora", brief §11).
+- **Webhook** (Roadmap GAP-29, brief §27/§29): `POST /webhooks/github`
+  verifies GitHub's `X-Hub-Signature-256`, then syncs every `Project` whose
+  `docsPath` names the pushed repository (see `docs/permissions.md`'s
+  "GitHub webhook trust boundary" for the auth model) — a `push` no longer
+  waits for the next scheduled tick.
 
-Both paths call the same `SynchronizationService.runSync(projectId, trigger)`. The scheduled path can be switched off with `SYNC_SCHEDULER_ENABLED=false`; the e2e suite does, and triggers sync explicitly.
+All three paths call the same `SynchronizationService.runSync(projectId, trigger)`, with `trigger` recorded on the resulting `SyncRun` (`SCHEDULED`/`MANUAL`/`WEBHOOK`). The scheduled path can be switched off with `SYNC_SCHEDULER_ENABLED=false`; the e2e suite does, and triggers sync explicitly.
 
 ## Concurrency guard
 
