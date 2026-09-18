@@ -23,11 +23,11 @@
 
 ## Architecture anchors
 
-| Concern    | Current truth                                                                                                                                                                                               | Authoritative artifact    |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| Boundaries | NestJS modules: Auth, Users, Agents, Projects, ProjectMembers, Roles, Phases, Epics, Templates, Tasks, Roadmap, Synchronization, GitProviders, Audit, Notifications, Conflicts, Dashboard, Workload, Health | `docs/architecture.md`    |
-| Data flow  | Managed-project documents <-> Synchronization module <-> PostgreSQL <-> API <-> Angular; documents are read/written via a decoupled `ProjectRepositoryProvider`                                             | `docs/synchronization.md` |
-| Security   | JWT auth, RBAC via Role/Permission/ActorRole, secrets via env vars only (never in DB configJson)                                                                                                            | `docs/permissions.md`     |
+| Concern    | Current truth                                                                                                                                                                                                                        | Authoritative artifact    |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
+| Boundaries | NestJS modules: Auth, Users, Agents, Projects, ProjectMembers, Roles, Phases, Epics, Templates, Tasks, Roadmap, Synchronization, GitProviders, GithubWebhook, Audit, Notifications, Realtime, Conflicts, Dashboard, Workload, Health | `docs/architecture.md`    |
+| Data flow  | Managed-project documents <-> Synchronization module <-> PostgreSQL <-> API <-> Angular; documents are read/written via a decoupled `ProjectRepositoryProvider`                                                                      | `docs/synchronization.md` |
+| Security   | JWT auth, RBAC via Role/Permission/ActorRole, secrets via env vars only (never in DB configJson)                                                                                                                                     | `docs/permissions.md`     |
 
 ## Commands
 
@@ -61,6 +61,7 @@ Names and purpose only; never store real values.
 | GIT_PROVIDER_TYPE             | Selects the ProjectRepositoryProvider implementation process-wide: `local` (default) or `github` (Roadmap GAP-23)                                                   | no       |
 | GITHUB_TOKEN                  | GitHub REST API token; required (fails fast at boot) when GIT_PROVIDER_TYPE=github, unused otherwise                                                                | no       |
 | PROJECT_DOCS_BROWSE_ROOT      | Confines the docsPath folder picker (Roadmap GAP-27) to this directory (defaults to the API process's home directory); only meaningful when GIT_PROVIDER_TYPE=local | no       |
+| GITHUB_WEBHOOK_SECRET         | HMAC secret for verifying `POST /webhooks/github` deliveries (Roadmap GAP-29); empty (default) makes the endpoint reject every request with 503                     | no       |
 
 Validated by `apps/api/src/config/env.validation.ts` (`REQUIRED_KEYS`); only
 `DATABASE_URL` and `JWT_SECRET` throw at startup if missing, everything else
