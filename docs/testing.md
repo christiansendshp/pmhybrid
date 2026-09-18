@@ -2,11 +2,12 @@
 
 ## Layout
 
-| Suite           | Location                | Runner                                                              | What it covers                                                                    |
-| --------------- | ----------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `apps/api` unit | `src/**/*.spec.ts`      | Vitest (`vitest.config.ts`)                                         | Pure logic: parsers, policy checks, utility functions — no DB, no HTTP            |
-| `apps/api` e2e  | `test/**/*.e2e-spec.ts` | Vitest (`vitest.config.e2e.ts`)                                     | Full `Nest.js` app + real Postgres via `supertest` — every module's real behavior |
-| `apps/web` unit | `src/app/**/*.spec.ts`  | Vitest via Angular's `@angular/build:unit-test` builder (`ng test`) | Component/service logic with `TestBed`, mocked HTTP                               |
+| Suite           | Location                  | Runner                                                              | What it covers                                                                                |
+| --------------- | ------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `apps/api` unit | `src/**/*.spec.ts`        | Vitest (`vitest.config.ts`)                                         | Pure logic: parsers, policy checks, utility functions — no DB, no HTTP                        |
+| `apps/api` e2e  | `test/**/*.e2e-spec.ts`   | Vitest (`vitest.config.e2e.ts`)                                     | Full `Nest.js` app + real Postgres via `supertest` — every module's real behavior             |
+| `apps/web` unit | `src/app/**/*.spec.ts`    | Vitest via Angular's `@angular/build:unit-test` builder (`ng test`) | Component/service logic with `TestBed`, mocked HTTP                                           |
+| `apps/web` a11y | `apps/web/a11y/*.spec.ts` | Playwright (`playwright.config.a11y.ts`) + `@axe-core/playwright`   | Real-browser WCAG 2.2 AA scan (Roadmap GAP-25) against the app shell + 5 representative pages |
 
 Both apps' Vitest configs load `unplugin-swc` alongside `vite-tsconfig-paths`
 (ADR-003, `Stack_Tecnologies.md`) — esbuild's default TS transform silently

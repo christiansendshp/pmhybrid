@@ -435,3 +435,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/src/modules/git-providers/github-git-provider.service.ts, git-providers.module.ts, filesystem-browser.service.ts, env.validation.ts, .env.example, docs/architecture.md, docs/Stack_Tecnologies.md, docs/Features.md
 - Verify: lint clean; build clean; unit 72/72 (api) + 158/158 (web); e2e 135/135
 - Follow-up: GAP-25 (a11y automation) and GAP-26 (WebSockets/webhooks/MCP priority) both need a human go-ahead before an agent picks them up, per Roadmap.md's note
+
+## [2026-09-18T14:06:30Z] | claude | GAP-25 | DONE
+
+- Summary: Playwright + @axe-core/playwright a11y suite (apps/web/playwright.config.a11y.mts, apps/web/a11y/) against app shell + 5 representative pages; found+fixed a real critical violation: documents-viewer/conflicts mat-form-fields were missing the app-wide appearance=outline convention, causing axe's hidden-explicit-label check to fire on the default fill appearance
+- Files: apps/web/playwright.config.a11y.mts, apps/web/a11y/, apps/web/src/app/features/{documents-viewer,conflicts}/*.html, .github/workflows/ci.yml, docs/testing.md, docs/Stack_Tecnologies.md (ADR-014)
+- Verify: lint clean; build clean; unit 72 api + 158 web; e2e 135/135; a11y 6/6
+- Follow-up: GAP-26 still needs a human pick among WebSockets/webhooks/MCP; a11y coverage could broaden past the 5 current pages later

@@ -11,3 +11,6 @@ coverage/
 apps/api/prisma/*.db
 apps/api/prisma/demo-projects/
 *.tsbuildinfo
+apps/web/playwright-report/
+apps/web/test-results/
+apps/web/.playwright-a11y-auth.json

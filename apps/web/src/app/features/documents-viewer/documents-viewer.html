@@ -9,7 +9,7 @@
 </header>
 
 <div class="doc-controls">
-  <mat-form-field class="doc-controls__kind">
+  <mat-form-field appearance="outline" class="doc-controls__kind" subscriptSizing="dynamic">
     <mat-label>Documento</mat-label>
     <mat-select [ngModel]="selectedKind()" (ngModelChange)="onKindChange($event)">
       @for (kind of documentKinds; track kind) {
@@ -23,7 +23,7 @@
     <mat-button-toggle value="structured">Estructurada</mat-button-toggle>
   </mat-button-toggle-group>
 
-  <mat-form-field class="doc-controls__search">
+  <mat-form-field appearance="outline" class="doc-controls__search" subscriptSizing="dynamic">
     <mat-label>Buscar en este documento…</mat-label>
     <input matInput [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" />
   </mat-form-field>

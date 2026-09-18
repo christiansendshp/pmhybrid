@@ -92,7 +92,7 @@
       @if (editingConflictId() === conflict.id) {
         <form class="manual-edit" (ngSubmit)="submitManualEdit(conflict)">
           @for (field of manualFields(); track field.field) {
-            <mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>{{ field.label }}</mat-label>
               @if (field.kind === 'status') {
                 <mat-select

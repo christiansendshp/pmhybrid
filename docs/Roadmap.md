@@ -18,22 +18,20 @@ Post-MVP gap backlog derived from a brief-vs-code review on 2026-09-15
 a fresh brief-vs-code review done 2026-09-16 against the original brief
 (`Prompt — Desarrollo de Project Management Hub Humano + IA.md`), covering
 what the brief asks for that the app does not yet do. GAP-21 is DONE (see
-`Features.md` F32); GAP-22 is DONE (see `Features.md` F33); GAP-24 is DONE (see `Features.md` F34); GAP-23 is DONE (see `Features.md` F35); GAP-25, GAP-26 are not started and need product/human input before an agent should pick them up autonomously — see the note below the table.
+`Features.md` F32); GAP-22 is DONE (see `Features.md` F33); GAP-24 is DONE (see `Features.md` F34); GAP-23 is DONE (see `Features.md` F35); GAP-25 is DONE (see `Features.md` F36); GAP-26 is not started — see the note below the table for why it stays for a human pick.
 
 ## Near term
 
-| ID     | Outcome                                                                                                                                                                                                                                                                                     | Acceptance check                                                                                                                                                                                                                           | Status | Depends on |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ | ---------- |
-| GAP-25 | No automated accessibility testing exists — `apps/web/PRODUCT.md`'s WCAG 2.2 AA target (brief §21 "accesible") is an inferred goal, never verified by tooling                                                                                                                               | An automated a11y check (e.g. axe-core via Playwright, or a documented manual audit) runs against the app shell plus one representative page per surface mode; violations fixed or logged as known limitations; method + result documented | TODO   | —          |
-| GAP-26 | Real-time push (WebSockets), GitHub webhook ingestion, and an MCP server for agent task operations are all explicitly "prepare the architecture, build later" in the brief (§27, §29) — currently zero code for any of the three; **relative priority among them is UNKNOWN, not inferred** | User or product decision picks which of the three to build first; that one gets its own GAP with a concrete acceptance check once chosen                                                                                                   | TODO   | —          |
+| ID     | Outcome                                                                                                                                                                                                                                                                                     | Acceptance check                                                                                                                         | Status | Depends on |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------- |
+| GAP-26 | Real-time push (WebSockets), GitHub webhook ingestion, and an MCP server for agent task operations are all explicitly "prepare the architecture, build later" in the brief (§27, §29) — currently zero code for any of the three; **relative priority among them is UNKNOWN, not inferred** | User or product decision picks which of the three to build first; that one gets its own GAP with a concrete acceptance check once chosen | TODO   | —          |
 
-GAP-25 and GAP-26 are deliberately not picked up autonomously even though
-nothing formally blocks them: GAP-26's own acceptance check already names
-the missing input as a "user or product decision," and GAP-25's "violations
-fixed or logged" criterion is unbounded — an axe-core pass across every
-surface could turn up many independent a11y judgment calls, not one
-reversible implementation detail. Both are one human go-ahead away from
-TODO → IN_PROGRESS.
+GAP-26 is deliberately not picked up autonomously even though nothing
+formally blocks it: its own acceptance check already names the missing
+input as a "user or product decision" among three independent subsystems
+with no shared code — there is no single "most coherent" default among
+them the way there was for GAP-23's docsPath encoding or GAP-25's page/tool
+choices. It is one human go-ahead away from TODO → IN_PROGRESS.
 
 ## Blocked
 

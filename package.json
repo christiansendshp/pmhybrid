@@ -14,6 +14,7 @@
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
     "test:e2e": "pnpm --filter api test:e2e",
+    "test:a11y": "pnpm --filter web test:a11y",
     "prisma:migrate": "pnpm --filter api prisma:migrate",
     "prisma:studio": "pnpm --filter api prisma:studio",
     "prisma:seed": "pnpm --filter api prisma:seed",
