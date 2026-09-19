@@ -61,6 +61,23 @@ owner:
 \`\`\`
 `;
 
+// A 4-backtick fence whose own body contains a literal 3-backtick run --
+// exactly what prettier emits for an entry whose description quotes this
+// file's own \`\`\`yaml fence syntax (Roadmap GAP-28's BUG-01, found live).
+const ESCALATED_FENCE = `### BUG-99 — Fence escalation test
+
+\`\`\`\`yaml
+id: BUG-99
+type: BUG
+title: Fence escalation test
+status: BACKLOG
+description: >
+  Mentions a literal \`\`\`yaml sequence inline, which is why prettier
+  escalates this entry's own fence to four backticks.
+next_action: value after the embedded backticks
+\`\`\`\`
+`;
+
 const OLD_FORMAT = `# Roadmap
 
 ## Active work
@@ -83,6 +100,10 @@ describe('looksLikeNewFormatRoadmap', () => {
     expect(
       looksLikeNewFormatRoadmap('# Roadmap\n\n## Plan\n\nNo entries yet.\n'),
     ).toBe(false);
+  });
+
+  it('detects a fence escalated to 4+ backticks (prettier output), not just exactly 3', () => {
+    expect(looksLikeNewFormatRoadmap(ESCALATED_FENCE)).toBe(true);
   });
 });
 
@@ -107,6 +128,18 @@ describe('extractRoadmapYamlEntries', () => {
   it('throws when a required field is missing', () => {
     const missingType = `### TASK-1 — Broken\n\n\`\`\`yaml\nid: TASK-1\nstatus: BACKLOG\n\`\`\`\n`;
     expect(() => extractRoadmapYamlEntries(missingType)).toThrow(/type/);
+  });
+
+  it('parses a 4-backtick-fenced entry whose body has an embedded 3-backtick line, without truncating it early', () => {
+    const entries = extractRoadmapYamlEntries(ESCALATED_FENCE);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].id).toBe('BUG-99');
+    // If the closing-fence scan stopped at the embedded 3-backtick run
+    // instead of requiring 4+, the YAML would be truncated before this
+    // field and parsing would either throw or omit it.
+    expect(entries[0].data.next_action).toBe(
+      'value after the embedded backticks',
+    );
   });
 });
 

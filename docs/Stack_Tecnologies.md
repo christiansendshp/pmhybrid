@@ -33,7 +33,7 @@
 
 | Purpose       | Command                                        | Status                                                                                                                        |
 | ------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Test          | `pnpm -r test`                                 | CONFIRMED — 164 web unit + 97 api unit pass (2026-09-18)                                                                      |
+| Test          | `pnpm -r test`                                 | CONFIRMED — 164 web unit + 99 api unit pass (2026-09-19)                                                                      |
 | E2E           | `pnpm test:e2e`                                | CONFIRMED — 159/159 api e2e pass, against its own `pmhybrid_test` database (Roadmap GAP-27 follow-up), never the dev database |
 | E2E DB setup  | `pnpm --filter api test:e2e:db:setup`          | CONFIRMED — creates/migrates/seeds `pmhybrid_test`; one-time, and again after a new migration (`docs/testing.md`)             |
 | A11y          | `pnpm test:a11y`                               | CONFIRMED — 6/6 Playwright + axe-core pass against the app shell + 5 representative pages (Roadmap GAP-25)                    |

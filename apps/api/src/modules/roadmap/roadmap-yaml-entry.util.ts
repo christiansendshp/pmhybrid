@@ -14,14 +14,35 @@ import type { ParsedRoadmapRow } from './roadmap-parser.service.js';
  */
 const HEADING_RE = /^### (\S+) [—–-] .+$/;
 
+/**
+ * CommonMark fence rule (what prettier actually emits): a fence is 3+
+ * backticks, and its closing fence must be at least as long. Prettier
+ * auto-escalates to 4+ backticks whenever an entry's own YAML content
+ * (e.g. a `description` quoting this file's own format) contains a run of
+ * 3 backticks, so a literal 3-backtick-only match silently drops that
+ * entry instead of erroring — found via Roadmap GAP-28's own BUG-01 entry,
+ * whose description does exactly this.
+ */
+const FENCE_OPEN_RE = /^(`{3,})yaml\s*$/;
+
+function matchFenceOpen(line: string): { length: number } | null {
+  const match = FENCE_OPEN_RE.exec(line.trim());
+  return match ? { length: match[1].length } : null;
+}
+
+function isFenceClose(line: string, minLength: number): boolean {
+  const match = /^(`{3,})\s*$/.exec(line.trim());
+  return !!match && match[1].length >= minLength;
+}
+
 export interface RoadmapYamlEntry {
   id: string;
   type: string;
   /** 0-based line index of the `### TYPE-ID — Title` heading. */
   headingLine: number;
-  /** 0-based line index of the opening ` ```yaml ` fence. */
+  /** 0-based line index of the opening fence (3+ backticks + `yaml`). */
   fenceOpenLine: number;
-  /** 0-based line index of the closing ` ``` ` fence. */
+  /** 0-based line index of the closing fence (backticks only, >= the opening fence's length). */
   fenceCloseLine: number;
   data: Record<string, unknown>;
 }
@@ -44,7 +65,7 @@ export function looksLikeNewFormatRoadmap(markdown: string): boolean {
     while (j < lines.length && lines[j].trim() === '') {
       j += 1;
     }
-    if (j < lines.length && lines[j].trim() === '```yaml') {
+    if (j < lines.length && matchFenceOpen(lines[j])) {
       return true;
     }
   }
@@ -75,17 +96,18 @@ export function extractRoadmapYamlEntries(
     while (fenceOpenLine < lines.length && lines[fenceOpenLine].trim() === '') {
       fenceOpenLine += 1;
     }
-    if (
-      fenceOpenLine >= lines.length ||
-      lines[fenceOpenLine].trim() !== '```yaml'
-    ) {
+    const fenceOpen =
+      fenceOpenLine < lines.length
+        ? matchFenceOpen(lines[fenceOpenLine])
+        : null;
+    if (!fenceOpen) {
       continue; // not an entry heading (e.g. a section title) — keep scanning
     }
 
     let fenceCloseLine = fenceOpenLine + 1;
     while (
       fenceCloseLine < lines.length &&
-      lines[fenceCloseLine].trim() !== '```'
+      !isFenceClose(lines[fenceCloseLine], fenceOpen.length)
     ) {
       fenceCloseLine += 1;
     }

@@ -33,35 +33,38 @@ THEME/EPIC/FEATURE/TASK/SUBTASK-level planning entry is ever needed.
 
 ## Cross-cutting
 
-### BUG-01 — Empty new-format Roadmap.md is indistinguishable from an empty old-format one
+### BUG-02 — Empty new-format Roadmap.md is indistinguishable from an empty old-format one
 
-````yaml
-id: BUG-01
+```yaml
+id: BUG-02
 type: BUG
 title: Empty new-format Roadmap.md is indistinguishable from an empty old-format one
 status: BACKLOG
 description: >
-  `looksLikeNewFormatRoadmap` (apps/api/src/modules/roadmap/
+  looksLikeNewFormatRoadmap (apps/api/src/modules/roadmap/
   roadmap-yaml-entry.util.ts) is a positive-signal detector: it returns true
-  only when it finds at least one real `### ID — Title` heading immediately
-  followed by a ```yaml fence. A new-format Roadmap.md with zero entries
-  (both `## Plan` and `## Cross-cutting` empty) has no such heading, so the
-  detector returns false for it -- indistinguishable from an empty
-  old-format document. Found while converting this file for Roadmap GAP-28,
-  before committing: an empty result either way feeds `reconcileRoadmap`
-  a zero-row parse, which would sweep every Task this project has with a
-  non-null externalId as "disappeared" (silently completed if a terminal
-  Agentslog entry exists, else a ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG
-  conflict per row) -- not caused by this specific edit (this file was kept
-  non-empty specifically to avoid it), but a latent hazard for whoever
-  empties the file next, e.g. once every entry it holds is eventually closed.
+  only when it finds at least one real entry heading immediately followed
+  by a fenced yaml block. A new-format Roadmap.md with zero entries (both
+  Plan and Cross-cutting empty) has no such heading, so the detector
+  returns false for it -- indistinguishable from an empty old-format
+  document. Found while converting this file for Roadmap GAP-28, before
+  committing: an empty result either way feeds reconcileRoadmap a zero-row
+  parse, which would sweep every Task this project has with a non-null
+  externalId as "disappeared" (silently completed if a terminal Agentslog
+  entry exists, else a ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG conflict per
+  row) -- not caused by this specific edit (this file was kept non-empty
+  specifically to avoid it), but a latent hazard for whoever empties the
+  file next, e.g. once every entry it holds is eventually closed. Originally
+  filed as BUG-01; renumbered to BUG-02 when BUG-01 was repurposed for a
+  more urgent fence-parsing defect found while writing this very entry (see
+  Features.md F42) and closed on that instead.
 expected_behavior: >
   An intentionally empty new-format Roadmap.md (no entries, but the
-  `## Plan`/`## Cross-cutting` structure present) should be recognized as
-  new-format, not misread as an empty old-format document. One candidate
-  fix: also treat a literal `## Cross-cutting` heading line as a positive
-  signal -- confirmed unique to the new format (never used by any
-  old-format code path, table, or fixture in this repo).
+  Plan/Cross-cutting structure present) should be recognized as new-format,
+  not misread as an empty old-format document. One candidate fix: also
+  treat a literal "## Cross-cutting" heading line as a positive signal --
+  confirmed unique to the new format (never used by any old-format code
+  path, table, or fixture in this repo).
 affects:
   - roadmap-yaml-entry.util.ts
 technical_context:
@@ -70,13 +73,13 @@ files:
   - apps/api/src/modules/roadmap/roadmap-yaml-entry.util.ts
   - apps/api/src/modules/roadmap/roadmap-yaml-entry.util.spec.ts
 next_action: >
-  Add a regression test with an empty-entries new-format fixture (## Plan +
-  ## Cross-cutting present, no ### entries) asserting
+  Add a regression test with an empty-entries new-format fixture (Plan and
+  Cross-cutting present, no entry headings) asserting
   looksLikeNewFormatRoadmap returns true, then make it pass -- e.g. by also
-  matching a literal `## Cross-cutting` heading line.
+  matching a literal "## Cross-cutting" heading line.
 created_at: 2026-09-18T19:13:19Z
-updated_at: 2026-09-18T19:13:19Z
-````
+updated_at: 2026-09-19T08:16:15Z
+```
 
 ### TECH_DEBT-01 — This doc set cannot fit the 8 KiB `context` budget
 

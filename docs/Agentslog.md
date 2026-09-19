@@ -505,3 +505,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: docs/Roadmap.md, docs/Agentslog.md, docs/Features.md, AGENTS.md
 - Verify: build clean; parsed live docs/Roadmap.md via node -e: new-format=true, 1 row (BUG-01), GAP-28 row gone
 - Follow-up: none
+
+## [2026-09-19T08:17:48Z] | Claude | BUG-01 | DONE
+
+- Summary: Fixed a live data-loss bug found while trying to claim BUG-01: looksLikeNewFormatRoadmap/extractRoadmapYamlEntries only matched exactly 3 backticks, so prettier's auto-escalation to 4+ (triggered by BUG-01's own description quoting the fence syntax) silently dropped that entry from parsing -- already pushed. Fixed per CommonMark (3+ backticks, close >= open length), tested with an embedded-3-backtick fixture. Also fixed documents.e2e-spec.ts, stale since GAP-28's conversion. BUG-01's original empty-file scope re-filed as BUG-02.
+- Files: apps/api/src/modules/roadmap/roadmap-yaml-entry.util.ts, apps/api/src/modules/roadmap/roadmap-yaml-entry.util.spec.ts, apps/api/test/documents.e2e-spec.ts, docs/Roadmap.md, docs/Features.md (F42)
+- Verify: pnpm --filter api build/lint clean, test 99/99, test:e2e 159/159
+- Follow-up: none

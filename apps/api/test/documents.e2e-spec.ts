@@ -41,7 +41,10 @@ describe('Documents (roadmap parser, e2e)', () => {
       .expect(200);
 
     expect(res.body.kind).toBe('roadmap');
-    expect(res.body.content).toContain('## Active work');
+    // docs/Roadmap.md converted to the new per-entry schema (Roadmap
+    // GAP-28) -- '## Cross-cutting' is a stable structural heading the
+    // schema always has, unlike specific entry content that comes and goes.
+    expect(res.body.content).toContain('## Cross-cutting');
   });
 
   it('returns 404 for an unknown document kind', () => {
