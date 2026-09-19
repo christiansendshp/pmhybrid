@@ -83,11 +83,8 @@ name: <agent>}`, `decision_date`, `status: DECIDED`.
 
 <!-- project-documentation:end -->
 
-## Migration status (2026-09-18)
+## Known check gaps
 
-`docs/Roadmap.md` is now the per-entry YAML schema (Roadmap GAP-28,
-`Features.md` F41); `claim`/`pause`/`done` work on it directly.
-
-`check` still fails on two known, tracked gaps, not bugs to silence: the
-Features/log cross-reference retrofit (out of GAP-28's scope), and the
-8 KiB context budget (see `TECH_DEBT-01` in `Roadmap.md` for the numbers).
+`check` fails on two tracked, non-blocking gaps, not bugs to silence: the
+Features/log cross-reference retrofit, and the context budget (see
+`TECH_DEBT-01`/`BUG-02` in `Roadmap.md`).

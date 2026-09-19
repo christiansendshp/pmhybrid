@@ -520,3 +520,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: docs/Roadmap.md, docs/Features.md
 - Verify: pnpm build, pnpm lint, pnpm -r test (99 api + 164 web), pnpm test:e2e (159/159)
 - Follow-up: none -- BUG-02/TECH_DEBT-01 remain BACKLOG, both need a human call before autonomous closure
+
+## [2026-09-19T08:36:23Z] | Claude | roadmap-doc-fixup | DONE
+
+- Summary: Corrected 2 errors from commit 0aa6a7f: BUG-02's next_action wrongly claimed closing it alone empties Roadmap.md (TECH_DEBT-01 also present -- no such constraint exists yet; reworded to the real constraint, which applies only when the last entry is removed). TECH_DEBT-01 re-measured: AGENTS.md init template (4229B) + last-5-log window (4908B) alone = 9137B, already over the 8192 budget with everything else at zero -- trimming prose cannot solve this; set BLOCKED, filed DEC-001 for the human call. Filed TECH_DEBT-02: 8 stale GAP-20 open-task phantoms plus this session's own BUG-02 PAUSE (log-vs-Roadmap conflict) -- documented, not fixed. Also fixed affects: misuse (file paths, not Roadmap IDs) in BUG-02/TECH_DEBT-01, pre-existing since GAP-28's conversion, never caught since check's context gate always died first.
+- Files: docs/Roadmap.md, AGENTS.md
+- Verify: prettier --check clean, RoadmapParserService.parse() returns all 4 IDs, check_roadmap_entries CHECK_FAIL=0
+- Follow-up: TECH_DEBT-01/DEC-001/TECH_DEBT-02 all BACKLOG or BLOCKED, need human input
