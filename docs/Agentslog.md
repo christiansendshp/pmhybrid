@@ -527,3 +527,9 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: docs/Roadmap.md, AGENTS.md
 - Verify: prettier --check clean, RoadmapParserService.parse() returns all 4 IDs, check_roadmap_entries CHECK_FAIL=0
 - Follow-up: TECH_DEBT-01/DEC-001/TECH_DEBT-02 all BACKLOG or BLOCKED, need human input
+
+## [2026-09-19T08:42:15Z] | Claude | BUG-02 | DONE
+
+- Summary: looksLikeNewFormatRoadmap now also recognizes an intentionally empty new-format Roadmap.md via its guaranteed structural headings (## Plan + ## Cross-cutting, both present even with zero entries), not just an entry heading+fence -- previously indistinguishable from an empty old-format file, feeding reconcileRoadmap a zero-row parse. Scoped precisely: this only changes which code path produces the empty array (both already returned []); it does not by itself validate reconcileRoadmap's mass-sweep behavior on an empty file, which stays a separate, product-behavior-scoped question if ever hit for real.
+- Files: apps/api/src/modules/roadmap/roadmap-yaml-entry.util.ts, apps/api/src/modules/roadmap/roadmap-yaml-entry.util.spec.ts
+- Verify: pnpm build/lint clean; 100/100 api unit (1 new); 164/164 web unit; 159/159 e2e

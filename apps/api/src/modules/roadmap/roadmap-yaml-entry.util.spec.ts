@@ -105,6 +105,14 @@ describe('looksLikeNewFormatRoadmap', () => {
   it('detects a fence escalated to 4+ backticks (prettier output), not just exactly 3', () => {
     expect(looksLikeNewFormatRoadmap(ESCALATED_FENCE)).toBe(true);
   });
+
+  it('recognizes an intentionally empty new-format Roadmap.md by its structural headings (GAP-28 BUG-02)', () => {
+    const emptyNewFormat =
+      '# Roadmap\n\n## Plan\n\nNo entries yet.\n\n## Cross-cutting\n\nNo entries yet.\n';
+    expect(looksLikeNewFormatRoadmap(emptyNewFormat)).toBe(true);
+    // Without a real entry, this must still parse to zero rows, not throw.
+    expect(extractRoadmapYamlEntries(emptyNewFormat)).toEqual([]);
+  });
 });
 
 describe('extractRoadmapYamlEntries', () => {

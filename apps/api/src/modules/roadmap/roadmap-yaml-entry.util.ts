@@ -48,17 +48,36 @@ export interface RoadmapYamlEntry {
 }
 
 /**
- * Positive-signal detector: true only when the document contains at least
- * one entry heading immediately followed by a `yaml` fence. Never inferred
- * from the *absence* of old-format tables — `extractMarkdownTables` ignores
- * heading text entirely, so a new-format file fed to the old table parser
- * silently yields zero tables rather than erroring, which would otherwise
- * look identical to an empty old-format document.
+ * Positive-signal detector: true when the document contains at least one
+ * entry heading immediately followed by a `yaml` fence, OR (Roadmap
+ * GAP-28's BUG-02) both structural section headings (`## Plan` and
+ * `## Cross-cutting`) with zero entries under either — the shape
+ * `templates/Roadmap.md` scaffolds and a fully-drained new-format file
+ * degrades to. Never inferred from the *absence* of old-format tables —
+ * `extractMarkdownTables` ignores heading text entirely, so a new-format
+ * file fed to the old table parser silently yields zero tables rather than
+ * erroring, which would otherwise look identical to an empty old-format
+ * document. Requiring *both* section headings (rather than either alone)
+ * matches the one shape the schema actually guarantees; confirmed by
+ * search that no old-format table, fixture, or other in-repo document
+ * parsed by this function contains a literal `## Cross-cutting` or
+ * `## Plan` line.
  */
 export function looksLikeNewFormatRoadmap(markdown: string): boolean {
   const lines = markdown.split(/\r?\n/);
+  let hasPlanHeading = false;
+  let hasCrossCuttingHeading = false;
   for (let i = 0; i < lines.length; i++) {
-    if (!HEADING_RE.test(lines[i].trim())) {
+    const trimmed = lines[i].trim();
+    if (trimmed === '## Plan') {
+      hasPlanHeading = true;
+      continue;
+    }
+    if (trimmed === '## Cross-cutting') {
+      hasCrossCuttingHeading = true;
+      continue;
+    }
+    if (!HEADING_RE.test(trimmed)) {
       continue;
     }
     let j = i + 1;
@@ -69,7 +88,7 @@ export function looksLikeNewFormatRoadmap(markdown: string): boolean {
       return true;
     }
   }
-  return false;
+  return hasPlanHeading && hasCrossCuttingHeading;
 }
 
 /**
