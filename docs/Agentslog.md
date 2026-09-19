@@ -512,3 +512,11 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/api/src/modules/roadmap/roadmap-yaml-entry.util.ts, apps/api/src/modules/roadmap/roadmap-yaml-entry.util.spec.ts, apps/api/test/documents.e2e-spec.ts, docs/Roadmap.md, docs/Features.md (F42)
 - Verify: pnpm --filter api build/lint clean, test 99/99, test:e2e 159/159
 - Follow-up: none
+
+## [2026-09-19T08:26:58Z] | Claude | BUG-02 | PAUSE
+
+- Pause: OTRO - Documentation sharpening, not implementation; BUG-02 stays BACKLOG.
+- Summary: Sharpened BUG-02/F42 docs per advisor review of the prior BUG-01 fence fix: BUG-02 now records the ordering constraint (can't close it alone -- doing so empties Roadmap.md and re-arms the detector gap it documents) and flags the skill's own vendored roadmap_ids awk has the same unfixed 3-backtick assumption. F42 now states plainly the stale e2e assertion was caused by GAP-28's conversion, not unrelated, and records the durable lesson: this repo's e2e suite reads its own live docs/, so docs-only changes need a full e2e run, not just a parser check.
+- Files: docs/Roadmap.md, docs/Features.md
+- Verify: pnpm build, pnpm lint, pnpm -r test (99 api + 164 web), pnpm test:e2e (159/159)
+- Follow-up: none -- BUG-02/TECH_DEBT-01 remain BACKLOG, both need a human call before autonomous closure

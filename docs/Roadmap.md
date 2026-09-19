@@ -76,9 +76,24 @@ next_action: >
   Add a regression test with an empty-entries new-format fixture (Plan and
   Cross-cutting present, no entry headings) asserting
   looksLikeNewFormatRoadmap returns true, then make it pass -- e.g. by also
-  matching a literal "## Cross-cutting" heading line.
+  matching a literal "## Cross-cutting" heading line. Ordering constraint:
+  do not close this entry by simply removing it, since BUG-02 and
+  TECH_DEBT-01 are currently this file's only entries -- closing BUG-02
+  first would empty docs/Roadmap.md and immediately re-arm the exact
+  detector gap this entry documents (looksLikeNewFormatRoadmap would read
+  the resulting empty file as old-format, feeding reconcileRoadmap a
+  zero-row parse). Land the detector fix and its regression test in the
+  same change that removes this entry, not as a separate follow-up.
+  Separately, note for whoever picks this up: the project-documentation
+  skill's own project_docs.sh (roadmap_ids/roadmap_has_id, used by
+  claim/pause/done) has the identical hardcoded-exactly-3-backtick fence
+  assumption this turn fixed in the app's roadmap-yaml-entry.util.ts (see
+  Features.md F42) -- that script is vendored tooling, not fixed here, and
+  will silently fail claim/pause/done again the moment any Roadmap entry's
+  own fence escalates past 3 backticks (e.g. by quoting fence syntax in its
+  description, as BUG-01 did).
 created_at: 2026-09-18T19:13:19Z
-updated_at: 2026-09-19T08:16:15Z
+updated_at: 2026-09-19T09:05:00Z
 ```
 
 ### TECH_DEBT-01 — This doc set cannot fit the 8 KiB `context` budget
