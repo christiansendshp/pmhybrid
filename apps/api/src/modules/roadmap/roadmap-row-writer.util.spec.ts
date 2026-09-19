@@ -258,6 +258,28 @@ describe('upsertLifecycleRoadmapRow (new format)', () => {
     expect(entries.map((e) => e.id)).toContain('TASK-42');
   });
 
+  it('appends a first entry to a genuinely empty new-format Roadmap.md, instead of throwing (GAP-28 BUG-02)', () => {
+    // Before BUG-02's fix, looksLikeNewFormatRoadmap misread this as an
+    // empty old-format document, so upsertLifecycleRoadmapRow took the
+    // old-format branch and threw "Roadmap.md has no Active work table
+    // to write into" -- there is no such table here. It must now append
+    // a well-formed entry via the new-format path instead.
+    const emptyNewFormatRoadmap =
+      '# Roadmap\n\n## Plan\n\nNo entries yet.\n\n## Cross-cutting\n\nNo entries yet.\n';
+
+    const updated = upsertLifecycleRoadmapRow(emptyNewFormatRoadmap, 'PMH-1', {
+      outcome: 'First task in an empty file',
+      acceptanceCheck: 'n/a',
+      status: 'PENDIENTE',
+      owner: '—',
+      dependsOn: '—',
+    });
+
+    const entries = extractRoadmapYamlEntries(updated);
+    expect(entries.map((e) => e.id)).toEqual(['PMH-1']);
+    expect(entries[0].data.title).toBe('First task in an empty file');
+  });
+
   it('leaves a BLOCKED entry blocked, mirroring the old format Blocked table having no Status column', () => {
     const blockedRoadmap = `# Roadmap
 

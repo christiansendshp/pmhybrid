@@ -137,15 +137,19 @@ description: >
   pass 1`, `GAP-20 kanban/task-form`, `GAP-20 task-detail`, `GAP-20 copy
   pass 2`), each still showing IN_PROGRESS at 68h+ even though GAP-20
   itself is DONE (see prose below) -- nobody ever appended a closing entry
-  for the individual slice ids, only for `GAP-20` itself. The 9th is new,
-  from this very session: this doc-sharpening change's own log entry used
-  `BUG-02 | PAUSE` (the closest fit in the IN_PROGRESS/PAUSE/DONE
-  vocabulary for "touched this entry's docs, did not finish or claim the
-  underlying bug"), which now shows BUG-02 as open/held-by-Claude in the
-  log while Roadmap.md's BUG-02 entry says `status: BACKLOG` -- a live
-  instance of AGENTS.md's own "the log wins on conflict" rule producing a
-  misleading conflict from a single documentation touch, not an actual
-  claim.
+  for the individual slice ids, only for `GAP-20` itself. A 9th phantom
+  appeared this very session and illustrates the defect precisely: a
+  doc-sharpening log entry used `BUG-02 | PAUSE` (the closest fit in the
+  IN_PROGRESS/PAUSE/DONE vocabulary for "touched this entry's docs, did
+  not finish or claim the underlying bug"), which briefly showed BUG-02
+  as open/held-by-Claude in the log while Roadmap.md's BUG-02 entry said
+  `status: BACKLOG` -- a live instance of AGENTS.md's own "the log wins
+  on conflict" rule producing a misleading conflict from a single
+  documentation touch, not an actual claim. It retired cleanly only
+  because BUG-02 happened to be closed for real (`done`) shortly after,
+  in the same session -- nothing in the tooling reconciled it; a PAUSE
+  with no following DONE, which is the common case, stays a phantom
+  exactly like the 8 GAP-20 slices.
 expected_behavior: >
   `open_tasks_line` reflects genuinely open work, not permanently-stuck
   historical artifacts, and a docs-only touch to an entry does not read as
