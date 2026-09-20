@@ -555,3 +555,10 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: Replaced GAP-20's azure/violet Material palette with a new dark-first developer-console direction (DEC-002): azure stays primary (its M3 neutrals are already graphite), orange replaces violet as the exclusive AI-agent-identity channel, hairline-seam panels (.page-header/.table-scroll), tracked uppercase table headers, tighter radii. Shell+theme foundation only (per next_action); DESIGN.md rewritten to record the new world. Page templates untouched -- zero unit/e2e/a11y breakage.
 - Files: apps/web/src/styles.scss apps/web/src/app/layout/app-shell/app-shell.scss apps/web/DESIGN.md
 - Verify: pnpm -r test: 101 api + 167 web passed; pnpm test:e2e: 160 passed; pnpm test:a11y (playwright.config.a11y.mts): 6/6 passed; pnpm lint clean; pnpm build clean; manual browser check of light+dark, login+team pages
+
+## [2026-09-20T12:18:59Z] | Claude | GAP-33 | DONE
+
+- Summary: Correction after GAP-33 closed: independent finish review (impeccable new-work.md step 7, spawned as a fresh general-purpose subagent since the named impeccable-finish-reviewer isn't installed here) caught that keeping azure as primary left surface/neutral tokens byte-identical to GAP-20's pre-redesign values -- a refinement, not DEC-002's decided replacement. Fixed: rendered and read out every cool Material palette before picking cyan (genuinely different graphite, no cream-ground regression, no green/status collision) as primary; orange stays tertiary/AI-agent-exclusive. Also fixed 2 pre-existing tertiary-exclusivity leaks the review found (kanban HIGH-priority chip, documents-viewer search highlight) and an unrelated dashboard float-rounding bug. DESIGN.md corrected to match built behavior.
+- Files: apps/web/src/styles.scss, apps/web/DESIGN.md, apps/web/src/app/features/{dashboard,kanban,documents-viewer}/*
+- Verify: pnpm -r test: 101 api + 167 web; pnpm test:e2e: 160; pnpm test:a11y: 6/6; lint/build clean; visually walked 8 surfaces in both themes, no regressions
+- Follow-up: GAP-34 carries the remaining ~14 pages
