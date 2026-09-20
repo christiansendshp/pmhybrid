@@ -58,6 +58,7 @@
   flex-direction: column;
   min-width: 0;
   padding: var(--space-2);
+  border: 1px solid var(--mat-sys-outline-variant);
   border-radius: var(--radius-md);
   background: var(--mat-sys-surface-container-low);
 }
@@ -69,6 +70,8 @@
   padding: var(--space-1) var(--space-2) var(--space-2);
   font: var(--mat-sys-label-large);
   color: var(--mat-sys-on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .column__cards {
@@ -151,7 +154,7 @@
   flex: 1;
   height: 4px;
   overflow: hidden;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   background: var(--mat-sys-surface-container-highest);
 }
 

@@ -156,7 +156,12 @@ type scale is used as-is; do not hand-tune the ratio. `h1`–`h3` map to
 Table headers (`th`, global) are uppercase with `letter-spacing: 0.04em` —
 the one typographic signature borrowed from the "panel headers in small
 caps" system grammar, applied through a single shared selector so it
-reaches every data table in the app without a per-page edit.
+reaches every data table in the app without a per-page edit. Kanban column
+headers (`.column__title`) get the same treatment — a column is a panel
+too. Two narrow, accepted exceptions to "one family": `documents-viewer`'s
+raw document/code pane and `team`'s inline API-key `<code>` both use a
+system monospace stack — literal source content, not UI chrome, and the
+category convention for both.
 
 ## Layout
 
@@ -258,22 +263,34 @@ var(--mat-sys-outline-variant)` under its padding, matching `.tab-nav`'s
   into the Roadmap per ADR-002) and proper nouns/method names (Kanban,
   Roadmap, Agentslog).
 
-## Rollout status (Roadmap GAP-33)
+## Rollout status (Roadmap GAP-33/GAP-34)
 
 This redesign ships per-surface, closing and re-claiming a Roadmap entry
 per surface rather than one long-lived entry (see `TECH_DEBT-02` for why).
-Landed so far: the global token foundation above (`styles.scss`) and the
-shared `AppShell` (top bar, nav, theme toggle, notifications, brand mark).
-Every routed page inherits the new tokens and shared classes automatically
-through `--mat-sys-*` custom properties and the unchanged `.page-header`/
-`.tab-nav`/`.table-scroll`/`.kind-badge`/`.status-badge`/`.status-counts`
-class vocabulary — no page template was edited in this pass, with two
-narrow exceptions found by an independent finish review and fixed as part
-of protecting this file's own tertiary-exclusivity claim: `kanban.scss`'s
-`.priority[data-priority='HIGH']` and `documents-viewer.scss`'s search
-`mark` highlight both referenced `--mat-sys-tertiary(-container)` pre-GAP-33
-(harmless under violet, a collision with the AI-agent badge under orange) —
-repointed to `outline`/`on-surface` and `primary-container` respectively.
-Remaining: verify and, where a page has other bespoke component-level
-styling beyond these shared classes, bring it in line with the seamed-panel
-grammar surface by surface.
+
+**Landed:**
+
+- The global token foundation (`styles.scss`) and the shared `AppShell`
+  (top bar, nav, theme toggle, notifications, brand mark) — GAP-33. Every
+  routed page inherits the new tokens and shared classes automatically
+  through `--mat-sys-*` custom properties and the unchanged `.page-header`/
+  `.tab-nav`/`.table-scroll`/`.kind-badge`/`.status-badge`/`.status-counts`
+  class vocabulary, with two narrow tertiary-exclusivity leaks fixed
+  (`kanban.scss`'s `.priority[data-priority='HIGH']`, `documents-viewer.scss`'s
+  search `mark` highlight — both pre-existing, harmless under GAP-20's
+  violet, a collision with the AI-agent badge once tertiary became orange).
+- `kanban.scss` — GAP-34, first per-page slice. `.column` gained a
+  hairline-seam border (columns now read as seamed panels, consistent with
+  `.table-scroll`); `.column__title` gained the same uppercase/tracked
+  treatment as `th` (a column header is a panel header); `.card__bar`'s
+  stray `2px` radius moved onto the documented `--radius-sm` token (same
+  rendered result — a 4px-tall bar fully rounds at either value — now
+  detector-clean).
+
+**Remaining:** verify and, where a page has other bespoke component-level
+styling beyond the shared classes, bring it in line with the seamed-panel
+grammar surface by surface. A visual/detector audit of the other ~13 pages
+found most already fully consistent through the shared vocabulary alone
+(confirmed for login, team, my-projects, task-detail, workload, audit-log,
+dashboard, documents-viewer) — GAP-34 tracks only the surfaces that
+actually need a bespoke-styling pass, not a fixed 14-page checklist.

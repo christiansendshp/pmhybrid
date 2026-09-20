@@ -45,7 +45,7 @@
   width: 5rem;
   height: 4px;
   overflow: hidden;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   background: var(--mat-sys-surface-container-highest);
 }
 

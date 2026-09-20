@@ -562,3 +562,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Files: apps/web/src/styles.scss, apps/web/DESIGN.md, apps/web/src/app/features/{dashboard,kanban,documents-viewer}/*
 - Verify: pnpm -r test: 101 api + 167 web; pnpm test:e2e: 160; pnpm test:a11y: 6/6; lint/build clean; visually walked 8 surfaces in both themes, no regressions
 - Follow-up: GAP-34 carries the remaining ~14 pages
+
+## [2026-09-20T19:35:49Z] | Claude | GAP-34 | IN_PROGRESS
+
+- Summary: Carry the dark-first developer console direction into kanban (first surface slice)
+- Verify: pending
+
+## [2026-09-20T19:42:57Z] | Claude | GAP-34 | DONE
+
+- Summary: Audited every remaining routed page's bespoke styling against the new dark-first developer-console grammar (mechanical detector + grep across the whole app for stray radius/color values). Most pages already inherit fully through shared classes with zero changes needed (login, team, task-detail, audit-log, dashboard, documents-viewer, project-settings, project-dashboard, conflicts, roles, phases-progress). Fixed what didn't: kanban (columns gained hairline-seam borders, column headers gained the same uppercase/tracked treatment as table th, progress-bar radius moved onto --radius-sm), login/my-projects/workload's own progress-bar and brand-mark radius copies (same pre-existing 2px/5px magic numbers as kanban and app-shell had before GAP-33). Zero stray violet/hardcoded-hex references remain anywhere in apps/web/src.
+- Files: apps/web/src/app/features/{kanban,auth/login,my-projects,workload}/*.scss, apps/web/DESIGN.md
+- Verify: pnpm -r test: 101 api + 167 web; pnpm test:a11y: 6/6; lint/build clean; detect.mjs clean except 2 documented intentional exceptions; live browser check of kanban/workload
