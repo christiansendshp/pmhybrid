@@ -584,3 +584,25 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: apps/web/package.json's test:a11y script named playwright.config.a11y.ts, but the real file is playwright.config.a11y.mts -- the documented pnpm test:a11y command failed outright with a config-not-found error. One-line fix: corrected the extension. Verified pnpm test:a11y from the repo root now runs and passes all 6 tests.
 - Files: apps/web/package.json
 - Verify: pnpm test:a11y: 6/6 passed; pnpm -r lint/build clean
+
+## [2026-09-20T20:17:53Z] | Claude | TECH_DEBT-01 | IN_PROGRESS
+
+- Summary: Resolve via DEC-001: raise CONTEXT_LIMIT
+- Verify: pending
+
+## [2026-09-20T20:18:03Z] | Claude | TECH_DEBT-01 | DONE
+
+- Summary: Resolved via DEC-001: raised CONTEXT_LIMIT from 8192 to 16384 bytes in both project_docs.sh and project_docs.ps1 (confirmed project-local, no global skill copy exists, so the change is fully scoped/reversible). check . now exits 0 on this project instead of dying on the context-size gate. Raising the limit unmasked a second, previously-invisible failure in check_roadmap_features_ids -- this project's Features.md used a sequential F<N> id scheme for its first 42 rows (predating the log:TASK-ID linkage done now writes into every row) -- fixed with a general grandfather rule (bare F<N> ids, and any ever-closed log id, are recognized as legitimate pre-convention history rather than a broken cross-reference) plus a staleness-based downgrade (an old, never-closed, unmatched id -- the 8 ad-hoc GAP-20 slice ids TECH_DEBT-02 already documents -- becomes a non-blocking WARN instead of a hard ERROR, while a fresh one still fails check immediately).
+- Files: .claude/skills/project-documentation/scripts/project_docs.sh, .claude/skills/project-documentation/scripts/project_docs.ps1, .claude/skills/project-documentation/scripts/smoke_test.sh
+- Verify: check . exits 0 on the real project; skill's own smoke test: 150 passed, 0 failed (both sh and ps1 runners)
+
+## [2026-09-20T20:18:08Z] | Claude | TECH_DEBT-02 | IN_PROGRESS
+
+- Summary: Fix phantom open-task retirement
+- Verify: pending
+
+## [2026-09-20T20:18:20Z] | Claude | TECH_DEBT-02 | DONE
+
+- Summary: Fixed the underlying defect: extracted a shared open_task_states()/Get-OpenTaskStates helper (project_docs.sh and .ps1) that filters IN_PROGRESS/PAUSE log states through a Roadmap-status cross-reference -- a task-id whose matching Roadmap entry has since moved to a non-active status (without a matching DONE log entry) now correctly retires from context/status/rotate's open-task views, whether that happened via a differently-worded closing entry or (the BUG-02 pattern this was originally found from) a docs-only touch that reused PAUSE/IN_PROGRESS as the closest fit in the log vocabulary. Also fixes a real common-case gap beyond the two originally-described incidents: a normal pause LIMITE/OTRO (which sets Roadmap status to READY, releasing the task) no longer shows as still-open until reclaimed. The 8 historical ad-hoc GAP-20 slice-id phantoms this entry originally catalogued are deliberately NOT retired -- they have no matching Roadmap entry to cross-reference by construction, and this entry's own prior guidance explicitly rejected appending 8 retroactive closing entries to force them closed (evicts real recent history from the log window for no real benefit). They remain visible but no longer as a hard check failure: TECH_DEBT-01's closing work downgrades an old (stale), never-closed, unmatched id from ERROR to WARN.
+- Files: .claude/skills/project-documentation/scripts/project_docs.sh (open_task_states, open_tasks_line, cmd_status, rotate_log, check's stale-task scan), .claude/skills/project-documentation/scripts/project_docs.ps1 (Get-OpenTaskStates and its 3 call sites), .claude/skills/project-documentation/scripts/smoke_test.sh (new pause-OTRO-then-context/status coverage)
+- Verify: skill's own smoke test: 150 passed, 0 failed (both sh and ps1 runners), including new assertions that a released (READY) task drops out of Open tasks/status and a reclaimed one reappears

@@ -179,7 +179,20 @@ run_suite() {
   assert_success "$label pause OTRO" run pause "$proj8" agentF SMOKE-OTRO-01 OTRO "switching tasks"
   assert_contains "$label pause OTRO sets status READY" "$proj8/docs/Roadmap.md" "status: READY"
   assert_failure "$label different agent cannot reclaim OTRO" run claim "$proj8" agentG SMOKE-OTRO-01 "steal"
+
+  echo "== $label: a PAUSE log entry whose Roadmap status has moved on retires from open tasks (TECH_DEBT-02) =="
+  assert_success "$label context after pause OTRO" run context "$proj8"
+  sed -n '/## Open tasks/,/## Latest agent entries/p' "$WORK/.out" | grep -q "SMOKE-OTRO-01" &&
+    bad "$label Open tasks section still lists a released (READY) task" ||
+    ok "$label Open tasks section no longer lists a released (READY) task"
+  assert_success "$label status after pause OTRO" run status "$proj8"
+  grep -q "SMOKE-OTRO-01" "$WORK/.out" && bad "$label status still lists a released (READY) task as open" || ok "$label status no longer lists a released (READY) task as open"
+
   assert_success "$label same agent reclaims after OTRO" run claim "$proj8" agentF SMOKE-OTRO-01 "resume"
+  assert_success "$label context after reclaim" run context "$proj8"
+  sed -n '/## Open tasks/,/## Latest agent entries/p' "$WORK/.out" | grep -q "SMOKE-OTRO-01" &&
+    ok "$label Open tasks section lists the reclaimed (IN_PROGRESS) task again" ||
+    bad "$label Open tasks section dropped a genuinely open task"
 
   echo "== $label: claim rejects a DECISION entry =="
   proj9="$WORK/${label}_decision"

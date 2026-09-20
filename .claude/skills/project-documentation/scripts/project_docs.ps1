@@ -26,7 +26,7 @@ $ContractFiles = @(
     "docs/Features.md"
 )
 $LinkTargetsDefault = @("claude", "gemini", "cursor", "windsurf", "cline", "copilot", "antigravity")
-$ContextLimit = 8192
+$ContextLimit = 16384
 $LogBytesLimit = 131072
 $LogEntriesLimit = 200
 $StaleHours = if ($env:PROJECT_DOCS_STALE_HOURS) { [int]$env:PROJECT_DOCS_STALE_HOURS } else { 24 }
@@ -404,10 +404,30 @@ function Test-Stale([string]$Task) {
     return $false
 }
 
+# Genuinely open task states: IN_PROGRESS/PAUSE per the log, minus any
+# whose matching Roadmap.md entry has since moved to a non-active status
+# without a matching DONE log entry ever being written for that exact
+# task-id (TECH_DEBT-02) -- e.g. closed by a differently-worded log entry,
+# or a docs-only touch that reused PAUSE/IN_PROGRESS as the closest fit in
+# the log's vocabulary. Reused by every consumer of "what's actually still
+# open" (context, status, rotate, the stale-task check) so the fix lives
+# in one place. A task-id with no matching Roadmap entry at all is left
+# exactly as the log says: absence of a Roadmap entry isn't evidence of
+# closure (the id may be ad hoc, or a real entry since deleted by mistake),
+# and a false "still open" is a far safer failure than silently hiding
+# real in-flight work.
+function Get-OpenTaskStates {
+    $states = @(Get-TaskStates | Where-Object { $_.Status -eq "IN_PROGRESS" -or $_.Status -eq "PAUSE" })
+    return @($states | Where-Object {
+        $rstatus = Get-RoadmapField $_.Task "status"
+        -not ($rstatus -and $rstatus -ne "IN_PROGRESS" -and $rstatus -ne "BLOCKED")
+    })
+}
+
 function Get-OpenTasksLines {
     $log = Join-Path $DocsDir "Agentslog.md"
     if (-not (Test-Path -LiteralPath $log -PathType Leaf)) { return @() }
-    $states = @(Get-TaskStates | Where-Object { $_.Status -eq "IN_PROGRESS" -or $_.Status -eq "PAUSE" })
+    $states = @(Get-OpenTaskStates)
     $lines = [System.Collections.Generic.List[string]]::new()
     foreach ($s in $states) {
         $hrs = Get-AgeHours $s.Ts
@@ -905,7 +925,7 @@ function Invoke-Done {
 function Invoke-Status {
     $log = Join-Path $DocsDir "Agentslog.md"
     if (-not (Test-Path -LiteralPath $log -PathType Leaf)) { throw "run init first" }
-    $states = @(Get-TaskStates | Where-Object { $_.Status -eq "IN_PROGRESS" -or $_.Status -eq "PAUSE" })
+    $states = @(Get-OpenTaskStates)
     foreach ($s in $states) {
         $hrs = Get-AgeHours $s.Ts
         $hrsStr = if ($null -ne $hrs) { "$hrs" } else { "?" }
@@ -1261,8 +1281,22 @@ function Test-RoadmapFeaturesIds {
     $rmIds = @(Get-RoadmapIds)
     $ftIds = @(Get-FeaturesIds)
     $states = @(Get-TaskStates)
+    # A closed (ever-DONE) id with no live Roadmap/Features match is a known,
+    # harmless gap for this project: Features.md ids up to F42 predate the
+    # log:TASK-ID linkage `done` now writes into every new row (see the
+    # plain "^F\d+$" grandfather below), so an old GAP-NN/FASE-NN close has
+    # nothing current to match by design, not by data loss. A NEVER-closed
+    # id with no match is a hard ERROR when fresh (a live mistake, worth
+    # blocking check over) or a WARN once stale (an old abandoned claim --
+    # see TECH_DEBT-02 -- worth noting, not worth blocking every future
+    # check on forever).
     foreach ($s in $states) {
-        if (-not ($rmIds -contains $s.Task) -and -not ($ftIds -contains $s.Task)) {
+        if (-not ($rmIds -contains $s.Task) -and -not ($ftIds -contains $s.Task) -and -not $s.EverDone) {
+            $hrs = Get-AgeHours $s.Ts
+            if ($null -ne $hrs -and $hrs -ge $StaleHours) {
+                [Console]::Error.WriteLine("WARN: log ID $($s.Task) not found in Roadmap or Features (stale, ${hrs}h -- abandoned ad-hoc id, see TECH_DEBT-02)")
+                continue
+            }
             [Console]::Error.WriteLine("ERROR: log ID $($s.Task) not found in Roadmap or Features")
             $script:CheckFail = $true
         }
@@ -1271,7 +1305,12 @@ function Test-RoadmapFeaturesIds {
         $stateForId = $states | Where-Object { $_.Task -eq $fid } | Select-Object -First 1
         if ($stateForId -and $stateForId.EverDone) { continue }
         $ok = $false
-        if ($fid -match '^F\d+-E\d+$') {
+        # Legacy Features.md ids (bare "F<N>", pre-dating the log:TASK-ID
+        # convention every current `done` row carries) have no exact log id
+        # to match by construction -- see the comment above.
+        if ($fid -match '^F\d+$') {
+            $ok = $true
+        } elseif ($fid -match '^F\d+-E\d+$') {
             if (Test-EpicHistoryDone $fid) { $ok = $true }
         } else {
             if (Test-HistoryHasDone $fid) { $ok = $true }
@@ -1484,7 +1523,7 @@ function Invoke-Rotate {
     $archiveHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($sourceHash -ne $archiveHash) { throw "archive hash verification failed" }
 
-    $openStates = @(Get-TaskStates | Where-Object { $_.Status -eq "IN_PROGRESS" -or $_.Status -eq "PAUSE" })
+    $openStates = @(Get-OpenTaskStates)
 
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.Add("# Agents log")

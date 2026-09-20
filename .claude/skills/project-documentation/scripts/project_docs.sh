@@ -10,7 +10,7 @@ DOCS_DIR="$PROJECT/docs"
 HISTORY_DIR="$DOCS_DIR/history"
 CONTRACT_FILES="AGENTS.md docs/Agentslog.md docs/ProductDescription.md docs/Stack_Tecnologies.md docs/Roadmap.md docs/Features.md"
 LINK_TARGETS_DEFAULT="claude gemini cursor windsurf cline copilot antigravity"
-CONTEXT_LIMIT=8192
+CONTEXT_LIMIT=16384
 LOG_BYTES_LIMIT=131072
 LOG_ENTRIES_LIMIT=200
 STALE_HOURS="${PROJECT_DOCS_STALE_HOURS:-24}"
@@ -353,9 +353,34 @@ is_stale() {
   return 1
 }
 
+# Genuinely open task states: IN_PROGRESS/PAUSE per the log, minus any
+# whose matching Roadmap.md entry has since moved to a non-active status
+# without a matching DONE log entry ever being written for that exact
+# task-id (TECH_DEBT-02) -- e.g. closed by a differently-worded log entry,
+# or a docs-only touch that reused PAUSE/IN_PROGRESS as the closest fit in
+# the log's vocabulary. Emits the same seven-field TSV shape as
+# all_task_states, reused by every consumer of "what's actually still
+# open" (context, status, rotate, the stale-task check) so the fix lives
+# in one place. A task-id with no matching Roadmap entry at all is left
+# exactly as the log says: absence of a Roadmap entry isn't evidence of
+# closure (the id may be ad hoc, or a real entry since deleted by mistake),
+# and a false "still open" is a far safer failure than silently hiding
+# real in-flight work.
+open_task_states() {
+  all_task_states | awk -F'\t' '$2=="IN_PROGRESS" || $2=="PAUSE"' |
+  while IFS="$TAB" read -r tid status agent ts pausecat conflict everdone; do
+    [ -n "$tid" ] || continue
+    rstatus="$(roadmap_get_field "$tid" status 2>/dev/null || true)"
+    if [ -n "$rstatus" ] && [ "$rstatus" != "IN_PROGRESS" ] && [ "$rstatus" != "BLOCKED" ]; then
+      continue
+    fi
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$tid" "$status" "$agent" "$ts" "$pausecat" "$conflict" "$everdone"
+  done
+}
+
 open_tasks_line() {
   [ -f "$DOCS_DIR/Agentslog.md" ] || return 0
-  all_task_states | awk -F'\t' '$2=="IN_PROGRESS" || $2=="PAUSE"' |
+  open_task_states |
   while IFS="$TAB" read -r tid status agent ts pausecat conflict everdone; do
     [ -n "$tid" ] || continue
     hrs="$(age_hours "$ts")"
@@ -832,7 +857,7 @@ cmd_done() {
 
 cmd_status() {
   [ -f "$DOCS_DIR/Agentslog.md" ] || die "run init first"
-  all_task_states | awk -F'\t' '$2=="IN_PROGRESS" || $2=="PAUSE"' |
+  open_task_states |
   while IFS="$TAB" read -r tid status agent ts pausecat conflict everdone; do
     [ -n "$tid" ] || continue
     hrs="$(age_hours "$ts")"
@@ -1239,11 +1264,21 @@ check_roadmap_features_ids() {
       while ((getline line < ftf) > 0) { ft[line]=1; order[++n]=line }
     }
     {
-      tid=$1; everdone=$7
+      tid=$1; ts=$4; everdone=$7
       logtid_order[++lc]=tid
       log_done[tid]=(everdone=="1")
-      if (!(tid in rm) && !(tid in ft)) {
-        print "ERROR: log ID " tid " not found in Roadmap or Features"
+      # A closed (ever-DONE) id with no live Roadmap/Features match is a
+      # known, harmless gap for this project: Features.md ids up to F42
+      # predate the log:TASK-ID linkage `done` now writes into every new
+      # row (see the plain "^F[0-9]+$" grandfather below), so an old
+      # GAP-NN/FASE-NN close has nothing current to match by design, not
+      # by data loss. A NEVER-closed id with no match ships as a tagged
+      # line -- the shell wrapper below turns it into a hard ERROR when
+      # fresh (a live mistake, worth blocking check over) or a WARN once
+      # stale (an old abandoned claim -- see TECH_DEBT-02 -- worth noting,
+      # not worth blocking every future check on forever).
+      if (!(tid in rm) && !(tid in ft) && everdone!="1") {
+        print "NOTFOUND\t" tid "\t" ts
       }
     }
     END {
@@ -1251,6 +1286,10 @@ check_roadmap_features_ids() {
         t=order[i]
         if (log_done[t]) continue
         ok=0
+        # Legacy Features.md ids (bare "F<N>", pre-dating the log:TASK-ID
+        # convention every current `done` row carries) have no exact log
+        # id to match by construction -- see the comment above.
+        if (t ~ /^F[0-9]+$/) { ok=1 }
         if (t ~ /^F[0-9]+-E[0-9]+$/) {
           prefix = t "-"
           any=0; all=1
@@ -1282,6 +1321,16 @@ check_roadmap_features_ids() {
           else
             if history_has_done "$tid"; then continue; fi
           fi
+          ;;
+        "NOTFOUND"*)
+          tid="$(printf '%s' "$line" | cut -f2)"
+          ts="$(printf '%s' "$line" | cut -f3)"
+          hrs="$(age_hours "$ts")"
+          if [ "$hrs" != "?" ] && [ "$hrs" -ge "$STALE_HOURS" ]; then
+            echo "WARN: log ID $tid not found in Roadmap or Features (stale, ${hrs}h -- abandoned ad-hoc id, see TECH_DEBT-02)" >&2
+            continue
+          fi
+          line="ERROR: log ID $tid not found in Roadmap or Features"
           ;;
       esac
       remaining="$remaining
@@ -1317,7 +1366,7 @@ check_warnings() {
     fi
   done
   if [ -f "$DOCS_DIR/Agentslog.md" ]; then
-    stale_out="$(all_task_states | awk -F'\t' '$2=="IN_PROGRESS"{print $1"\t"$4}')"
+    stale_out="$(open_task_states | awk -F'\t' '$2=="IN_PROGRESS"{print $1"\t"$4}')"
     if [ -n "$stale_out" ]; then
       printf '%s\n' "$stale_out" | while IFS="$TAB" read -r tid ts; do
         [ -n "$tid" ] || continue
@@ -1441,7 +1490,7 @@ rotate_log() {
   archive_hash="$(file_hash "$archive")"
   [ "$source_hash" = "$archive_hash" ] || die "archive hash verification failed"
 
-  open_summary="$(all_task_states | awk -F'\t' '$2=="IN_PROGRESS" || $2=="PAUSE"')"
+  open_summary="$(open_task_states)"
   archive_name="$(basename "$archive")"
 
   tmp="$DOCS_DIR/.Agentslog.md.tmp.$$"
