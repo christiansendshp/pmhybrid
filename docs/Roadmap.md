@@ -82,53 +82,16 @@ decision_date: 2026-09-20T00:00:00Z
 technical_context:
   frontend: apps/web/DESIGN.md, apps/web/PRODUCT.md, apps/web/src/app/layout/app-shell, apps/web/src/styles.scss
 next_action: >
-  Filed as GAP-33: full frontend replacement per the impeccable skill's
-  redesign path (new-work.md) -- DESIGN.md/PRODUCT.md treated as evidence
-  and anti-reference, not preserved. Sequenced after GAP-32 closes, so the
-  new design has the project-lead-assignment surface to design around
-  rather than adding it twice.
+  Executed in two slices per GAP-33's own sequencing rule (close + re-claim
+  per surface, not one long-lived entry -- see TECH_DEBT-02): GAP-33
+  (closed 2026-09-20) shipped the shell+theme foundation -- new DESIGN.md,
+  `mat.theme()` repointed to azure/orange (orange replaces violet as the
+  AI-agent channel), hairline-seam panels, tracked table headers, tighter
+  radii -- with zero unit/e2e/a11y breakage since shared classes and page
+  DOM were kept stable. GAP-34 carries the remaining ~14 pages' own
+  component-level styling into the same direction.
 created_at: 2026-09-20T00:00:00Z
-updated_at: 2026-09-20T00:00:00Z
-```
-
-### GAP-33 — Full frontend replacement with a new visual direction (DEC-002)
-
-```yaml
-id: GAP-33
-type: GAP
-title: Full frontend replacement with a new visual direction (DEC-002)
-status: BACKLOG
-description: >
-  DEC-002's decided outcome: replace GAP-20's design system (shared
-  AppShell, Material 3 azure/violet theme, spacing/radius tokens, shared
-  component vocabulary across ~14 routed pages) rather than refine it.
-  Kept BACKLOG (not claimed) until GAP-32 closes, so the redesign covers
-  the project-lead-assignment surface GAP-32 adds instead of missing it.
-expected_behavior: >
-  Every routed page in apps/web renders under a new visual direction, with
-  a new DESIGN.md replacing the current one -- product truth, content,
-  function, and native/accessibility affordances preserved throughout
-  (per the impeccable skill's redesign-vs-refinement distinction: this is
-  a new look on the same product, not new functionality).
-technical_context:
-  frontend: apps/web/DESIGN.md, apps/web/PRODUCT.md, apps/web/src/app/layout/app-shell, apps/web/src/styles.scss, apps/web/src/app/**
-next_action: >
-  Claim once GAP-32 is DONE. Run the impeccable skill's context.mjs first,
-  then its new-work.md redesign path: DESIGN.md/PRODUCT.md are evidence
-  and anti-reference only, not preserved. Constraints already known from
-  research: violet is currently the sole visual channel distinguishing
-  human vs. AI-agent actors across the app (badges, kind-labels) -- the
-  new direction needs an equally distinct, non-arbitrary replacement
-  channel for that same product-core distinction, not just a new palette
-  with no equivalent. Expect and budget for real breakage in apps/web's
-  164 unit tests (many assert on component markup) and in
-  documents.e2e-spec.ts-adjacent e2e specs that render live pages -- run
-  the full pnpm test:e2e, not a targeted subset, given how much markup
-  changes. Sequence per-surface (shell+theme first, then each page),
-  closing and re-claiming rather than one giant entry with ad-hoc slice
-  log labels (see TECH_DEBT-02 for exactly why that pattern is broken).
-created_at: 2026-09-20T00:00:00Z
-updated_at: 2026-09-20T00:00:00Z
+updated_at: 2026-09-20T11:50:00Z
 ```
 
 ### TECH_DEBT-01 — This doc set cannot fit the 8 KiB `context` budget
@@ -267,6 +230,45 @@ next_action: >
   vendored-tooling-behavior changes, not implementation details.
 created_at: 2026-09-19T09:40:00Z
 updated_at: 2026-09-19T09:40:00Z
+```
+
+### GAP-34 — Carry the new visual direction into the remaining ~14 routed pages
+
+```yaml
+id: GAP-34
+type: GAP
+title: Carry the new visual direction into the remaining ~14 routed pages
+status: READY
+description: >
+  GAP-33 (closed 2026-09-20, DEC-002's decided outcome) landed the
+  shell+theme foundation for the new "dark-first developer console"
+  direction -- azure/orange `mat.theme()`, hairline-seam panels via the
+  shared `.page-header`/`.table-scroll` classes, tracked table headers,
+  tighter radii -- documented in the rewritten `apps/web/DESIGN.md`.
+  Every page already inherits those shared tokens/classes automatically
+  (verified: zero unit/e2e/a11y breakage with no page template touched).
+  What remains is each page's own bespoke component-level styling that
+  sits outside the shared vocabulary -- e.g. kanban's card styles,
+  task-detail, documents-viewer, login -- brought in line with the same
+  seamed-panel grammar where it currently diverges from it.
+expected_behavior: >
+  Every routed page reads as the same "developer console" world as the
+  shell, not just the chrome around it -- consistent with GAP-33's
+  DESIGN.md and its Do's/Don'ts.
+technical_context:
+  frontend: apps/web/DESIGN.md, apps/web/src/app/features/**
+depends_on:
+  - GAP-33
+next_action: >
+  Sequence per-surface, closing and re-claiming per page or small page
+  group rather than one long-lived entry (see TECH_DEBT-02 for exactly why
+  that pattern is broken). Start from `apps/web/DESIGN.md`'s "Rollout
+  status" section, which names what already inherited the foundation for
+  free vs. what still needs a per-surface pass. Run the impeccable skill's
+  `detect.mjs` on each changed surface and the full `pnpm -r test` /
+  `pnpm test:e2e` / `pnpm test:a11y` suite per slice, not just at the end.
+created_at: 2026-09-20T11:50:00Z
+updated_at: 2026-09-20T11:50:00Z
 ```
 
 Post-MVP gap backlog derived from a brief-vs-code review on 2026-09-15

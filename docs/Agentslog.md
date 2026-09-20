@@ -544,3 +544,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: Added Project.leadActorId (nullable FK to Actor): a project's single responsible member, human or AI agent, mirroring Task.assigneeActorId's pattern and named 'lead' (not 'owner') to avoid colliding with the RBAC OWNER role's different meaning. Backend: schema migration, ProjectsService validates the given actor is an active project member before setting it (matches TasksService.assign()'s rule), findById/findAllForActor/update all return it via a lead relation. Frontend: project-settings has a Responsable mat-select scoped to project members; project-dashboard's header and the My Projects table both display it, with a kind-badge distinguishing human/AI-agent. Verified end-to-end in a live browser session: created a project, added an AI_AGENT member, assigned it as lead via Settings, confirmed it shows correctly in the header and the My Projects table, no console errors.
 - Files: apps/api/prisma/schema.prisma, apps/api/src/modules/projects/{projects.service.ts,dto/update-project.dto.ts}, apps/api/test/projects.e2e-spec.ts, apps/web/src/app/core/projects.service.ts, apps/web/src/app/features/{project-settings,project-dashboard,my-projects}/*, docs/domain-model.md
 - Verify: pnpm build/lint clean; 101 api unit + 167 web unit; 160/160 e2e; manual browser verification (login, create project, add AI_AGENT member, assign lead, confirm across header/settings/table)
+
+## [2026-09-20T11:29:49Z] | Claude | GAP-33 | IN_PROGRESS
+
+- Summary: Full frontend replacement with a new visual direction (DEC-002)
+- Verify: pending
+
+## [2026-09-20T11:49:55Z] | Claude | GAP-33 | DONE
+
+- Summary: Replaced GAP-20's azure/violet Material palette with a new dark-first developer-console direction (DEC-002): azure stays primary (its M3 neutrals are already graphite), orange replaces violet as the exclusive AI-agent-identity channel, hairline-seam panels (.page-header/.table-scroll), tracked uppercase table headers, tighter radii. Shell+theme foundation only (per next_action); DESIGN.md rewritten to record the new world. Page templates untouched -- zero unit/e2e/a11y breakage.
+- Files: apps/web/src/styles.scss apps/web/src/app/layout/app-shell/app-shell.scss apps/web/DESIGN.md
+- Verify: pnpm -r test: 101 api + 167 web passed; pnpm test:e2e: 160 passed; pnpm test:a11y (playwright.config.a11y.mts): 6/6 passed; pnpm lint clean; pnpm build clean; manual browser check of light+dark, login+team pages

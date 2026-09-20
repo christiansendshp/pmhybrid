@@ -1,14 +1,14 @@
 ---
 name: PM Hub
-description: Dense Operate-mode control room for humans and AI agents coordinating on shared project documents
+description: Dark-first Operate-mode developer console for humans and AI agents coordinating on shared project documents
 colors:
   primary: 'light-dark(#005cbb, #abc7ff)'
   on-primary: 'light-dark(#ffffff, #002f65)'
   primary-container: 'light-dark(#d7e3ff, #00458f)'
   secondary: 'light-dark(#565e71, #bec6dc)'
   secondary-container: 'light-dark(#dae2f9, #3e4759)'
-  tertiary: 'light-dark(#7d00fa, #d5baff)'
-  tertiary-container: 'light-dark(#ecdcff, #5f00c0)'
+  tertiary: 'light-dark(#964900, #ffb787)'
+  tertiary-container: 'light-dark(#ffdcc7, #723600)'
   surface: 'light-dark(#faf9fd, #121316)'
   on-surface: 'light-dark(#1a1b1f, #e3e2e6)'
   surface-container-low: 'light-dark(#f4f3f6, #1a1b1f)'
@@ -39,8 +39,8 @@ typography:
     fontWeight: 500
     lineHeight: '1.25rem'
 rounded:
-  sm: '6px'
-  md: '10px'
+  sm: '4px'
+  md: '8px'
   pill: '999px'
 spacing:
   1: '0.25rem'
@@ -68,44 +68,77 @@ components:
 
 PM Hub is an Operate surface (§30 of the brief): a coordination tool where
 owners, PMs, developers and QA — human and AI agent alike — read status and
-take quick actions many times a day, next to their IDE and terminal. Design
-serves the task; familiarity beats novelty. The redesign (2026-09-16) kept the
-app's existing token-based Angular Material 21 (M3) foundation and structural
-patterns (`page-header`, `table-scroll`, `status-counts`, `kind-badge`,
-`tab-nav`) — the gap it closed was that the app shipped on Material's stock,
-unconfigured `violet` demo palette with several raw, unstyled screens. Full
-detail lives in `apps/web/src/styles.scss`; this file records the decisions
-so new screens land consistent without re-deriving them.
+take quick actions many times a day, next to their IDE and terminal. This
+redesign (2026-09-20, Roadmap GAP-33, decided in DEC-002) **replaces** the
+2026-09-16 Material-demo-palette system rather than refining it: DEC-002
+chose "replace everything" once GAP-32 (project lead assignment, human or AI
+agent) closed. The prior azure/violet system is evidence of what this
+product is, not authority over what it becomes — the token architecture
+(`--mat-sys-*` CSS custom properties, `mat.theme()`, the shared classes
+below) survives because it is sound infrastructure, but the identity it
+expresses is new.
 
-**THESIS:** A control room reads instantly — status, who (human or agent),
-and freshness — without hunting, refusing both Material's out-of-the-box
-demo look and Jira/Linear's cold sameness.
-**OWN-WORLD:** Restrained neutral slate surfaces; one accent (azure) for
-primary actions, current location and focus; a second accent (violet)
-reserved exclusively for marking AI-agent presence.
-**STORY:** A PM opens a project and immediately sees what needs attention.
-**FIRST VIEWPORT:** Slim top bar (mark + primary nav + theme toggle +
-session) over a max-1440px content column; project pages add a second-level
-tab strip directly under the page header.
-**FORM:** Operate "familiar tool" — top bar + content, no sidebar (kept from
-the incumbent shell, which already fit).
+**THESIS:** A control room reads like the terminal beside it — legible
+state at a glance, not a demo palette wearing anyone's brand.
+**OWN-WORLD:** Graphite-neutral surfaces with hairline-seam panels instead
+of borderless flat regions; azure carries primary actions, focus and the
+current location (a syntax "keyword" blue, and the one hue in this system
+that also happens to generate a true achromatic neutral scale); orange is
+reserved exclusively for AI-agent identity, a syntax "flagged token" hue,
+maximally hue-distant from primary/error/success so it never reads as any
+of those.
+**STORY:** A PM opens a panel and reads status the way they read a diff —
+at a glance, unambiguous, source-of-truth first.
+**FIRST VIEWPORT:** Slim seamed top bar (mark + primary nav + theme toggle
+
+- session) over a max-1440px content column whose page header and tables
+  are themselves seamed panels; project pages add a seamed tab strip under
+  the header.
+  **FORM:** Operate "developer console" — top bar + content, no sidebar
+  (kept from the incumbent shell, which already fit the brief and the
+  audience's daily tool). Panels persist their seam/header chrome; only
+  contents swap on navigation. Direction chosen via
+  `concept-seed.mjs --scope direction --mode operate` (seed key `a6fe979b`):
+  challenger 1, "dark-first developer console" (graphite ground, hairline
+  seams, syntax-derived accents, panel-persistent navigation), fused against
+  my own top-ranked grounded candidate (assigned index 4, "server rack /
+  patch-panel inventory grammar") and won on both audience identification
+  (this audience lives in dark IDEs/terminals daily; a rack aesthetic is a
+  narrower ops/SRE reference) and product clarity (panels flex to PM Hub's
+  varied content — kanban, tables, docs, forms — better than uniform rack
+  slots).
 
 ## Colors
 
 Material 3 tokens generated from `mat.$azure-palette` (primary) and
-`mat.$violet-palette` (tertiary) via `mat.theme()`, `theme-type: color-scheme`
-— every `--mat-sys-*` value is a CSS `light-dark()` pair that resolves off the
-_used_ value of `color-scheme` on `<html>`. Default: the OS preference
-(`color-scheme: light dark` in the stylesheet). `ThemeService`
-(`src/app/core/theme.service.ts`) overrides it with an explicit inline
-`light`/`dark` once a person picks the `.theme-toggle` in the app shell,
-persisted in `localStorage` under `pmhybrid.theme`.
+`mat.$orange-palette` (tertiary) via `mat.theme()`, `theme-type:
+color-scheme` — every `--mat-sys-*` value is a CSS `light-dark()` pair that
+resolves off the _used_ value of `color-scheme` on `<html>`. Default: the
+OS preference (`color-scheme: light dark` in the stylesheet).
+`ThemeService` (`src/app/core/theme.service.ts`) overrides it with an
+explicit inline `light`/`dark` once a person picks the `.theme-toggle` in
+the app shell, persisted in `localStorage` under `pmhybrid.theme` — this
+mechanism is unchanged by the redesign. The _authored_ scene is dark: a PM
+or engineer glances at this hub many times a day beside a dark IDE and
+terminal, often for late syncs or checking on agent-driven work after
+hours — dark is the native resting state this system is designed against,
+even though the light rendering (a faithfully derived companion, not an
+afterthought) ships with equal support.
 
 - **Primary (azure)** — primary buttons, the active nav item, links, focus
-  rings, the current tab. Never decoration.
-- **Tertiary (violet)** — exclusively `.kind-badge[data-kind='AI_AGENT']` and
-  the brand mark's gradient. Do not reach for it anywhere else; introducing a
-  second general-purpose accent would break the restrained strategy.
+  rings, the current tab. Never decoration. Unchanged from the incumbent
+  system: azure already generates a near-achromatic neutral scale
+  (`surface` resolves to `#faf9fd`/`#121316`, true graphite), so keeping it
+  gets the new world's "graphite ground" for free instead of fighting
+  Material's neutral-derives-from-primary algorithm with a warmer hue.
+- **Tertiary (orange)** — exclusively `.kind-badge[data-kind='AI_AGENT']`
+  and the brand mark's gradient. Replaces violet (GAP-20). Do not reach for
+  it anywhere else; introducing a second general-purpose accent would break
+  the restrained strategy and dilute it as a reliable "this touched an
+  agent" signal. Chosen for hue distance: azure primary, red error and the
+  green-leaning secondary/status tones all sit far from orange on the hue
+  wheel, so an agent badge is never mistakable for a status pill, a
+  destructive action, or the current-location accent.
 - **Secondary** — auto-derived from primary; used sparingly for the active
   primary-nav pill background (`surface-container` variants read better for
   most secondary surfaces than the secondary role itself).
@@ -122,11 +155,15 @@ persisted in `localStorage` under `pmhybrid.theme`.
 
 One family throughout (`$font-stack` in `styles.scss`): the system sans
 stack, no separate display face — product UI per `impeccable/operate.md`.
-M3's default type scale is used as-is (`plain-family`/`brand-family` both set
-to `$font-stack`); do not hand-tune the ratio. `h1`–`h3` map to
+A console world does not need a monospace typeface to read as technical:
+`font-variant-numeric: tabular-nums` already aligns figures in a
+proportional face, so no second font family was introduced. M3's default
+type scale is used as-is; do not hand-tune the ratio. `h1`–`h3` map to
 `headline-small`/`title-medium`/`title-small` globally (`styles.scss`).
-`font-variant-numeric: tabular-nums` on anything showing counts, percentages
-or IDs next to each other in a column.
+Table headers (`th`, global) are uppercase with `letter-spacing: 0.04em` —
+the one typographic signature borrowed from the "panel headers in small
+caps" system grammar, applied through a single shared selector so it
+reaches every data table in the app without a per-page edit.
 
 ## Layout
 
@@ -143,35 +180,47 @@ or IDs next to each other in a column.
 
 ## Elevation & Depth
 
-Mostly flat: tonal surface layering (see Colors) carries hierarchy instead of
-shadows. The two exceptions are transient overlays that must read as
-floating above content — the notifications panel and any future popover —
-which use a real shadow (`0 4px 16px rgb(0 0 0 / 0.15)`), never a
-zero-offset colored halo. `--mat-sys-level1`/`level2` exist for Material's
-own internal component elevation (raised buttons, menus) and are not hand-
-applied elsewhere.
+Mostly flat: tonal surface layering (see Colors) carries hierarchy instead
+of shadows. Panels are told apart by a 1px `outline-variant` hairline seam
+(`.page-header`, `.tab-nav`, `.table-scroll`, the app header — all global,
+`styles.scss`/`app-shell.scss`) rather than by elevation; this is the one
+concrete, load-bearing translation of the "dark-first developer console"
+challenger's "graphite ground with panels distinguished by hairline seams"
+grammar into this codebase. The two exceptions that still use a real shadow
+are transient overlays that must read as floating above content — the
+notifications panel and any future popover (`0 4px 16px rgb(0 0 0 / 0.15)`,
+never a zero-offset colored halo). `--mat-sys-level1`/`level2` exist for
+Material's own internal component elevation (raised buttons, menus) and are
+not hand-applied elsewhere.
 
 ## Shapes
 
-- `--radius-sm` (6px) — buttons, nav pills, small controls.
-- `--radius-md` (10px) — cards, panels, the login card.
+- `--radius-sm` (4px) — buttons, nav pills, small controls. Tightened from
+  6px: a sharper corner reads more technical/console, less "soft app."
+- `--radius-md` (8px) — cards, panels, the login card, `.table-scroll`.
+  Tightened from 10px for the same reason.
 - `999px` (pill) — status/kind/priority badges, the notifications count.
 - Kanban cards, task cards and the login panel are the only bordered
   "card" surfaces in the app; everything else is a plain content region on
-  the page's own surface tone. Do not wrap page sections in cards by default
-  — that is the "same-size cards" scaffold this redesign moved away from.
+  the page's own surface tone, or a seamed panel (see Elevation & Depth).
+  Do not wrap page sections in cards by default — that is the "same-size
+  cards" scaffold this system stays away from.
 
 ## Components
 
 - **`.page-header`** (`styles.scss`) — every feature page's title + optional
   description + right-aligned actions. Always the first element in a routed
-  page's template.
+  page's template. Now a seamed panel boundary: `border-bottom: 1px solid
+var(--mat-sys-outline-variant)` under its padding, matching `.tab-nav`'s
+  existing seam so every page opens on the same hairline grammar.
 - **`.tab-nav`** — the project-level second-level nav (Kanban / Progress /
   Documents / Conflicts / Audit), directly under a project page's header.
 - **`.kind-badge[data-kind]`** — `HUMAN` uses neutral
-  `surface-container-highest`; `AI_AGENT` uses `tertiary-container`. This is
-  the one place tertiary appears; keep it that way so the color stays a
-  reliable "this touched an agent" signal.
+  `surface-container-highest`; `AI_AGENT` uses `tertiary-container`
+  (orange, was violet). This is the one place tertiary appears; keep it
+  that way so the color stays a reliable "this touched an agent" signal.
+  The kind label text (`kindLabel()`) always accompanies the color, so the
+  distinction is never color-only.
 - **`.status-counts`** — compact pill row for status/permission-key lists;
   `.status-counts__alert` (error-container tones) marks a blocked/overdue
   count inside the same row.
@@ -182,9 +231,10 @@ applied elsewhere.
   treatment — don't invent a new color per status name.
 - **`.table-scroll` + a scoped table class** (`.projects`, `.workload`,
   `.team-table`, …) — every dense data table: `.table-scroll` (global,
-  horizontal overflow only) wraps a table that sets its own `min-width`;
-  `.num` right-aligned tabular columns, a `.alert` modifier for an overdue/
-  open-conflict cell.
+  horizontal overflow only) now wraps its table in a `1px outline-variant`
+  border and `--radius-md` corners, reading as one seamed console panel;
+  `th` gets a `surface-container-low` band. `.num` right-aligned tabular
+  columns, a `.alert` modifier for an overdue/open-conflict cell.
 - **`.theme-toggle`** (`app-shell.scss`) — icon-only button, inline SVG
   sun/moon (no icon font is installed in this project; do not add one for a
   single control). 36×36px, matches `.notifications__toggle`'s hit target.
@@ -197,17 +247,34 @@ applied elsewhere.
 
 ## Do's and Don'ts
 
-- Do reserve tertiary (violet) for AI-agent identity only; do not use it as
+- Do reserve tertiary (orange) for AI-agent identity only; do not use it as
   a second decorative accent.
 - Do keep every page's first element a `.page-header`; do not invent a new
   page-title pattern per screen.
 - Don't wrap dashboard/summary content in same-size icon+heading+text cards
   — this system reads as one continuous dense page, not a KPI-tile grid.
-- Don't add a shadow to a static (non-overlay) surface — tonal layering
-  carries that hierarchy here.
+- Don't add a shadow to a static (non-overlay) surface — tonal layering and
+  hairline seams carry that hierarchy here.
 - Don't introduce a new icon system (font or SVG library) for one control;
   hand-authored inline SVG matches the rest of the app.
+- Don't introduce a monospace display face for the "console" feel —
+  `tabular-nums` on the system sans already aligns figures; a second family
+  would violate the one-family type rule for no legibility gain.
 - All interface copy is Spanish, except: Kanban status values themselves
   (`PENDIENTE`/`ASIGNADA`/`EN_DESARROLLO`/`QA`/`TERMINADA`, written verbatim
   into the Roadmap per ADR-002) and proper nouns/method names (Kanban,
   Roadmap, Agentslog).
+
+## Rollout status (Roadmap GAP-33)
+
+This redesign ships per-surface, closing and re-claiming a Roadmap entry
+per surface rather than one long-lived entry (see `TECH_DEBT-02` for why).
+Landed so far: the global token foundation above (`styles.scss`) and the
+shared `AppShell` (top bar, nav, theme toggle, notifications, brand mark).
+Every routed page inherits the new tokens and shared classes automatically
+through `--mat-sys-*` custom properties and the unchanged `.page-header`/
+`.tab-nav`/`.table-scroll`/`.kind-badge`/`.status-badge`/`.status-counts`
+class vocabulary — no page template was edited in this pass. Remaining:
+verify and, where a page has bespoke component-level styling beyond these
+shared classes (e.g. `kanban`'s own card styles), bring it in line with the
+seamed-panel grammar surface by surface.

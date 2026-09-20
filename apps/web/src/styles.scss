@@ -1,11 +1,18 @@
 @use '@angular/material' as mat;
 
-// Operate surface (brief §30; DESIGN.md): system fonts, one accent (azure)
-// reserved for primary actions, the current location, and focus — never
-// decoration. Tertiary (violet) marks AI-agent presence only
-// (.kind-badge[data-kind='AI_AGENT']), never used elsewhere. Light/dark
-// responds to the OS by default; ThemeService overrides `color-scheme` on
-// <html> when the person picks explicitly (see .theme-toggle in app-shell).
+// Operate surface, "dark-first developer console" (brief §30; DESIGN.md):
+// system fonts, graphite-neutral surfaces (azure keeps the primary role --
+// it already generates a near-achromatic neutral scale, and a blue accent
+// reads as a syntax "keyword" hue in this world) reserved for primary
+// actions, the current location, and focus -- never decoration. Tertiary
+// (orange) marks AI-agent presence only
+// (.kind-badge[data-kind='AI_AGENT']), a syntax-highlighter "flagged token"
+// hue, maximally hue-distant from primary/error/success so it never reads as
+// any of those -- never used elsewhere. The authored scene is dark (a
+// control room read beside a dark IDE/terminal); light/dark still responds
+// to the OS by default, and ThemeService overrides `color-scheme` on <html>
+// when the person picks explicitly (see .theme-toggle in app-shell) -- that
+// toggle behavior is unchanged by this redesign.
 $font-stack: (system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif);
 
 html {
@@ -15,7 +22,7 @@ html {
     (
       color: (
         primary: mat.$azure-palette,
-        tertiary: mat.$violet-palette,
+        tertiary: mat.$orange-palette,
         theme-type: color-scheme,
       ),
       typography: (
@@ -33,8 +40,8 @@ html {
   --space-6: 1.5rem;
   --space-8: 2rem;
   --space-12: 3rem;
-  --radius-sm: 6px;
-  --radius-md: 10px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
 }
 
@@ -104,6 +111,8 @@ th {
   font: var(--mat-sys-label-medium);
   color: var(--mat-sys-on-surface-variant);
   white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 // Shared page furniture, reused by every page inside the shell.
@@ -115,6 +124,8 @@ th {
   justify-content: space-between;
   gap: var(--space-3) var(--space-6);
   margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
 
   h1 {
     margin: 0;
@@ -213,8 +224,24 @@ th {
 
 // A dense data table wider than its container scrolls instead of squeezing (.projects,
 // .workload, .team-table, ...) — the table element itself sets its own min-width.
+// The border reads as one seamed console panel, consistent with .page-header/.tab-nav.
 .table-scroll {
   overflow-x: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--radius-md);
+
+  table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  th {
+    background: var(--mat-sys-surface-container-low);
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
 }
 
 .status-badge {
