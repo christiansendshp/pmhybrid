@@ -17,6 +17,7 @@ function project(overrides: Partial<ProjectWithSummary> = {}): ProjectWithSummar
     progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
     status: 'ACTIVE',
     createdAt: '2026-09-01T09:00:00.000Z',
+    lead: null,
     summary: {
       progress: 45.4,
       activeTasks: 3,
@@ -68,10 +69,22 @@ describe('MyProjects (brief §19)', () => {
     );
 
     expect(cells[0]).toContain('Website Relaunch');
-    expect(cells.slice(1, 7)).toEqual(['Activo', '45%', '3', '1', '2', '0']);
-    expect(cells[7]).toContain('SUCCESS');
+    expect(cells[1]).toContain('Sin asignar');
+    expect(cells.slice(2, 8)).toEqual(['Activo', '45%', '3', '1', '2', '0']);
+    expect(cells[8]).toContain('SUCCESS');
     expect(root.querySelector('a.projects__name')?.getAttribute('href')).toBe('/projects/p1');
     expect(root.querySelectorAll('td.alert')).toHaveLength(1);
+  });
+
+  it('shows the project lead, human or AI agent, when one is assigned (Roadmap GAP-32)', async () => {
+    listMine.mockResolvedValue([
+      project({ lead: { id: 'a2', displayName: 'ClaudeBot', kind: 'AI_AGENT' } }),
+    ]);
+
+    const { text } = await render();
+
+    expect(text()).toContain('ClaudeBot');
+    expect(text()).toContain('Agente IA');
   });
 
   it('says when a project has no tasks or has never synced', async () => {

@@ -41,6 +41,7 @@ model Actor {
   resolvedConflicts Conflict[]      @relation("ConflictResolvedBy")
   apiKeys          ApiKey[]
   taskComments     TaskComment[]    @relation("CommentAuthor")
+  leadProjects     Project[]        @relation("ProjectLead")
 }
 
 model UserCredential {
@@ -483,6 +484,12 @@ enum ProgressRollupStrategy {
   LEAF_EQUAL_WEIGHT
 }
 
+// Roadmap GAP-32: the one team member (human or AI agent) primarily
+// responsible for this project. Named `lead`, not `owner`, to avoid
+// colliding with the RBAC `OWNER` role (ActorRole) — that's a permission
+// grant multiple actors can hold at once; this is a single organizational
+// designation, independent of permissions. Nullable and optional: a
+// project can exist with nobody designated yet.
 model Project {
   id                     String                 @id @default(uuid())
   name                   String
@@ -494,6 +501,9 @@ model Project {
   nextTaskSeq            Int                    @default(1)
   status                 String                 @default("ACTIVE")
   createdAt              DateTime               @default(now())
+
+  leadActorId String?
+  lead        Actor?  @relation("ProjectLead", fields: [leadActorId], references: [id])
 
   phases        Phase[]
   epics         Epic[]

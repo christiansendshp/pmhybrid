@@ -5,6 +5,15 @@
       @if (p.description) {
         <p class="page-header__description">{{ p.description }}</p>
       }
+      <p class="meta-text">
+        Responsable:
+        @if (p.lead; as lead) {
+          {{ lead.displayName }}
+          <span class="kind-badge" [attr.data-kind]="lead.kind">{{ kindLabel(lead.kind) }}</span>
+        } @else {
+          sin asignar
+        }
+      </p>
     }
   </div>
 

@@ -17,19 +17,22 @@ const PROJECT: Project = {
   progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
   status: 'ACTIVE',
   createdAt: '2026-09-01T09:00:00.000Z',
+  lead: null,
 };
 
 describe('ProjectSettings', () => {
   let update: ReturnType<typeof vi.fn>;
+  let listMembers: ReturnType<typeof vi.fn>;
   let dialogOpen: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     update = vi.fn();
+    listMembers = vi.fn().mockResolvedValue([]);
     dialogOpen = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         ProjectContext,
-        { provide: ProjectsService, useValue: { update } },
+        { provide: ProjectsService, useValue: { update, listMembers } },
         { provide: MatDialog, useValue: { open: dialogOpen } },
       ],
     });
@@ -78,10 +81,38 @@ describe('ProjectSettings', () => {
       docsPath: './site-docs',
       repoUrl: 'https://example.test/site',
       progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
+      leadActorId: null,
     });
     expect(context.project()?.name).toBe('Site 2.0');
     expect(component.form.pristine).toBe(true);
     expect(text()).toContain('Configuración guardada.');
+  });
+
+  it('offers project members (human and AI agent) as lead candidates and saves the choice (Roadmap GAP-32)', async () => {
+    listMembers.mockResolvedValue([
+      { actorId: 'a1', actor: { id: 'a1', displayName: 'Jane', kind: 'HUMAN' } },
+      { actorId: 'a2', actor: { id: 'a2', displayName: 'ClaudeBot', kind: 'AI_AGENT' } },
+    ]);
+    const { component, context, fixture } = render(['project.update']);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(listMembers).toHaveBeenCalledWith('p1');
+    expect(component.members()).toEqual([
+      { actorId: 'a1', actor: { id: 'a1', displayName: 'Jane', kind: 'HUMAN' } },
+      { actorId: 'a2', actor: { id: 'a2', displayName: 'ClaudeBot', kind: 'AI_AGENT' } },
+    ]);
+
+    update.mockResolvedValue({
+      ...PROJECT,
+      lead: { id: 'a2', displayName: 'ClaudeBot', kind: 'AI_AGENT' },
+    });
+    component.form.patchValue({ leadActorId: 'a2' });
+    component.form.markAsDirty();
+    await component.save();
+
+    expect(update).toHaveBeenCalledWith('p1', expect.objectContaining({ leadActorId: 'a2' }));
+    expect(context.project()?.lead).toMatchObject({ id: 'a2', kind: 'AI_AGENT' });
   });
 
   it('changes the progress rollup strategy and saves it (Roadmap GAP-21)', async () => {

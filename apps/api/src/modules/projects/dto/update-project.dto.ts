@@ -17,9 +17,10 @@ const NOT_BLANK = /\S/;
 const provided = (_: UpdateProjectDto, value: unknown) => value !== undefined;
 
 /**
- * Project settings. Description and repository URL are cleared with `null`;
- * the name, docs path, sync interval and rollup strategy can change but
- * never be cleared.
+ * Project settings. Description, repository URL and leadActorId (Roadmap
+ * GAP-32 — the project's single responsible member, human or AI agent) are
+ * cleared with `null`; the name, docs path, sync interval and rollup
+ * strategy can change but never be cleared.
  */
 export class UpdateProjectDto extends PartialType(
   OmitType(CreateProjectDto, [
@@ -29,6 +30,10 @@ export class UpdateProjectDto extends PartialType(
     'progressRollupStrategy',
   ] as const),
 ) {
+  @IsString()
+  @IsOptional()
+  leadActorId?: string | null;
+
   @ValidateIf(provided)
   @IsString()
   @Matches(NOT_BLANK, { message: 'name must not be blank' })

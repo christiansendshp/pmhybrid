@@ -538,3 +538,9 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 
 - Summary: Add Project.leadActorId (single assignee, human or AI agent) mirroring Task's assignee pattern
 - Verify: pending
+
+## [2026-09-20T11:25:57Z] | Claude | GAP-32 | DONE
+
+- Summary: Added Project.leadActorId (nullable FK to Actor): a project's single responsible member, human or AI agent, mirroring Task.assigneeActorId's pattern and named 'lead' (not 'owner') to avoid colliding with the RBAC OWNER role's different meaning. Backend: schema migration, ProjectsService validates the given actor is an active project member before setting it (matches TasksService.assign()'s rule), findById/findAllForActor/update all return it via a lead relation. Frontend: project-settings has a Responsable mat-select scoped to project members; project-dashboard's header and the My Projects table both display it, with a kind-badge distinguishing human/AI-agent. Verified end-to-end in a live browser session: created a project, added an AI_AGENT member, assigned it as lead via Settings, confirmed it shows correctly in the header and the My Projects table, no console errors.
+- Files: apps/api/prisma/schema.prisma, apps/api/src/modules/projects/{projects.service.ts,dto/update-project.dto.ts}, apps/api/test/projects.e2e-spec.ts, apps/web/src/app/core/projects.service.ts, apps/web/src/app/features/{project-settings,project-dashboard,my-projects}/*, docs/domain-model.md
+- Verify: pnpm build/lint clean; 101 api unit + 167 web unit; 160/160 e2e; manual browser verification (login, create project, add AI_AGENT member, assign lead, confirm across header/settings/table)

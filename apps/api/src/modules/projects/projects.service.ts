@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { AuditOrigin, TaskStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
@@ -8,6 +12,11 @@ import { UpdateProjectDto } from './dto/update-project.dto.js';
 
 /** Work someone has picked up and not finished. */
 const ACTIVE_TASK_STATUSES: TaskStatus[] = ['ASIGNADA', 'EN_DESARROLLO', 'QA'];
+
+/** `findById`/`findAllForActor` (Roadmap GAP-32): the lead's identity, same shape Task's assignee already returns. */
+const LEAD_SELECT = {
+  select: { id: true, displayName: true, kind: true },
+} as const;
 
 @Injectable()
 export class ProjectsService {
@@ -22,6 +31,7 @@ export class ProjectsService {
     const projects = await this.prisma.project.findMany({
       where: { members: { some: { actorId, isActive: true } } },
       orderBy: { createdAt: 'desc' },
+      include: { lead: LEAD_SELECT },
     });
     return Promise.all(
       projects.map(async (project) => ({
@@ -85,7 +95,10 @@ export class ProjectsService {
   }
 
   async findById(id: string) {
-    const project = await this.prisma.project.findUnique({ where: { id } });
+    const project = await this.prisma.project.findUnique({
+      where: { id },
+      include: { lead: LEAD_SELECT },
+    });
     if (!project) {
       throw new NotFoundException('Project not found');
     }
@@ -153,13 +166,34 @@ export class ProjectsService {
     });
   }
 
-  /** Audits only the settings that actually changed; a no-op PATCH writes nothing. */
+  /**
+   * Audits only the settings that actually changed; a no-op PATCH writes
+   * nothing. `leadActorId` (Roadmap GAP-32) must name an active member of
+   * this project with an active Actor — same rule TasksService.assign()
+   * already enforces for a task's assignee — unless it's `null`, which
+   * always clears the lead without needing to be a member of anything.
+   */
   async update(
     id: string,
     dto: UpdateProjectDto,
     requesterActorId: string,
     origin: AuditOrigin = 'UI',
   ) {
+    if (dto.leadActorId) {
+      const member = await this.prisma.projectMember.findUnique({
+        where: {
+          projectId_actorId: { projectId: id, actorId: dto.leadActorId },
+        },
+        include: { actor: { select: { isActive: true } } },
+      });
+      if (!member || !member.isActive) {
+        throw new BadRequestException('Lead must be a project member');
+      }
+      if (!member.actor.isActive) {
+        throw new BadRequestException('Lead is inactive');
+      }
+    }
+
     const project = await this.findById(id);
     const diff = diffFields(project as unknown as Record<string, unknown>, {
       ...dto,
@@ -168,7 +202,11 @@ export class ProjectsService {
       return project;
     }
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.project.update({ where: { id }, data: dto });
+      const updated = await tx.project.update({
+        where: { id },
+        data: dto,
+        include: { lead: LEAD_SELECT },
+      });
       await this.audit.record(
         {
           projectId: id,

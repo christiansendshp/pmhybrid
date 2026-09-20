@@ -19,6 +19,7 @@ const PROJECT: Project = {
   progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
   status: 'ACTIVE',
   createdAt: '2026-09-01T09:00:00.000Z',
+  lead: null,
 };
 
 function actor(overrides: Partial<Actor> = {}): Actor {
@@ -147,6 +148,21 @@ describe('ProjectDashboard — role assignment (brief §4)', () => {
     expect(text).toContain('DEVELOPER');
     expect(component.projectRoles().map((r) => r.name)).toEqual(['DEVELOPER', 'QA']);
     expect(component.availableRolesForMember('a1')).toEqual([qaRole]);
+  });
+
+  it("shows the project's lead, or 'sin asignar' when none is set (Roadmap GAP-32)", async () => {
+    const { fixture } = await render();
+    const normalized = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
+    expect(normalized).toContain('Responsable: sin asignar');
+
+    projectsService.getById.mockResolvedValue({
+      ...PROJECT,
+      lead: { id: 'a2', displayName: 'Carla Díaz', kind: 'HUMAN' },
+    });
+    const { fixture: withLead } = await render();
+    const text = withLead.nativeElement.textContent as string;
+    expect(text).toContain('Responsable:');
+    expect(text).toContain('Carla Díaz');
   });
 
   it('hides the Assign control without project.roles.manage', async () => {

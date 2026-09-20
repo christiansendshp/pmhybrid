@@ -44,6 +44,19 @@
       <mat-hint>Cómo se promedia el progreso de fases y épicas a partir de sus hijos.</mat-hint>
     </mat-form-field>
 
+    <mat-form-field appearance="outline">
+      <mat-label>Responsable</mat-label>
+      <mat-select formControlName="leadActorId">
+        <mat-option [value]="null">Sin responsable</mat-option>
+        @for (member of members(); track member.actorId) {
+          <mat-option [value]="member.actorId"
+            >{{ member.actor.displayName }} ({{ actorKindLabel(member.actor.kind) }})</mat-option
+          >
+        }
+      </mat-select>
+      <mat-hint>El miembro, humano o agente IA, principal responsable de este proyecto.</mat-hint>
+    </mat-form-field>
+
     <mat-form-field appearance="outline" class="settings__wide">
       <mat-label>Ruta de documentos</mat-label>
       <input matInput formControlName="docsPath" />

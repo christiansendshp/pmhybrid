@@ -8,12 +8,14 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { describeHttpError } from '../../core/http-error.js';
 import { ProjectContext } from '../../core/project-context.js';
+import { actorKindLabel } from '../../core/actor-kind.js';
 import {
   PROGRESS_ROLLUP_STRATEGIES,
   PROGRESS_ROLLUP_STRATEGY_LABELS,
   PROJECT_STATUSES,
   Project,
   ProgressRollupStrategy,
+  ProjectMember,
   ProjectStatus,
   ProjectsService,
 } from '../../core/projects.service.js';
@@ -61,6 +63,10 @@ export class ProjectSettings {
   readonly saving = signal(false);
   readonly saved = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  /** Roadmap GAP-32: candidates for "Responsable" — this project's own members, human or AI agent. */
+  readonly members = signal<ProjectMember[]>([]);
+  readonly actorKindLabel = actorKindLabel;
+  private membersLoaded = false;
 
   readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.pattern(NOT_BLANK)]],
@@ -70,6 +76,7 @@ export class ProjectSettings {
     docsPath: ['', [Validators.required, Validators.pattern(NOT_BLANK)]],
     repoUrl: [''],
     progressRollupStrategy: ['EQUAL_WEIGHT_AVERAGE' as ProgressRollupStrategy],
+    leadActorId: [null as string | null],
   });
 
   constructor() {
@@ -78,6 +85,12 @@ export class ProjectSettings {
       const project = this.project();
       if (project && this.form.pristine) {
         this.form.reset(toFormValue(project));
+      }
+      if (project && !this.membersLoaded) {
+        this.membersLoaded = true;
+        void this.projectsService
+          .listMembers(project.id)
+          .then((members) => this.members.set(members));
       }
     });
     effect(() => {
@@ -108,6 +121,7 @@ export class ProjectSettings {
         docsPath: value.docsPath.trim(),
         repoUrl: value.repoUrl.trim() || null,
         progressRollupStrategy: value.progressRollupStrategy,
+        leadActorId: value.leadActorId,
       });
       this.form.markAsPristine();
       this.context.project.set(updated);
@@ -149,5 +163,6 @@ function toFormValue(project: Project) {
     docsPath: project.docsPath,
     repoUrl: project.repoUrl ?? '',
     progressRollupStrategy: project.progressRollupStrategy as ProgressRollupStrategy,
+    leadActorId: project.lead?.id ?? null,
   };
 }

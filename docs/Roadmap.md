@@ -33,64 +33,6 @@ THEME/EPIC/FEATURE/TASK/SUBTASK-level planning entry is ever needed.
 
 ## Cross-cutting
 
-### GAP-32 — A project has no single "assigned to" member (human or AI agent)
-
-```yaml
-id: GAP-32
-assigned_agent: 'Claude'
-executor: AI
-type: GAP
-title: A project has no single "assigned to" member (human or AI agent)
-status: IN_PROGRESS
-description: >
-  User request 2026-09-20: "el sistema permita manejar proyectos. Estos se
-  puedan asignar a un miembro de un equipo que puede ser humano o agente
-  IA." Investigated first rather than assumed missing: Task already has a
-  genuine single-actor `assigneeActorId` field (schema.prisma ~L239), but
-  Project has no equivalent. `ProjectMember` (schema.prisma ~L136) only
-  means "has access" (id/projectId/actorId/joinedAt/isActive, no role, no
-  primary flag). `ActorRole` grants (e.g. the seeded `OWNER` project role)
-  are permission grants, not a singular designation -- nothing stops
-  multiple actors holding `OWNER` on one project at once, and
-  RolesService.assignProjectRole already has no ActorKind check, so an
-  AI_AGENT can already be granted any role including OWNER today. So the
-  RBAC/kind-agnostic half of this request already works; what's missing is
-  a durable "this project's primary responsible member is X" field, mirrored
-  on Task's existing pattern.
-expected_behavior: >
-  A project can be assigned to exactly one team member, human or AI agent,
-  independent of how many members/roles it has; the assignment is visible
-  wherever a project is shown (dashboard, my-projects, project header) and
-  changeable by someone with the appropriate permission.
-technical_context:
-  backend: apps/api/prisma/schema.prisma (Project, ProjectMember, ActorRole), apps/api/src/modules/projects, apps/api/src/modules/project-members
-  frontend: apps/web/src/app/features/my-projects, apps/web/src/app/features/project-dashboard
-files:
-  - apps/api/prisma/schema.prisma
-technical_decision: >
-  Naming this `Project.leadActorId` (nullable FK to Actor), not
-  `ownerActorId` -- this repo's RBAC already has a permission-granting
-  `OWNER` role (ActorRole), and a second, differently-scoped "owner"
-  concept on the Project row itself would collide in name while meaning
-  something else (accountability/organization, not permissions). "Lead"
-  mirrors Task's `assignee` pattern (a single responsible party) without
-  implying it grants or requires any particular permission level.
-  Reversible, implementation-detail-scoped per AGENTS.md's own rule --
-  decided here rather than escalated.
-next_action: >
-  Add `Project.leadActorId` (nullable, FK to Actor, no onDelete cascade --
-  matches this schema's soft-delete convention for Actor references
-  elsewhere) with a migration; extend ProjectsService with a way to set/
-  clear it (permission-gated, likely the same permission that already
-  guards project-settings writes); surface it in findById/findAllForActor
-  responses; add an Angular UI to display and change it (project header/
-  settings, actor picker scoped to current members like Task's assignee
-  picker already does); update docs/domain-model.md and
-  docs/ProductDescription.md.
-created_at: 2026-09-20T00:00:00Z
-updated_at: 2026-09-20T11:04:11Z
-```
-
 ### DEC-002 — Frontend redesign: refine the existing GAP-20 system, or replace it with a new visual direction?
 
 ```yaml

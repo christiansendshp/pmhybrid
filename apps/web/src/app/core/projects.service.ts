@@ -3,6 +3,13 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE_URL } from './api-base-url.js';
 
+/** Roadmap GAP-32: the project's single responsible member, human or AI agent — null when nobody is designated yet. */
+export interface ProjectLead {
+  id: string;
+  displayName: string;
+  kind: 'HUMAN' | 'AI_AGENT';
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -13,6 +20,7 @@ export interface Project {
   progressRollupStrategy: string;
   status: string;
   createdAt: string;
+  lead: ProjectLead | null;
 }
 
 /** ACTIVE projects sync on their schedule; PAUSED and ARCHIVED ones do not. */
@@ -64,7 +72,7 @@ export interface CreateProjectInput {
   progressRollupStrategy?: ProgressRollupStrategy;
 }
 
-/** `null` clears the description or repository URL. */
+/** `null` clears the description, repository URL, or lead. */
 export interface UpdateProjectInput {
   name?: string;
   description?: string | null;
@@ -73,6 +81,7 @@ export interface UpdateProjectInput {
   syncIntervalMinutes?: number;
   status?: ProjectStatus;
   progressRollupStrategy?: ProgressRollupStrategy;
+  leadActorId?: string | null;
 }
 
 export interface ProjectMember {

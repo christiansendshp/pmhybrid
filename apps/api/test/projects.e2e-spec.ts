@@ -211,6 +211,49 @@ describe('Projects / RBAC (e2e)', () => {
       .expect(400);
   });
 
+  it('assigns a project lead to a human or AI-agent member, rejects a non-member, and clears with null (Roadmap GAP-32)', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/projects')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ name: 'Lead Project', docsPath: './lead-docs' })
+      .expect(201);
+    const projectId = created.body.id;
+
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/members`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ actorId: agentActorId })
+      .expect(201);
+
+    // A non-member (outsiderId was never added to this project) can't be named lead.
+    await request(app.getHttpServer())
+      .patch(`/projects/${projectId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ leadActorId: outsiderId })
+      .expect(400);
+
+    // An AI_AGENT member can — the same kind-agnostic rule RBAC already has.
+    const assigned = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ leadActorId: agentActorId })
+      .expect(200);
+    expect(assigned.body.lead).toMatchObject({ id: agentActorId, kind: 'AI_AGENT' });
+
+    const fetched = await request(app.getHttpServer())
+      .get(`/projects/${projectId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+    expect(fetched.body.lead.id).toBe(agentActorId);
+
+    const cleared = await request(app.getHttpServer())
+      .patch(`/projects/${projectId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ leadActorId: null })
+      .expect(200);
+    expect(cleared.body.lead).toBeNull();
+  });
+
   it('summarises each of my projects for the multi-project view (brief §19)', async () => {
     const auth = `Bearer ${ownerToken}`;
     const created = await request(app.getHttpServer())

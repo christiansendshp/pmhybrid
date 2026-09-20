@@ -78,6 +78,7 @@
       <thead>
         <tr>
           <th scope="col">Proyecto</th>
+          <th scope="col">Responsable</th>
           <th scope="col">Estado</th>
           <th scope="col">Progreso</th>
           <th scope="col" class="num">Tareas activas</th>
@@ -96,6 +97,16 @@
               }}</a>
               @if (project.description) {
                 <p class="projects__description">{{ project.description }}</p>
+              }
+            </td>
+            <td>
+              @if (project.lead; as lead) {
+                {{ lead.displayName }}
+                <span class="kind-badge" [attr.data-kind]="lead.kind">{{
+                  kindLabel(lead.kind)
+                }}</span>
+              } @else {
+                <span class="meta-text">Sin asignar</span>
               }
             </td>
             <td>

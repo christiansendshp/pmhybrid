@@ -250,8 +250,21 @@ Project(id, name, description?, repoUrl?, docsPath, syncIntervalMinutes default 
   progressRollupStrategy: EQUAL_WEIGHT_AVERAGE|LEAF_EQUAL_WEIGHT default EQUAL_WEIGHT_AVERAGE,
   nextTaskSeq default 1,      // monotonic counter for minted externalIds, see below
   status: ACTIVE|PAUSED|ARCHIVED default ACTIVE,   // only ACTIVE projects sync on a schedule
+  leadActorId?,               // Roadmap GAP-32 — single responsible member, human or AI agent
   createdAt)
 ```
+
+`leadActorId` (nullable FK to `Actor`) is a project-scoped analogue of
+`Task.assigneeActorId`: one designated "responsible for this project" member,
+independent of `ProjectMember` (access) and `ActorRole` (permission grants,
+including `OWNER`, which any number of actors can hold at once). Named
+`lead`, not `owner`, specifically to avoid colliding with the RBAC `OWNER`
+role's different meaning. Set via `PATCH /projects/:id` (`ProjectsService.
+update`, permission `project.update`), which requires the given actor to be
+an active member of the project — same rule `TasksService.assign()` already
+enforces for a task's assignee — or `null` to clear it, which always
+succeeds. No kind restriction: an `AI_AGENT` actor can be a project's lead,
+matching `RolesService.assignProjectRole`'s existing kind-agnostic behavior.
 
 No hard deletes on `Project`/`Task` in MVP — a project is soft-deleted via
 `status`, a task via `deletedAt` (`DELETE /projects/:id/tasks/:taskId`,
