@@ -78,35 +78,15 @@ product is, not authority over what it becomes — the token architecture
 below) survives because it is sound infrastructure, but the identity it
 expresses is new.
 
-**THESIS:** A control room reads like the terminal beside it — legible
-state at a glance, not a demo palette wearing anyone's brand.
-**OWN-WORLD:** Graphite-neutral surfaces with hairline-seam panels instead
-of borderless flat regions; azure carries primary actions, focus and the
-current location (a syntax "keyword" blue, and the one hue in this system
-that also happens to generate a true achromatic neutral scale); orange is
-reserved exclusively for AI-agent identity, a syntax "flagged token" hue,
-maximally hue-distant from primary/error/success so it never reads as any
-of those.
-**STORY:** A PM opens a panel and reads status the way they read a diff —
-at a glance, unambiguous, source-of-truth first.
-**FIRST VIEWPORT:** Slim seamed top bar (mark + primary nav + theme toggle
+**THESIS:** A control room reads like the terminal beside it — legible state at a glance, not a demo palette wearing anyone's brand.
 
-- session) over a max-1440px content column whose page header and tables
-  are themselves seamed panels; project pages add a seamed tab strip under
-  the header.
-  **FORM:** Operate "developer console" — top bar + content, no sidebar
-  (kept from the incumbent shell, which already fit the brief and the
-  audience's daily tool). Panels persist their seam/header chrome; only
-  contents swap on navigation. Direction chosen via
-  `concept-seed.mjs --scope direction --mode operate` (seed key `a6fe979b`):
-  challenger 1, "dark-first developer console" (graphite ground, hairline
-  seams, syntax-derived accents, panel-persistent navigation), fused against
-  my own top-ranked grounded candidate (assigned index 4, "server rack /
-  patch-panel inventory grammar") and won on both audience identification
-  (this audience lives in dark IDEs/terminals daily; a rack aesthetic is a
-  narrower ops/SRE reference) and product clarity (panels flex to PM Hub's
-  varied content — kanban, tables, docs, forms — better than uniform rack
-  slots).
+**OWN-WORLD:** Graphite-neutral surfaces with hairline-seam panels instead of borderless flat regions; azure carries primary actions, focus and the current location (a syntax "keyword" blue, and the one hue in this system that also happens to generate a true achromatic neutral scale); orange is reserved exclusively for AI-agent identity, a syntax "flagged token" hue, maximally hue-distant from primary/error/success so it never reads as any of those.
+
+**STORY:** A PM opens a panel and reads status the way they read a diff — at a glance, unambiguous, source-of-truth first.
+
+**FIRST VIEWPORT:** Slim seamed top bar (mark, primary nav, theme toggle, session) over a max-1440px content column whose page header and tables are themselves seamed panels; project pages add a seamed tab strip under the header.
+
+**FORM:** Operate "developer console" — top bar + content, no sidebar (kept from the incumbent shell, which already fit the brief and the audience's daily tool). Panels persist their seam/header chrome; only contents swap on navigation. Direction chosen via `concept-seed.mjs --scope direction --mode operate` (seed key `a6fe979b`): challenger 1, "dark-first developer console" (graphite ground, hairline seams, syntax-derived accents, panel-persistent navigation), fused against my own top-ranked grounded candidate (assigned index 4, "server rack / patch-panel inventory grammar") and won on both audience identification (this audience lives in dark IDEs/terminals daily; a rack aesthetic is a narrower ops/SRE reference) and product clarity (panels flex to PM Hub's varied content — kanban, tables, docs, forms — better than uniform rack slots).
 
 ## Colors
 
