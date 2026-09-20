@@ -33,6 +33,162 @@ THEME/EPIC/FEATURE/TASK/SUBTASK-level planning entry is ever needed.
 
 ## Cross-cutting
 
+### GAP-32 — A project has no single "assigned to" member (human or AI agent)
+
+```yaml
+id: GAP-32
+assigned_agent: 'Claude'
+executor: AI
+type: GAP
+title: A project has no single "assigned to" member (human or AI agent)
+status: IN_PROGRESS
+description: >
+  User request 2026-09-20: "el sistema permita manejar proyectos. Estos se
+  puedan asignar a un miembro de un equipo que puede ser humano o agente
+  IA." Investigated first rather than assumed missing: Task already has a
+  genuine single-actor `assigneeActorId` field (schema.prisma ~L239), but
+  Project has no equivalent. `ProjectMember` (schema.prisma ~L136) only
+  means "has access" (id/projectId/actorId/joinedAt/isActive, no role, no
+  primary flag). `ActorRole` grants (e.g. the seeded `OWNER` project role)
+  are permission grants, not a singular designation -- nothing stops
+  multiple actors holding `OWNER` on one project at once, and
+  RolesService.assignProjectRole already has no ActorKind check, so an
+  AI_AGENT can already be granted any role including OWNER today. So the
+  RBAC/kind-agnostic half of this request already works; what's missing is
+  a durable "this project's primary responsible member is X" field, mirrored
+  on Task's existing pattern.
+expected_behavior: >
+  A project can be assigned to exactly one team member, human or AI agent,
+  independent of how many members/roles it has; the assignment is visible
+  wherever a project is shown (dashboard, my-projects, project header) and
+  changeable by someone with the appropriate permission.
+technical_context:
+  backend: apps/api/prisma/schema.prisma (Project, ProjectMember, ActorRole), apps/api/src/modules/projects, apps/api/src/modules/project-members
+  frontend: apps/web/src/app/features/my-projects, apps/web/src/app/features/project-dashboard
+files:
+  - apps/api/prisma/schema.prisma
+technical_decision: >
+  Naming this `Project.leadActorId` (nullable FK to Actor), not
+  `ownerActorId` -- this repo's RBAC already has a permission-granting
+  `OWNER` role (ActorRole), and a second, differently-scoped "owner"
+  concept on the Project row itself would collide in name while meaning
+  something else (accountability/organization, not permissions). "Lead"
+  mirrors Task's `assignee` pattern (a single responsible party) without
+  implying it grants or requires any particular permission level.
+  Reversible, implementation-detail-scoped per AGENTS.md's own rule --
+  decided here rather than escalated.
+next_action: >
+  Add `Project.leadActorId` (nullable, FK to Actor, no onDelete cascade --
+  matches this schema's soft-delete convention for Actor references
+  elsewhere) with a migration; extend ProjectsService with a way to set/
+  clear it (permission-gated, likely the same permission that already
+  guards project-settings writes); surface it in findById/findAllForActor
+  responses; add an Angular UI to display and change it (project header/
+  settings, actor picker scoped to current members like Task's assignee
+  picker already does); update docs/domain-model.md and
+  docs/ProductDescription.md.
+created_at: 2026-09-20T00:00:00Z
+updated_at: 2026-09-20T11:04:11Z
+```
+
+### DEC-002 — Frontend redesign: refine the existing GAP-20 system, or replace it with a new visual direction?
+
+```yaml
+id: DEC-002
+type: DECISION
+title: Frontend redesign -- refine the existing GAP-20 system, or replace it with a new visual direction?
+status: DECIDED
+question: >
+  User request 2026-09-20: "Rediseña el frontend completo que sea moderno y
+  minimalista." Investigated before acting: this isn't a blank slate. GAP-20
+  (closed 2026-09-16, `Features.md` F30) already delivered a documented
+  design system -- `apps/web/DESIGN.md`/`PRODUCT.md`, a shared `AppShell`
+  every route renders inside (no duplicated per-page nav), a custom Material
+  3 theme (azure/violet palettes via `mat.theme()`), light/dark mode, fixed
+  spacing/radius tokens, flat tonal surfaces (no shadows), and a shared
+  component vocabulary (`.page-header`, `.tab-nav`, `.kind-badge`, etc.)
+  applied across all ~14 routed pages -- explicitly including Do's/Don'ts
+  against KPI-tile card grids, extra accent colors, and a second icon
+  system. A full from-scratch replacement would discard that investment;
+  a refinement pass would build on it. Either is a large, product-visible,
+  costly-to-reverse effort, not an implementation detail -- escalated per
+  AGENTS.md's own rule rather than guessed.
+options:
+  - Refine the current system toward more minimalism -- audit each of the
+    ~14 pages against DESIGN.md's own Do's/Don'ts, reduce visual noise/
+    density where it still exists, keep the shell/theme/token investment.
+    Fastest, lowest-risk, compounds on GAP-20 rather than discarding it.
+  - Replace the current system with a new visual direction -- treat
+    DESIGN.md as evidence/anti-reference only (per the impeccable skill's
+    own redesign-vs-refinement distinction), pick a new aesthetic, rebuild
+    the shell/theme/tokens and all ~14 pages from there. Materially larger
+    effort, appropriate only if the current system's actual problem is its
+    visual identity, not its execution.
+  - Something narrower than "complete" -- name specific pages/flows that
+    feel wrong today, and scope the work to those instead of every surface.
+decision: Replace the current system with a new visual direction.
+decision_reason: >
+  User chose this explicitly via AskUserQuestion, having been told plainly
+  that it discards GAP-20's investment (shell/theme/tokens/component
+  vocabulary across ~14 pages) rather than building on it -- an informed,
+  deliberate choice on a question that was escalated precisely because it
+  is not reversible or scoped to implementation detail.
+decision_owner:
+  type: HUMAN
+  name: Christian
+decision_date: 2026-09-20T00:00:00Z
+technical_context:
+  frontend: apps/web/DESIGN.md, apps/web/PRODUCT.md, apps/web/src/app/layout/app-shell, apps/web/src/styles.scss
+next_action: >
+  Filed as GAP-33: full frontend replacement per the impeccable skill's
+  redesign path (new-work.md) -- DESIGN.md/PRODUCT.md treated as evidence
+  and anti-reference, not preserved. Sequenced after GAP-32 closes, so the
+  new design has the project-lead-assignment surface to design around
+  rather than adding it twice.
+created_at: 2026-09-20T00:00:00Z
+updated_at: 2026-09-20T00:00:00Z
+```
+
+### GAP-33 — Full frontend replacement with a new visual direction (DEC-002)
+
+```yaml
+id: GAP-33
+type: GAP
+title: Full frontend replacement with a new visual direction (DEC-002)
+status: BACKLOG
+description: >
+  DEC-002's decided outcome: replace GAP-20's design system (shared
+  AppShell, Material 3 azure/violet theme, spacing/radius tokens, shared
+  component vocabulary across ~14 routed pages) rather than refine it.
+  Kept BACKLOG (not claimed) until GAP-32 closes, so the redesign covers
+  the project-lead-assignment surface GAP-32 adds instead of missing it.
+expected_behavior: >
+  Every routed page in apps/web renders under a new visual direction, with
+  a new DESIGN.md replacing the current one -- product truth, content,
+  function, and native/accessibility affordances preserved throughout
+  (per the impeccable skill's redesign-vs-refinement distinction: this is
+  a new look on the same product, not new functionality).
+technical_context:
+  frontend: apps/web/DESIGN.md, apps/web/PRODUCT.md, apps/web/src/app/layout/app-shell, apps/web/src/styles.scss, apps/web/src/app/**
+next_action: >
+  Claim once GAP-32 is DONE. Run the impeccable skill's context.mjs first,
+  then its new-work.md redesign path: DESIGN.md/PRODUCT.md are evidence
+  and anti-reference only, not preserved. Constraints already known from
+  research: violet is currently the sole visual channel distinguishing
+  human vs. AI-agent actors across the app (badges, kind-labels) -- the
+  new direction needs an equally distinct, non-arbitrary replacement
+  channel for that same product-core distinction, not just a new palette
+  with no equivalent. Expect and budget for real breakage in apps/web's
+  164 unit tests (many assert on component markup) and in
+  documents.e2e-spec.ts-adjacent e2e specs that render live pages -- run
+  the full pnpm test:e2e, not a targeted subset, given how much markup
+  changes. Sequence per-surface (shell+theme first, then each page),
+  closing and re-claiming rather than one giant entry with ad-hoc slice
+  log labels (see TECH_DEBT-02 for exactly why that pattern is broken).
+created_at: 2026-09-20T00:00:00Z
+updated_at: 2026-09-20T00:00:00Z
+```
+
 ### TECH_DEBT-01 — This doc set cannot fit the 8 KiB `context` budget
 
 ```yaml
