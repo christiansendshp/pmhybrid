@@ -9,7 +9,7 @@
     "watch": "ng build --watch --configuration development",
     "lint": "eslint \"src/**/*.ts\" \"src/**/*.html\"",
     "test": "ng test",
-    "test:a11y": "playwright test --config playwright.config.a11y.ts"
+    "test:a11y": "playwright test --config playwright.config.a11y.mts"
   },
   "private": true,
   "dependencies": {

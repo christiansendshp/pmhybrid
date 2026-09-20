@@ -573,3 +573,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: Audited every remaining routed page's bespoke styling against the new dark-first developer-console grammar (mechanical detector + grep across the whole app for stray radius/color values). Most pages already inherit fully through shared classes with zero changes needed (login, team, task-detail, audit-log, dashboard, documents-viewer, project-settings, project-dashboard, conflicts, roles, phases-progress). Fixed what didn't: kanban (columns gained hairline-seam borders, column headers gained the same uppercase/tracked treatment as table th, progress-bar radius moved onto --radius-sm), login/my-projects/workload's own progress-bar and brand-mark radius copies (same pre-existing 2px/5px magic numbers as kanban and app-shell had before GAP-33). Zero stray violet/hardcoded-hex references remain anywhere in apps/web/src.
 - Files: apps/web/src/app/features/{kanban,auth/login,my-projects,workload}/*.scss, apps/web/DESIGN.md
 - Verify: pnpm -r test: 101 api + 167 web; pnpm test:a11y: 6/6; lint/build clean; detect.mjs clean except 2 documented intentional exceptions; live browser check of kanban/workload
+
+## [2026-09-20T19:44:43Z] | Claude | BUG-03 | IN_PROGRESS
+
+- Summary: Fix test:a11y script's wrong config extension
+- Verify: pending
+
+## [2026-09-20T19:45:26Z] | Claude | BUG-03 | DONE
+
+- Summary: apps/web/package.json's test:a11y script named playwright.config.a11y.ts, but the real file is playwright.config.a11y.mts -- the documented pnpm test:a11y command failed outright with a config-not-found error. One-line fix: corrected the extension. Verified pnpm test:a11y from the repo root now runs and passes all 6 tests.
+- Files: apps/web/package.json
+- Verify: pnpm test:a11y: 6/6 passed; pnpm -r lint/build clean
