@@ -1,10 +1,14 @@
 @use '@angular/material' as mat;
 
 // Operate surface, "dark-first developer console" (brief §30; DESIGN.md):
-// system fonts, graphite-neutral surfaces (azure keeps the primary role --
-// it already generates a near-achromatic neutral scale, and a blue accent
-// reads as a syntax "keyword" hue in this world) reserved for primary
-// actions, the current location, and focus -- never decoration. Tertiary
+// system fonts, graphite-neutral surfaces. Angular Material derives the
+// whole neutral/surface scale from the primary hue (mat.theme() has no
+// independent "neutral" key), so the primary palette itself was picked to
+// land a genuinely different graphite than GAP-20's azure -- cyan (a
+// classic dark-IDE keyword/type hue) reads as primary actions, the current
+// location, and focus -- never decoration -- and happens to generate a
+// cooler, teal-cast neutral scale, distinct from azure's without tipping
+// into a warm/cream ground (tried and rejected: orange-as-primary). Tertiary
 // (orange) marks AI-agent presence only
 // (.kind-badge[data-kind='AI_AGENT']), a syntax-highlighter "flagged token"
 // hue, maximally hue-distant from primary/error/success so it never reads as
@@ -21,7 +25,7 @@ html {
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
+        primary: mat.$cyan-palette,
         tertiary: mat.$orange-palette,
         theme-type: color-scheme,
       ),

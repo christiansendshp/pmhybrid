@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { describeHttpError } from '../../core/http-error.js';
 import {
@@ -11,7 +11,7 @@ import { statusLabel } from '../../core/task-status-policy.js';
 /** Brief §14 "DASHBOARD PRINCIPAL" — cross-project summary + activity. */
 @Component({
   selector: 'app-dashboard',
-  imports: [DatePipe],
+  imports: [DatePipe, DecimalPipe],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })

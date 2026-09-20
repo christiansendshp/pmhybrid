@@ -187,8 +187,9 @@
   color: var(--mat-sys-on-surface-variant);
 
   &[data-priority='HIGH'] {
-    border-color: var(--mat-sys-tertiary);
-    color: var(--mat-sys-tertiary);
+    border-color: var(--mat-sys-outline);
+    color: var(--mat-sys-on-surface);
+    font-weight: 600;
   }
 
   &[data-priority='CRITICAL'] {

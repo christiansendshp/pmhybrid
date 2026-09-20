@@ -27,7 +27,7 @@
         </div>
         <div class="figure">
           <span class="figure__value">{{
-            s.globalProgress !== null ? s.globalProgress + '%' : '—'
+            s.globalProgress !== null ? (s.globalProgress | number: '1.0-0') + '%' : '—'
           }}</span>
           <span class="figure__label">avance global</span>
         </div>

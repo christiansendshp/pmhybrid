@@ -2,20 +2,20 @@
 name: PM Hub
 description: Dark-first Operate-mode developer console for humans and AI agents coordinating on shared project documents
 colors:
-  primary: 'light-dark(#005cbb, #abc7ff)'
-  on-primary: 'light-dark(#ffffff, #002f65)'
-  primary-container: 'light-dark(#d7e3ff, #00458f)'
-  secondary: 'light-dark(#565e71, #bec6dc)'
-  secondary-container: 'light-dark(#dae2f9, #3e4759)'
+  primary: 'light-dark(#006a6a, #00dddd)'
+  on-primary: 'light-dark(#ffffff, #003737)'
+  primary-container: 'light-dark(#00fbfb, #004f4f)'
+  secondary: 'light-dark(#4a6363, #b0cccb)'
+  secondary-container: 'light-dark(#cce8e7, #324b4b)'
   tertiary: 'light-dark(#964900, #ffb787)'
   tertiary-container: 'light-dark(#ffdcc7, #723600)'
-  surface: 'light-dark(#faf9fd, #121316)'
-  on-surface: 'light-dark(#1a1b1f, #e3e2e6)'
-  surface-container-low: 'light-dark(#f4f3f6, #1a1b1f)'
-  surface-container: 'light-dark(#efedf0, #1f2022)'
-  surface-container-high: 'light-dark(#e9e7eb, #292a2c)'
-  outline: 'light-dark(#74777f, #8e9099)'
-  outline-variant: 'light-dark(#c4c6d0, #44474e)'
+  surface: 'light-dark(#f7faf9, #101414)'
+  on-surface: 'light-dark(#191c1c, #e0e3e2)'
+  surface-container-low: 'light-dark(#f1f4f3, #191c1c)'
+  surface-container: 'light-dark(#ebefed, #1c2020)'
+  surface-container-high: 'light-dark(#e6e9e7, #272b2a)'
+  outline: 'light-dark(#6f7979, #889392)'
+  outline-variant: 'light-dark(#bec9c8, #3f4948)'
   error: 'light-dark(#ba1a1a, #ffb4ab)'
 typography:
   headline-small:
@@ -80,17 +80,17 @@ expresses is new.
 
 **THESIS:** A control room reads like the terminal beside it — legible state at a glance, not a demo palette wearing anyone's brand.
 
-**OWN-WORLD:** Graphite-neutral surfaces with hairline-seam panels instead of borderless flat regions; azure carries primary actions, focus and the current location (a syntax "keyword" blue, and the one hue in this system that also happens to generate a true achromatic neutral scale); orange is reserved exclusively for AI-agent identity, a syntax "flagged token" hue, maximally hue-distant from primary/error/success so it never reads as any of those.
+**OWN-WORLD:** A cooler, teal-cast graphite (not GAP-20's azure-derived one) with hairline-seam panels instead of borderless flat regions; cyan carries primary actions, focus and the current location (a syntax "keyword"/"type" hue in dark editor themes); orange is reserved exclusively for AI-agent identity, a syntax "flagged token" hue, maximally hue-distant from primary/error/secondary so it never reads as any of those.
 
-**STORY:** A PM opens a panel and reads status the way they read a diff — at a glance, unambiguous, source-of-truth first.
+**STORY:** A PM opens a page and reads status the way they read a diff — at a glance, unambiguous, source-of-truth first.
 
-**FIRST VIEWPORT:** Slim seamed top bar (mark, primary nav, theme toggle, session) over a max-1440px content column whose page header and tables are themselves seamed panels; project pages add a seamed tab strip under the header.
+**FIRST VIEWPORT:** Slim seamed top bar (mark, primary nav, theme toggle, session) that persists across every route, over a max-1440px content column whose page header and tables are themselves seamed panels; project pages add a seamed tab strip under the header.
 
-**FORM:** Operate "developer console" — top bar + content, no sidebar (kept from the incumbent shell, which already fit the brief and the audience's daily tool). Panels persist their seam/header chrome; only contents swap on navigation. Direction chosen via `concept-seed.mjs --scope direction --mode operate` (seed key `a6fe979b`): challenger 1, "dark-first developer console" (graphite ground, hairline seams, syntax-derived accents, panel-persistent navigation), fused against my own top-ranked grounded candidate (assigned index 4, "server rack / patch-panel inventory grammar") and won on both audience identification (this audience lives in dark IDEs/terminals daily; a rack aesthetic is a narrower ops/SRE reference) and product clarity (panels flex to PM Hub's varied content — kanban, tables, docs, forms — better than uniform rack slots).
+**FORM:** Operate "developer console" — top bar + content, no sidebar (kept from the incumbent shell, which already fit the brief and the audience's daily tool). Only the top bar is structurally persistent (the pre-existing `AppShell`, unchanged); page content is visually styled as seamed panels but is ordinary routed content, replaced wholesale on navigation like any Angular route — this system does not build independently-updating panes. Direction chosen via `concept-seed.mjs --scope direction --mode operate` (seed key `a6fe979b`): challenger 1, "dark-first developer console" (graphite ground, hairline seams, syntax-derived accents, panel-persistent navigation), fused against my own top-ranked grounded candidate (assigned index 4, "server rack / patch-panel inventory grammar") and won on both audience identification (this audience lives in dark IDEs/terminals daily; a rack aesthetic is a narrower ops/SRE reference) and product clarity (panels flex to PM Hub's varied content — kanban, tables, docs, forms — better than uniform rack slots). The challenger's "panel-persistent navigation" grammar was adopted only at the shell level (see FORM above), not built as independently-swapping content panes -- that would be a materially larger, out-of-scope change to the app's routing model.
 
 ## Colors
 
-Material 3 tokens generated from `mat.$azure-palette` (primary) and
+Material 3 tokens generated from `mat.$cyan-palette` (primary) and
 `mat.$orange-palette` (tertiary) via `mat.theme()`, `theme-type:
 color-scheme` — every `--mat-sys-*` value is a CSS `light-dark()` pair that
 resolves off the _used_ value of `color-scheme` on `<html>`. Default: the
@@ -105,18 +105,31 @@ hours — dark is the native resting state this system is designed against,
 even though the light rendering (a faithfully derived companion, not an
 afterthought) ships with equal support.
 
-- **Primary (azure)** — primary buttons, the active nav item, links, focus
-  rings, the current tab. Never decoration. Unchanged from the incumbent
-  system: azure already generates a near-achromatic neutral scale
-  (`surface` resolves to `#faf9fd`/`#121316`, true graphite), so keeping it
-  gets the new world's "graphite ground" for free instead of fighting
-  Material's neutral-derives-from-primary algorithm with a warmer hue.
+- **Primary (cyan)** — primary buttons, the active nav item, links, focus
+  rings, the current tab. Never decoration. Chosen over GAP-20's azure
+  deliberately, not kept by default: Angular Material's `mat.theme()` has
+  no independent "neutral" key, so the whole surface/neutral scale is
+  derived from the primary hue (`neutral: map.get($primary, neutral)` in
+  its own source) — changing only the tertiary role while leaving primary
+  untouched would have kept the exact same `#faf9fd`/`#121316` ground GAP-20
+  shipped, which is a refinement, not the replacement DEC-002 decided.
+  Rendered and read every cool-hued Material palette (`cyan`, `blue`,
+  `green`, `spring-green`, `chartreuse`) before choosing: `blue`'s neutral
+  was nearly indistinguishable from azure's (both blue-family); `green`/
+  `spring-green`/`chartreuse` skewed the ground visibly olive and would
+  have collided with the secondary-container "ACTIVE" status tone's own
+  green-leaning cast. `cyan` was the one candidate that produced a
+  genuinely different, cooler teal-cast graphite (`surface` resolves to
+  `#f7faf9`/`#101414`) without tipping warm — the failure mode this session
+  hit and rejected first was `orange`-as-primary, which produced exactly
+  the "warm cream ground" the impeccable skill's own calibration section
+  warns AI-generated interfaces default to.
 - **Tertiary (orange)** — exclusively `.kind-badge[data-kind='AI_AGENT']`
   and the brand mark's gradient. Replaces violet (GAP-20). Do not reach for
   it anywhere else; introducing a second general-purpose accent would break
   the restrained strategy and dilute it as a reliable "this touched an
-  agent" signal. Chosen for hue distance: azure primary, red error and the
-  green-leaning secondary/status tones all sit far from orange on the hue
+  agent" signal. Chosen for hue distance: cyan primary, red error and the
+  teal-leaning secondary/status tones all sit far from orange on the hue
   wheel, so an agent badge is never mistakable for a status pill, a
   destructive action, or the current-location accent.
 - **Secondary** — auto-derived from primary; used sparingly for the active
@@ -254,7 +267,13 @@ shared `AppShell` (top bar, nav, theme toggle, notifications, brand mark).
 Every routed page inherits the new tokens and shared classes automatically
 through `--mat-sys-*` custom properties and the unchanged `.page-header`/
 `.tab-nav`/`.table-scroll`/`.kind-badge`/`.status-badge`/`.status-counts`
-class vocabulary — no page template was edited in this pass. Remaining:
-verify and, where a page has bespoke component-level styling beyond these
-shared classes (e.g. `kanban`'s own card styles), bring it in line with the
-seamed-panel grammar surface by surface.
+class vocabulary — no page template was edited in this pass, with two
+narrow exceptions found by an independent finish review and fixed as part
+of protecting this file's own tertiary-exclusivity claim: `kanban.scss`'s
+`.priority[data-priority='HIGH']` and `documents-viewer.scss`'s search
+`mark` highlight both referenced `--mat-sys-tertiary(-container)` pre-GAP-33
+(harmless under violet, a collision with the AI-agent badge under orange) —
+repointed to `outline`/`on-surface` and `primary-container` respectively.
+Remaining: verify and, where a page has other bespoke component-level
+styling beyond these shared classes, bring it in line with the seamed-panel
+grammar surface by surface.
