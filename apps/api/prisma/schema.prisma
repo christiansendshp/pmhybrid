@@ -71,15 +71,28 @@ model AgentProfile {
 // user-chosen (see Stack_Tecnologies.md ADR-009). `prefix` (the first 8 hex
 // chars) is plaintext and display-only, so an admin can tell keys apart
 // without ever seeing the full secret again.
+/// What an API key may do (Roadmap SECURITY-04b2). READ_ONLY is refused every
+/// request that is not a read (GET, HEAD, OPTIONS); READ_WRITE, the default, is
+/// what every key was before this existed.
+enum ApiKeyScope {
+  READ_ONLY
+  READ_WRITE
+}
+
 model ApiKey {
-  id         String    @id @default(uuid())
+  id         String      @id @default(uuid())
   actorId    String
-  actor      Actor     @relation(fields: [actorId], references: [id])
+  actor      Actor       @relation(fields: [actorId], references: [id])
   name       String?
   prefix     String
-  secretHash String    @unique
-  createdAt  DateTime  @default(now())
+  secretHash String      @unique
+  createdAt  DateTime    @default(now())
   revokedAt  DateTime?
+  /// A key stops working at this moment; null never expires (how every key was).
+  expiresAt  DateTime?
+  scope      ApiKeyScope @default(READ_WRITE)
+  /// When the key last authenticated a request, to a minute's precision.
+  lastUsedAt DateTime?
 
   @@index([actorId])
 }

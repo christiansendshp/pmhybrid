@@ -79,7 +79,8 @@ CREATE UNIQUE INDEX actor_role_global_uq
 ## Controlled API access for AI agents (brief §27, §28, Roadmap GAP-15)
 
 ```
-ApiKey(id, actorId, name?, prefix, secretHash, createdAt, revokedAt?)
+ApiKey(id, actorId, name?, prefix, secretHash, createdAt, revokedAt?,
+        expiresAt?, scope: READ_ONLY|READ_WRITE, lastUsedAt?)
 ```
 
 Scoped to one agent Actor (`AgentApiKeysService`/`AgentApiKeysController`
@@ -90,6 +91,21 @@ and never persisted: `secretHash` is a plain SHA-256 digest of the part after
 `pmh_`, not argon2id (ADR-009, Stack_Tecnologies.md), because there is no
 dictionary to defend against and it doubles as the deterministic lookup key.
 `prefix` (its first 8 hex chars) is plaintext and display-only.
+
+**Expiry, scope and last use** (Roadmap SECURITY-04b2). `expiresAt` (from
+`expiresInDays` at creation, 1 to 3650) makes a key stop working at that moment,
+refused exactly like a revoked one; null never expires, which is how every
+key was. `scope` is `READ_WRITE` (the default) or `READ_ONLY`: a read-only key
+is refused, with a 403, every request whose method is not GET, HEAD or OPTIONS.
+It is enforced by the method in `ApiKeyGuard`, in one place, because a scope
+per permission would have needed every route annotated; the cost is that the MCP
+endpoint, a POST for every call, is closed to a read-only key. `lastUsedAt` is
+written when the key authenticates and is at least a minute old (one write a
+minute, not one per request) and is shown in the Team page next to the expiry.
+The request budget is counted per real key instead of per address
+(`ApiKeyThrottlerGuard`), so several agents behind one host no longer starve
+each other; a made-up, revoked or expired key is counted against the address,
+so random keys cannot buy a fresh budget.
 
 A key authenticates **as** the owning agent: `ApiKeyGuard`, composed into the
 existing `JwtAuthGuard` behind an `X-API-Key` header (instead of replacing it

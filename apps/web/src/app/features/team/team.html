@@ -248,7 +248,10 @@
                 <tr>
                   <th scope="col">Nombre</th>
                   <th scope="col">Prefijo</th>
+                  <th scope="col">Permiso</th>
                   <th scope="col">Creada</th>
+                  <th scope="col">Caduca</th>
+                  <th scope="col">Último uso</th>
                   <th scope="col">Estado</th>
                   <th scope="col">Acciones</th>
                 </tr>
@@ -260,17 +263,22 @@
                     <td>
                       <code>pmh_{{ key.prefix }}…</code>
                     </td>
+                    <td>{{ key.scope | label: 'apiKeyScope' }}</td>
                     <td>{{ key.createdAt | date: 'd MMM y, HH:mm' }}</td>
+                    <td>{{ key.expiresAt ? (key.expiresAt | date: 'd MMM y') : 'Nunca' }}</td>
+                    <td>
+                      {{ key.lastUsedAt ? (key.lastUsedAt | date: 'd MMM y, HH:mm') : 'Nunca' }}
+                    </td>
                     <td>
                       <span
                         class="status-badge"
-                        [attr.data-status]="key.revokedAt ? 'REVOKED' : 'ACTIVE'"
+                        [attr.data-status]="key.revokedAt || isExpired(key) ? 'REVOKED' : 'ACTIVE'"
                       >
-                        {{ key.revokedAt ? 'Revocada' : 'Activa' }}
+                        {{ key.revokedAt ? 'Revocada' : isExpired(key) ? 'Caducada' : 'Activa' }}
                       </span>
                     </td>
                     <td>
-                      @if (!key.revokedAt) {
+                      @if (!key.revokedAt && !isExpired(key)) {
                         <button
                           mat-button
                           type="button"
@@ -293,7 +301,19 @@
             <mat-label>Nombre de la clave (opcional)</mat-label>
             <input matInput formControlName="name" placeholder="CI, bot de staging…" />
           </mat-form-field>
-          <button mat-flat-button type="submit" [disabled]="keysLoading()">
+          <mat-form-field appearance="outline">
+            <mat-label>Permiso</mat-label>
+            <select matNativeControl formControlName="scope">
+              <option value="READ_WRITE">Lectura y escritura</option>
+              <option value="READ_ONLY">Solo lectura</option>
+            </select>
+            <mat-hint>Una clave de solo lectura no puede cambiar nada.</mat-hint>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Caduca en (días, opcional)</mat-label>
+            <input matInput type="number" min="1" max="3650" formControlName="expiresInDays" />
+          </mat-form-field>
+          <button mat-flat-button type="submit" [disabled]="keysLoading() || keyForm.invalid">
             Generar nueva clave
           </button>
         </form>

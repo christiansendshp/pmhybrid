@@ -1002,3 +1002,36 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: The API sends helmet's security headers and no X-Powered-By, allows only the origins in CORS_ORIGINS (the web dev origins by default outside production, none in production), closes a WebSocket that sends more than 1 KiB, and no longer lets a bad WebSocket frame crash the process
 - Files: apps/api/src/security/http-hardening.ts,apps/api/src/main.ts,apps/api/src/modules/realtime/notifications.gateway.ts,apps/api/package.json,docs/api-reference.md
 - Verify: api unit 377 and e2e 248 pass; a11y 8 pass through the real cross-origin dev servers; headers checked with curl on the running API
+
+## [2026-09-21T19:05:42Z] | claude | SECURITY-04b2 | IN_PROGRESS
+
+- Summary: API keys with an expiry, a read-only scope and a last-used time
+- Verify: pending
+
+## [2026-09-21T19:17:26Z] | claude | SECURITY-04b2 | DONE
+
+- Summary: API keys can be given an expiry and a read-only scope, record when they were last used and show it on the Team page, and each real key has its own request budget instead of sharing the address's; an expired key is refused like a revoked one
+- Files: apps/api/prisma/schema.prisma,apps/api/prisma/migrations/20260921220000_add_api_key_expiry_scope_last_used/migration.sql,apps/api/src/modules/auth/guards/api-key.guard.ts,apps/api/src/common/guards/api-key-throttler.guard.ts,apps/web/src/app/features/team/team.html,docs/domain-model.md
+- Verify: api unit 381 and e2e 253 pass; web unit 222, eslint, ng build and a11y clean; prisma migrate diff shows no drift
+
+## [2026-09-21T19:17:28Z] | claude | SECURITY-04b | IN_PROGRESS
+
+- Summary: Close the umbrella: SECURITY-04b1 and 04b2 are done
+- Verify: pending
+
+## [2026-09-21T19:17:29Z] | claude | SECURITY-04b | DONE
+
+- Summary: HTTP hardening (helmet, CORS allowlist, WebSocket limits) and API keys with expiry, scope, last use and their own budget
+- Files: docs/api-reference.md,docs/domain-model.md
+- Verify: SECURITY-04b1 and 04b2 verified
+
+## [2026-09-21T19:17:30Z] | claude | SECURITY-04 | IN_PROGRESS
+
+- Summary: Close the umbrella: SECURITY-04a and 04b are done
+- Verify: pending
+
+## [2026-09-21T19:17:31Z] | claude | SECURITY-04 | DONE
+
+- Summary: Authentication and transport hardening: uniform login, production guards, a password change, helmet, a CORS allowlist, WebSocket limits and API keys with expiry, scope, last use and a budget of their own
+- Files: docs/api-reference.md,docs/domain-model.md,docs/permissions.md
+- Verify: SECURITY-04a, 04b1 and 04b2 verified: api e2e 253 pass

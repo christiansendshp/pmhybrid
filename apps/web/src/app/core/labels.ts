@@ -13,6 +13,7 @@ export type LabelKind =
   | 'revisionSource'
   | 'documentKind'
   | 'roadmapTable'
+  | 'apiKeyScope'
   | 'priority'
   | 'ledgerState'
   | 'taskField';
@@ -92,6 +93,10 @@ const DICTIONARIES: Record<LabelKind, Record<string, string>> = {
     STACK_TECH: 'Stack técnico',
     FEATURES: 'Funcionalidades',
     AGENTS_RULES: 'Reglas para agentes',
+  },
+  apiKeyScope: {
+    READ_ONLY: 'Solo lectura',
+    READ_WRITE: 'Lectura y escritura',
   },
   roadmapTable: {
     ACTIVE: 'Trabajo activo',

@@ -13,7 +13,8 @@ a hand-copied route list would.
   therefore the same downstream RBAC (`docs/permissions.md`):
   - `Authorization: Bearer <accessToken>` — human or agent login
     (`POST /auth/login`), or a refreshed token (`POST /auth/refresh`).
-  - `X-API-Key: pmh_<64 hex chars>` — an AI agent's own key, minted under
+  - `X-API-Key: pmh_<64 hex chars>` — an AI agent's own key (optionally with an
+    expiry and a read-only scope, Roadmap SECURITY-04b2; `docs/domain-model.md`), minted under
     `/agents/:agentId/keys` (Roadmap GAP-15). `JwtAuthGuard` checks this
     header first: if present, it authenticates the request and any
     `Authorization: Bearer` header sent alongside is ignored, not rejected.

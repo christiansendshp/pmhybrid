@@ -4,7 +4,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { ApiKey, ApiKeysService, CreatedApiKey } from '../../core/api-keys.service.js';
+import { ApiKey, ApiKeyScope, ApiKeysService, CreatedApiKey } from '../../core/api-keys.service.js';
+import { LabelPipe } from '../../shared/label.pipe.js';
 import { Actor, ActorsService, UpdateActorInput } from '../../core/actors.service.js';
 import { AuthService } from '../../core/auth.service.js';
 import { filterActors } from '../../core/actor-filter.js';
@@ -20,7 +21,14 @@ const INVALID_CONFIG = Symbol('invalid-config');
  */
 @Component({
   selector: 'app-team',
-  imports: [ReactiveFormsModule, DatePipe, MatButtonModule, MatFormFieldModule, MatInputModule],
+  imports: [
+    ReactiveFormsModule,
+    DatePipe,
+    LabelPipe,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+  ],
   templateUrl: './team.html',
   styleUrl: './team.scss',
 })
@@ -52,6 +60,9 @@ export class Team implements OnInit {
 
   readonly keyForm = this.fb.nonNullable.group({
     name: [''],
+    scope: ['READ_WRITE' as ApiKeyScope],
+    /** Days until the key stops working; empty means never (Roadmap SECURITY-04b2). */
+    expiresInDays: [null as number | null, [Validators.min(1), Validators.max(3650)]],
   });
 
   readonly userForm = this.fb.nonNullable.group({
@@ -133,21 +144,31 @@ export class Team implements OnInit {
   }
 
   async createKey(agentId: string): Promise<void> {
+    if (this.keyForm.invalid) {
+      return;
+    }
     this.keysLoading.set(true);
     this.keyErrorMessage.set(null);
     try {
-      const created = await this.apiKeysService.create(
-        agentId,
-        this.keyForm.getRawValue().name || undefined,
-      );
+      const { name, scope, expiresInDays } = this.keyForm.getRawValue();
+      const created = await this.apiKeysService.create(agentId, {
+        ...(name ? { name } : {}),
+        scope,
+        ...(expiresInDays ? { expiresInDays } : {}),
+      });
       this.justCreatedKey.set(created);
-      this.keyForm.reset({ name: '' });
+      this.keyForm.reset({ name: '', scope: 'READ_WRITE', expiresInDays: null });
       await this.loadKeys(agentId);
     } catch (error) {
       this.keyErrorMessage.set(describeHttpError(error));
     } finally {
       this.keysLoading.set(false);
     }
+  }
+
+  /** A key past its expiry no longer works, whether or not anyone revoked it. */
+  isExpired(key: ApiKey): boolean {
+    return key.expiresAt !== null && new Date(key.expiresAt).getTime() <= Date.now();
   }
 
   async revokeKey(agentId: string, key: ApiKey): Promise<void> {

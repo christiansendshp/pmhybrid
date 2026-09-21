@@ -3,6 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE_URL } from './api-base-url.js';
 
+export type ApiKeyScope = 'READ_ONLY' | 'READ_WRITE';
+
 /** Never carries the secret — the API only returns it once, from create(). */
 export interface ApiKey {
   id: string;
@@ -10,6 +12,16 @@ export interface ApiKey {
   prefix: string;
   createdAt: string;
   revokedAt: string | null;
+  /** When the key stops working; null never expires (Roadmap SECURITY-04b2). */
+  expiresAt: string | null;
+  scope: ApiKeyScope;
+  lastUsedAt: string | null;
+}
+
+export interface NewApiKeyOptions {
+  name?: string;
+  scope?: ApiKeyScope;
+  expiresInDays?: number;
 }
 
 export interface CreatedApiKey extends ApiKey {
@@ -26,9 +38,9 @@ export class ApiKeysService {
     return firstValueFrom(this.http.get<ApiKey[]>(`${API_BASE_URL}/agents/${agentId}/keys`));
   }
 
-  create(agentId: string, name?: string): Promise<CreatedApiKey> {
+  create(agentId: string, options: NewApiKeyOptions = {}): Promise<CreatedApiKey> {
     return firstValueFrom(
-      this.http.post<CreatedApiKey>(`${API_BASE_URL}/agents/${agentId}/keys`, name ? { name } : {}),
+      this.http.post<CreatedApiKey>(`${API_BASE_URL}/agents/${agentId}/keys`, options),
     );
   }
 

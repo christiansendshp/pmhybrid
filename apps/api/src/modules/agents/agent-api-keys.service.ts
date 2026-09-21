@@ -11,6 +11,10 @@ const KEY_SELECT = {
   prefix: true,
   createdAt: true,
   revokedAt: true,
+  // Roadmap SECURITY-04b2: when a key stops working, what it may do, and when it was last used.
+  expiresAt: true,
+  scope: true,
+  lastUsedAt: true,
 } as const;
 
 /**
@@ -50,6 +54,10 @@ export class AgentApiKeysService {
           name: dto.name,
           prefix: generated.prefix,
           secretHash: generated.secretHash,
+          scope: dto.scope ?? 'READ_WRITE',
+          expiresAt: dto.expiresInDays
+            ? new Date(Date.now() + dto.expiresInDays * 24 * 60 * 60 * 1000)
+            : null,
         },
         select: KEY_SELECT,
       });
@@ -67,6 +75,8 @@ export class AgentApiKeysService {
               apiKeyId: created.id,
               name: created.name,
               prefix: created.prefix,
+              scope: created.scope,
+              expiresAt: created.expiresAt,
             },
           )?.newValue,
         },

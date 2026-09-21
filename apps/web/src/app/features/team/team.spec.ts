@@ -215,17 +215,23 @@ describe('Team (brief §3 — administrable actors)', () => {
       prefix: 'abcd1234',
       createdAt: '2026-09-15T10:00:00.000Z',
       revokedAt: null,
+      expiresAt: null,
+      scope: 'READ_WRITE',
+      lastUsedAt: null,
       key: 'pmh_deadbeef',
     };
     apiKeysService.create.mockResolvedValue(created);
     apiKeysService.list.mockResolvedValue([created]);
 
     component.startEdit(codex);
-    component.keyForm.setValue({ name: 'CI pipeline' });
+    component.keyForm.setValue({ name: 'CI pipeline', scope: 'READ_WRITE', expiresInDays: null });
     await component.createKey('a1');
     fixture.detectChanges();
 
-    expect(apiKeysService.create).toHaveBeenCalledWith('a1', 'CI pipeline');
+    expect(apiKeysService.create).toHaveBeenCalledWith('a1', {
+      name: 'CI pipeline',
+      scope: 'READ_WRITE',
+    });
     expect(component.justCreatedKey()?.key).toBe('pmh_deadbeef');
     expect(fixture.nativeElement.textContent as string).toContain('pmh_deadbeef');
 
@@ -235,6 +241,60 @@ describe('Team (brief §3 — administrable actors)', () => {
     await component.revokeKey('a1', created);
     expect(component.justCreatedKey()).toBeNull();
     expect(apiKeysService.revoke).toHaveBeenCalledWith('a1', 'k1');
+  });
+
+  it('creates a read-only key that expires, and sends what was chosen (Roadmap SECURITY-04b2)', async () => {
+    const { component } = await render();
+    apiKeysService.create.mockResolvedValue({ id: 'k2', key: 'pmh_x' });
+    component.startEdit(codex);
+
+    component.keyForm.setValue({ name: '', scope: 'READ_ONLY', expiresInDays: 30 });
+    await component.createKey('a1');
+
+    expect(apiKeysService.create).toHaveBeenCalledWith('a1', {
+      scope: 'READ_ONLY',
+      expiresInDays: 30,
+    });
+    // An expiry out of range is not sent at all.
+    apiKeysService.create.mockClear();
+    component.keyForm.setValue({ name: '', scope: 'READ_WRITE', expiresInDays: 9999 });
+    await component.createKey('a1');
+    expect(apiKeysService.create).not.toHaveBeenCalled();
+  });
+
+  it('shows the permission, expiry and last use of each key, and an expired key as expired with nothing to revoke', async () => {
+    const base: ApiKey = {
+      id: 'k1',
+      name: 'CI',
+      prefix: 'abcd1234',
+      createdAt: '2026-09-15T10:00:00.000Z',
+      revokedAt: null,
+      expiresAt: null,
+      scope: 'READ_WRITE',
+      lastUsedAt: null,
+    };
+    apiKeysService.list.mockResolvedValue([
+      { ...base, scope: 'READ_ONLY', lastUsedAt: '2026-09-16T10:00:00.000Z' },
+      { ...base, id: 'k2', name: 'Old', expiresAt: '2026-09-17T10:00:00.000Z' },
+      { ...base, id: 'k3', name: 'Later', expiresAt: '2999-01-01T00:00:00.000Z' },
+    ]);
+    const { component, fixture } = await render();
+    component.startEdit(codex);
+    await new Promise((resolve) => setTimeout(resolve));
+    fixture.detectChanges();
+    const rows = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll(
+        'table[aria-label="Claves de API"] tbody tr',
+      ),
+    ).map((row) => (row.textContent ?? '').replace(/\s+/g, ' ').trim());
+
+    expect(rows[0]).toContain('Solo lectura');
+    expect(rows[0]).toContain('16 Sep 2026');
+    expect(rows[0]).toContain('Activa');
+    expect(rows[0]).toContain('Revocar');
+    expect(rows[1]).toContain('Caducada');
+    expect(rows[1]).not.toContain('Revocar');
+    expect(rows[2]).toContain('Activa');
   });
 
   it('surfaces a key-creation failure without crashing the panel', async () => {
@@ -260,6 +320,9 @@ describe('Team (brief §3 — administrable actors)', () => {
       prefix: 'abcd1234',
       createdAt: '2026-09-15T10:00:00.000Z',
       revokedAt: null,
+      expiresAt: null,
+      scope: 'READ_WRITE',
+      lastUsedAt: null,
     };
     apiKeysService.list.mockResolvedValue([key]);
     component.startEdit(codex);
