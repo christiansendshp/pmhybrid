@@ -333,4 +333,76 @@ describe('Team (brief §3 — administrable actors)', () => {
     expect(component.agentKeys()).toEqual([]);
     expect(component.editing()).toBeNull();
   });
+
+  describe('inactive people and agents (Roadmap IMPROVEMENT-02d)', () => {
+    const gone = actor({
+      id: 'u9',
+      displayName: 'Sam Departed',
+      email: 'sam@pmhybrid.local',
+      isActive: false,
+    });
+    const retired = actor({
+      id: 'a9',
+      kind: 'AI_AGENT',
+      displayName: 'Retired Bot',
+      isActive: false,
+    });
+    // An agent's cell also holds its kind badge, so a name is matched by how it starts.
+    const shows = (root: HTMLElement, name: string) =>
+      names(root).some((cell) => cell?.startsWith(name));
+    const names = (root: HTMLElement) =>
+      Array.from(root.querySelectorAll('table tbody tr td:first-child')).map((cell) =>
+        cell.textContent?.trim(),
+      );
+
+    beforeEach(() => {
+      actorsService.listUsers.mockResolvedValue([me, ana, gone]);
+      actorsService.listAgents.mockResolvedValue([codex, retired]);
+    });
+
+    it('folds them away, and says how many are', async () => {
+      const { fixture } = await render();
+      const root = fixture.nativeElement as HTMLElement;
+
+      expect(shows(root, 'Ana García')).toBe(true);
+      expect(shows(root, 'Sam Departed')).toBe(false);
+      expect(shows(root, 'Retired Bot')).toBe(false);
+      expect(root.textContent).toContain('Mostrar inactivos (2)');
+    });
+
+    it('shows them on request, with their state, and folds them again', async () => {
+      const { fixture, component } = await render();
+      const root = fixture.nativeElement as HTMLElement;
+
+      component.showInactive.set(true);
+      fixture.detectChanges();
+      expect(shows(root, 'Sam Departed')).toBe(true);
+      expect(shows(root, 'Retired Bot')).toBe(true);
+      expect(root.textContent).toContain('Inactivo');
+
+      component.showInactive.set(false);
+      fixture.detectChanges();
+      expect(shows(root, 'Sam Departed')).toBe(false);
+    });
+
+    it('shows a match whether it is on or off, for whoever typed the name', async () => {
+      const { fixture } = await render();
+      const root = fixture.nativeElement as HTMLElement;
+      const input = root.querySelector('input[type="search"]') as HTMLInputElement;
+
+      input.value = 'departed';
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      expect(names(root)).toEqual(['Sam Departed']);
+    });
+
+    it('offers nothing to fold when everyone is active', async () => {
+      actorsService.listUsers.mockResolvedValue([me, ana]);
+      actorsService.listAgents.mockResolvedValue([codex]);
+      const { fixture } = await render();
+
+      expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Mostrar inactivos');
+    });
+  });
 });

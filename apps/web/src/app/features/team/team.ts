@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { ApiKey, ApiKeyScope, ApiKeysService, CreatedApiKey } from '../../core/api-keys.service.js';
@@ -27,6 +28,7 @@ const INVALID_CONFIG = Symbol('invalid-config');
     DatePipe,
     LabelPipe,
     MatButtonModule,
+    MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
     ScrollCue,
@@ -44,8 +46,28 @@ export class Team implements OnInit {
   readonly agents = signal<Actor[]>([]);
   /** What was typed in the search box (Roadmap UX-03c3). */
   readonly search = signal('');
-  readonly visibleUsers = computed(() => filterActors(this.users(), this.search()));
-  readonly visibleAgents = computed(() => filterActors(this.agents(), this.search()));
+  /**
+   * People and agents that were switched off (a person who left, a test fixture) are folded
+   * away until asked for, so the page shows who is on the team (Roadmap IMPROVEMENT-02d). A
+   * search shows a match either way: whoever typed a name is looking for that one.
+   */
+  readonly showInactive = signal(false);
+  readonly inactiveCount = computed(
+    () => [...this.users(), ...this.agents()].filter((actor) => !actor.isActive).length,
+  );
+  private readonly includeInactive = computed(
+    () => this.showInactive() || this.search().trim() !== '',
+  );
+  readonly visibleUsers = computed(() =>
+    this.withoutHiddenInactive(filterActors(this.users(), this.search())),
+  );
+  readonly visibleAgents = computed(() =>
+    this.withoutHiddenInactive(filterActors(this.agents(), this.search())),
+  );
+
+  private withoutHiddenInactive(actors: Actor[]): Actor[] {
+    return this.includeInactive() ? actors : actors.filter((actor) => actor.isActive);
+  }
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly errorMessage = signal<string | null>(null);

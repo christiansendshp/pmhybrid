@@ -275,31 +275,6 @@ and with the user's explicit sign-off, given the next sync tick will still
 process this change (see `BUG-01` above for a second hazard found and
 deliberately _not_ fixed in this same pass, kept out of scope on purpose).
 
-### IMPROVEMENT-02d — A development database without the old test users
-
-```yaml
-id: IMPROVEMENT-02d
-type: IMPROVEMENT
-title: A development database without the old test users
-status: READY
-priority: P3
-parent: IMPROVEMENT-02
-description: >
-  Fourth slice of IMPROVEMENT-02. About 40 fixture users ("Dev", "Outsider",
-  "Role tester") from e2e runs made before the test database was separate
-  still clutter the development Team page.
-expected_behavior: >
-  A maintenance command that finds them by the shape of their address, says
-  what it would do, and deactivates them only when asked, leaving real people
-  and everything they touched alone.
-technical_context:
-  backend: apps/api/scripts, apps/api/package.json
-next_action: >
-  Dry run by default; never delete an actor, since history points at it.
-created_at: 2026-09-21T22:30:00Z
-updated_at: 2026-09-21T22:30:00Z
-```
-
 ### IMPROVEMENT-02e — The synchronization docs against what the code does
 
 ```yaml

@@ -53,3 +53,12 @@ multiple phases/epics, subtasks, task dependencies, all five Kanban states,
 one blocked task, and a mix of human (`Demo Human`, `Ana García`) and AI-agent
 (`Demo Agent`, `Codex`) assignees. The seed is idempotent — safe to re-run
 against an existing database.
+
+A development database that the test suite once shared (before it had its own)
+holds dozens of fixture users and agents, recognisable by a millisecond
+timestamp in their name or email. `pnpm --filter api db:tidy-dev` lists them
+without changing anything; add `-- --apply` to deactivate them (never delete:
+history points at them, and the Team page's "Mostrar inactivos" brings them
+back into view). It refuses a production environment and any database that is
+not on this machine. The Team page folds inactive people and agents away by
+default.

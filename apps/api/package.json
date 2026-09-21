@@ -26,7 +26,8 @@
     "prisma:migrate": "cross-env CI=true prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "prisma db seed",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "db:tidy-dev": "tsx scripts/tidy-dev-database.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

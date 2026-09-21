@@ -25,6 +25,11 @@
         (input)="onSearch($event)"
       />
     </mat-form-field>
+    @if (inactiveCount() > 0) {
+      <mat-checkbox [checked]="showInactive()" (change)="showInactive.set($event.checked)">
+        Mostrar inactivos ({{ inactiveCount() }})
+      </mat-checkbox>
+    }
   </div>
   <section class="team-section">
     <h2>Personas</h2>
