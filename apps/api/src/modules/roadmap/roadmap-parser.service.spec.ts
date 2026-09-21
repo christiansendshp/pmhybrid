@@ -64,3 +64,46 @@ describe('RoadmapParserService', () => {
     expect(blocked.dependsOnRaw).toBeUndefined();
   });
 });
+
+describe('RoadmapParserService tolerant read (Roadmap BUG-05)', () => {
+  const parser = new RoadmapParserService();
+  const entry = (id: string, title: string) =>
+    [
+      `### ${id} — Entry`,
+      '',
+      '```yaml',
+      `id: ${id}`,
+      'type: TASK',
+      `title: ${title}`,
+      'status: READY',
+      '```',
+      '',
+    ].join('\n');
+  const withBroken = [
+    '# Roadmap',
+    '',
+    '## Plan',
+    '',
+    entry('TASK-1', 'Readable'),
+    entry('TASK-2', 'Broken: because of this colon'),
+    entry('TASK-3', 'Also readable'),
+  ].join('\n');
+
+  it('returns the readable rows and lists the unreadable entry apart', () => {
+    const { rows, errors } = parser.parseTolerant(withBroken);
+
+    expect(rows.map((row) => row.externalId)).toEqual(['TASK-1', 'TASK-3']);
+    expect(errors.map((error) => error.id)).toEqual(['TASK-2']);
+  });
+
+  it('keeps parse() strict: it never hands back a silently-shortened list', () => {
+    expect(() => parser.parse(withBroken)).toThrow(/entry "TASK-2"/);
+  });
+
+  it('reads an old-format table document with no entry errors', () => {
+    const { rows, errors } = parser.parseTolerant(SAMPLE);
+
+    expect(rows.length).toBeGreaterThan(0);
+    expect(errors).toEqual([]);
+  });
+});

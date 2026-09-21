@@ -31,6 +31,32 @@ BLOCKED. The three `## Active work`/`## Near term`/`## Blocked` headings
 where each table block starts — the column signature is the authoritative
 discriminator, so a parser is not broken by heading-text drift.
 
+## Unreadable entries (new per-entry YAML format)
+
+An entry whose block cannot be read — invalid YAML, a block that is not a
+mapping, or a missing/empty `id`/`type`/`status` — is **isolated to itself**
+(Roadmap BUG-05). `RoadmapParserService.parseTolerant()` returns
+`{ rows, errors }`: every entry that could be read, and separately one
+`{ id, line, reason }` per entry that could not. `id` is the heading's id
+(the YAML itself is what failed), `line` the 1-based line of the offending
+YAML line, `reason` one readable line — `yaml`'s code frame and its
+block-relative "at line N" are dropped, and the common cause (an unquoted
+`: ` in a value, e.g. `title: Foo: bar`) says to quote it.
+
+An unreadable entry is **present but not understood**, never absent: a caller
+reconciling against `rows` alone must not read its absence as a removal
+(sync counts its id as seen — see `docs/synchronization.md`). The
+all-or-nothing `parse()` and `extractRoadmapYamlEntries()` still throw for
+callers that would otherwise act on a silently-shortened list. A document
+malformed as a whole — an unterminated ` ```yaml ` fence, after which nothing
+can be trusted to belong where it looks like it does — throws
+`RoadmapFormatError` from every form.
+
+Write-back locates its target with `extractRoadmapYamlEntriesForWrite`: a
+broken _sibling_ does not block an edit (its lines are untouched), but if the
+entry being written is itself unreadable the write is refused rather than
+letting "no entry with this id" append a duplicate.
+
 ## Row ID handling
 
 The `ID` column holds an opaque string (e.g. `F01-S01-T01`, or PM Hub's own

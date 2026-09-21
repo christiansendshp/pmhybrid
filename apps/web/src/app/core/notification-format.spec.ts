@@ -32,6 +32,31 @@ describe('describeNotification (brief §29)', () => {
     ).toBe('La sincronización encontró 1 conflicto por resolver');
   });
 
+  it('names the unreadable Roadmap entries (Roadmap BUG-05)', () => {
+    expect(
+      describeNotification(
+        notification({
+          type: 'ROADMAP_ENTRIES_INVALID',
+          payload: {
+            count: 2,
+            entries: [
+              { id: 'F1-T104', reason: 'x' },
+              { id: 'F1-T105', reason: 'y' },
+            ],
+          },
+        }),
+      ),
+    ).toBe('La sincronización no pudo leer 2 entradas del Roadmap: F1-T104, F1-T105');
+    expect(
+      describeNotification(
+        notification({
+          type: 'ROADMAP_ENTRIES_INVALID',
+          payload: { count: 1, entries: [{ id: 'F1-T104' }] },
+        }),
+      ),
+    ).toBe('La sincronización no pudo leer 1 entrada del Roadmap: F1-T104');
+  });
+
   it('surfaces the sync failure message', () => {
     expect(
       describeNotification(

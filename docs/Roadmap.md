@@ -168,41 +168,6 @@ created_at: 2026-09-19T09:40:00Z
 updated_at: 2026-09-20T19:55:00Z
 ```
 
-### BUG-05 — One invalid Roadmap entry fails the whole sync and the error is unreadable
-
-```yaml
-id: BUG-05
-type: BUG
-title: One invalid Roadmap entry fails the whole sync and the error is unreadable
-status: READY
-priority: P1
-description: >
-  Found by the 2026-09-21 evaluation and visible today on the real SMARTRH
-  project (20 of 20 sync runs FAILED, 43 SYNC_FAILED notifications for one
-  user). The cause is one entry whose title has an unquoted colon (`title:
-  Contradiccion SuperAdmin: codigo vs. spec`); the reviewers also produced
-  failures with an entry lacking `status` and one with `id: 42`. The parser
-  aborts the entire document, `/documents/roadmap/structured` returns 500,
-  `POST /sync` returns a bare 500 (the "invalid YAML in entry X (line N)"
-  detail only lives in the run history), the scheduler retries every 5
-  minutes with no backoff, and notifications repeat with the absolute
-  server path (also a path disclosure). A missing docs directory (GAP-32
-  test project) fails the same way.
-expected_behavior: >
-  Sync isolates errors per entry: valid entries are reconciled, each bad
-  entry is reported with id, line and cause in the UI, the run is marked
-  PARTIAL rather than FAILED, the scheduler backs off on repeated failure,
-  notifications are deduplicated per project and cause without server
-  paths, and `POST /sync` returns the real reason with a 4xx.
-technical_context:
-  backend: apps/api/src/modules/roadmap/roadmap-yaml-entry.util.ts, synchronization/synchronization.service.ts, sync-scheduler, notifications
-next_action: >
-  Add entry-level try/catch in extractRoadmapYamlEntries with an error
-  list, surface it in SyncRun, add backoff and notification dedupe.
-created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T09:00:00Z
-```
-
 ### GAP-35 — Sync ignores the document's hierarchy, owner, priority and progress
 
 ```yaml

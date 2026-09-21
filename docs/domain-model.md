@@ -221,6 +221,7 @@ AuditEvent(id, projectId?, actorId?, entityType, entityId, operation,
   @@index([projectId, occurredAt])   // a project's whole history in one query
 
 Notification(id, actorId, projectId, type, payload? jsonb, readAt?, createdAt)
+  // type: CONFLICTS_DETECTED | SYNC_FAILED | ROADMAP_ENTRIES_INVALID
 ```
 
 `Conflict` is a first-class entity (brief §26), not just an audit log line —

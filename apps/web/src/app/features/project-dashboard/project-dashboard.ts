@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -53,6 +53,10 @@ export class ProjectDashboard implements OnInit {
   readonly selectedNewMemberRoleId = signal<string | null>(null);
   readonly syncing = signal(false);
   readonly lastSyncRun = signal<SyncRun | null>(null);
+  /** Why "Sincronizar ahora" failed (a 422 carries the readable reason), or null. */
+  readonly syncErrorMessage = signal<string | null>(null);
+  /** Roadmap entries the last run could not read; their tasks were left as they were. */
+  readonly entryErrors = computed(() => this.lastSyncRun()?.summary?.entryErrors ?? []);
 
   /** Project-scoped roles (brief §4) — assignment reuses the roles.controller.ts catalog, filtered client-side. */
   readonly projectRoles = signal<Role[]>([]);
@@ -139,8 +143,11 @@ export class ProjectDashboard implements OnInit {
   /** "Sincronizar ahora" (brief §11). */
   async syncNow(): Promise<void> {
     this.syncing.set(true);
+    this.syncErrorMessage.set(null);
     try {
       this.lastSyncRun.set(await this.synchronizationService.triggerSync(this.projectId));
+    } catch (error) {
+      this.syncErrorMessage.set(describeHttpError(error, 'No se pudo sincronizar.'));
     } finally {
       this.syncing.set(false);
     }

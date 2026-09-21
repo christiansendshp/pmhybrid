@@ -13,6 +13,15 @@ export function describeNotification(notification: Notification): string {
       const error = typeof payload['error'] === 'string' ? payload['error'] : 'Error desconocido';
       return `Falló la sincronización: ${error}`;
     }
+    case 'ROADMAP_ENTRIES_INVALID': {
+      const count = typeof payload['count'] === 'number' ? payload['count'] : 0;
+      const entries = Array.isArray(payload['entries']) ? payload['entries'] : [];
+      const ids = entries
+        .map((entry) => (entry as { id?: unknown } | null)?.id)
+        .filter((id): id is string => typeof id === 'string');
+      const listed = ids.length > 0 ? `: ${ids.join(', ')}` : '';
+      return `La sincronización no pudo leer ${count === 1 ? '1 entrada' : `${count} entradas`} del Roadmap${listed}`;
+    }
     default:
       return notification.type;
   }

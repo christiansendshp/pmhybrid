@@ -206,8 +206,8 @@ export class WriteBackService {
     );
 
     const writtenRow = this.roadmapParser
-      .parse(written.markdown)
-      .find((row) => row.externalId === task.externalId);
+      .parseTolerant(written.markdown)
+      .rows.find((row) => row.externalId === task.externalId);
     let result: Task = task;
     if (writtenRow) {
       result = await tx.task.update({
@@ -335,8 +335,8 @@ export class WriteBackService {
       DOCUMENT_FILENAMES.ROADMAP,
     );
     const currentRow = this.roadmapParser
-      .parse(roadmapContent)
-      .find((row) => row.externalId === externalId);
+      .parseTolerant(roadmapContent)
+      .rows.find((row) => row.externalId === externalId);
     if (!currentRow) {
       // No row to edit: the document dropped it, which sync owns (step 6).
       return task;
@@ -420,8 +420,8 @@ export class WriteBackService {
     // apply or contest — what the document changed in the row's other cells.
     let result = task;
     const writtenRow = this.roadmapParser
-      .parse(written.markdown)
-      .find((row) => row.externalId === externalId);
+      .parseTolerant(written.markdown)
+      .rows.find((row) => row.externalId === externalId);
     if (
       writtenRow &&
       deferred.length === 0 &&
@@ -533,7 +533,7 @@ export class WriteBackService {
       roadmapDocument?.lastKnownHash &&
       roadmapDocument.lastKnownHash !== currentHash
     ) {
-      const rows = this.roadmapParser.parse(roadmapContent);
+      const { rows } = this.roadmapParser.parseTolerant(roadmapContent);
       const currentRow = rows.find((row) => row.externalId === externalId);
       if (
         currentRow?.statusMapped &&
@@ -617,8 +617,8 @@ export class WriteBackService {
     // write for a document-side change, nor this task's earlier UI edits
     // (already reflected in the row) for still-contested ones.
     const writtenRow = this.roadmapParser
-      .parse(updatedRoadmap)
-      .find((row) => row.externalId === externalId);
+      .parseTolerant(updatedRoadmap)
+      .rows.find((row) => row.externalId === externalId);
     if (writtenRow) {
       task = await tx.task.update({
         where: { id: task.id },

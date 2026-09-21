@@ -3,6 +3,27 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE_URL } from './api-base-url.js';
 
+/** A Roadmap entry the run could not read (Roadmap BUG-05): which one, where in the file, and why. */
+export interface SyncEntryError {
+  id: string;
+  line: number;
+  reason: string;
+}
+
+export interface SyncRunSummary {
+  documentsChanged?: number;
+  tasksCreated?: number;
+  tasksUpdated?: number;
+  tableChanged?: number;
+  completedViaRemoval?: number;
+  conflictsRaised?: number;
+  dependenciesLinked?: number;
+  /** Absent on runs recorded before entries were isolated. */
+  entryErrors?: SyncEntryError[];
+  /** Only on a FAILED run: one readable line. */
+  error?: string;
+}
+
 export interface SyncRun {
   id: string;
   projectId: string;
@@ -10,7 +31,7 @@ export interface SyncRun {
   finishedAt: string | null;
   trigger: 'SCHEDULED' | 'MANUAL';
   status: 'SUCCESS' | 'PARTIAL' | 'FAILED' | 'RUNNING';
-  summary: Record<string, number> | null;
+  summary: SyncRunSummary | null;
 }
 
 export type ConflictKind =

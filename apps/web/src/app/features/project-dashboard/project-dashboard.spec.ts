@@ -95,8 +95,10 @@ describe('ProjectDashboard — role assignment (brief §4)', () => {
     addMember: ReturnType<typeof vi.fn>;
   };
   let permissions: string[];
+  let triggerSync: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    triggerSync = vi.fn();
     permissions = ['project.roles.manage', 'project.members.manage'];
     rolesService = {
       listRoles: vi.fn().mockResolvedValue([devRole, qaRole, adminGlobalRole]),
@@ -128,7 +130,7 @@ describe('ProjectDashboard — role assignment (brief §4)', () => {
           },
         },
         { provide: RolesService, useValue: rolesService },
-        { provide: SynchronizationService, useValue: { triggerSync: vi.fn() } },
+        { provide: SynchronizationService, useValue: { triggerSync } },
       ],
     });
   });
@@ -247,5 +249,48 @@ describe('ProjectDashboard — role assignment (brief §4)', () => {
 
     expect(projectsService.addMember).toHaveBeenCalledWith('p1', 'a2');
     expect(component.roleErrorMessage()).toBe('No such role');
+  });
+
+  it('names the Roadmap entries a sync could not read, instead of hiding them (Roadmap BUG-05)', async () => {
+    triggerSync.mockResolvedValue({
+      id: 's1',
+      projectId: 'p1',
+      startedAt: '2026-09-21T10:00:00.000Z',
+      finishedAt: '2026-09-21T10:00:01.000Z',
+      trigger: 'MANUAL',
+      status: 'PARTIAL',
+      summary: {
+        tasksCreated: 0,
+        tasksUpdated: 1,
+        conflictsRaised: 0,
+        entryErrors: [{ id: 'F1-T104', line: 42, reason: 'Nested mappings are not allowed' }],
+      },
+    });
+    const { fixture, component } = await render();
+
+    await component.syncNow();
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
+    expect(text).toContain('no pudo leer 1 entrada del Roadmap');
+    expect(text).toContain('F1-T104 (línea 42): Nested mappings are not allowed');
+  });
+
+  it('shows why a manual sync failed rather than failing silently (Roadmap BUG-05)', async () => {
+    triggerSync.mockRejectedValue(
+      new HttpErrorResponse({
+        status: 422,
+        error: { message: 'Roadmap.md: unterminated yaml block for entry "T-1"' },
+      }),
+    );
+    const { fixture, component } = await render();
+
+    await component.syncNow();
+    fixture.detectChanges();
+
+    expect(component.syncing()).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain(
+      'No se pudo sincronizar: Roadmap.md: unterminated yaml block for entry "T-1"',
+    );
   });
 });

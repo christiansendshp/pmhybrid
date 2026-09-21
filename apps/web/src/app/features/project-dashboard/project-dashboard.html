@@ -22,9 +22,8 @@
       @if (lastSyncRun(); as run) {
         Última ejecución: {{ run.status }}
         @if (run.summary) {
-          ({{ run.summary['tasksCreated'] }} creadas,
-          {{ run.summary['tasksUpdated'] }} actualizadas,
-          {{ run.summary['conflictsRaised'] }} conflictos)
+          ({{ run.summary.tasksCreated }} creadas, {{ run.summary.tasksUpdated }} actualizadas,
+          {{ run.summary.conflictsRaised }} conflictos)
         }
       }
     </span>
@@ -33,6 +32,27 @@
     </button>
   </div>
 </header>
+
+@if (syncErrorMessage()) {
+  <p role="alert">No se pudo sincronizar: {{ syncErrorMessage() }}</p>
+}
+
+@if (entryErrors().length > 0) {
+  <div role="alert" class="sync-entry-errors">
+    <p>
+      La sincronización no pudo leer
+      {{ entryErrors().length === 1 ? '1 entrada' : entryErrors().length + ' entradas' }}
+      del Roadmap; sus tareas se dejaron sin cambios hasta que se corrijan:
+    </p>
+    <ul>
+      @for (entry of entryErrors(); track entry.id) {
+        <li>
+          <code>{{ entry.id }}</code> (línea {{ entry.line }}): {{ entry.reason }}
+        </li>
+      }
+    </ul>
+  </div>
+}
 
 @if (roleErrorMessage()) {
   <p role="alert">{{ roleErrorMessage() }}</p>

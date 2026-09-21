@@ -166,7 +166,7 @@ describe('Internal notifications (e2e)', () => {
     const member = await createUser();
     await addMember(projectId, member.id);
 
-    await request(server()).post(`/projects/${projectId}/sync`).set('Authorization', auth()).expect(500);
+    await request(server()).post(`/projects/${projectId}/sync`).set('Authorization', auth()).expect(422);
 
     const runs = await request(server())
       .get(`/projects/${projectId}/sync-runs`)

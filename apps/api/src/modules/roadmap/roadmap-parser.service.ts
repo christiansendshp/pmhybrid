@@ -5,9 +5,11 @@ import {
   extractMarkdownTables,
 } from './markdown-table.util.js';
 import {
-  extractRoadmapYamlEntries,
+  extractRoadmapYamlEntriesTolerant,
   looksLikeNewFormatRoadmap,
   roadmapYamlEntryToRow,
+  RoadmapFormatError,
+  type RoadmapEntryError,
 } from './roadmap-yaml-entry.util.js';
 
 export interface ParsedRoadmapRow {
@@ -24,6 +26,12 @@ export interface ParsedRoadmapRow {
   dependsOnRaw?: string;
   blocker?: string;
   neededDecision?: string;
+}
+
+/** What a tolerant read yields: every entry that could be read, and — separately — the ones that could not (Roadmap BUG-05). */
+export interface ParsedRoadmap {
+  rows: ParsedRoadmapRow[];
+  errors: RoadmapEntryError[];
 }
 
 // Bidirectional + closed (docs/roadmap-parser.md "Status token mapping") — identity
@@ -90,11 +98,35 @@ function isPlaceholder(value: string): boolean {
  */
 @Injectable()
 export class RoadmapParserService {
+  /**
+   * Strict: throws if any entry cannot be read, rather than returning a
+   * silently-shortened list. For callers that act on the absence of a row.
+   */
   parse(rawMarkdown: string): ParsedRoadmapRow[] {
-    if (looksLikeNewFormatRoadmap(rawMarkdown)) {
-      return extractRoadmapYamlEntries(rawMarkdown).map(roadmapYamlEntryToRow);
+    const { rows, errors } = this.parseTolerant(rawMarkdown);
+    if (errors.length > 0) {
+      throw new RoadmapFormatError(errors[0].message);
     }
+    return rows;
+  }
 
+  /**
+   * Isolates an unreadable entry to itself (Roadmap BUG-05): the readable
+   * rows are returned, the rest are listed in `errors`. Those entries are
+   * present-but-unreadable, never absent — a caller reconciling against
+   * `rows` alone must not read their absence as a removal. Only a document
+   * that is malformed as a whole (an unterminated fence) still throws.
+   */
+  parseTolerant(rawMarkdown: string): ParsedRoadmap {
+    if (looksLikeNewFormatRoadmap(rawMarkdown)) {
+      const { entries, errors } =
+        extractRoadmapYamlEntriesTolerant(rawMarkdown);
+      return { rows: entries.map(roadmapYamlEntryToRow), errors };
+    }
+    return { rows: this.parseTables(rawMarkdown), errors: [] };
+  }
+
+  private parseTables(rawMarkdown: string): ParsedRoadmapRow[] {
     const tables = extractMarkdownTables(rawMarkdown);
     const results: ParsedRoadmapRow[] = [];
 

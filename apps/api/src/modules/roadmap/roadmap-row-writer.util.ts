@@ -2,7 +2,7 @@ import { RoadmapTable, TaskStatus } from '@pmhybrid/shared-types';
 import { findRoadmapTableLineRange, splitRow } from './markdown-table.util.js';
 import {
   appendRoadmapYamlEntry,
-  extractRoadmapYamlEntries,
+  extractRoadmapYamlEntriesForWrite,
   looksLikeNewFormatRoadmap,
   mapTaskStatusToNewStatus,
   removeRoadmapYamlEntry,
@@ -220,7 +220,7 @@ function upsertLifecycleRoadmapEntry(
     dependsOn: string;
   },
 ): string {
-  const entries = extractRoadmapYamlEntries(markdown);
+  const entries = extractRoadmapYamlEntriesForWrite(markdown, externalId);
   const entry = entries.find((candidate) => candidate.id === externalId);
   const nowIso = new Date().toISOString();
   const newStatus = mapTaskStatusToNewStatus(fields.status as TaskStatus);
@@ -285,7 +285,7 @@ function replaceRoadmapEntryFields(
   externalId: string,
   cellsByHeader: Record<string, string>,
 ): { markdown: string; replaced: string[] } | null {
-  const entries = extractRoadmapYamlEntries(markdown);
+  const entries = extractRoadmapYamlEntriesForWrite(markdown, externalId);
   const entry = entries.find((candidate) => candidate.id === externalId);
   if (!entry) {
     return null;

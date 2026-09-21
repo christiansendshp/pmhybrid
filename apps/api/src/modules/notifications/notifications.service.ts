@@ -8,6 +8,8 @@ interface SyncCompletedPayload {
   projectId: string;
   syncRunId: string;
   conflictsRaised: number;
+  /** Roadmap entries sync could not read — only when that set changed since the previous run (Roadmap BUG-05). */
+  entryErrors?: { id: string; reason: string }[];
   /** Undefined for a SCHEDULED run — nobody to exclude. */
   requesterActorId?: string;
 }
@@ -61,21 +63,36 @@ export class NotificationsService {
     });
   }
 
-  /** One notification per conflict-raising sync run — not per conflict, so a member sees "3 conflicts" once rather than 3 separate rows. */
+  /** One notification per conflict-raising sync run — not per conflict, so a member sees "3 conflicts" once rather than 3 separate rows. Likewise one per *change* in the set of unreadable Roadmap entries. */
   @OnEvent('sync.completed')
   async handleSyncCompleted(payload: SyncCompletedPayload): Promise<void> {
-    if (payload.conflictsRaised === 0) {
-      return;
+    if (payload.conflictsRaised > 0) {
+      await this.notifyProjectMembers(
+        payload.projectId,
+        'CONFLICTS_DETECTED',
+        {
+          syncRunId: payload.syncRunId,
+          conflictsRaised: payload.conflictsRaised,
+        },
+        payload.requesterActorId,
+      );
     }
-    await this.notifyProjectMembers(
-      payload.projectId,
-      'CONFLICTS_DETECTED',
-      {
-        syncRunId: payload.syncRunId,
-        conflictsRaised: payload.conflictsRaised,
-      },
-      payload.requesterActorId,
-    );
+    const entryErrors = payload.entryErrors ?? [];
+    if (entryErrors.length > 0) {
+      await this.notifyProjectMembers(
+        payload.projectId,
+        'ROADMAP_ENTRIES_INVALID',
+        {
+          syncRunId: payload.syncRunId,
+          count: entryErrors.length,
+          // A few are enough to know where to look; the sync run lists them all.
+          entries: entryErrors
+            .slice(0, 5)
+            .map(({ id, reason }) => ({ id, reason })),
+        },
+        payload.requesterActorId,
+      );
+    }
   }
 
   @OnEvent('sync.failed')

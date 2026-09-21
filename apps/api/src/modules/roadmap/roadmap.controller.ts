@@ -4,6 +4,7 @@ import {
   Inject,
   NotFoundException,
   Param,
+  UnprocessableEntityException,
   UseGuards,
 } from '@nestjs/common';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
@@ -16,7 +17,12 @@ import {
   resolveDocumentFilename,
   resolveDocumentKind,
 } from './document-kind.util.js';
-import { RoadmapParserService } from './roadmap-parser.service.js';
+import { sanitizeSyncMessage } from '../synchronization/sync-failure.util.js';
+import {
+  ParsedRoadmap,
+  RoadmapParserService,
+} from './roadmap-parser.service.js';
+import { RoadmapFormatError } from './roadmap-yaml-entry.util.js';
 
 /**
  * Read-only documental + structured views (brief §10, FASE-06). No
@@ -47,7 +53,20 @@ export class RoadmapController {
   @Get('roadmap/structured')
   async roadmapStructured(@Param('projectId') projectId: string) {
     const content = await this.readDocument(projectId, 'roadmap');
-    return this.roadmapParser.parse(content);
+    // Tolerant: the rows that can be read; the ones that cannot are
+    // reported by `roadmap/issues` (Roadmap BUG-05).
+    return this.parseRoadmap(content).rows;
+  }
+
+  /** Roadmap entries that could not be read — id, line and a one-line reason each — so the UI can say what to fix. */
+  @Get('roadmap/issues')
+  async roadmapIssues(@Param('projectId') projectId: string) {
+    const content = await this.readDocument(projectId, 'roadmap');
+    return this.parseRoadmap(content).errors.map(({ id, line, reason }) => ({
+      id,
+      line,
+      reason,
+    }));
   }
 
   @Get('agentslog/structured')
@@ -97,6 +116,20 @@ export class RoadmapController {
       throw new NotFoundException('Revision not found');
     }
     return revision;
+  }
+
+  /** A document malformed as a whole (an unterminated fence) is a 422 with a readable reason, not a 500; one unreadable entry never reaches here — it lands in `errors`. */
+  private parseRoadmap(content: string): ParsedRoadmap {
+    try {
+      return this.roadmapParser.parseTolerant(content);
+    } catch (error) {
+      if (error instanceof RoadmapFormatError) {
+        throw new UnprocessableEntityException(
+          sanitizeSyncMessage(error.message),
+        );
+      }
+      throw error;
+    }
   }
 
   private async readDocument(projectId: string, kind: string): Promise<string> {

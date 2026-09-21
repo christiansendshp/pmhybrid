@@ -39,30 +39,30 @@ transform: true })` — unknown fields are stripped, not rejected; typed
 
 ## Modules and their route prefixes
 
-| Prefix                                    | Module                | Notes                                                                   |
-| ----------------------------------------- | --------------------- | ----------------------------------------------------------------------- |
-| `/auth`                                   | auth                  | `login`, `refresh` unauthenticated; `me` requires `JwtAuthGuard`        |
-| `/health`                                 | health                | Terminus healthcheck (DB connectivity)                                  |
-| `/users`                                  | users                 | Human actors (`Actor.kind = HUMAN`)                                     |
-| `/agents`                                 | agents                | AI agents (`Actor.kind = AI_AGENT`)                                     |
-| `/agents/:agentId/keys`                   | agents (api-keys)     | Hashed API keys for one agent (Roadmap GAP-15)                          |
-| `/roles`                                  | roles                 | Global role/permission catalog, `PATCH :id/permissions`                 |
-| `/projects`                               | projects              | Create/list/update; membership decides per-project read access          |
-| `/projects/:projectId/members`            | project-members       |                                                                         |
-| `/projects/:projectId/roles`              | roles (project-roles) | Per-project role assignment (distinct from the global catalog above)    |
-| `/projects/:projectId/phases`             | phases                |                                                                         |
-| `/projects/:projectId/epics`              | epics                 |                                                                         |
-| `/projects/:projectId/templates`          | templates             | The brief's Epic→Task hierarchy rung, unrelated to doc "templates"      |
-| `/projects/:projectId/tasks`              | tasks                 | Includes `:taskId/assign`, `:taskId/transition`, `:taskId/dependencies` |
-| `/projects/:projectId/progress`           | tasks (progress)      | `statusCounts` tree, brief §16                                          |
-| `/projects/:projectId/documents`          | roadmap               | Raw + structured Roadmap/Agentslog views, revision history              |
-| `/projects/:projectId/conflicts`          | conflicts             | `:id/resolve`                                                           |
-| `/projects/:projectId/audit`              | audit                 | Cursor-paginated change history                                         |
-| `/projects/:projectId/sync`, `/sync-runs` | synchronization       | Manual sync trigger + run history                                       |
-| `/dashboard`                              | dashboard             | Cross-project summary + activity feeds                                  |
-| `/workload`                               | workload              | Cross-project per-actor task view                                       |
-| `/notifications`                          | notifications         | `:id/read`                                                              |
-| `/filesystem-browser`                     | git-providers         | `browse` — server-side folder picker for `docsPath` (Roadmap GAP-27)    |
+| Prefix                                    | Module                | Notes                                                                                                     |
+| ----------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------- |
+| `/auth`                                   | auth                  | `login`, `refresh` unauthenticated; `me` requires `JwtAuthGuard`                                          |
+| `/health`                                 | health                | Terminus healthcheck (DB connectivity)                                                                    |
+| `/users`                                  | users                 | Human actors (`Actor.kind = HUMAN`)                                                                       |
+| `/agents`                                 | agents                | AI agents (`Actor.kind = AI_AGENT`)                                                                       |
+| `/agents/:agentId/keys`                   | agents (api-keys)     | Hashed API keys for one agent (Roadmap GAP-15)                                                            |
+| `/roles`                                  | roles                 | Global role/permission catalog, `PATCH :id/permissions`                                                   |
+| `/projects`                               | projects              | Create/list/update; membership decides per-project read access                                            |
+| `/projects/:projectId/members`            | project-members       |                                                                                                           |
+| `/projects/:projectId/roles`              | roles (project-roles) | Per-project role assignment (distinct from the global catalog above)                                      |
+| `/projects/:projectId/phases`             | phases                |                                                                                                           |
+| `/projects/:projectId/epics`              | epics                 |                                                                                                           |
+| `/projects/:projectId/templates`          | templates             | The brief's Epic→Task hierarchy rung, unrelated to doc "templates"                                        |
+| `/projects/:projectId/tasks`              | tasks                 | Includes `:taskId/assign`, `:taskId/transition`, `:taskId/dependencies`                                   |
+| `/projects/:projectId/progress`           | tasks (progress)      | `statusCounts` tree, brief §16                                                                            |
+| `/projects/:projectId/documents`          | roadmap               | Raw + structured Roadmap/Agentslog views, unreadable Roadmap entries (`roadmap/issues`), revision history |
+| `/projects/:projectId/conflicts`          | conflicts             | `:id/resolve`                                                                                             |
+| `/projects/:projectId/audit`              | audit                 | Cursor-paginated change history                                                                           |
+| `/projects/:projectId/sync`, `/sync-runs` | synchronization       | Manual sync trigger + run history                                                                         |
+| `/dashboard`                              | dashboard             | Cross-project summary + activity feeds                                                                    |
+| `/workload`                               | workload              | Cross-project per-actor task view                                                                         |
+| `/notifications`                          | notifications         | `:id/read`                                                                                                |
+| `/filesystem-browser`                     | git-providers         | `browse` — server-side folder picker for `docsPath` (Roadmap GAP-27)                                      |
 
 Every `/projects/:projectId/...` route (except `/projects` itself) sits
 behind `ProjectMemberGuard`: a non-member is refused before any handler runs,

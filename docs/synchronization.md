@@ -114,7 +114,34 @@ segment` section with an archive path + SHA-256), ingest the referenced
      either branch.
 7. Finalize the `SyncRun` (`SUCCESS`/`PARTIAL`/`FAILED`) with a `summary`
    jsonb of counts (created/updated/table-changed/completed-via-removal/
-   conflicts-raised).
+   conflicts-raised) and `entryErrors`. `PARTIAL` means the run finished but
+   left something for a person: a conflict, or a Roadmap entry it could not
+   read.
+
+### Unreadable Roadmap entries and failed runs (Roadmap BUG-05)
+
+- **One bad entry no longer fails the run.** Sync reads the Roadmap
+  tolerantly (`docs/roadmap-parser.md`): the readable entries reconcile as
+  usual; each unreadable one is listed in `summary.entryErrors` as
+  `{ id, line, reason }` (capped at 50) and its task is left exactly as it
+  was. Its id counts as _seen_, so the disappeared-row sweep (step 6) never
+  completes it or raises a conflict for it — it did not disappear, it was not
+  understood. A standing entry error is not a "change": it does not put every
+  idle scheduled tick into the audit log.
+- **Notifications are per change, not per run.** `ROADMAP_ENTRIES_INVALID`
+  (payload `{ syncRunId, count, entries: [{ id, reason }] }`, at most 5
+  entries) is sent only when the set of unreadable entries differs from the
+  previous completed run's; a `SYNC_FAILED` identical to the previous run's
+  is recorded in the history but not notified again. A run that fixes
+  everything and one that later breaks again are different news.
+- **A failed run says what to fix.** The persisted `summary.error` is one
+  line, bounded to 300 characters, with no filesystem paths and no yaml code
+  frame. A problem in the project's own documents or docs folder (an
+  unterminated fence; a missing/unreadable folder) answers **422** with that
+  message; any other failure keeps its own status (a DB outage stays a 500).
+- **Scheduled retries back off.** Each consecutive `FAILED` run doubles the
+  wait before the next scheduled attempt, up to 16 × the project's
+  `syncIntervalMinutes`; a success or a manual run resets it.
 
 ## Agentslog ingestion
 

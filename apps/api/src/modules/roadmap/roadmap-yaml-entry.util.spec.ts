@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { RoadmapTable, TaskStatus } from '@pmhybrid/shared-types';
 import {
   extractRoadmapYamlEntries,
+  extractRoadmapYamlEntriesForWrite,
+  extractRoadmapYamlEntriesTolerant,
   looksLikeNewFormatRoadmap,
   mapNewStatusToTaskStatus,
   mapTaskStatusToNewStatus,
+  removeRoadmapYamlEntry,
+  RoadmapFormatError,
   roadmapYamlEntryToRow,
 } from './roadmap-yaml-entry.util.js';
 
@@ -147,6 +151,126 @@ describe('extractRoadmapYamlEntries', () => {
     // field and parsing would either throw or omit it.
     expect(entries[0].data.next_action).toBe(
       'value after the embedded backticks',
+    );
+  });
+});
+
+// The real failure behind Roadmap BUG-05: one unquoted `: ` in a title made
+// F1-T104's YAML invalid, and every sync of the project failed for it.
+const ONE_BROKEN_ENTRY = `# Roadmap
+
+## Plan
+
+### TASK-1 — Fine before
+
+\`\`\`yaml
+id: TASK-1
+type: TASK
+title: Fine before
+status: BACKLOG
+\`\`\`
+
+### F1-T104 — Contradicción SuperAdmin
+
+\`\`\`yaml
+id: F1-T104
+type: TASK
+title: Contradicción SuperAdmin: código vs. spec
+status: READY
+\`\`\`
+
+### TASK-3 — Fine after
+
+\`\`\`yaml
+id: TASK-3
+type: TASK
+title: Fine after
+status: BACKLOG
+\`\`\`
+`;
+
+describe('extractRoadmapYamlEntriesTolerant (Roadmap BUG-05)', () => {
+  it('isolates one invalid entry: the others are still returned', () => {
+    const { entries, errors } =
+      extractRoadmapYamlEntriesTolerant(ONE_BROKEN_ENTRY);
+
+    expect(entries.map((e) => e.id)).toEqual(['TASK-1', 'TASK-3']);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].id).toBe('F1-T104');
+  });
+
+  it('locates the failure in the file and explains it in one readable line', () => {
+    const [error] = extractRoadmapYamlEntriesTolerant(ONE_BROKEN_ENTRY).errors;
+    const lines = ONE_BROKEN_ENTRY.split('\n');
+
+    // 1-based line of the offending `title:` line itself.
+    expect(lines[error.line - 1]).toContain('title: Contradicción SuperAdmin:');
+    expect(error.reason).not.toContain('\n');
+    expect(error.reason).toMatch(/Nested mappings are not allowed/);
+    expect(error.reason).toMatch(/quote a value that contains/);
+    // Block-relative "at line N, column M" would mislead against a file line.
+    expect(error.reason).not.toMatch(/at line \d+/);
+  });
+
+  it('reports a block that is not a mapping, and a missing required field', () => {
+    const md = [
+      '### TASK-1 — List',
+      '',
+      '```yaml',
+      '- just',
+      '- a list',
+      '```',
+      '',
+      '### TASK-2 — No status',
+      '',
+      '```yaml',
+      'id: TASK-2',
+      'type: TASK',
+      '```',
+      '',
+    ].join('\n');
+
+    const { entries, errors } = extractRoadmapYamlEntriesTolerant(md);
+
+    expect(entries).toEqual([]);
+    expect(errors.map((e) => [e.id, e.reason])).toEqual([
+      ['TASK-1', 'the yaml block must be a mapping'],
+      [
+        'TASK-2',
+        'missing a required "status" field (it must be a non-empty string)',
+      ],
+    ]);
+  });
+
+  it('still throws when the whole document is malformed (unterminated fence)', () => {
+    const broken = `### TASK-1 — Broken\n\n\`\`\`yaml\nid: TASK-1\ntype: TASK\nstatus: BACKLOG\n`;
+    expect(() => extractRoadmapYamlEntriesTolerant(broken)).toThrow(
+      RoadmapFormatError,
+    );
+  });
+
+  it('keeps the strict form all-or-nothing, with the entry named in its message', () => {
+    expect(() => extractRoadmapYamlEntries(ONE_BROKEN_ENTRY)).toThrow(
+      /invalid YAML in entry "F1-T104"/,
+    );
+  });
+});
+
+describe('extractRoadmapYamlEntriesForWrite (Roadmap BUG-05)', () => {
+  it('lets a write to a readable entry go ahead despite a broken sibling', () => {
+    const entries = extractRoadmapYamlEntriesForWrite(
+      ONE_BROKEN_ENTRY,
+      'TASK-3',
+    );
+    expect(entries.map((e) => e.id)).toEqual(['TASK-1', 'TASK-3']);
+  });
+
+  it('refuses a write to the unreadable entry itself — never lets an upsert append a duplicate', () => {
+    expect(() =>
+      extractRoadmapYamlEntriesForWrite(ONE_BROKEN_ENTRY, 'F1-T104'),
+    ).toThrow(RoadmapFormatError);
+    expect(() => removeRoadmapYamlEntry(ONE_BROKEN_ENTRY, 'F1-T104')).toThrow(
+      RoadmapFormatError,
     );
   });
 });

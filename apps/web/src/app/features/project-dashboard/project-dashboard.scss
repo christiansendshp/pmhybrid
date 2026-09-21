@@ -59,3 +59,16 @@
 .members__select {
   width: 14rem;
 }
+
+.sync-entry-errors {
+  margin-bottom: var(--space-4);
+
+  p {
+    margin: 0 0 var(--space-1);
+  }
+
+  ul {
+    margin: 0;
+    padding-left: var(--space-4);
+  }
+}

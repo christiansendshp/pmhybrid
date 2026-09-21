@@ -92,18 +92,66 @@ export function looksLikeNewFormatRoadmap(markdown: string): boolean {
 }
 
 /**
- * Parses every `### TYPE-ID — Title` + ```` ```yaml ```` entry in the
- * document. Throws (never returns a silently-empty list for content that
- * looks like an attempted entry) on an unterminated fence, invalid YAML, or
- * a missing required field — a caller that swallowed this into `[]` would
- * feed `reconcileRoadmap` an empty row set, which mass-completes or
- * mass-conflicts every task in the project via its disappeared-row sweep.
+ * The document is malformed as a whole (as opposed to one entry being
+ * unreadable): sync reports it as a fixable document problem, not a crash.
  */
-export function extractRoadmapYamlEntries(
-  markdown: string,
-): RoadmapYamlEntry[] {
+export class RoadmapFormatError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RoadmapFormatError';
+  }
+}
+
+/**
+ * One entry that could not be read (Roadmap BUG-05). `id` is the heading's
+ * id — the YAML itself is what failed, so it cannot be trusted to say.
+ */
+export interface RoadmapEntryError {
+  id: string;
+  /** 1-based line in the file of the offending YAML line (or the heading when unknown). */
+  line: number;
+  /** One readable line: what is wrong, without a code frame. */
+  reason: string;
+  /** The full original message, as `extractRoadmapYamlEntries` throws it. */
+  message: string;
+}
+
+/**
+ * `yaml`'s message is a code frame; the first line is the readable part. Its
+ * "at line N, column M" is relative to the block, not the file (the entry's
+ * own `line` says where), so it is dropped rather than left to mislead.
+ */
+function readableYamlReason(message: string): string {
+  const reason = message
+    .split('\n')[0]
+    .replace(/\s+at line \d+, column \d+:?$/, '')
+    .trim();
+  // The most common authoring mistake: an unquoted value containing ": "
+  // (e.g. `title: Foo: bar`) reads as a nested mapping.
+  return reason.startsWith('Nested mappings')
+    ? `${reason} — quote a value that contains ": "`
+    : reason;
+}
+
+/**
+ * Parses every `### TYPE-ID — Title` + yaml-fenced entry, isolating a
+ * failure to the entry it belongs to (Roadmap BUG-05): an invalid YAML
+ * block, one that is not a mapping, or one missing `id`/`type`/`status` is
+ * reported in `errors` and the rest are still returned. Only an unterminated
+ * fence still throws — nothing after it can be trusted to belong where it
+ * looks like it does.
+ *
+ * A caller must never treat an entry in `errors` as *absent*: reconciling
+ * without it would sweep its task as a disappeared row. It is present but
+ * unreadable, and its heading id is what identifies it.
+ */
+export function extractRoadmapYamlEntriesTolerant(markdown: string): {
+  entries: RoadmapYamlEntry[];
+  errors: RoadmapEntryError[];
+} {
   const lines = markdown.split(/\r?\n/);
   const entries: RoadmapYamlEntry[] = [];
+  const errors: RoadmapEntryError[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const heading = HEADING_RE.exec(lines[i].trim());
@@ -131,36 +179,55 @@ export function extractRoadmapYamlEntries(
       fenceCloseLine += 1;
     }
     if (fenceCloseLine >= lines.length) {
-      throw new Error(
+      throw new RoadmapFormatError(
         `Roadmap.md: unterminated \`\`\`yaml block for entry "${heading[1]}" starting at line ${fenceOpenLine + 1}`,
       );
     }
+
+    const entryId = heading[1];
+    const fail = (line: number, reason: string, message: string) => {
+      errors.push({ id: entryId, line, reason, message });
+      i = fenceCloseLine;
+    };
 
     const yamlText = lines.slice(fenceOpenLine + 1, fenceCloseLine).join('\n');
     let parsed: unknown;
     try {
       parsed = parseYaml(yamlText);
     } catch (error) {
-      throw new Error(
-        `Roadmap.md: invalid YAML in entry "${heading[1]}" (line ${fenceOpenLine + 2}): ${error instanceof Error ? error.message : String(error)}`,
+      const raw = error instanceof Error ? error.message : String(error);
+      const linePos = (error as { linePos?: { line: number }[] }).linePos;
+      const yamlLine = linePos?.[0]?.line ?? 1;
+      fail(
+        fenceOpenLine + yamlLine + 1,
+        readableYamlReason(raw),
+        `Roadmap.md: invalid YAML in entry "${entryId}" (line ${fenceOpenLine + 2}): ${raw}`,
       );
+      continue;
     }
     if (
       typeof parsed !== 'object' ||
       parsed === null ||
       Array.isArray(parsed)
     ) {
-      throw new Error(
-        `Roadmap.md: entry "${heading[1]}"'s yaml block must be a mapping`,
+      fail(
+        fenceOpenLine + 2,
+        'the yaml block must be a mapping',
+        `Roadmap.md: entry "${entryId}"'s yaml block must be a mapping`,
       );
+      continue;
     }
     const data = parsed as Record<string, unknown>;
-    for (const required of ['id', 'type', 'status'] as const) {
-      if (typeof data[required] !== 'string' || !data[required]) {
-        throw new Error(
-          `Roadmap.md: entry "${heading[1]}" is missing a required "${required}" field`,
-        );
-      }
+    const missing = (['id', 'type', 'status'] as const).find(
+      (required) => typeof data[required] !== 'string' || !data[required],
+    );
+    if (missing) {
+      fail(
+        fenceOpenLine + 2,
+        `missing a required "${missing}" field (it must be a non-empty string)`,
+        `Roadmap.md: entry "${entryId}" is missing a required "${missing}" field`,
+      );
+      continue;
     }
 
     entries.push({
@@ -174,6 +241,41 @@ export function extractRoadmapYamlEntries(
     i = fenceCloseLine;
   }
 
+  return { entries, errors };
+}
+
+/**
+ * Strict form: throws on the first entry that cannot be read (never returns
+ * a silently-shortened list). For everything that writes the document back —
+ * a write-back built on a partial read would drop the entry it could not
+ * see — and for callers that want all-or-nothing.
+ */
+export function extractRoadmapYamlEntries(
+  markdown: string,
+): RoadmapYamlEntry[] {
+  const { entries, errors } = extractRoadmapYamlEntriesTolerant(markdown);
+  if (errors.length > 0) {
+    throw new RoadmapFormatError(errors[0].message);
+  }
+  return entries;
+}
+
+/**
+ * The entries a write-back may work against: every readable one, unless the
+ * entry being written is itself among the unreadable ones. A broken sibling
+ * changes nothing about where this entry's lines are, so it must not block
+ * the edit; but if the target is the broken one, "no entry with this id"
+ * would make an upsert append a duplicate — refuse instead.
+ */
+export function extractRoadmapYamlEntriesForWrite(
+  markdown: string,
+  targetId: string,
+): RoadmapYamlEntry[] {
+  const { entries, errors } = extractRoadmapYamlEntriesTolerant(markdown);
+  const blocking = errors.find((error) => error.id === targetId);
+  if (blocking) {
+    throw new RoadmapFormatError(blocking.message);
+  }
   return entries;
 }
 
@@ -427,7 +529,7 @@ export function removeRoadmapYamlEntry(
   markdown: string,
   id: string,
 ): string | null {
-  const entries = extractRoadmapYamlEntries(markdown);
+  const entries = extractRoadmapYamlEntriesForWrite(markdown, id);
   const entry = entries.find((e) => e.id === id);
   if (!entry) {
     return null;

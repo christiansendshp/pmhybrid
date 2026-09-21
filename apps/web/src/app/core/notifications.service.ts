@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE_URL } from './api-base-url.js';
 
-/** Free-form per docs/domain-model.md — currently `CONFLICTS_DETECTED` and `SYNC_FAILED`. */
+/** Free-form per docs/domain-model.md — currently `CONFLICTS_DETECTED`, `SYNC_FAILED` and `ROADMAP_ENTRIES_INVALID`. */
 export interface Notification {
   id: string;
   actorId: string;
