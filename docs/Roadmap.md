@@ -193,10 +193,21 @@ expected_behavior: >
   docs matching the implemented behavior, and a clean development dataset.
 technical_context:
   backend: docker-compose.yml, apps/web/src/app/core/api-base-url.ts, docs/
+depends_on:
+  - IMPROVEMENT-02a
+  - IMPROVEMENT-02b
+  - IMPROVEMENT-02c
+  - IMPROVEMENT-02d
+  - IMPROVEMENT-02e
 next_action: >
-  Decide the target runtime before writing images.
+  Umbrella only. Decided on 2026-09-21: the target runtime is containers (an
+  API image on node, a web image on nginx, Postgres as a service or an outside
+  database), configured by environment variables. Refined into five slices
+  (02a the ADR files, 02b the web's runtime API URL, 02c the images and the
+  health endpoints, 02d the development dataset, 02e the synchronization docs
+  against the code); close this entry when all five are done.
 created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T22:30:00Z
 ```
 
 Post-MVP gap backlog derived from a brief-vs-code review on 2026-09-15
@@ -263,3 +274,102 @@ a real sync tick mid-edit. Done once confirmed no dev server was running
 and with the user's explicit sign-off, given the next sync tick will still
 process this change (see `BUG-01` above for a second hazard found and
 deliberately _not_ fixed in this same pass, kept out of scope on purpose).
+
+### IMPROVEMENT-02b — The web reads its API address when it starts
+
+```yaml
+id: IMPROVEMENT-02b
+type: IMPROVEMENT
+title: The web reads its API address when it starts
+status: READY
+priority: P3
+parent: IMPROVEMENT-02
+description: >
+  Second slice of IMPROVEMENT-02. The web app hardcodes API_BASE_URL to
+  http://localhost:3000 in source, so one build cannot serve any other API.
+expected_behavior: >
+  The API address comes from a config.js served next to the app, read before
+  the bundle runs, with http://localhost:3000 as the default, so the same
+  build serves any environment.
+technical_context:
+  backend: apps/web/src/app/core/api-base-url.ts, index.html, public/
+next_action: >
+  Read window.__PMHYBRID__ once, where API_BASE_URL is defined.
+created_at: 2026-09-21T22:30:00Z
+updated_at: 2026-09-21T22:30:00Z
+```
+
+### IMPROVEMENT-02c — Container images, a compose file for them, and liveness and readiness
+
+```yaml
+id: IMPROVEMENT-02c
+type: IMPROVEMENT
+title: Container images, a compose file for them, and liveness and readiness
+status: READY
+priority: P3
+parent: IMPROVEMENT-02
+description: >
+  Third slice of IMPROVEMENT-02. There is no Dockerfile for the API or the
+  web app (docker-compose.yml only runs PostgreSQL), and /health checks the
+  database, which makes it a readiness probe with no liveness one.
+expected_behavior: >
+  A Dockerfile for each, built and run for real; a compose file that runs the
+  database, the API and the web with the API address and the secrets as
+  environment variables; /health/live that does not touch the database and
+  /health that does; and a documented deployment path.
+technical_context:
+  backend: apps/api/Dockerfile, apps/web/Dockerfile, docker-compose.prod.yml, apps/api/src/modules/health, docs/
+next_action: >
+  Build both images, bring the stack up under a project name of its own, and
+  probe it, before anything is written down.
+created_at: 2026-09-21T22:30:00Z
+updated_at: 2026-09-21T22:30:00Z
+```
+
+### IMPROVEMENT-02d — A development database without the old test users
+
+```yaml
+id: IMPROVEMENT-02d
+type: IMPROVEMENT
+title: A development database without the old test users
+status: READY
+priority: P3
+parent: IMPROVEMENT-02
+description: >
+  Fourth slice of IMPROVEMENT-02. About 40 fixture users ("Dev", "Outsider",
+  "Role tester") from e2e runs made before the test database was separate
+  still clutter the development Team page.
+expected_behavior: >
+  A maintenance command that finds them by the shape of their address, says
+  what it would do, and deactivates them only when asked, leaving real people
+  and everything they touched alone.
+technical_context:
+  backend: apps/api/scripts, apps/api/package.json
+next_action: >
+  Dry run by default; never delete an actor, since history points at it.
+created_at: 2026-09-21T22:30:00Z
+updated_at: 2026-09-21T22:30:00Z
+```
+
+### IMPROVEMENT-02e — The synchronization docs against what the code does
+
+```yaml
+id: IMPROVEMENT-02e
+type: IMPROVEMENT
+title: The synchronization docs against what the code does
+status: READY
+priority: P3
+parent: IMPROVEMENT-02
+description: >
+  Fifth slice of IMPROVEMENT-02. docs/synchronization.md and
+  docs/roadmap-parser.md were written before conflicts on unknown statuses and
+  Owner resolution were implemented (GAP-35a, GAP-35b).
+expected_behavior: >
+  The two documents describe what the code does, checked claim by claim.
+technical_context:
+  backend: docs/synchronization.md, docs/roadmap-parser.md
+next_action: >
+  Read both against the parser and the sync, and correct what differs.
+created_at: 2026-09-21T22:30:00Z
+updated_at: 2026-09-21T22:30:00Z
+```

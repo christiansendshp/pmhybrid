@@ -157,3 +157,14 @@ segments live in `docs/history/`.
 - Summary: Performance and data limits: the dependency cycle check runs in memory and a 500-entry chain syncs in seconds with the missing indexes added (01a), DTOs validate length and enums (01b), progress and the multi-project summary are computed in batch (01c), and the activity payload, dependency removal and the task list pages are done (01d).
 - Files: docs/Roadmap.md
 - Verify: All four slices done and verified: api unit 466 and e2e 316 pass (coverage 88.1); web unit 282 and eslint clean; Playwright a11y 60 pass; api lint, nest build and web build ok
+
+## [2026-09-21T22:06:11Z] | claude | IMPROVEMENT-02a | IN_PROGRESS
+
+- Summary: One file per ADR in docs/decisions, generated verbatim from the Stack table, with an index
+- Verify: pending
+
+## [2026-09-21T22:08:23Z] | claude | IMPROVEMENT-02a | DONE
+
+- Summary: docs/decisions has one file per ADR (all 19 the table lists, generated verbatim from its rows with a written title, status, date, decision, reason and where it is detailed) and an index; the Stack table points at them. A unit test fails on a cited ADR with no file, a file the table does not list, a record that drifts from its row, or a file missing from the index.
+- Files: docs/decisions,docs/Stack_Tecnologies.md,apps/api/src/modules/roadmap/self-decisions.spec.ts
+- Verify: api unit 470 pass; api lint clean
