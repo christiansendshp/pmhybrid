@@ -8,9 +8,13 @@ import { DocumentKind, Prisma, TaskStatus } from '@prisma/client';
 import type { Task, TaskDependency } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
+import { AgentslogParserService } from '../roadmap/agentslog-parser.service.js';
+import { isSkillRoadmap } from '../roadmap/markdown-table.util.js';
 import { RoadmapParserService } from '../roadmap/roadmap-parser.service.js';
 import { rowContentHash } from './row-content-hash.util.js';
 import { appendAgentslogEntry } from '../roadmap/agentslog-writer.util.js';
+import { skillLedgerEntries } from '../roadmap/skill-ledger.util.js';
+import { rowStatusDiffers } from '../roadmap/status-vocabulary.util.js';
 import {
   normalizeOwnerName,
   type RoadmapOwner,
@@ -75,6 +79,7 @@ export class WriteBackService {
     @Inject(PROJECT_REPOSITORY_PROVIDER)
     private readonly repositoryProvider: ProjectRepositoryProvider,
     private readonly roadmapParser: RoadmapParserService,
+    private readonly agentslogParser: AgentslogParserService,
     private readonly audit: AuditService,
   ) {}
 
@@ -513,37 +518,44 @@ export class WriteBackService {
       where: { id: requesterActorId },
     });
 
-    const agentslogContent = await this.repositoryProvider.readFile(
-      project.docsPath,
-      DOCUMENT_FILENAMES.AGENTSLOG,
-    );
-    const updatedAgentslog = appendAgentslogEntry(agentslogContent, {
-      timestampIso: new Date().toISOString(),
-      agentName: actor?.displayName ?? 'system',
-      taskExternalId: task.externalId,
-      statusWord: 'REMOVED',
-      summary: `Removed: ${task.title}`,
-      files: '—',
-      verify: '—',
-      followUp: '—',
-    });
-    await this.repositoryProvider.writeFile(
-      project.docsPath,
-      DOCUMENT_FILENAMES.AGENTSLOG,
-      updatedAgentslog,
-    );
-    await this.recordDocumentRevision(
-      tx,
-      projectId,
-      'AGENTSLOG',
-      DOCUMENT_FILENAMES.AGENTSLOG,
-      updatedAgentslog,
-    );
-
     const roadmapContent = await this.repositoryProvider.readFile(
       project.docsPath,
       DOCUMENT_FILENAMES.ROADMAP,
     );
+
+    // The latest skill has no state for a removed task, and its `check`
+    // refuses a ledger ID that is in neither Roadmap.md nor Features.md, so a
+    // project documented with it gets no entry (Roadmap GAP-37b); the audit
+    // trail below still records the removal.
+    if (!isSkillRoadmap(roadmapContent)) {
+      const agentslogContent = await this.repositoryProvider.readFile(
+        project.docsPath,
+        DOCUMENT_FILENAMES.AGENTSLOG,
+      );
+      const updatedAgentslog = appendAgentslogEntry(agentslogContent, {
+        timestampIso: new Date().toISOString(),
+        agentName: actor?.displayName ?? 'system',
+        taskExternalId: task.externalId,
+        statusWord: 'REMOVED',
+        summary: `Removed: ${task.title}`,
+        files: '—',
+        verify: '—',
+        followUp: '—',
+      });
+      await this.repositoryProvider.writeFile(
+        project.docsPath,
+        DOCUMENT_FILENAMES.AGENTSLOG,
+        updatedAgentslog,
+      );
+      await this.recordDocumentRevision(
+        tx,
+        projectId,
+        'AGENTSLOG',
+        DOCUMENT_FILENAMES.AGENTSLOG,
+        updatedAgentslog,
+      );
+    }
+
     const updatedRoadmap = removeRoadmapRow(roadmapContent, task.externalId);
     if (updatedRoadmap !== null) {
       await this.repositoryProvider.writeFile(
@@ -794,41 +806,74 @@ export class WriteBackService {
       where: { id: requesterActorId },
     });
 
+    // Read first: which format the document is in decides what the ledger
+    // entry may say.
+    const roadmapContent = await this.repositoryProvider.readFile(
+      project.docsPath,
+      DOCUMENT_FILENAMES.ROADMAP,
+    );
+
     // Step 3: Agentslog entry appended first — preserves "a terminal log
     // entry exists before a row can vanish" even across a mid-write crash.
     const agentslogContent = await this.repositoryProvider.readFile(
       project.docsPath,
       DOCUMENT_FILENAMES.AGENTSLOG,
     );
-    const updatedAgentslog = appendAgentslogEntry(agentslogContent, {
-      timestampIso: new Date().toISOString(),
-      agentName: actor?.displayName ?? 'system',
-      taskExternalId: externalId,
-      statusWord: statusWordFor(trigger),
-      summary: summaryFor(trigger, task.title),
-      files: '—',
-      verify: '—',
-      followUp: '—',
-    });
-    await this.repositoryProvider.writeFile(
-      project.docsPath,
-      DOCUMENT_FILENAMES.AGENTSLOG,
-      updatedAgentslog,
-    );
-    await this.recordDocumentRevision(
-      tx,
-      projectId,
-      'AGENTSLOG',
-      DOCUMENT_FILENAMES.AGENTSLOG,
-      updatedAgentslog,
-    );
+    const timestampIso = new Date().toISOString();
+    const requesterName = actor?.displayName ?? 'system';
+    let updatedAgentslog: string | null;
+    if (isSkillRoadmap(roadmapContent)) {
+      // The latest skill's ledger knows three states and its `check` rejects
+      // anything else (Roadmap GAP-37b); an event with no state writes none.
+      const assignee = task.assigneeActorId
+        ? await tx.actor.findUnique({ where: { id: task.assigneeActorId } })
+        : null;
+      const entries = skillLedgerEntries({
+        trigger,
+        timestampIso,
+        taskExternalId: externalId,
+        title: task.title,
+        requesterName,
+        assigneeName: assignee?.displayName ?? null,
+        history: this.agentslogParser
+          .parse(agentslogContent)
+          .entries.filter((entry) => entry.taskExternalId === externalId),
+      });
+      updatedAgentslog = entries.length
+        ? entries.reduce(
+            (content, entry) => appendAgentslogEntry(content, entry),
+            agentslogContent,
+          )
+        : null;
+    } else {
+      updatedAgentslog = appendAgentslogEntry(agentslogContent, {
+        timestampIso,
+        agentName: requesterName,
+        taskExternalId: externalId,
+        statusWord: statusWordFor(trigger),
+        summary: summaryFor(trigger, task.title),
+        files: '—',
+        verify: '—',
+        followUp: '—',
+      });
+    }
+    if (updatedAgentslog !== null) {
+      await this.repositoryProvider.writeFile(
+        project.docsPath,
+        DOCUMENT_FILENAMES.AGENTSLOG,
+        updatedAgentslog,
+      );
+      await this.recordDocumentRevision(
+        tx,
+        projectId,
+        'AGENTSLOG',
+        DOCUMENT_FILENAMES.AGENTSLOG,
+        updatedAgentslog,
+      );
+    }
 
     // Steps 4-6: Roadmap row, in whichever table already holds it (Roadmap
     // GAP-19) — falling back to Active only for a brand-new row.
-    const roadmapContent = await this.repositoryProvider.readFile(
-      project.docsPath,
-      DOCUMENT_FILENAMES.ROADMAP,
-    );
     const roadmapDocument = await tx.document.findUnique({
       where: { projectId_kind: { projectId, kind: 'ROADMAP' } },
     });
@@ -842,10 +887,7 @@ export class WriteBackService {
     ) {
       const { rows } = this.roadmapParser.parseTolerant(roadmapContent);
       const currentRow = rows.find((row) => row.externalId === externalId);
-      if (
-        currentRow?.statusMapped &&
-        String(currentRow.statusMapped) !== String(task.status)
-      ) {
+      if (currentRow && rowStatusDiffers(currentRow, task.status)) {
         const conflict = await tx.conflict.create({
           data: {
             projectId,

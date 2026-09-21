@@ -13,6 +13,7 @@ import {
   RoadmapParserService,
   rowCarriesDependsOn,
 } from '../roadmap/roadmap-parser.service.js';
+import { rowStatusDiffers } from '../roadmap/status-vocabulary.util.js';
 import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository-provider.interface.js';
 import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
@@ -1064,7 +1065,9 @@ export class SynchronizationService {
   ): Promise<void> {
     // undefined: the row does not carry the field, which says nothing.
     const agrees: Record<string, boolean | undefined> = {
-      status: row.statusMapped ? row.statusMapped === task.status : undefined,
+      status: row.statusMapped
+        ? !rowStatusDiffers(row, task.status)
+        : undefined,
       title: row.outcome !== undefined ? row.outcome === task.title : undefined,
       acceptanceCriteria:
         row.acceptanceCheck !== undefined
@@ -1153,7 +1156,9 @@ export class SynchronizationService {
     // lacks (status, acceptance check) are undefined on the row and so never
     // become candidates, which is what keeps them as last known.
     const candidates: Partial<Record<ReconcilableField, unknown>> = {};
-    if (row.statusMapped && row.statusMapped !== task.status) {
+    // A coarse word of the skill's (TODO, IN_PROGRESS, DONE) that the task's
+    // column already projects to is the same state, not a change.
+    if (row.statusMapped && rowStatusDiffers(row, task.status)) {
       candidates.status = row.statusMapped;
     }
     if (row.outcome !== undefined && row.outcome !== task.title) {

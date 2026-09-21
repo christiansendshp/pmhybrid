@@ -1,5 +1,11 @@
 import { RoadmapTable, TaskStatus } from '@pmhybrid/shared-types';
-import { findRoadmapTableLineRange, splitRow } from './markdown-table.util.js';
+import {
+  findAllRoadmapTableRanges,
+  findRoadmapTableLineRange,
+  isSkillRoadmap,
+  splitRow,
+} from './markdown-table.util.js';
+import { isPauseCell, workflowStatusFor } from './status-vocabulary.util.js';
 import { detectLineEnding } from './line-ending.util.js';
 import { ownerCell, type RoadmapOwner } from './roadmap-owner.util.js';
 import {
@@ -50,19 +56,26 @@ export function upsertLifecycleRoadmapRow(
 
   const lines = markdown.split(/\r?\n/);
   const eol = detectLineEnding(markdown);
+  const skill = isSkillRoadmap(markdown);
   const cellByHeader: Record<string, string> = {
     ID: sanitizeField(externalId),
     Outcome: sanitizeField(fields.outcome),
     'Acceptance check': sanitizeField(fields.acceptanceCheck),
-    Status: sanitizeField(fields.status),
+    // The skill's own check rejects a Status outside TODO / IN_PROGRESS /
+    // PAUSE / DONE; every other document keeps the verbatim Kanban state
+    // (ADR-002).
+    Status: sanitizeField(
+      skill ? workflowStatusFor(fields.status) : fields.status,
+    ),
     Owner: sanitizeField(ownerCell(fields.owner, new Date().toISOString())),
     'Depends on': sanitizeField(fields.dependsOn),
   };
 
-  for (const kind of Object.values(RoadmapTable)) {
-    const range = findRoadmapTableLineRange(lines, kind);
-    const idIndex = range?.headers.indexOf('ID') ?? -1;
-    if (!range || idIndex === -1) {
+  // The row is wherever the document has it — Active work, Near term, a Plan
+  // table, the Gaps table — never only the first table of its shape.
+  for (const range of findAllRoadmapTableRanges(lines)) {
+    const idIndex = range.headers.indexOf('ID');
+    if (idIndex === -1) {
       continue;
     }
     for (let i = range.rowsStart; i < range.rowsEnd; i++) {
@@ -70,12 +83,16 @@ export function upsertLifecycleRoadmapRow(
       if (cells[idIndex] !== externalId) {
         continue;
       }
+      const values = withHeaderAliases(range.headers, cellByHeader);
+      if (skill) {
+        keepPauseUnlessDone(range.headers, cells, values);
+      }
       // Only overwrite cells this table's own headers carry — a header the
       // table lacks (Blocked has no Outcome/Status; Near term has no Owner)
-      // simply isn't in `cellByHeader`'s effect here, so its existing cell
-      // passes through unchanged.
+      // simply isn't in `values`, so its existing cell passes through
+      // unchanged.
       const padded = range.headers.map((header, index) =>
-        header in cellByHeader ? cellByHeader[header] : (cells[index] ?? '—'),
+        header in values ? values[header] : (cells[index] ?? '—'),
       );
       lines[i] = `| ${padded.join(' | ')} |`;
       return lines.join(eol);
@@ -112,10 +129,10 @@ export function replaceRoadmapRowCells(
 
   const lines = markdown.split(/\r?\n/);
   const eol = detectLineEnding(markdown);
-  for (const kind of Object.values(RoadmapTable)) {
-    const range = findRoadmapTableLineRange(lines, kind);
-    const idIndex = range?.headers.indexOf('ID') ?? -1;
-    if (!range || idIndex === -1) {
+  const skill = isSkillRoadmap(markdown);
+  for (const range of findAllRoadmapTableRanges(lines)) {
+    const idIndex = range.headers.indexOf('ID');
+    if (idIndex === -1) {
       continue;
     }
     for (let i = range.rowsStart; i < range.rowsEnd; i++) {
@@ -123,13 +140,29 @@ export function replaceRoadmapRowCells(
       if (cells[idIndex] !== externalId) {
         continue;
       }
-      const replaced = Object.keys(cellsByHeader).filter((header) =>
-        range.headers.includes(header),
-      );
-      if (replaced.length > 0) {
-        for (const header of replaced) {
+      // A key names the cell of the row's own table: the skill's Gaps table
+      // calls the row's text Description where the others say Outcome.
+      const targets = Object.keys(cellsByHeader)
+        .map((key) => ({ key, header: targetHeader(range.headers, key) }))
+        .filter(({ header }) => range.headers.includes(header));
+      const values: Record<string, string> = {};
+      for (const { key, header } of targets) {
+        values[header] =
+          skill && key === 'Status'
+            ? workflowStatusFor(cellsByHeader[key])
+            : cellsByHeader[key];
+      }
+      if (skill && 'Status' in values) {
+        keepPauseUnlessDone(range.headers, cells, values);
+      }
+      const replaced = targets
+        .filter(({ header }) => header in values)
+        .map(({ key }) => key);
+      const written = Object.keys(values);
+      if (written.length > 0) {
+        for (const header of written) {
           cells[range.headers.indexOf(header)] =
-            sanitizeField(cellsByHeader[header]) || '—';
+            sanitizeField(values[header]) || '—';
         }
         const padded = range.headers.map((_, index) => cells[index] ?? '—');
         lines[i] = `| ${padded.join(' | ')} |`;
@@ -188,10 +221,9 @@ export function removeRoadmapRow(
 
   const lines = markdown.split(/\r?\n/);
   const eol = detectLineEnding(markdown);
-  for (const kind of Object.values(RoadmapTable)) {
-    const range = findRoadmapTableLineRange(lines, kind);
-    const idIndex = range?.headers.indexOf('ID') ?? -1;
-    if (!range || idIndex === -1) {
+  for (const range of findAllRoadmapTableRanges(lines)) {
+    const idIndex = range.headers.indexOf('ID');
+    if (idIndex === -1) {
       continue;
     }
     for (let i = range.rowsStart; i < range.rowsEnd; i++) {
@@ -207,6 +239,51 @@ export function removeRoadmapRow(
     }
   }
   return null;
+}
+
+/** The header a key names in this table: `Outcome` is `Description` where the table has no Outcome column. */
+function targetHeader(headers: string[], key: string): string {
+  return key === 'Outcome' &&
+    !headers.includes('Outcome') &&
+    headers.includes('Description')
+    ? 'Description'
+    : key;
+}
+
+function withHeaderAliases(
+  headers: string[],
+  cellByHeader: Record<string, string>,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(cellByHeader).map(([key, value]) => [
+      targetHeader(headers, key),
+      value,
+    ]),
+  );
+}
+
+/**
+ * A skill row that is PAUSE stays PAUSE, with its reason, through a write
+ * that would otherwise mark it started (the same rule a BLOCKED YAML entry
+ * follows); only completing it changes the state, and then the reason goes
+ * too, as the skill's own `done` clears it.
+ */
+function keepPauseUnlessDone(
+  headers: string[],
+  cells: string[],
+  values: Record<string, string>,
+): void {
+  const statusIndex = headers.indexOf('Status');
+  if (statusIndex === -1 || !isPauseCell(cells[statusIndex])) {
+    return;
+  }
+  if (values.Status === 'DONE') {
+    if (headers.includes('Pause reason')) {
+      values['Pause reason'] = '—';
+    }
+    return;
+  }
+  delete values.Status;
 }
 
 function renderRow(

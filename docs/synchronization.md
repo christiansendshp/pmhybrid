@@ -406,6 +406,52 @@ skips a removed task entirely: a row that still names it neither recreates nor
 updates it, and its missing row never raises
 `ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG`.
 
+### Documents in the latest skill's format (Roadmap GAP-37b)
+
+The project-documentation skill's current tables (`docs/roadmap-parser.md`)
+are validated by the skill's own `check`, which rejects what write-back used to
+produce. A document is in that format when one of its tables has a `Pause
+reason` column; only then does write-back change, so every other document is
+written exactly as before.
+
+- **A row is found wherever it is.** Active work, Near term, every Plan table
+  and the Gaps table are searched in order for the ID, so editing a Plan or
+  Gaps row edits it in place instead of appending a duplicate to Active work.
+  `Outcome` is written to `Description` in a table that has no `Outcome`
+  column. A new task's first row still goes to Active work.
+- **Status is the skill's word.** Every Status cell of the file must be `TODO`,
+  `IN_PROGRESS`, `PAUSE` or `DONE`, so `PENDIENTE`/`ASIGNADA` are written
+  `TODO`, `EN_DESARROLLO`/`QA` `IN_PROGRESS`, `TERMINADA` `DONE`. The
+  distinction the vocabulary cannot carry stays in PM Hub, and reading the
+  coarse word back is not a change: a task in `QA` against a row that says
+  `IN_PROGRESS` raises nothing and moves nothing (`rowStatusDiffers`). A
+  verbatim board word in the document (`QA`) still counts as itself.
+- **A paused row stays paused.** A lifecycle or status write leaves `PAUSE` and
+  its `Pause reason` alone, as a `BLOCKED` entry is left alone in the YAML
+  format; only completing the task writes `DONE` and clears the reason (the
+  skill's `done` does the same).
+- **The ledger holds only states the skill accepts** (`IN_PROGRESS`, `PAUSE`,
+  `DONE`), a real `Verify` on `DONE`, one holder per task, and no ID that is in
+  neither Roadmap.md nor Features.md:
+
+  | Event                           | Entries                                                                                                |
+  | ------------------------------- | ------------------------------------------------------------------------------------------------------ |
+  | created                         | none — there is no such state, and the row carries it                                                  |
+  | started (`EN_DESARROLLO`)       | `IN_PROGRESS` for the assignee (else the requester), `Verify: pending`; none if the task is held       |
+  | completed (`TERMINADA`)         | `DONE`, `Verify: marked done in PM Hub by <name>; no automated check ran`                              |
+  | held task given to someone else | `PAUSE` for the previous holder (`OTRO - reassigned in PM Hub to <name>`), then `IN_PROGRESS` for them |
+  | removed                         | none — an entry for a row that is gone fails the skill's ID check; the audit trail records it          |
+
+  Rejected: `CREATED`/`REASSIGNED`/`REMOVED` words (the check rejects them), and
+  `DONE` for a removal (it would read as a completed capability). Known limit:
+  removing a task that already has ledger entries leaves those entries naming an
+  ID that is no longer in Roadmap.md, which the skill's `check` reports; PM Hub
+  does not invent a Features.md entry to satisfy it.
+
+Checked with the upstream skill's own script: a project made by its `init`,
+its `claim`, and PM Hub's create, start, reassign, edit, complete and remove all
+leave `check` passing (a `CREATED` entry, by contrast, fails it).
+
 ## Conflicts (brief §26)
 
 `Conflict` is a first-class entity with its own endpoints/UI route, not just

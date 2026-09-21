@@ -597,35 +597,6 @@ created_at: 2026-09-21T20:00:00Z
 updated_at: 2026-09-21T20:00:00Z
 ```
 
-### GAP-37b — Write the latest skill's tables and ledger the way its check validates them
-
-```yaml
-id: GAP-37b
-type: GAP
-title: Write the latest skill's tables and ledger the way its check validates them
-status: BACKLOG
-priority: P1
-parent: GAP-37
-depends_on:
-  - GAP-37a
-description: >
-  Second slice of GAP-37. Write-back must find a row in any table that holds
-  it (Plan and Gaps included), write the workflow Status vocabulary in a
-  skill table, and append only ledger entries the skill accepts.
-expected_behavior: >
-  A row anywhere in the document is edited in place, never duplicated; a
-  skill table gets TODO / IN_PROGRESS / PAUSE / DONE, a ledger entry is
-  IN_PROGRESS / PAUSE / DONE with a real Verify on DONE.
-technical_context:
-  backend: apps/api/src/modules/roadmap/roadmap-row-writer.util.ts, agentslog-writer.util.ts, synchronization/write-back.service.ts
-next_action: >
-  Decide how a PM Hub event with no skill state (created, reassigned,
-  removed) is recorded, then implement and run the skill's own check against
-  a written file.
-created_at: 2026-09-21T20:00:00Z
-updated_at: 2026-09-21T20:00:00Z
-```
-
 ### GAP-37c — Find the rules file at the repository root
 
 ```yaml

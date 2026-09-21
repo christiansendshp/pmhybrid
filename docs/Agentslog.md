@@ -832,3 +832,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: Sync now reads the latest skill's Roadmap tables: PAUSE is a valid state, a blocking Pause reason reads as blocked, the Gaps Description is the title, Plan and Gaps rows read like Active work
 - Files: apps/api/src/modules/roadmap/roadmap-parser.service.ts,apps/api/src/modules/synchronization/synchronization.service.ts,apps/api/test/roadmap-skill-format.e2e-spec.ts,docs/roadmap-parser.md
 - Verify: pnpm --filter api test (336) and test:e2e (225) pass; oxlint clean
+
+## [2026-09-21T17:32:22Z] | claude | GAP-37b | IN_PROGRESS
+
+- Summary: Write the skill's tables and ledger the way its check validates them
+- Verify: pending
+
+## [2026-09-21T17:50:22Z] | claude | GAP-37b | DONE
+
+- Summary: Write-back into a latest-skill project: rows edited wherever they are, Status as TODO/IN_PROGRESS/DONE with PAUSE kept, ledger limited to states the skill accepts with a real Verify; the skill's own check passes after every PM Hub write
+- Files: apps/api/src/modules/roadmap/roadmap-row-writer.util.ts,apps/api/src/modules/roadmap/skill-ledger.util.ts,apps/api/src/modules/roadmap/status-vocabulary.util.ts,apps/api/src/modules/synchronization/write-back.service.ts,docs/synchronization.md
+- Verify: api unit 351 and e2e 227 pass; upstream project_docs.sh check OK after init, claim and every PM Hub write (a CREATED entry fails it)

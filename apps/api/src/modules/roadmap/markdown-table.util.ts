@@ -98,6 +98,58 @@ export function findRoadmapTableLineRange(
   return null;
 }
 
+/**
+ * Every Roadmap table of the document, in order. The latest skill spreads
+ * work over several tables of the same shape (Active work, one Plan table per
+ * epic, Gaps), so a row is found by its ID across all of them — looking only
+ * at the first table of a kind would miss a Plan row and append a duplicate
+ * (Roadmap GAP-37b).
+ */
+export function findAllRoadmapTableRanges(
+  lines: string[],
+): (TableLineRange & { kind: RoadmapTable })[] {
+  const ranges: (TableLineRange & { kind: RoadmapTable })[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const trimmed = lines[i].trim();
+    if (
+      isTableRow(trimmed) &&
+      i + 1 < lines.length &&
+      isSeparatorRow(lines[i + 1].trim())
+    ) {
+      const headers = splitRow(trimmed);
+      const rowsStart = i + 2;
+      let rowsEnd = rowsStart;
+      while (rowsEnd < lines.length && isTableRow(lines[rowsEnd].trim())) {
+        rowsEnd += 1;
+      }
+      const kind = discriminateRoadmapTable(headers);
+      if (kind) {
+        ranges.push({ headers, rowsStart, rowsEnd, kind });
+      }
+      i = rowsEnd;
+    } else {
+      i += 1;
+    }
+  }
+  return ranges;
+}
+
+/**
+ * True when the document is written in the latest project-documentation
+ * skill's table format. Its signature is the `Pause reason` column, which no
+ * older table has; only then does write-back use the skill's workflow Status
+ * vocabulary and ledger states, so every other document is written exactly as
+ * before (Roadmap GAP-37b).
+ */
+export function isSkillRoadmap(markdown: string): boolean {
+  return extractMarkdownTables(markdown).some(
+    (table) =>
+      table.headers.includes('Pause reason') &&
+      discriminateRoadmapTable(table.headers) !== null,
+  );
+}
+
 export function isTableRow(line: string): boolean {
   return line.startsWith('|') && line.endsWith('|') && line.length > 1;
 }
