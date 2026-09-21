@@ -2,11 +2,13 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import type { PermissionsResolverService } from '../../common/permissions-resolver.service.js';
 import type { PrismaService } from '../../prisma/prisma.service.js';
 import type { AuditService } from '../audit/audit.service.js';
+import type { WriteBackService } from '../synchronization/write-back.service.js';
 import { ConflictsService } from './conflicts.service.js';
 
 /**
@@ -25,6 +27,10 @@ function setup(options: {
   /** The task changed after it was read, so the guarded update matches nothing. */
   staleTask?: boolean;
   currentAssignee?: string | null;
+  /** The task as PM Hub holds it after the resolution, which KEEP_LOCAL writes back. */
+  currentTask?: Record<string, unknown>;
+  /** The write-back to the document throws. */
+  writeBackFails?: boolean;
   /** What the membership lookup finds for the assignee being applied; default is an active member. */
   member?: { isActive: boolean; actor: { isActive: boolean } } | null;
 }) {
@@ -67,6 +73,13 @@ function setup(options: {
   };
   const prisma = {
     conflict: { findFirst: vi.fn().mockResolvedValue(conflict) },
+    task: {
+      findUnique: vi
+        .fn()
+        .mockResolvedValue(
+          options.currentTask ?? { status: options.taskStatus },
+        ),
+    },
     $transaction: (callback: (client: typeof tx) => unknown) => callback(tx),
   } as unknown as PrismaService;
   const record = vi.fn().mockResolvedValue(undefined);
@@ -75,8 +88,15 @@ function setup(options: {
     hasPermission: (_actor: string, permission: string) =>
       Promise.resolve(options.held.includes(permission)),
   } as unknown as PermissionsResolverService;
+  const recordConflictResolution = options.writeBackFails
+    ? vi.fn().mockRejectedValue(new Error('EACCES'))
+    : vi.fn().mockResolvedValue(undefined);
+  const writeBack = {
+    recordConflictResolution,
+  } as unknown as WriteBackService;
   return {
-    service: new ConflictsService(prisma, audit, resolver),
+    service: new ConflictsService(prisma, audit, resolver, writeBack),
+    recordConflictResolution,
     taskUpdate,
     conflictUpdate,
     record,
@@ -425,5 +445,111 @@ describe('ConflictsService.resolve of a disappeared row (Roadmap BUG-06a)', () =
     );
 
     expect(taskUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe('ConflictsService.resolve writes the chosen value to the document (Roadmap BUG-06b)', () => {
+  const titleConflict = {
+    localVersion: { title: 'Local title' },
+    externalVersion: { title: 'Doc title' },
+  };
+
+  it('KEEP_LOCAL puts the task’s value into the document, given the value the document held', async () => {
+    const { service, recordConflictResolution } = setup({
+      held: [],
+      taskStatus: 'ASIGNADA',
+      currentTask: { title: 'Local title', status: 'ASIGNADA' },
+      ...titleConflict,
+    });
+
+    await service.resolve(
+      'p1',
+      'c1',
+      { strategy: 'KEEP_LOCAL' } as never,
+      'actor-1',
+    );
+
+    expect(recordConflictResolution).toHaveBeenCalledWith(
+      'p1',
+      't1',
+      { title: 'Local title' },
+      { title: 'Doc title' },
+      'actor-1',
+    );
+  });
+
+  it('MANUAL_EDIT writes the person’s value, and only fields whose value differs from the document', async () => {
+    const { service, recordConflictResolution } = setup({
+      held: ['task.write'],
+      taskStatus: 'ASIGNADA',
+      localVersion: { title: 'Local', acceptanceCriteria: 'Same' },
+      externalVersion: { title: 'Doc', acceptanceCriteria: 'Same' },
+    });
+
+    await service.resolve(
+      'p1',
+      'c1',
+      {
+        strategy: 'MANUAL_EDIT',
+        manualValue: { title: 'Merged', acceptanceCriteria: 'Same' },
+      } as never,
+      'actor-1',
+    );
+
+    expect(recordConflictResolution).toHaveBeenCalledWith(
+      'p1',
+      't1',
+      { title: 'Merged' },
+      { title: 'Doc' },
+      'actor-1',
+    );
+  });
+
+  it('writes nothing for KEEP_EXTERNAL, DISMISSED, a field the document has no cell for, or a conflict with no document side', async () => {
+    for (const strategy of ['KEEP_EXTERNAL', 'DISMISSED']) {
+      const { service, recordConflictResolution } = setup({
+        held: ['task.write'],
+        taskStatus: 'ASIGNADA',
+        ...titleConflict,
+      });
+      await service.resolve('p1', 'c1', { strategy } as never, 'actor-1');
+      expect(recordConflictResolution).not.toHaveBeenCalled();
+    }
+
+    const rawOwner = setup({
+      held: [],
+      taskStatus: 'ASIGNADA',
+      currentTask: { rawOwner: 'mine' },
+      localVersion: { rawOwner: 'mine' },
+      externalVersion: { rawOwner: 'theirs' },
+    });
+    await rawOwner.service.resolve(
+      'p1',
+      'c1',
+      { strategy: 'KEEP_LOCAL' } as never,
+      'actor-1',
+    );
+    expect(rawOwner.recordConflictResolution).not.toHaveBeenCalled();
+  });
+
+  it('does not fail or undo a resolution because the document could not be written', async () => {
+    vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    const { service, conflictUpdate } = setup({
+      held: [],
+      taskStatus: 'ASIGNADA',
+      currentTask: { title: 'Local title' },
+      writeBackFails: true,
+      ...titleConflict,
+    });
+
+    await expect(
+      service.resolve(
+        'p1',
+        'c1',
+        { strategy: 'KEEP_LOCAL' } as never,
+        'actor-1',
+      ),
+    ).resolves.toBeDefined();
+    expect(conflictUpdate).toHaveBeenCalled();
   });
 });

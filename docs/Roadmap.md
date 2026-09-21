@@ -307,34 +307,6 @@ created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T17:30:00Z
 ```
 
-### BUG-06b — Resolving a conflict does not write the chosen value to the document
-
-```yaml
-id: BUG-06b
-type: BUG
-title: Resolving a conflict does not write the chosen value to the document
-status: BACKLOG
-priority: P1
-parent: BUG-06
-depends_on:
-  - BUG-06a
-description: >
-  Second slice of BUG-06. KEEP_LOCAL and MANUAL_EDIT change only PostgreSQL;
-  the document keeps the value that lost, and the stored hash has already
-  advanced so no later sync repairs it.
-expected_behavior: >
-  Resolving with KEEP_LOCAL or MANUAL_EDIT writes the chosen value to the
-  document through the same field-edit path a UI edit uses, with the same
-  drift rule; KEEP_EXTERNAL needs no write.
-technical_context:
-  backend: apps/api/src/modules/conflicts/conflicts.service.ts, synchronization/write-back.service.ts
-next_action: >
-  Reuse recordFieldEdit for title, acceptance criteria and assignee; decide
-  how a status is written back outside the lifecycle triggers.
-created_at: 2026-09-21T17:30:00Z
-updated_at: 2026-09-21T17:30:00Z
-```
-
 ### BUG-06c — A dependency cycle in the document is dropped silently
 
 ```yaml

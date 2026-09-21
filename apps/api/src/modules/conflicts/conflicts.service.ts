@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
@@ -15,6 +16,10 @@ import {
 import { PermissionsResolverService } from '../../common/permissions-resolver.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
+import {
+  ResolvedTaskFields,
+  WriteBackService,
+} from '../synchronization/write-back.service.js';
 import { NOT_BLANK } from '../tasks/dto/create-task.dto.js';
 import {
   permissionForAssigneeChange,
@@ -65,21 +70,29 @@ const EDITABLE_FIELD_VALIDATORS: Record<
       : 'roadmapTable must be ACTIVE, NEAR_TERM, BLOCKED, or null',
 };
 
+/** Task fields a resolution can write to the document: the ones with a cell or entry field of their own (`rawOwner` is only the raw text of the owner). */
+const WRITABLE_FIELDS = [
+  'title',
+  'acceptanceCriteria',
+  'status',
+  'assigneeActorId',
+] as const;
+
 /**
  * Conflict is a first-class entity (brief §26), not just an audit log
  * line — an authorized user sees local vs. external versions and picks a
- * resolution (docs/synchronization.md "Conflicts"). Never auto-resolved.
- *
- * FASE-08 scope trim: resolving a conflict never triggers a follow-up
- * write-back on its own ("may trigger a normal write-back" per spec is
- * optional) — a subsequent task edit or the next sync run covers that.
+ * resolution (docs/synchronization.md "Conflicts"). Never decided by sync;
+ * choosing PM Hub's value writes it to the document (Roadmap BUG-06b).
  */
 @Injectable()
 export class ConflictsService {
+  private readonly logger = new Logger(ConflictsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly permissionsResolver: PermissionsResolverService,
+    private readonly writeBack: WriteBackService,
   ) {}
 
   findAllForProject(projectId: string, resolved?: boolean) {
@@ -124,7 +137,7 @@ export class ConflictsService {
       throw new BadRequestException('manualValue is required for MANUAL_EDIT');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const resolved = await this.prisma.$transaction(async (tx) => {
       const fieldsToApply = this.resolveTaskFields(conflict, dto);
       if (fieldsToApply && conflict.entityType === 'Task') {
         const task = await tx.task.findUniqueOrThrow({
@@ -256,6 +269,77 @@ export class ConflictsService {
         },
       });
     });
+    await this.writeChosenBack(projectId, conflict, dto, requesterActorId);
+    return resolved;
+  }
+
+  /**
+   * Puts the value PM Hub chose into the document (Roadmap BUG-06b): KEEP_LOCAL
+   * keeps the task's value, MANUAL_EDIT the person's — either way the document
+   * still holds the value that lost, and the stored hash already says the two
+   * are in sync, so no later sync would repair it. KEEP_EXTERNAL and DISMISSED
+   * write nothing. Runs after the resolution has committed: a document that
+   * cannot be written (folder gone) is logged, not allowed to undo or fail a
+   * resolution that already happened.
+   */
+  private async writeChosenBack(
+    projectId: string,
+    conflict: {
+      id: string;
+      kind: string;
+      entityType: string;
+      entityId: string;
+      externalVersion: unknown;
+    },
+    dto: ResolveConflictDto,
+    requesterActorId: string,
+  ): Promise<void> {
+    if (
+      conflict.entityType !== 'Task' ||
+      (conflict.kind !== 'CONCURRENT_FIELD_EDIT' &&
+        conflict.kind !== 'WRITE_BACK_COLLISION')
+    ) {
+      return;
+    }
+    const external = conflict.externalVersion as Record<string, unknown> | null;
+    if (!external) {
+      return;
+    }
+    let source: Record<string, unknown> | null = null;
+    if (dto.strategy === ConflictResolutionKind.KEEP_LOCAL) {
+      source = await this.prisma.task.findUnique({
+        where: { id: conflict.entityId },
+      });
+    } else if (dto.strategy === ConflictResolutionKind.MANUAL_EDIT) {
+      source = dto.manualValue ?? null;
+    }
+    if (!source) {
+      return;
+    }
+    const chosen: Record<string, unknown> = {};
+    const documentSide: Record<string, unknown> = {};
+    for (const field of WRITABLE_FIELDS) {
+      if (field in external && source[field] !== external[field]) {
+        chosen[field] = source[field];
+        documentSide[field] = external[field];
+      }
+    }
+    if (Object.keys(chosen).length === 0) {
+      return;
+    }
+    try {
+      await this.writeBack.recordConflictResolution(
+        projectId,
+        conflict.entityId,
+        chosen as ResolvedTaskFields,
+        documentSide as ResolvedTaskFields,
+        requesterActorId,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Conflict ${conflict.id} was resolved but its value could not be written to the document: ${String(error)}`,
+      );
+    }
   }
 
   /**

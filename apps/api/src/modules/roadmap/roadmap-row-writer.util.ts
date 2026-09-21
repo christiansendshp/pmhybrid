@@ -334,6 +334,18 @@ function replaceRoadmapEntryFields(
       );
       replaced.push('Acceptance check');
     }
+    if ('Status' in cellsByHeader) {
+      // A BLOCKED entry keeps its status; the old Blocked table has no Status
+      // column at all.
+      const current = doc.get('status');
+      if (String(current).trim().toUpperCase() !== 'BLOCKED') {
+        doc.set(
+          'status',
+          mapTaskStatusToNewStatus(cellsByHeader.Status as TaskStatus),
+        );
+        replaced.push('Status');
+      }
+    }
     if ('Depends on' in cellsByHeader) {
       doc.set(
         'depends_on',

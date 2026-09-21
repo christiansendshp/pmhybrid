@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { DocumentKind, Prisma } from '@prisma/client';
+import { DocumentKind, Prisma, TaskStatus } from '@prisma/client';
 import type { Task, TaskDependency } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
@@ -20,6 +20,14 @@ import {
 } from '../roadmap/roadmap-row-writer.util.js';
 import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository-provider.interface.js';
 import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
+
+/** Task fields a conflict can carry and a resolution can put into the document (Roadmap BUG-06b). */
+export interface ResolvedTaskFields {
+  title?: string;
+  acceptanceCriteria?: string | null;
+  status?: TaskStatus;
+  assigneeActorId?: string;
+}
 
 export type WriteBackTrigger =
   'CREATED' | 'STATUS_EN_DESARROLLO' | 'STATUS_TERMINADA' | 'LOCKED_REASSIGN';
@@ -111,6 +119,220 @@ export class WriteBackService {
         );
       },
       { timeout: 20000, maxWait: 10000 },
+    );
+  }
+
+  /**
+   * A conflict resolution that chose PM Hub's value (KEEP_LOCAL, or a
+   * MANUAL_EDIT) writes it to the document, so the side that lost is not left
+   * holding the old value with a stored hash that says everything is in sync
+   * (Roadmap BUG-06b). KEEP_EXTERNAL needs no write.
+   *
+   * Field by field, and only over what the conflict showed: a field is
+   * written only if the document still holds the value the conflict recorded
+   * as its side. If it moved on since, that is a newer document edit the
+   * person has not seen — it is left, `WRITE_BACK_DEFERRED`, and the next
+   * sync raises it as a conflict of its own.
+   */
+  async recordConflictResolution(
+    projectId: string,
+    taskId: string,
+    chosen: ResolvedTaskFields,
+    documentSide: ResolvedTaskFields,
+    requesterActorId: string,
+  ) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`;
+        return this.resolutionLocked(
+          tx,
+          projectId,
+          taskId,
+          chosen,
+          documentSide,
+          requesterActorId,
+        );
+      },
+      { timeout: 20000, maxWait: 10000 },
+    );
+  }
+
+  private async resolutionLocked(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    taskId: string,
+    chosen: ResolvedTaskFields,
+    documentSide: ResolvedTaskFields,
+    requesterActorId: string,
+  ): Promise<void> {
+    const project = await tx.project.findUniqueOrThrow({
+      where: { id: projectId },
+    });
+    const task = await tx.task.findUniqueOrThrow({ where: { id: taskId } });
+    if (!task.externalId) {
+      return;
+    }
+    const externalId = task.externalId;
+    const roadmapContent = await this.repositoryProvider.readFile(
+      project.docsPath,
+      DOCUMENT_FILENAMES.ROADMAP,
+    );
+    const currentRow = this.roadmapParser
+      .parseTolerant(roadmapContent)
+      .rows.find((row) => row.externalId === externalId);
+    if (!currentRow) {
+      return; // no row to write into: the document dropped it, which sync owns
+    }
+
+    const cells: Record<string, string> = {};
+    const deferred: string[] = [];
+    if ('title' in chosen) {
+      if ((currentRow.outcome ?? '') === (documentSide.title ?? '')) {
+        cells.Outcome = chosen.title ?? '';
+      } else {
+        deferred.push('title');
+      }
+    }
+    if ('acceptanceCriteria' in chosen) {
+      if (
+        (currentRow.acceptanceCheck ?? '') ===
+        (documentSide.acceptanceCriteria ?? '')
+      ) {
+        cells['Acceptance check'] = chosen.acceptanceCriteria ?? '';
+      } else {
+        deferred.push('acceptanceCriteria');
+      }
+    }
+    if ('status' in chosen) {
+      if (currentRow.statusMapped === documentSide.status) {
+        cells.Status = chosen.status ?? '';
+      } else {
+        deferred.push('status');
+      }
+    }
+
+    let owner: RoadmapOwner | null = null;
+    if ('assigneeActorId' in chosen) {
+      const ids = [chosen.assigneeActorId, documentSide.assigneeActorId].filter(
+        (id): id is string => !!id,
+      );
+      const actors = await tx.actor.findMany({ where: { id: { in: ids } } });
+      const winner = actors.find(
+        (actor) => actor.id === chosen.assigneeActorId,
+      );
+      const loser = actors.find(
+        (actor) => actor.id === documentSide.assigneeActorId,
+      );
+      if (
+        winner &&
+        normalizeOwnerName(currentRow.ownerName ?? '') ===
+          normalizeOwnerName(loser?.displayName ?? '')
+      ) {
+        owner = { name: winner.displayName, kind: winner.kind };
+      } else {
+        deferred.push('assigneeActorId');
+      }
+    }
+
+    let updatedMarkdown = roadmapContent;
+    const writtenFields: string[] = [];
+    if (Object.keys(cells).length > 0) {
+      const replaced = replaceRoadmapRowCells(
+        roadmapContent,
+        externalId,
+        cells,
+      );
+      if (replaced && replaced.replaced.length > 0) {
+        updatedMarkdown = replaced.markdown;
+        const byHeader: Record<string, string> = {
+          Outcome: 'title',
+          'Acceptance check': 'acceptanceCriteria',
+          Status: 'status',
+        };
+        writtenFields.push(
+          ...replaced.replaced.map((header) => byHeader[header] ?? header),
+        );
+      }
+    }
+    if (owner) {
+      const withOwner = replaceRoadmapOwner(
+        updatedMarkdown,
+        externalId,
+        owner,
+        new Date().toISOString(),
+      );
+      if (withOwner !== null) {
+        updatedMarkdown = withOwner;
+        writtenFields.push('assigneeActorId');
+      }
+    }
+
+    if (writtenFields.length === 0) {
+      if (deferred.length > 0) {
+        await this.audit.record(
+          {
+            projectId,
+            actorId: requesterActorId,
+            entityType: 'Task',
+            entityId: task.id,
+            operation: 'WRITE_BACK_DEFERRED',
+            origin: 'UI',
+            newValue: { trigger: 'CONFLICT_RESOLUTION', deferred },
+          },
+          tx,
+        );
+      }
+      return;
+    }
+
+    await this.repositoryProvider.writeFile(
+      project.docsPath,
+      DOCUMENT_FILENAMES.ROADMAP,
+      updatedMarkdown,
+    );
+    await this.recordDocumentRevision(
+      tx,
+      projectId,
+      'ROADMAP',
+      DOCUMENT_FILENAMES.ROADMAP,
+      updatedMarkdown,
+    );
+
+    // The written row is the new baseline only if nothing else in it changed
+    // on the document side since the conflict was raised.
+    const writtenRow = this.roadmapParser
+      .parseTolerant(updatedMarkdown)
+      .rows.find((row) => row.externalId === externalId);
+    if (
+      writtenRow &&
+      deferred.length === 0 &&
+      task.lastSyncedContentHash === rowContentHash(currentRow)
+    ) {
+      await tx.task.update({
+        where: { id: task.id },
+        data: {
+          lastSyncedContentHash: rowContentHash(writtenRow),
+          lastSyncedAt: new Date(),
+          rawOwner: writtenRow.rawOwner ?? null,
+        },
+      });
+    }
+
+    await this.audit.record(
+      {
+        projectId,
+        actorId: requesterActorId,
+        entityType: 'Task',
+        entityId: task.id,
+        operation: 'WRITE_BACK',
+        origin: 'UI',
+        newValue: {
+          trigger: 'CONFLICT_RESOLUTION',
+          fields: writtenFields,
+          ...(deferred.length > 0 ? { deferred } : {}),
+        },
+      },
+      tx,
     );
   }
 

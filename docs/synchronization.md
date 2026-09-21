@@ -371,6 +371,33 @@ vs. external versions and chooses `KEEP_LOCAL`, `KEEP_EXTERNAL`, or
 `MANUAL_EDIT` (or dismisses it). Resolving a conflict writes an `AuditEvent`
 and, if the resolution changes stored data, may trigger a normal write-back.
 
+### Resolving writes back (Roadmap BUG-06b)
+
+A resolution that chose PM Hub's value writes it to the document — before, only
+PostgreSQL changed, and the stored hash already said the two were in sync, so no
+later sync repaired the document.
+
+- `KEEP_LOCAL` writes the task's current value of each contested field;
+  `MANUAL_EDIT` writes the person's. `KEEP_EXTERNAL` and `DISMISSED` write
+  nothing, and neither does a field that already holds the same value.
+- Fields with a place in the document: `title` (Outcome), `acceptanceCriteria`
+  (Acceptance check), `status` (the Status cell verbatim, or the entry's
+  mapped `status`; a BLOCKED entry keeps its own) and `assigneeActorId` (the
+  owner, as in "Owner and assignee"). `rawOwner` is only the owner's raw text and
+  is not written.
+- **Only over what the conflict showed.** A field is written only if the document
+  still holds the value the conflict recorded as its side. If the document moved
+  on since, that is an edit the person has not seen: it is left
+  (`WRITE_BACK_DEFERRED`) and the next sync raises it as a conflict of its own.
+- Runs after the resolution has committed, under the project's advisory lock, and
+  audited as `WRITE_BACK` with trigger `CONFLICT_RESOLUTION`. A document that
+  cannot be written (folder gone) is logged; it does not fail or undo a
+  resolution that already happened. The task's baseline (`lastSyncedContentHash`,
+  `rawOwner`, `lastSyncedAt`) moves to the written row only if the row carried no
+  other document change.
+- A `ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG` conflict writes nothing: keeping
+  the task does not re-add its row.
+
 ### Keeping the list honest (Roadmap BUG-06a)
 
 Conflicts used to pile up (a missing row raised a new one on every run — 7 on
