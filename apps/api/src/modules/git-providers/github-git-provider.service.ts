@@ -107,6 +107,11 @@ export class GitHubGitProvider implements ProjectRepositoryProvider {
     return Buffer.from(body.content, 'base64').toString('utf-8');
   }
 
+  /** Creating a file here is a commit to someone's repository, which onboarding must not do on its own. */
+  ensureDocuments(): Promise<string[]> {
+    return Promise.resolve([]);
+  }
+
   async writeFile(
     docsPath: string,
     relativePath: string,

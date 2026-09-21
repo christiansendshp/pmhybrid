@@ -21,6 +21,17 @@ export interface ProjectRepositoryProvider {
    * (Roadmap GAP-37c). Rejects when there is no such file.
    */
   readRootRulesFile(docsPath: string): Promise<string>;
+  /**
+   * Makes sure the docs folder exists and holds each of these files (name ->
+   * content), creating the folder and only the files that are missing — a file
+   * that is already there is never touched (Roadmap GAP-36a). Returns the
+   * names it created. A remote provider, where creating a file is a commit,
+   * creates nothing and returns [].
+   */
+  ensureDocuments(
+    docsPath: string,
+    files: Readonly<Record<string, string>>,
+  ): Promise<string[]>;
   writeFile(
     docsPath: string,
     relativePath: string,

@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuditOrigin, TaskStatus } from '@prisma/client';
 import type { EnvConfig } from '../../config/env.validation.js';
@@ -15,7 +16,10 @@ import {
   parseAllowedRoots,
   resolveAllowedLocalDocsPath,
 } from '../git-providers/docs-path-policy.js';
+import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository-provider.interface.js';
+import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
 import { ProgressRollupService } from '../tasks/progress-rollup.service.js';
+import { DOCUMENT_SKELETONS } from './document-skeletons.js';
 import { CreateProjectDto } from './dto/create-project.dto.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
 
@@ -48,6 +52,8 @@ export class ProjectsService {
     private readonly audit: AuditService,
     private readonly progressRollup: ProgressRollupService,
     private readonly config: ConfigService<EnvConfig, true>,
+    @Inject(PROJECT_REPOSITORY_PROVIDER)
+    private readonly repositoryProvider: ProjectRepositoryProvider,
   ) {}
 
   /**
@@ -230,6 +236,14 @@ export class ProjectsService {
     origin: AuditOrigin = 'UI',
   ) {
     const docsPath = await this.checkedDocsPath(dto.docsPath, creatorActorId);
+    // A new project on an empty or missing folder gets the two documents PM Hub
+    // reads and writes, so its first sync and its first task work instead of
+    // failing on a file that is not there (Roadmap GAP-36a). Files that exist
+    // are never touched, and a remote provider creates nothing.
+    const scaffolded = await this.repositoryProvider.ensureDocuments(
+      docsPath,
+      DOCUMENT_SKELETONS,
+    );
     const ownerRole = await this.prisma.role.findUniqueOrThrow({
       where: { name_scope: { name: 'OWNER', scope: 'PROJECT' } },
     });
@@ -277,7 +291,7 @@ export class ProjectsService {
         },
         tx,
       );
-      return project;
+      return { ...project, scaffolded };
     });
   }
 

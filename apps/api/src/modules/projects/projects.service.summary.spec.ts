@@ -61,6 +61,7 @@ function setup(projectCount: number) {
     {} as AuditService,
     { computeProjectsProgress } as unknown as ProgressRollupService,
     {} as never,
+    {} as never,
   );
   return { service, prisma, calls };
 }

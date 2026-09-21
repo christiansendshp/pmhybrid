@@ -461,6 +461,19 @@ Checked with the upstream skill's own script: a project made by its `init`,
 its `claim`, and PM Hub's create, start, reassign, edit, complete and remove all
 leave `check` passing (a `CREATED` entry, by contrast, fails it).
 
+### Onboarding an empty project (Roadmap GAP-36a)
+
+Creating a project on a local docs folder that is empty, or not there, made its
+first sync and its first task fail on a file that did not exist. `POST /projects`
+now calls the provider's `ensureDocuments`, which creates the folder and only the
+files that are missing among `Roadmap.md` and `Agentslog.md` (a file that exists
+is never touched; a folder outside the allowed roots is still a 400 and nothing is
+created) and the response lists them in `scaffolded`. The skeletons
+(`projects/document-skeletons.ts`) follow the latest skill's tables, so the first
+task is written into Active work with the skill's words and the skill's own
+`init` and `check` accept them. The GitHub provider creates nothing: a file there
+is a commit to someone's repository.
+
 ### Revision retention (Roadmap BUG-07c)
 
 Every changed sync and every write-back stores a full copy of the document as a

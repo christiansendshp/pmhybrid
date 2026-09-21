@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -6,10 +6,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './../prisma/demo-credentials.js';
-import {
-  createScratchDocsPath,
-  uniqueDocsPath,
-} from './helpers/scratch-docs.js';
+import { createScratchDocsPath } from './helpers/scratch-docs.js';
 
 const ACTIVE_HEADER = `| ID | Outcome | Acceptance check | Status | Owner | Depends on |
 | --- | --- | --- | --- | --- | --- |`;
@@ -183,8 +180,11 @@ describe('Internal notifications (e2e)', () => {
   });
 
   it('persists a FAILED sync run and notifies other members, where it used to vanish entirely', async () => {
-    // Allowed by the docsPath confinement but never created on disk, so reading it fails.
-    const projectId = await createProjectAt(uniqueDocsPath('unreadable'));
+    // A project starts with its documents (Roadmap GAP-36a), so the docs folder
+    // is taken away afterwards: unmounted, deleted, renamed.
+    const docsPath = createScratchDocsPath();
+    const projectId = await createProjectAt(docsPath);
+    rmSync(docsPath, { recursive: true, force: true });
     const member = await createUser();
     await addMember(projectId, member.id);
 

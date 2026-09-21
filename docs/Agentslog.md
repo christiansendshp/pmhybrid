@@ -1079,3 +1079,19 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: The local e2e database resets every run, coverage has a floor in CI, the web core pieces have specs and every signed-in route is checked for accessibility
 - Files: docs/testing.md,docs/architecture.md
 - Verify: TEST-01a, 01b, 01c and 01d verified
+
+## [2026-09-21T19:28:31Z] | claude | GAP-36 | IN_PROGRESS
+
+- Summary: Agent experience and onboarding gaps (umbrella; slices filed)
+- Verify: pending
+
+## [2026-09-21T19:33:35Z] | claude | GAP-36a | IN_PROGRESS
+
+- Summary: Onboard a project on an empty or missing folder
+- Verify: pending
+
+## [2026-09-21T19:39:08Z] | claude | GAP-36a | DONE
+
+- Summary: Creating a project creates the docs folder and whichever of Roadmap.md and Agentslog.md is missing (latest skill format, never overwriting, reported in scaffolded); the first sync succeeds and the first task lands in Active work; the skill's own init and check accept the skeletons
+- Files: apps/api/src/modules/projects/document-skeletons.ts,apps/api/src/modules/projects/projects.service.ts,apps/api/src/modules/git-providers/local-fs-git-provider.service.ts,docs/synchronization.md,docs/api-reference.md
+- Verify: api unit 390 and e2e 257 pass (coverage 86.2/76.4/89.8/86.1, above the floor); upstream init preserves the files and check is OK

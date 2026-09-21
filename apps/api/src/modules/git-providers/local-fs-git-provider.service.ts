@@ -63,6 +63,30 @@ export class LocalFsGitProvider implements ProjectRepositoryProvider {
     return fs.readFile(path.join(root, ROOT_RULES_FILENAME), 'utf-8');
   }
 
+  async ensureDocuments(
+    docsPath: string,
+    files: Readonly<Record<string, string>>,
+  ): Promise<string[]> {
+    const base = await this.allowedDocsPath(docsPath);
+    await fs.mkdir(base, { recursive: true });
+    const created: string[] = [];
+    for (const [name, content] of Object.entries(files)) {
+      try {
+        // 'wx': create, and fail rather than overwrite when it is there.
+        await fs.writeFile(path.join(base, name), content, {
+          encoding: 'utf-8',
+          flag: 'wx',
+        });
+        created.push(name);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+          throw error;
+        }
+      }
+    }
+    return created;
+  }
+
   async writeFile(
     docsPath: string,
     relativePath: string,

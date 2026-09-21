@@ -376,10 +376,17 @@ updated_at: 2026-09-21T09:00:00Z
 
 ```yaml
 id: GAP-36
+assigned_agent: 'claude'
+executor: AI
 type: GAP
 title: Agent experience and onboarding gaps
-status: BACKLOG
+status: IN_PROGRESS
 priority: P2
+depends_on:
+  - GAP-36a
+  - GAP-36b
+  - GAP-36c
+  - GAP-36d
 description: >
   From the 2026-09-21 evaluation. The MCP server exposes 6 tools
   (list_tasks, get_task, update_task, transition_task, list_comments,
@@ -402,9 +409,90 @@ expected_behavior: >
 technical_context:
   backend: apps/api/src/modules/mcp, notifications, projects, tasks, progress rollup
 next_action: >
-  File separate slices; the MCP tools depend on GAP-35's owner resolution.
+  Umbrella only. Refined on 2026-09-21 into four slices (GAP-36a onboarding,
+  GAP-36b MCP tools, GAP-36c assignment notifications, GAP-36d completion date
+  and LEAF_EQUAL_WEIGHT); close this entry when all four are done.
 created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T19:28:31Z
+```
+
+### GAP-36b — MCP tools for the whole agent workflow
+
+```yaml
+id: GAP-36b
+type: GAP
+title: MCP tools for the whole agent workflow
+status: BACKLOG
+priority: P2
+parent: GAP-36
+description: >
+  Second slice of GAP-36. The MCP server exposes six tools (list_tasks,
+  get_task, update_task, transition_task, list_comments, add_comment), so an
+  agent cannot list its projects, claim or create a task, read a document or
+  the conflicts, or get the context of a project.
+expected_behavior: >
+  list_projects, claim_task, create_task, get_context and list_conflicts
+  exist as thin adapters over the services, held to the same permissions as
+  REST.
+technical_context:
+  backend: apps/api/src/modules/mcp
+next_action: >
+  Read mcp-tools.ts and its spec first; every tool must call the service
+  that REST calls, so RBAC applies unchanged.
+created_at: 2026-09-21T23:55:00Z
+updated_at: 2026-09-21T23:55:00Z
+```
+
+### GAP-36c — Tell an agent it was assigned work
+
+```yaml
+id: GAP-36c
+type: GAP
+title: Tell an agent it was assigned work
+status: BACKLOG
+priority: P2
+parent: GAP-36
+description: >
+  Third slice of GAP-36. Nothing tells an agent it was assigned a task, and
+  only 2 of the 9 notification events the brief lists exist (conflict, sync
+  failure).
+expected_behavior: >
+  An assignment notifies the assignee, an agent reads its notifications
+  through MCP, and the other events the brief lists that make sense for this
+  app are either added or explicitly descoped.
+technical_context:
+  backend: apps/api/src/modules/notifications, tasks, mcp
+next_action: >
+  List the nine events of the brief and decide which ones are real for this
+  app before adding any.
+created_at: 2026-09-21T23:55:00Z
+updated_at: 2026-09-21T23:55:00Z
+```
+
+### GAP-36d — Task completion date and the LEAF_EQUAL_WEIGHT rollup
+
+```yaml
+id: GAP-36d
+type: GAP
+title: Task completion date and the LEAF_EQUAL_WEIGHT rollup
+status: BACKLOG
+priority: P2
+parent: GAP-36
+description: >
+  Fourth slice of GAP-36. The task completion date of the brief is missing,
+  and LEAF_EQUAL_WEIGHT can be selected on a project but is not implemented,
+  so choosing it silently gives the other strategy.
+expected_behavior: >
+  A task records when it was completed (set when it becomes TERMINADA,
+  cleared when it is reopened) and LEAF_EQUAL_WEIGHT is implemented or is no
+  longer selectable.
+technical_context:
+  backend: apps/api/prisma/schema.prisma, tasks/progress-rollup.service.ts, projects DTO
+next_action: >
+  Decide whether to implement or remove LEAF_EQUAL_WEIGHT before touching
+  the schema.
+created_at: 2026-09-21T23:55:00Z
+updated_at: 2026-09-21T23:55:00Z
 ```
 
 ### IMPROVEMENT-02 — Deployment, containerization and documentation gaps
