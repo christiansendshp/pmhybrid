@@ -810,3 +810,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: Umbrella closed: conflicts stay honest (BUG-06a: one open conflict per task and field, closing themselves, an empty Roadmap refused), resolving writes the chosen value back to the document (BUG-06b), and a dependency loop is reported (BUG-06c). See those entries' summaries in the Agentslog for the decisions.
 - Files: docs/synchronization.md
 - Verify: all three slices green: api unit and e2e, web tests, lint and builds
+
+## [2026-09-21T17:01:55Z] | claude | SECURITY-04a | IN_PROGRESS
+
+- Summary: Constant-time uniform login, production guards for the seed and JWT secret, and a password change endpoint
+- Verify: pending
+
+## [2026-09-21T17:07:51Z] | claude | SECURITY-04a | DONE
+
+- Summary: Login, secrets, seed and password change hardened. Login verifies one argon2 hash on every attempt, a fixed dummy one when there is no real hash (unknown email, non-human actor, no password), and answers the same 401 Invalid credentials for unknown, wrong password and inactive, with the password checked before the account's state, so neither the message nor the response time says which accounts exist or are switched off. A production start refuses a JWT_SECRET under 32 characters or a known placeholder while other environments only get a warning, so laptops, CI and the e2e suite are unaffected; .env.example says how to generate one. The seed refuses NODE_ENV=production unless SEED_ALLOW_DEMO_DATA=true, through a pure guard with a unit spec. POST /auth/change-password lets a signed-in person change their own password by proving the current one (8 to 128 characters, different), answers 204 or a 400 for a wrong current password (a 401 would sign the person out in the web client), touches only the caller's own credential and audits PASSWORD_CHANGE without either password. Autonomous decisions in docs/permissions.md: one message for every login failure at the cost of the inactive-account hint; the weak-secret rule fails only production; existing refresh tokens stay valid after a password change because tokens are stateless. Left open: SECURITY-04b (API keys, CORS, helmet, throttling, WebSocket limits) and a web form for the password change.
+- Files: apps/api/src/modules/auth/auth.service.ts,apps/api/src/modules/auth/auth.controller.ts,apps/api/src/modules/auth/dto/change-password.dto.ts,apps/api/src/config/secret-strength.ts,apps/api/src/config/env.validation.ts,apps/api/src/main.ts,apps/api/prisma/seed-guard.ts,apps/api/prisma/seed.ts,apps/api/test/auth-hardening.e2e-spec.ts,.env.example,docs/permissions.md
+- Verify: pnpm --filter api test (326) and pnpm test:e2e (223) green; api lint clean; nest build ok

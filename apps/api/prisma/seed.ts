@@ -5,30 +5,69 @@ import { PrismaClient, TaskStatus, RoadmapTable } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { GLOBAL_PERMISSION_KEYS, PERMISSIONS } from '@pmhybrid/shared-types';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './demo-credentials.js';
+import { assertSeedAllowed } from './seed-guard.js';
 
 const prisma = new PrismaClient();
 
-const SYSTEM_ROLES = ['OWNER', 'PROJECT_ADMIN', 'PROJECT_MANAGER', 'DEVELOPER', 'QA', 'VIEWER', 'AI_AGENT'] as const;
+const SYSTEM_ROLES = [
+  'OWNER',
+  'PROJECT_ADMIN',
+  'PROJECT_MANAGER',
+  'DEVELOPER',
+  'QA',
+  'VIEWER',
+  'AI_AGENT',
+] as const;
 // Global-scope roles (brief §4 "rol global"), granted with ActorRole.projectId = null.
 const GLOBAL_ROLES = ['ADMIN'] as const;
 
 const PROJECT_PERMISSION_DEFS = [
-  { key: PERMISSIONS.TASK_ASSIGN, description: 'Assign or unassign a task while not EN_DESARROLLO' },
-  { key: PERMISSIONS.TASK_STATUS_TRANSITION, description: 'Move a task between ordinary Kanban states' },
+  {
+    key: PERMISSIONS.TASK_ASSIGN,
+    description: 'Assign or unassign a task while not EN_DESARROLLO',
+  },
+  {
+    key: PERMISSIONS.TASK_STATUS_TRANSITION,
+    description: 'Move a task between ordinary Kanban states',
+  },
   { key: PERMISSIONS.TASK_QA_APPROVE, description: 'Approve QA -> TERMINADA' },
-  { key: PERMISSIONS.TASK_QA_REJECT, description: 'Reject QA -> EN_DESARROLLO' },
+  {
+    key: PERMISSIONS.TASK_QA_REJECT,
+    description: 'Reject QA -> EN_DESARROLLO',
+  },
   { key: PERMISSIONS.TASK_REOPEN, description: 'Reopen a TERMINADA task' },
-  { key: PERMISSIONS.TASK_REASSIGN_LOCKED, description: 'Reassign a task locked by EN_DESARROLLO' },
-  { key: PERMISSIONS.TASK_DELETE, description: 'Remove a task (soft delete; its Roadmap row is taken out)' },
-  { key: PERMISSIONS.TASK_WRITE, description: "Create and edit a task's fields and declare its dependencies" },
+  {
+    key: PERMISSIONS.TASK_REASSIGN_LOCKED,
+    description: 'Reassign a task locked by EN_DESARROLLO',
+  },
+  {
+    key: PERMISSIONS.TASK_DELETE,
+    description: 'Remove a task (soft delete; its Roadmap row is taken out)',
+  },
+  {
+    key: PERMISSIONS.TASK_WRITE,
+    description: "Create and edit a task's fields and declare its dependencies",
+  },
   { key: PERMISSIONS.CONFLICT_RESOLVE, description: 'Resolve a sync conflict' },
   { key: PERMISSIONS.PROJECT_UPDATE, description: 'Update project settings' },
-  { key: PERMISSIONS.PROJECT_MEMBERS_MANAGE, description: 'Add or remove project members' },
-  { key: PERMISSIONS.PROJECT_ROLES_MANAGE, description: 'Assign or revoke project-scoped roles' },
+  {
+    key: PERMISSIONS.PROJECT_MEMBERS_MANAGE,
+    description: 'Add or remove project members',
+  },
+  {
+    key: PERMISSIONS.PROJECT_ROLES_MANAGE,
+    description: 'Assign or revoke project-scoped roles',
+  },
 ];
 const GLOBAL_PERMISSION_DEFS = [
-  { key: PERMISSIONS.ACTORS_MANAGE, description: 'Create, edit and deactivate users and AI agents' },
-  { key: PERMISSIONS.ROLES_MANAGE, description: "Edit any role's permission set" },
+  {
+    key: PERMISSIONS.ACTORS_MANAGE,
+    description: 'Create, edit and deactivate users and AI agents',
+  },
+  {
+    key: PERMISSIONS.ROLES_MANAGE,
+    description: "Edit any role's permission set",
+  },
 ];
 const PERMISSION_DEFS = [...PROJECT_PERMISSION_DEFS, ...GLOBAL_PERMISSION_DEFS];
 
@@ -48,9 +87,10 @@ const PERMISSION_DEFS = [...PROJECT_PERMISSION_DEFS, ...GLOBAL_PERMISSION_DEFS];
   }
 }
 
-const GLOBAL_ROLE_PERMISSIONS: Record<(typeof GLOBAL_ROLES)[number], string[]> = {
-  ADMIN: GLOBAL_PERMISSION_DEFS.map((p) => p.key),
-};
+const GLOBAL_ROLE_PERMISSIONS: Record<(typeof GLOBAL_ROLES)[number], string[]> =
+  {
+    ADMIN: GLOBAL_PERMISSION_DEFS.map((p) => p.key),
+  };
 
 // Minimal default mapping (brief §4 leaves the exact matrix to the app).
 // Project roles only ever carry project permissions — never a global one.
@@ -69,10 +109,22 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     PERMISSIONS.CONFLICT_RESOLVE,
     PERMISSIONS.PROJECT_MEMBERS_MANAGE,
   ],
-  DEVELOPER: [PERMISSIONS.TASK_WRITE, PERMISSIONS.TASK_ASSIGN, PERMISSIONS.TASK_STATUS_TRANSITION],
-  QA: [PERMISSIONS.TASK_WRITE, PERMISSIONS.TASK_QA_APPROVE, PERMISSIONS.TASK_QA_REJECT],
+  DEVELOPER: [
+    PERMISSIONS.TASK_WRITE,
+    PERMISSIONS.TASK_ASSIGN,
+    PERMISSIONS.TASK_STATUS_TRANSITION,
+  ],
+  QA: [
+    PERMISSIONS.TASK_WRITE,
+    PERMISSIONS.TASK_QA_APPROVE,
+    PERMISSIONS.TASK_QA_REJECT,
+  ],
   VIEWER: [],
-  AI_AGENT: [PERMISSIONS.TASK_WRITE, PERMISSIONS.TASK_ASSIGN, PERMISSIONS.TASK_STATUS_TRANSITION],
+  AI_AGENT: [
+    PERMISSIONS.TASK_WRITE,
+    PERMISSIONS.TASK_ASSIGN,
+    PERMISSIONS.TASK_STATUS_TRANSITION,
+  ],
 };
 
 interface DemoActor {
@@ -126,6 +178,7 @@ interface DemoProjectDef {
 }
 
 async function main() {
+  assertSeedAllowed(process.env);
   const permissionsByKey = new Map<string, { id: string }>();
   for (const def of PERMISSION_DEFS) {
     const permission = await prisma.permission.upsert({
@@ -136,7 +189,11 @@ async function main() {
     permissionsByKey.set(def.key, permission);
   }
 
-  async function seedRole(name: string, scope: 'GLOBAL' | 'PROJECT', permissionKeys: string[]) {
+  async function seedRole(
+    name: string,
+    scope: 'GLOBAL' | 'PROJECT',
+    permissionKeys: string[],
+  ) {
     const role = await prisma.role.upsert({
       where: { name_scope: { name, scope } },
       update: {},
@@ -145,7 +202,9 @@ async function main() {
     for (const key of permissionKeys) {
       const permission = permissionsByKey.get(key)!;
       await prisma.rolePermission.upsert({
-        where: { roleId_permissionId: { roleId: role.id, permissionId: permission.id } },
+        where: {
+          roleId_permissionId: { roleId: role.id, permissionId: permission.id },
+        },
         update: {},
         create: { roleId: role.id, permissionId: permission.id },
       });
@@ -155,11 +214,17 @@ async function main() {
 
   const rolesByName = new Map<string, { id: string }>();
   for (const roleName of SYSTEM_ROLES) {
-    rolesByName.set(roleName, await seedRole(roleName, 'PROJECT', ROLE_PERMISSIONS[roleName]));
+    rolesByName.set(
+      roleName,
+      await seedRole(roleName, 'PROJECT', ROLE_PERMISSIONS[roleName]),
+    );
   }
   const globalRolesByName = new Map<string, { id: string }>();
   for (const roleName of GLOBAL_ROLES) {
-    globalRolesByName.set(roleName, await seedRole(roleName, 'GLOBAL', GLOBAL_ROLE_PERMISSIONS[roleName]));
+    globalRolesByName.set(
+      roleName,
+      await seedRole(roleName, 'GLOBAL', GLOBAL_ROLE_PERMISSIONS[roleName]),
+    );
   }
 
   const humanActor = await prisma.actor.upsert({
@@ -169,11 +234,17 @@ async function main() {
   });
 
   // Local-dev-only demo password, not a real secret — documented in README.md.
-  const demoPasswordHash = await argon2.hash(DEMO_PASSWORD, { type: argon2.argon2id });
+  const demoPasswordHash = await argon2.hash(DEMO_PASSWORD, {
+    type: argon2.argon2id,
+  });
   await prisma.userCredential.upsert({
     where: { actorId: humanActor.id },
     update: { passwordHash: demoPasswordHash },
-    create: { actorId: humanActor.id, authProvider: 'LOCAL', passwordHash: demoPasswordHash },
+    create: {
+      actorId: humanActor.id,
+      authProvider: 'LOCAL',
+      passwordHash: demoPasswordHash,
+    },
   });
 
   // The demo login administers the instance (global ADMIN) — on a fresh
@@ -185,7 +256,9 @@ async function main() {
     where: { actorId: humanActor.id, roleId: adminRole.id, projectId: null },
   });
   if (!adminGrant) {
-    await prisma.actorRole.create({ data: { actorId: humanActor.id, roleId: adminRole.id } });
+    await prisma.actorRole.create({
+      data: { actorId: humanActor.id, roleId: adminRole.id },
+    });
   }
 
   const agentActor = await prisma.actor.upsert({
@@ -206,13 +279,23 @@ async function main() {
   const anaActor = await prisma.actor.upsert({
     where: { email: 'ana@pmhybrid.local' },
     update: {},
-    create: { kind: 'HUMAN', displayName: 'Ana García', email: 'ana@pmhybrid.local' },
+    create: {
+      kind: 'HUMAN',
+      displayName: 'Ana García',
+      email: 'ana@pmhybrid.local',
+    },
   });
-  const anaPasswordHash = await argon2.hash('anagarcia1234', { type: argon2.argon2id });
+  const anaPasswordHash = await argon2.hash('anagarcia1234', {
+    type: argon2.argon2id,
+  });
   await prisma.userCredential.upsert({
     where: { actorId: anaActor.id },
     update: { passwordHash: anaPasswordHash },
-    create: { actorId: anaActor.id, authProvider: 'LOCAL', passwordHash: anaPasswordHash },
+    create: {
+      actorId: anaActor.id,
+      authProvider: 'LOCAL',
+      passwordHash: anaPasswordHash,
+    },
   });
 
   const codexActor = await prisma.actor.upsert({
@@ -241,12 +324,24 @@ async function main() {
       create: { projectId, actorId: agentActor.id },
     });
     await prisma.actorRole.upsert({
-      where: { actorId_roleId_projectId: { actorId: humanActor.id, roleId: ownerRole.id, projectId } },
+      where: {
+        actorId_roleId_projectId: {
+          actorId: humanActor.id,
+          roleId: ownerRole.id,
+          projectId,
+        },
+      },
       update: {},
       create: { actorId: humanActor.id, roleId: ownerRole.id, projectId },
     });
     await prisma.actorRole.upsert({
-      where: { actorId_roleId_projectId: { actorId: agentActor.id, roleId: agentRole.id, projectId } },
+      where: {
+        actorId_roleId_projectId: {
+          actorId: agentActor.id,
+          roleId: agentRole.id,
+          projectId,
+        },
+      },
       update: {},
       create: { actorId: agentActor.id, roleId: agentRole.id, projectId },
     });
@@ -256,14 +351,18 @@ async function main() {
   // project-documentation skill — see Step 0 in the approved plan). Gives
   // FASE-06's structured/documental views real content to render against
   // instead of only synthetic seed data.
-  const selfDocsPath = path.resolve(fileURLToPath(import.meta.url), '../../../../docs');
+  const selfDocsPath = path.resolve(
+    fileURLToPath(import.meta.url),
+    '../../../../docs',
+  );
   const selfProject = await prisma.project.upsert({
     where: { id: 'pmhybrid-self' },
     update: { docsPath: selfDocsPath },
     create: {
       id: 'pmhybrid-self',
       name: 'PM Hub (this repo)',
-      description: "This project's own docs/, managed by the project-documentation skill.",
+      description:
+        "This project's own docs/, managed by the project-documentation skill.",
       docsPath: selfDocsPath,
     },
   });
@@ -271,10 +370,34 @@ async function main() {
 
   // --- §32 demo dataset: 2 additional projects with rich hierarchy -------
   const demoActors: DemoActor[] = [
-    { key: 'human', displayName: humanActor.displayName, email: humanActor.email!, kind: 'HUMAN', projectRole: 'OWNER' },
-    { key: 'ana', displayName: anaActor.displayName, email: anaActor.email!, kind: 'HUMAN', projectRole: 'PROJECT_MANAGER' },
-    { key: 'agent', displayName: agentActor.displayName, email: agentActor.email!, kind: 'AI_AGENT', projectRole: 'AI_AGENT' },
-    { key: 'codex', displayName: codexActor.displayName, email: codexActor.email!, kind: 'AI_AGENT', projectRole: 'AI_AGENT' },
+    {
+      key: 'human',
+      displayName: humanActor.displayName,
+      email: humanActor.email!,
+      kind: 'HUMAN',
+      projectRole: 'OWNER',
+    },
+    {
+      key: 'ana',
+      displayName: anaActor.displayName,
+      email: anaActor.email!,
+      kind: 'HUMAN',
+      projectRole: 'PROJECT_MANAGER',
+    },
+    {
+      key: 'agent',
+      displayName: agentActor.displayName,
+      email: agentActor.email!,
+      kind: 'AI_AGENT',
+      projectRole: 'AI_AGENT',
+    },
+    {
+      key: 'codex',
+      displayName: codexActor.displayName,
+      email: codexActor.email!,
+      kind: 'AI_AGENT',
+      projectRole: 'AI_AGENT',
+    },
   ];
   const actorRecordByKey = new Map<string, { id: string }>([
     ['human', humanActor],
@@ -286,7 +409,8 @@ async function main() {
   const websiteRelaunch: DemoProjectDef = {
     id: 'demo-website-relaunch',
     name: 'Website Relaunch',
-    description: 'Marketing site rebuild — demo dataset (brief §32): human-led, one AI collaborator.',
+    description:
+      'Marketing site rebuild — demo dataset (brief §32): human-led, one AI collaborator.',
     docsDirName: 'website-relaunch',
     actors: demoActors,
     phases: [
@@ -295,8 +419,18 @@ async function main() {
       { key: 'launch', name: 'Launch', order: 3 },
     ],
     epics: [
-      { key: 'design-system', name: 'Design System', order: 1, phaseKey: 'build' },
-      { key: 'content-migration', name: 'Content Migration', order: 2, phaseKey: 'build' },
+      {
+        key: 'design-system',
+        name: 'Design System',
+        order: 1,
+        phaseKey: 'build',
+      },
+      {
+        key: 'content-migration',
+        name: 'Content Migration',
+        order: 2,
+        phaseKey: 'build',
+      },
     ],
     tasks: [
       {
@@ -377,7 +511,8 @@ async function main() {
         table: 'BLOCKED',
         phaseKey: 'build',
         blockedReason: 'Esperando aprobación legal del equipo de marketing',
-        neededDecision: '¿Se puede usar el texto de marketing actual sin revisión adicional?',
+        neededDecision:
+          '¿Se puede usar el texto de marketing actual sin revisión adicional?',
         logTimestamp: '2026-09-06T09:00:00.000Z',
       },
       {
@@ -399,7 +534,8 @@ async function main() {
   const mobileApp: DemoProjectDef = {
     id: 'demo-mobile-app',
     name: 'Mobile App Revamp',
-    description: 'Native app rebuild — demo dataset (brief §32): AI-agent-heavy, one blocked task.',
+    description:
+      'Native app rebuild — demo dataset (brief §32): AI-agent-heavy, one blocked task.',
     docsDirName: 'mobile-app',
     actors: demoActors,
     phases: [
@@ -469,7 +605,8 @@ async function main() {
         phaseKey: 'development',
         dependsOn: ['ma-2', 'ma-3'],
         blockedReason: 'Falta presupuesto aprobado para auditoría externa',
-        neededDecision: '¿Se aprueba el gasto de auditoría de seguridad este trimestre?',
+        neededDecision:
+          '¿Se aprueba el gasto de auditoría de seguridad este trimestre?',
         logTimestamp: '2026-09-08T09:00:00.000Z',
       },
     ],
@@ -481,7 +618,12 @@ async function main() {
 
   console.log('Seed complete:', {
     projects: [selfProject.name, websiteRelaunch.name, mobileApp.name],
-    actors: [humanActor.displayName, agentActor.displayName, anaActor.displayName, codexActor.displayName],
+    actors: [
+      humanActor.displayName,
+      agentActor.displayName,
+      anaActor.displayName,
+      codexActor.displayName,
+    ],
     roles: SYSTEM_ROLES.length + GLOBAL_ROLES.length,
     permissions: PERMISSION_DEFS.length,
   });
@@ -492,25 +634,43 @@ async function seedDemoProject(
   actorRecordByKey: Map<string, { id: string }>,
   rolesByName: Map<string, { id: string }>,
 ) {
-  const docsPath = path.resolve(fileURLToPath(import.meta.url), '..', 'demo-projects', def.docsDirName);
+  const docsPath = path.resolve(
+    fileURLToPath(import.meta.url),
+    '..',
+    'demo-projects',
+    def.docsDirName,
+  );
   mkdirSync(docsPath, { recursive: true });
 
   const project = await prisma.project.upsert({
     where: { id: def.id },
     update: { name: def.name, description: def.description, docsPath },
-    create: { id: def.id, name: def.name, description: def.description, docsPath },
+    create: {
+      id: def.id,
+      name: def.name,
+      description: def.description,
+      docsPath,
+    },
   });
 
   for (const actor of def.actors) {
     const record = actorRecordByKey.get(actor.key)!;
     await prisma.projectMember.upsert({
-      where: { projectId_actorId: { projectId: project.id, actorId: record.id } },
+      where: {
+        projectId_actorId: { projectId: project.id, actorId: record.id },
+      },
       update: {},
       create: { projectId: project.id, actorId: record.id },
     });
     const role = rolesByName.get(actor.projectRole)!;
     await prisma.actorRole.upsert({
-      where: { actorId_roleId_projectId: { actorId: record.id, roleId: role.id, projectId: project.id } },
+      where: {
+        actorId_roleId_projectId: {
+          actorId: record.id,
+          roleId: role.id,
+          projectId: project.id,
+        },
+      },
       update: {},
       create: { actorId: record.id, roleId: role.id, projectId: project.id },
     });
@@ -522,7 +682,12 @@ async function seedDemoProject(
     await prisma.phase.upsert({
       where: { id },
       update: { name: phase.name, order: phase.order },
-      create: { id, projectId: project.id, name: phase.name, order: phase.order },
+      create: {
+        id,
+        projectId: project.id,
+        name: phase.name,
+        order: phase.order,
+      },
     });
     phaseIdByKey.set(phase.key, id);
   }
@@ -532,7 +697,11 @@ async function seedDemoProject(
     const id = `${project.id}-epic-${epic.key}`;
     await prisma.epic.upsert({
       where: { id },
-      update: { name: epic.name, order: epic.order, phaseId: epic.phaseKey ? phaseIdByKey.get(epic.phaseKey) : null },
+      update: {
+        name: epic.name,
+        order: epic.order,
+        phaseId: epic.phaseKey ? phaseIdByKey.get(epic.phaseKey) : null,
+      },
       create: {
         id,
         projectId: project.id,
@@ -553,7 +722,9 @@ async function seedDemoProject(
   // single forward pass resolves every taskIdByKey lookup below.
   for (const task of def.tasks) {
     const id = taskIdByKey.get(task.id)!;
-    const assigneeActorId = task.assigneeKey ? actorRecordByKey.get(task.assigneeKey)!.id : null;
+    const assigneeActorId = task.assigneeKey
+      ? actorRecordByKey.get(task.assigneeKey)!.id
+      : null;
     const data = {
       externalId: task.externalId ?? null,
       title: task.title,
@@ -562,10 +733,15 @@ async function seedDemoProject(
       epicId: task.epicKey ? epicIdByKey.get(task.epicKey) : null,
       parentTaskId: task.parentId ? taskIdByKey.get(task.parentId) : null,
       assigneeActorId,
-      assigneeLockedAt: task.status === TaskStatus.EN_DESARROLLO && assigneeActorId ? new Date(task.logTimestamp) : null,
+      assigneeLockedAt:
+        task.status === TaskStatus.EN_DESARROLLO && assigneeActorId
+          ? new Date(task.logTimestamp)
+          : null,
       progressPercent: task.progressPercent ?? null,
       acceptanceCriteria: task.acceptanceCriteria ?? null,
-      roadmapTable: task.table ? (RoadmapTable[task.table] as RoadmapTable) : null,
+      roadmapTable: task.table
+        ? (RoadmapTable[task.table] as RoadmapTable)
+        : null,
       blockedReason: task.blockedReason ?? null,
       neededDecision: task.neededDecision ?? null,
       sourceOrigin: 'UI' as const,
@@ -602,27 +778,42 @@ async function seedDemoProject(
     }
   }
 
-  writeFileSync(path.join(docsPath, 'Roadmap.md'), renderRoadmapMarkdown(def, actorRecordByKey), 'utf-8');
-  writeFileSync(path.join(docsPath, 'Agentslog.md'), renderAgentslogMarkdown(def), 'utf-8');
+  writeFileSync(
+    path.join(docsPath, 'Roadmap.md'),
+    renderRoadmapMarkdown(def, actorRecordByKey),
+    'utf-8',
+  );
+  writeFileSync(
+    path.join(docsPath, 'Agentslog.md'),
+    renderAgentslogMarkdown(def),
+    'utf-8',
+  );
 }
 
 function ownerCell(task: DemoTaskDef, def: DemoProjectDef): string {
   if (!task.assigneeKey) return '—';
   const actor = def.actors.find((a) => a.key === task.assigneeKey)!;
-  return actor.kind === 'AI_AGENT' ? `${actor.displayName}@${task.logTimestamp}` : actor.displayName;
+  return actor.kind === 'AI_AGENT'
+    ? `${actor.displayName}@${task.logTimestamp}`
+    : actor.displayName;
 }
 
 function dependsOnCell(task: DemoTaskDef, def: DemoProjectDef): string {
   if (!task.dependsOn?.length) return '—';
   return task.dependsOn
-    .map((depKey) => def.tasks.find((t) => t.id === depKey)?.externalId ?? depKey)
+    .map(
+      (depKey) => def.tasks.find((t) => t.id === depKey)?.externalId ?? depKey,
+    )
     .join(', ');
 }
 
 // One source of truth: the same def.tasks array drives both the seeded
 // Task rows above and the Roadmap.md rendering here, so the two can never
 // drift apart the way two hand-maintained copies would.
-function renderRoadmapMarkdown(def: DemoProjectDef, _actorRecordByKey: Map<string, { id: string }>): string {
+function renderRoadmapMarkdown(
+  def: DemoProjectDef,
+  _actorRecordByKey: Map<string, { id: string }>,
+): string {
   const rows = def.tasks.filter((t) => t.table);
   const active = rows.filter((t) => t.table === 'ACTIVE');
   const nearTerm = rows.filter((t) => t.table === 'NEAR_TERM');
@@ -642,7 +833,8 @@ function renderRoadmapMarkdown(def: DemoProjectDef, _actorRecordByKey: Map<strin
     '| ID | Outcome | Acceptance check | Status | Depends on |',
     '| --- | --- | --- | --- | --- |',
     ...nearTerm.map(
-      (t) => `| ${t.externalId} | ${t.title} | ${t.acceptanceCriteria ?? '—'} | ${t.status} | ${dependsOnCell(t, def)} |`,
+      (t) =>
+        `| ${t.externalId} | ${t.title} | ${t.acceptanceCriteria ?? '—'} | ${t.status} | ${dependsOnCell(t, def)} |`,
     ),
   ];
   if (nearTerm.length === 0) nearTermTable.push('| — | — | — | — | — |');
@@ -650,7 +842,10 @@ function renderRoadmapMarkdown(def: DemoProjectDef, _actorRecordByKey: Map<strin
   const blockedTable = [
     '| ID | Blocker | Needed decision or event | Owner |',
     '| --- | --- | --- | --- |',
-    ...blocked.map((t) => `| ${t.externalId} | ${t.blockedReason} | ${t.neededDecision} | ${ownerCell(t, def)} |`),
+    ...blocked.map(
+      (t) =>
+        `| ${t.externalId} | ${t.blockedReason} | ${t.neededDecision} | ${ownerCell(t, def)} |`,
+    ),
   ];
   if (blocked.length === 0) blockedTable.push('| — | — | — | — |');
 

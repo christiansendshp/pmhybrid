@@ -1,4 +1,5 @@
 import { homedir } from 'node:os';
+import { weakJwtSecretReason } from './secret-strength.js';
 
 export interface EnvConfig {
   DATABASE_URL: string;
@@ -33,6 +34,14 @@ export function validateEnv(
     throw new Error(
       `Missing required environment variable(s): ${missing.join(', ')}`,
     );
+  }
+
+  // The secret signs every token. In production a weak one stops the start;
+  // elsewhere it only warns (in main.ts), so a laptop, CI and the e2e suite
+  // keep working with a placeholder (Roadmap SECURITY-04a).
+  const weakSecret = weakJwtSecretReason(raw.JWT_SECRET!);
+  if (weakSecret && raw.NODE_ENV?.toLowerCase() === 'production') {
+    throw new Error(`JWT_SECRET is too weak for production: ${weakSecret}`);
   }
 
   return {

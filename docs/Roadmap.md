@@ -436,6 +436,9 @@ type: SECURITY
 title: Authentication and transport hardening
 status: BACKLOG
 priority: P2
+depends_on:
+  - SECURITY-04a
+  - SECURITY-04b
 description: >
   From the 2026-09-21 backend audit. Login leaks account existence by
   timing (157-370 ms existing vs 11-14 ms unknown) and checks "inactive"
@@ -455,10 +458,37 @@ expected_behavior: >
 technical_context:
   backend: apps/api/src/modules/auth, main.ts, prisma/seed.ts, agents (API keys), realtime
 next_action: >
-  Group into two slices: login/secrets/seed first, API-key scope and
-  transport second.
+  Umbrella only, refined on 2026-09-21 into SECURITY-04a (login, secrets,
+  seed, password change) and SECURITY-04b (API keys, transport); close it when
+  both are done.
 created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T20:00:00Z
+```
+
+### SECURITY-04b — API keys and transport hardening
+
+```yaml
+id: SECURITY-04b
+type: SECURITY
+title: API keys and transport hardening
+status: BACKLOG
+priority: P2
+parent: SECURITY-04
+description: >
+  Second slice of SECURITY-04. API keys do not expire, have no scope or
+  lastUsedAt and reach every REST route; CORS is fully open and there is no
+  helmet; throttling is per IP so several agents behind one host share a
+  budget; the WebSocket has no maxPayload and keeps its tickets in process
+  memory.
+expected_behavior: >
+  API keys with an expiry, a scope and a last-used time (throttled per key), a
+  CORS allowlist, helmet headers, and WebSocket limits.
+technical_context:
+  backend: apps/api/src/modules/agents (API keys), main.ts, realtime
+next_action: >
+  Decide the scope model for API keys before touching the guard.
+created_at: 2026-09-21T20:00:00Z
+updated_at: 2026-09-21T20:00:00Z
 ```
 
 ### UX-02 — Mobile layout, Kanban size and Settings overlaps

@@ -250,3 +250,30 @@ someone who cannot act on it:
   more, so it leaves the assignee empty rather than assigning it back.
 - **A removed project lead stops being the lead** (an audited `UPDATE` of the
   project); the project has none until one is set.
+
+## Login, secrets, the seed and password change (Roadmap SECURITY-04a)
+
+- **Login is uniform.** It verifies one password hash on every attempt — the real
+  one, or a fixed dummy hash for an unknown email, a non-human actor or an account
+  with no password — and answers `401 Invalid credentials` for unknown, wrong
+  password and inactive alike, with the password checked before the account's
+  state. It used to answer "Actor is inactive" before looking at the password and
+  to skip the hash for an unknown account, so both the message and the response
+  time (157-370 ms against 11-14 ms) said which accounts exist and which are off.
+- **`JWT_SECRET` is checked at start.** With `NODE_ENV=production` it must be at
+  least 32 characters and not a known placeholder (`change-me`, `secret`, …), or
+  the API refuses to start; elsewhere a weak one only logs a warning, so a laptop,
+  CI and the e2e suite keep working. `.env.example` says how to generate one
+  (`openssl rand -base64 48`).
+- **The seed refuses production.** It plants a global ADMIN with a documented
+  password (`demo1234`) and demo projects; with `NODE_ENV=production` it stops with
+  an explanation unless `SEED_ALLOW_DEMO_DATA=true` says this really is a
+  disposable demo environment.
+- **`POST /auth/change-password`** lets a signed-in person change their own
+  password by giving the current one and a new one (8 to 128 characters, different
+  from the current). It answers `204`; a wrong current password is a `400`, not a
+  `401` — a 401 makes the web client try to refresh the session and sign the person
+  out. Only the caller's own credential is touched, and the `PASSWORD_CHANGE` audit
+  event records that it happened and never either password. Existing refresh tokens
+  stay valid until they expire (tokens are stateless); revoking them is left to
+  SECURITY-04b's API-key and session work. The web app has no form for it yet.
