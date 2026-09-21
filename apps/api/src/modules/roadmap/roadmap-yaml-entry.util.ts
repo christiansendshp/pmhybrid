@@ -4,6 +4,7 @@ import {
   parseDocument,
 } from 'yaml';
 import { RoadmapTable, TaskStatus } from '@pmhybrid/shared-types';
+import { detectLineEnding } from './line-ending.util.js';
 import type { ParsedRoadmapRow } from './roadmap-parser.service.js';
 import type { RoadmapOwner, RoadmapOwnerKind } from './roadmap-owner.util.js';
 
@@ -559,6 +560,7 @@ export function replaceEntryYamlBlock(
   mutate: (doc: YamlDocument) => void,
 ): string {
   const lines = markdown.split(/\r?\n/);
+  const eol = detectLineEnding(markdown);
   const yamlText = lines
     .slice(entry.fenceOpenLine + 1, entry.fenceCloseLine)
     .join('\n');
@@ -571,7 +573,7 @@ export function replaceEntryYamlBlock(
     entry.fenceCloseLine - entry.fenceOpenLine - 1,
     ...newLines,
   );
-  return lines.join('\n');
+  return lines.join(eol);
 }
 
 /**
@@ -591,6 +593,7 @@ export function appendRoadmapYamlEntry(
   const block = [heading, '', '```yaml', ...yamlText.split('\n'), '```', ''];
 
   const lines = markdown.split(/\r?\n/);
+  const eol = detectLineEnding(markdown);
   const sectionIndex = lines.findIndex(
     (line) => line.trim() === '## Cross-cutting',
   );
@@ -599,7 +602,7 @@ export function appendRoadmapYamlEntry(
       lines.push('');
     }
     lines.push('## Cross-cutting', '', ...block);
-    return lines.join('\n');
+    return lines.join(eol);
   }
 
   let insertAt = sectionIndex + 1;
@@ -607,7 +610,7 @@ export function appendRoadmapYamlEntry(
     insertAt += 1;
   }
   lines.splice(insertAt, 0, ...block);
-  return lines.join('\n');
+  return lines.join(eol);
 }
 
 /**
@@ -625,10 +628,11 @@ export function removeRoadmapYamlEntry(
     return null;
   }
   const lines = markdown.split(/\r?\n/);
+  const eol = detectLineEnding(markdown);
   let end = entry.fenceCloseLine + 1;
   if (end < lines.length && lines[end].trim() === '') {
     end += 1;
   }
   lines.splice(entry.headingLine, end - entry.headingLine);
-  return lines.join('\n');
+  return lines.join(eol);
 }

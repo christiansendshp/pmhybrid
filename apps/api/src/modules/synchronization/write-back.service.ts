@@ -225,6 +225,13 @@ export class WriteBackService {
         },
       });
     }
+    // The cell now lists every dependency of the task, so the document has
+    // seen them all — which is what lets sync later tell a dependency it
+    // dropped from one it never had (Roadmap GAP-35e).
+    await tx.taskDependency.updateMany({
+      where: { taskId: task.id },
+      data: { inDocument: true },
+    });
 
     await this.audit.record(
       {

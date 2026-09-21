@@ -279,6 +279,10 @@ model TaskDependency {
   dependsOnTaskId String?
   dependsOnTask   Task?   @relation("DependsOnTask", fields: [dependsOnTaskId], references: [id])
   rawExternalRef  String?
+  // The document has listed this dependency (seen by sync, or written by the
+  // add-dependency write-back). Only such a dependency is removed when the
+  // document later stops listing it (Roadmap GAP-35e).
+  inDocument      Boolean @default(false)
 }
 
 model TaskAssignment {

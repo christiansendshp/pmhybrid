@@ -1,5 +1,6 @@
 import { RoadmapTable, TaskStatus } from '@pmhybrid/shared-types';
 import { findRoadmapTableLineRange, splitRow } from './markdown-table.util.js';
+import { detectLineEnding } from './line-ending.util.js';
 import { ownerCell, type RoadmapOwner } from './roadmap-owner.util.js';
 import {
   appendRoadmapYamlEntry,
@@ -48,6 +49,7 @@ export function upsertLifecycleRoadmapRow(
   }
 
   const lines = markdown.split(/\r?\n/);
+  const eol = detectLineEnding(markdown);
   const cellByHeader: Record<string, string> = {
     ID: sanitizeField(externalId),
     Outcome: sanitizeField(fields.outcome),
@@ -76,7 +78,7 @@ export function upsertLifecycleRoadmapRow(
         header in cellByHeader ? cellByHeader[header] : (cells[index] ?? '—'),
       );
       lines[i] = `| ${padded.join(' | ')} |`;
-      return lines.join('\n');
+      return lines.join(eol);
     }
   }
 
@@ -88,7 +90,7 @@ export function upsertLifecycleRoadmapRow(
   }
   const newLine = renderRow(activeRange.headers, cellByHeader);
   lines.splice(activeRange.rowsEnd, 0, newLine);
-  return lines.join('\n');
+  return lines.join(eol);
 }
 
 /**
@@ -109,6 +111,7 @@ export function replaceRoadmapRowCells(
   }
 
   const lines = markdown.split(/\r?\n/);
+  const eol = detectLineEnding(markdown);
   for (const kind of Object.values(RoadmapTable)) {
     const range = findRoadmapTableLineRange(lines, kind);
     const idIndex = range?.headers.indexOf('ID') ?? -1;
@@ -131,7 +134,7 @@ export function replaceRoadmapRowCells(
         const padded = range.headers.map((_, index) => cells[index] ?? '—');
         lines[i] = `| ${padded.join(' | ')} |`;
       }
-      return { markdown: lines.join('\n'), replaced };
+      return { markdown: lines.join(eol), replaced };
     }
   }
   return null;
@@ -184,6 +187,7 @@ export function removeRoadmapRow(
   }
 
   const lines = markdown.split(/\r?\n/);
+  const eol = detectLineEnding(markdown);
   for (const kind of Object.values(RoadmapTable)) {
     const range = findRoadmapTableLineRange(lines, kind);
     const idIndex = range?.headers.indexOf('ID') ?? -1;
@@ -199,7 +203,7 @@ export function removeRoadmapRow(
       } else {
         lines.splice(i, 1);
       }
-      return lines.join('\n');
+      return lines.join(eol);
     }
   }
   return null;

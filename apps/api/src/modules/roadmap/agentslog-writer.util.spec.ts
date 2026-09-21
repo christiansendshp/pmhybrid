@@ -92,3 +92,29 @@ describe('appendAgentslogEntry', () => {
     expect(parsed.entries[1].summary).toBe('started');
   });
 });
+
+describe('appendAgentslogEntry line endings (Roadmap GAP-35e)', () => {
+  const entry = {
+    timestampIso: '2026-09-21T10:00:00Z',
+    agentName: 'claude',
+    taskExternalId: 'T-1',
+    statusWord: 'DONE',
+    summary: 's',
+    files: 'f',
+    verify: 'v',
+  };
+
+  it('appends with the file’s own line ending, so a CRLF ledger stays CRLF', () => {
+    const existing = '# Agents log\r\n\r\n## Entries\r\n';
+    const updated = appendAgentslogEntry(existing, entry);
+
+    expect(updated.startsWith(existing.trimEnd())).toBe(true);
+    expect(/(?<!\r)\n/.test(updated)).toBe(false);
+    expect(updated.endsWith('- Verify: v\r\n')).toBe(true);
+  });
+
+  it('keeps LF for an LF ledger', () => {
+    const updated = appendAgentslogEntry('# Agents log\n', entry);
+    expect(updated.includes('\r')).toBe(false);
+  });
+});

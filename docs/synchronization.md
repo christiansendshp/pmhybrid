@@ -333,12 +333,26 @@ never makes a row vanish. A task with no `externalId` yet, or whose row has
 disappeared from the document, is left alone — its dependencies render on
 its next real write-back.
 
-There is still no removal write-back (no dependency-removal endpoint exists
-at all yet), which is why `reconcileDependencies`'s read-side reconciliation
-(step 5, "Disappeared rows" doesn't apply here — dependencies are reconciled
-per-row regardless of hash match) stays additive-only: a reference missing
-from a cell isn't reliable evidence it was intentionally removed rather than
-just never written back.
+Sync keeps a task's dependencies equal to its row's `Depends on` cell in
+both directions (Roadmap GAP-35e). Each `TaskDependency` records whether the
+document has listed it (`inDocument`): set when sync sees it in a row, and by
+the add-dependency write-back above, which writes the whole set into the cell.
+A dependency the document listed and no longer lists is **removed** (audited as
+`DEPENDENCY_REMOVE`, origin ROADMAP) — PM Hub has no endpoint to remove one
+itself, so the document is the only place it can be dropped. Nothing else is
+ever removed:
+
+- a dependency the document never listed (added in PM Hub while the row sat in
+  a table with no `Depends on` column, so there was nowhere to write it);
+- anything on a Blocked row, where an absent cell says nothing;
+- anything on an unreadable or duplicated entry, which is present but not
+  understood (see "Unreadable Roadmap entries").
+
+The flag starts false for dependencies that existed before it did; the next
+sync that sees them listed sets it, so removal applies from then on. A
+document that loses a `depends_on` by accident (a bad merge) does remove the
+dependency here; the audit event records what went, and the dependency is
+re-linked by the next sync once the document lists it again.
 
 ### Removal
 

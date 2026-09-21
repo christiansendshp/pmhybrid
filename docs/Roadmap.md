@@ -214,37 +214,6 @@ created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T15:00:00Z
 ```
 
-### GAP-35e — Dependency removal and line endings in write-back
-
-```yaml
-id: GAP-35e
-type: GAP
-title: Dependency removal and line endings in write-back
-status: BACKLOG
-priority: P2
-parent: GAP-35
-depends_on:
-  - GAP-35b
-description: >
-  Fifth slice of GAP-35, split from the second. Removing a `depends_on` in
-  the document is ignored (imports are additive only, because nothing
-  proved a missing reference was an intentional removal), and every
-  write-back rewrites a CRLF file as LF, touching every line and hiding the
-  real change in a diff.
-expected_behavior: >
-  A dependency that was imported from the document and is no longer listed
-  in a readable, non-blocked row is removed in PM Hub, audited; one added
-  only in PM Hub is never removed by sync. Write-back preserves the file's
-  line ending in Roadmap.md and Agentslog.md.
-technical_context:
-  backend: apps/api/src/modules/synchronization/synchronization.service.ts (reconcileDependencies), roadmap-row-writer.util.ts, roadmap-yaml-entry.util.ts, agentslog-writer.util.ts
-next_action: >
-  Read how a UI-added dependency is written back and whether it keeps a
-  rawExternalRef, since that decides which dependencies sync may remove.
-created_at: 2026-09-21T16:00:00Z
-updated_at: 2026-09-21T16:00:00Z
-```
-
 ### GAP-35c — Import type, priority and progress, and write progress back
 
 ```yaml

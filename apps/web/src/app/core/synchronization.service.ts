@@ -18,6 +18,8 @@ export interface SyncRunSummary {
   completedViaRemoval?: number;
   conflictsRaised?: number;
   dependenciesLinked?: number;
+  assigneesUpdated?: number;
+  dependenciesRemoved?: number;
   /** Absent on runs recorded before entries were isolated. */
   entryErrors?: SyncEntryError[];
   /** Only on a FAILED run: one readable line. */

@@ -465,3 +465,87 @@ describe('replaceRoadmapOwner (Roadmap GAP-35a)', () => {
     ).toBeNull();
   });
 });
+
+describe('line endings are preserved (Roadmap GAP-35e)', () => {
+  const crlf = (text: string) => text.replace(/\r?\n/g, '\r\n');
+  const bareLf = /(?<!\r)\n/;
+
+  it('keeps an old-format CRLF file CRLF through every writer, changing only the edited row', () => {
+    const doc = crlf(ROADMAP);
+    const at = '2026-09-21T10:00:00.000Z';
+
+    const results = [
+      upsertLifecycleRoadmapRow(doc, 'PMH-1', {
+        outcome: 'First task',
+        acceptanceCheck: 'check it',
+        status: 'EN DESARROLLO',
+        owner: null,
+        dependsOn: '—',
+      }),
+      upsertLifecycleRoadmapRow(doc, 'PMH-9', {
+        outcome: 'Brand new',
+        acceptanceCheck: 'n/a',
+        status: 'PENDIENTE',
+        owner: null,
+        dependsOn: '—',
+      }),
+      replaceRoadmapRowCells(doc, 'PMH-1', { Outcome: 'Renamed' })!.markdown,
+      replaceRoadmapOwner(
+        doc,
+        'PMH-1',
+        { name: 'claude', kind: 'AI_AGENT' },
+        at,
+      )!,
+      removeRoadmapRow(doc, 'PMH-2')!,
+    ];
+
+    for (const updated of results) {
+      expect(bareLf.test(updated)).toBe(false);
+      expect(updated.includes('\r\n')).toBe(true);
+    }
+    // Only the touched row differs from the original.
+    const renamed = results[2].split('\r\n');
+    const original = doc.split('\r\n');
+    expect(renamed.filter((line, i) => line !== original[i])).toHaveLength(1);
+  });
+
+  it('keeps a new-format CRLF file CRLF through every writer, changing only the edited entry', () => {
+    const doc = crlf(NEW_FORMAT_ROADMAP);
+    const at = '2026-09-21T10:00:00.000Z';
+
+    const results = [
+      upsertLifecycleRoadmapRow(doc, 'TASK-42', {
+        outcome: 'Add sync-strategy selector',
+        acceptanceCheck: 'x',
+        status: 'EN_DESARROLLO',
+        owner: { name: 'claude', kind: 'AI_AGENT' },
+        dependsOn: 'TASK-31',
+      }),
+      upsertLifecycleRoadmapRow(doc, 'PMH-9', {
+        outcome: 'Brand new task',
+        acceptanceCheck: 'n/a',
+        status: 'PENDIENTE',
+        owner: null,
+        dependsOn: '—',
+      }),
+      replaceRoadmapOwner(doc, 'TASK-42', { name: 'Ana', kind: 'HUMAN' }, at)!,
+      removeRoadmapRow(doc, 'GAP-05')!,
+    ];
+
+    for (const updated of results) {
+      expect(bareLf.test(updated)).toBe(false);
+    }
+    // Lines outside the edited entry are byte-for-byte the original ones.
+    const edited = results[2].split('\r\n');
+    const original = doc.split('\r\n');
+    const untouched = edited.filter((line) => original.includes(line));
+    expect(untouched.length).toBeGreaterThan(edited.length - 12);
+  });
+
+  it('leaves an LF file LF', () => {
+    const updated = replaceRoadmapRowCells(ROADMAP, 'PMH-1', {
+      Outcome: 'Renamed',
+    })!.markdown;
+    expect(updated.includes('\r')).toBe(false);
+  });
+});

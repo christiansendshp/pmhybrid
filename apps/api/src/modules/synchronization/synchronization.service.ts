@@ -65,6 +65,8 @@ interface SyncSummary {
   conflictsRaised: number;
   /** Tasks whose assignee was set or changed because the document names a different member (Roadmap GAP-35a). */
   assigneesUpdated: number;
+  /** Dependencies the document listed and then dropped, removed here (Roadmap GAP-35e). */
+  dependenciesRemoved: number;
   /** New TaskDependency rows linked from a row's "Depends on" cell (Roadmap GAP-14) — resolved or still dangling on a raw external ref. */
   dependenciesLinked: number;
 }
@@ -239,6 +241,7 @@ export class SynchronizationService {
       conflictsRaised: 0,
       assigneesUpdated: 0,
       dependenciesLinked: 0,
+      dependenciesRemoved: 0,
     };
 
     // No try/catch here: on a mid-step failure this simply throws out of the
@@ -459,18 +462,15 @@ export class SynchronizationService {
         await this.raiseUnrecognizedStatus(tx, current, row.statusRaw, summary);
       }
 
-      // Additive only (docs/synchronization.md "Dependencies" — Roadmap
-      // GAP-14/GAP-22): write-back renders a task's dependency set into its
-      // row on add (GAP-22), but there's no removal write-back yet, so a
-      // dependency missing from the cell isn't reliable evidence it was
-      // actually removed — removing on every mismatch could still silently
-      // destroy a real one.
+      // docs/synchronization.md "Dependencies" (Roadmap GAP-14/22/35e). A
+      // Blocked row has no Depends on cell, so its absence removes nothing.
       await this.reconcileDependencies(
         tx,
         projectId,
         taskId,
         row.externalId,
         row.dependsOnRaw,
+        row.table !== 'BLOCKED',
         existingByExternalId,
         summary,
       );
@@ -995,22 +995,26 @@ export class SynchronizationService {
   }
 
   /**
-   * Step 6 (Roadmap GAP-14, docs/domain-model.md "Depends on"): links each
-   * comma-separated external ID in a row's "Depends on" cell to a
-   * TaskDependency. Called on every reconciled row, hash-match skip or not
-   * — the very first run against a project synced before this feature
-   * existed still needs to backfill every row's dependencies once.
+   * Step 6 (Roadmap GAP-14/GAP-35e, docs/domain-model.md "Depends on"): makes
+   * a task's dependencies match its row's "Depends on" cell. Called on every
+   * reconciled row, hash-match skip or not — the very first run against a
+   * project synced before this feature existed still needs to backfill every
+   * row's dependencies once.
    *
-   * Idempotent (skips a reference already linked, resolved or dangling) and
-   * additive-only: never removes a TaskDependency. Write-back renders a
-   * task's dependency set into its row on add (Roadmap GAP-22), but there's
-   * no removal write-back yet, so a reference missing from the cell isn't
-   * reliable evidence of an intentional removal. An unresolvable
-   * external ID (a row not seen *yet* in this same pass, or never) is
+   * Adding: each comma-separated external ID becomes a TaskDependency (an
+   * ID already linked, resolved or dangling, is only marked as listed).
+   * An unresolvable ID (a row not seen *yet* in this same pass, or never) is
    * stored via `rawExternalRef` with a null `dependsOnTaskId` — upgrading
    * that once the target is known is `resolveDanglingDependencies`'s job,
-   * not this method's, since a row can be reconciled before the row it
-   * depends on even when both are in the very same document.
+   * since a row can be reconciled before the row it depends on even when
+   * both are in the very same document.
+   *
+   * Removing: a dependency the document has listed (`inDocument`: seen here,
+   * or written by the add-dependency write-back) and no longer lists is
+   * removed — the document is where it was declared, and PM Hub has no way of
+   * removing one itself. One the document never listed is never touched, and
+   * neither is a row that carries no such cell (`carriesDependsOn` is false
+   * for Blocked rows, where an absent cell says nothing).
    */
   private async reconcileDependencies(
     tx: Prisma.TransactionClient,
@@ -1018,32 +1022,68 @@ export class SynchronizationService {
     taskId: string,
     externalId: string,
     dependsOnRaw: string | undefined,
+    carriesDependsOn: boolean,
     existingByExternalId: Map<string, { id: string }>,
     summary: SyncSummary,
   ): Promise<void> {
-    if (!dependsOnRaw) {
-      return;
-    }
-    const referencedIds = [
-      ...new Set(
-        dependsOnRaw
-          .split(',')
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0 && s !== externalId), // a row never depends on itself
-      ),
-    ];
-    if (referencedIds.length === 0) {
+    const referencedIds = dependsOnRaw
+      ? [
+          ...new Set(
+            dependsOnRaw
+              .split(',')
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0 && s !== externalId), // a row never depends on itself
+          ),
+        ]
+      : [];
+    if (referencedIds.length === 0 && !carriesDependsOn) {
       return;
     }
 
     const existingDeps = await tx.taskDependency.findMany({
       where: { taskId },
-      select: { dependsOnTaskId: true, rawExternalRef: true },
+      select: {
+        id: true,
+        dependsOnTaskId: true,
+        rawExternalRef: true,
+        inDocument: true,
+        dependsOnTask: { select: { externalId: true } },
+      },
     });
+
+    if (carriesDependsOn) {
+      for (const dep of existingDeps) {
+        if (!dep.inDocument) {
+          continue;
+        }
+        const stillListed = [dep.dependsOnTask?.externalId, dep.rawExternalRef]
+          .filter((ref): ref is string => !!ref)
+          .some((ref) => referencedIds.includes(ref));
+        if (stillListed) {
+          continue;
+        }
+        await tx.taskDependency.delete({ where: { id: dep.id } });
+        await this.audit.record(
+          {
+            projectId,
+            entityType: 'Task',
+            entityId: taskId,
+            operation: 'DEPENDENCY_REMOVE',
+            origin: 'ROADMAP',
+            previousValue: {
+              dependsOnTaskId: dep.dependsOnTaskId,
+              rawExternalRef: dep.rawExternalRef,
+            },
+          },
+          tx,
+        );
+        summary.dependenciesRemoved += 1;
+      }
+    }
 
     for (const referencedId of referencedIds) {
       const target = existingByExternalId.get(referencedId);
-      const alreadyRecorded = existingDeps.some(
+      const recorded = existingDeps.find(
         (d) =>
           d.rawExternalRef === referencedId ||
           // Same target already linked by a different route (e.g. added
@@ -1052,7 +1092,13 @@ export class SynchronizationService {
           // names it too.
           (target && d.dependsOnTaskId === target.id),
       );
-      if (alreadyRecorded) {
+      if (recorded) {
+        if (!recorded.inDocument) {
+          await tx.taskDependency.update({
+            where: { id: recorded.id },
+            data: { inDocument: true },
+          });
+        }
         continue;
       }
       if (target && (await this.wouldCreateCycle(tx, taskId, target.id))) {
@@ -1063,6 +1109,7 @@ export class SynchronizationService {
           taskId,
           dependsOnTaskId: target?.id ?? null,
           rawExternalRef: referencedId,
+          inDocument: true,
         },
       });
       await this.audit.record(

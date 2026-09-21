@@ -153,11 +153,14 @@ Task(
 @@index([projectId, status])
 ```
 
-- `TaskDependency(taskId, dependsOnTaskId?, rawExternalRef?)` — a resolved
+- `TaskDependency(taskId, dependsOnTaskId?, rawExternalRef?, inDocument)` — a resolved
   internal reference when the dependency's ID matches a known `Task`, else the
   raw free-text "Depends on" value. Cycle prevention (A depends on B depends
   on A) is application-level (`TasksService.validateDependencyGraph()`, a
   bounded DFS) — Postgres cannot cheaply enforce acyclic graphs declaratively.
+  `inDocument` is true once the document has listed the dependency; only such a
+  dependency is removed when the document later drops it
+  (`docs/synchronization.md` "Dependencies").
 - `TaskAssignment(id, taskId, actorId, assignedAt, unassignedAt?, assignedByActorId, reason?)`
   — structured reassignment history, distinct from `AuditEvent`: this is a
   read-optimized current+historical index for the Workload view, while

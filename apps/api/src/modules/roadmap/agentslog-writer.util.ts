@@ -1,3 +1,4 @@
+import { detectLineEnding } from './line-ending.util.js';
 import { sanitizeField } from './roadmap-row-writer.util.js';
 
 export interface AgentslogEntryInput {
@@ -41,6 +42,7 @@ export function appendAgentslogEntry(
     lines.push(`- Pause: ${sanitizeField(entry.pause)}`);
   }
 
+  const eol = detectLineEnding(markdown);
   const trimmed = markdown.replace(/\s+$/, '');
-  return `${trimmed}\n\n${lines.join('\n')}\n`;
+  return `${trimmed}${eol}${eol}${lines.join(eol)}${eol}`;
 }
