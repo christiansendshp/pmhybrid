@@ -7,7 +7,10 @@ import {
   resolvePlacements,
   type Placement,
 } from '../roadmap/roadmap-hierarchy.util.js';
-import type { ParsedRoadmapRow } from '../roadmap/roadmap-parser.service.js';
+import type {
+  ParsedRoadmapRow,
+  StructureEntry,
+} from '../roadmap/roadmap-parser.service.js';
 
 /** What a sync run counts of the hierarchy (Roadmap GAP-35d). */
 export interface HierarchySummary {
@@ -20,6 +23,12 @@ export interface HierarchySummary {
 }
 
 type LiveTask = Prisma.TaskGetPayload<object>;
+
+/** What the hierarchy needs of a row of the document or of a heading of its Plan section. */
+type Entry = Pick<
+  ParsedRoadmapRow,
+  'externalId' | 'entryType' | 'outcome' | 'parentRef'
+>;
 
 /**
  * The hierarchy of a YAML Roadmap (Roadmap GAP-35d): a PHASE or EPIC entry is a
@@ -91,30 +100,34 @@ export class HierarchySyncService {
     tx: Prisma.TransactionClient,
     projectId: string,
     rows: readonly ParsedRoadmapRow[],
+    structure: readonly StructureEntry[],
     tasksByExternalId: ReadonlyMap<string, LiveTask>,
     summary: HierarchySummary,
   ): Promise<void> {
-    // The tables have no hierarchy to read.
-    if (!rows.some((row) => row.entryType !== undefined)) {
+    // A document says its hierarchy with typed entries (YAML) or with the
+    // headings of its Plan section (the skill's tables); the older tables say
+    // none of it.
+    const entries: readonly Entry[] = [...rows, ...structure];
+    if (!entries.some((entry) => entry.entryType !== undefined)) {
       return;
     }
     const placements = resolvePlacements(
-      rows.map((row) => ({
-        externalId: row.externalId,
-        entryType: row.entryType,
-        parentRef: row.parentRef,
+      entries.map((entry) => ({
+        externalId: entry.externalId,
+        entryType: entry.entryType,
+        parentRef: entry.parentRef,
       })),
     );
     const phaseIds = await this.syncPhases(
       tx,
       projectId,
-      rows.filter((row) => row.entryType === 'PHASE'),
+      entries.filter((entry) => entry.entryType === 'PHASE'),
       summary,
     );
     const epicIds = await this.syncEpics(
       tx,
       projectId,
-      rows.filter((row) => row.entryType === 'EPIC'),
+      entries.filter((entry) => entry.entryType === 'EPIC'),
       placements,
       phaseIds,
       summary,
@@ -135,7 +148,7 @@ export class HierarchySyncService {
   private async syncPhases(
     tx: Prisma.TransactionClient,
     projectId: string,
-    entries: readonly ParsedRoadmapRow[],
+    entries: readonly Entry[],
     summary: HierarchySummary,
   ): Promise<Map<string, string>> {
     const known = new Map(
@@ -198,7 +211,7 @@ export class HierarchySyncService {
   private async syncEpics(
     tx: Prisma.TransactionClient,
     projectId: string,
-    entries: readonly ParsedRoadmapRow[],
+    entries: readonly Entry[],
     placements: ReadonlyMap<string, Placement>,
     phaseIds: ReadonlyMap<string, string>,
     summary: HierarchySummary,

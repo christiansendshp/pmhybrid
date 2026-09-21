@@ -1,10 +1,76 @@
 import { RoadmapTable } from '@pmhybrid/shared-types';
 
+/** A phase or an epic named by a heading of the Plan section: `### F01 — Title` or `#### F01-E01 — Title` (Roadmap GAP-38). */
+export interface PlanHeading {
+  id: string;
+  title: string;
+}
+
 export interface RawMarkdownTable {
   headers: string[];
   rows: string[][];
   /** 1-based line of each data row in the document, parallel to `rows`. */
   rowLines: number[];
+  /** The phase and the epic heading the table sits under, in the `## Plan` section. */
+  phase?: PlanHeading;
+  epic?: PlanHeading;
+}
+
+/** A phase or epic heading of the Plan section, as the hierarchy sync reads it. */
+export interface PlanStructureHeading extends PlanHeading {
+  kind: 'PHASE' | 'EPIC';
+  /** For an epic, the phase heading it is under. */
+  phaseId?: string;
+}
+
+const HEADING_LINE = /^(#{2,4})\s+(.*)$/;
+const HEADING_TEXT = /^(\S+)\s+[—–-]\s+(.+)$/;
+
+/**
+ * Follows the headings of a document line by line, so that whatever is read
+ * next knows the phase and the epic it is under (Roadmap GAP-38). The latest
+ * project-documentation skill keeps its hierarchy there: inside `## Plan`, a
+ * `###` heading names a phase and a `####` heading an epic, each as `ID —
+ * Title`; a heading of any other shape names nothing, and a new `##` section
+ * leaves the Plan. Lines inside a code fence are not headings.
+ */
+class PlanHeadings {
+  private inPlan = false;
+  private inFence = false;
+  phase?: PlanHeading;
+  epic?: PlanHeading;
+
+  /** Reads one (trimmed) line; returns the phase or epic heading it names, if it names one. */
+  read(line: string): PlanStructureHeading | undefined {
+    if (line.startsWith('```')) {
+      this.inFence = !this.inFence;
+      return undefined;
+    }
+    const heading = this.inFence ? null : HEADING_LINE.exec(line);
+    if (!heading) {
+      return undefined;
+    }
+    const level = heading[1].length;
+    const text = heading[2].trim();
+    if (level === 2) {
+      this.inPlan = text.toLowerCase() === 'plan';
+      this.phase = undefined;
+      this.epic = undefined;
+      return undefined;
+    }
+    if (!this.inPlan) {
+      return undefined;
+    }
+    const named = HEADING_TEXT.exec(text);
+    const found = named ? { id: named[1], title: named[2].trim() } : undefined;
+    if (level === 3) {
+      this.phase = found;
+      this.epic = undefined;
+      return found && { ...found, kind: 'PHASE' };
+    }
+    this.epic = found;
+    return found && { ...found, kind: 'EPIC', phaseId: this.phase?.id };
+  }
 }
 
 /**
@@ -16,6 +82,7 @@ export interface RawMarkdownTable {
 export function extractMarkdownTables(markdown: string): RawMarkdownTable[] {
   const lines = markdown.split(/\r?\n/).map((line) => line.trim());
   const tables: RawMarkdownTable[] = [];
+  const headings = new PlanHeadings();
   let i = 0;
 
   while (i < lines.length) {
@@ -26,6 +93,8 @@ export function extractMarkdownTables(markdown: string): RawMarkdownTable[] {
       isSeparatorRow(lines[i + 1])
     ) {
       const headers = splitRow(line);
+      const phase = headings.phase;
+      const epic = headings.epic;
       i += 2;
       const rows: string[][] = [];
       const rowLines: number[] = [];
@@ -34,13 +103,33 @@ export function extractMarkdownTables(markdown: string): RawMarkdownTable[] {
         rowLines.push(i + 1);
         i += 1;
       }
-      tables.push({ headers, rows, rowLines });
+      tables.push({
+        headers,
+        rows,
+        rowLines,
+        ...(phase ? { phase } : {}),
+        ...(epic ? { epic } : {}),
+      });
     } else {
+      headings.read(line);
       i += 1;
     }
   }
 
   return tables;
+}
+
+/** Every phase and epic heading of the `## Plan` section, in document order (Roadmap GAP-38). */
+export function extractPlanStructure(markdown: string): PlanStructureHeading[] {
+  const headings = new PlanHeadings();
+  const found: PlanStructureHeading[] = [];
+  for (const raw of markdown.split(/\r?\n/)) {
+    const heading = headings.read(raw.trim());
+    if (heading) {
+      found.push(heading);
+    }
+  }
+  return found;
 }
 
 /** Column-signature discrimination (docs/roadmap-parser.md) — shared by the parser (read) and the write-back row writer. */

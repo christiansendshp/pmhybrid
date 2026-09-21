@@ -12,6 +12,7 @@ import {
   ParsedRoadmapRow,
   RoadmapParserService,
   rowCarriesDependsOn,
+  type StructureEntry,
 } from '../roadmap/roadmap-parser.service.js';
 import { readRulesDocument } from '../git-providers/read-rules-document.js';
 import { rowStatusDiffers } from '../roadmap/status-vocabulary.util.js';
@@ -338,7 +339,8 @@ export class SynchronizationService {
     }
     // Tolerant (Roadmap BUG-05): one unreadable entry no longer fails the
     // whole run. It is reported, and its task is left exactly as it was.
-    const { rows, errors } = this.roadmapParser.parseTolerant(roadmapContent);
+    const { rows, errors, structure } =
+      this.roadmapParser.parseTolerant(roadmapContent);
     summary.entryErrors = errors
       .slice(0, MAX_ENTRY_ERRORS_RECORDED)
       .map(({ id, line, reason }) => ({ id, line, reason }));
@@ -346,6 +348,7 @@ export class SynchronizationService {
       tx,
       projectId,
       rows,
+      structure,
       new Set(errors.map((error) => error.id)),
       summary,
     );
@@ -457,6 +460,7 @@ export class SynchronizationService {
     tx: Prisma.TransactionClient,
     projectId: string,
     rows: ParsedRoadmapRow[],
+    structure: readonly StructureEntry[],
     unreadableIds: ReadonlySet<string>,
     summary: SyncSummary,
   ) {
@@ -677,6 +681,7 @@ export class SynchronizationService {
       tx,
       projectId,
       rows,
+      structure,
       existingByExternalId,
       summary,
     );

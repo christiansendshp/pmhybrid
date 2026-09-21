@@ -48,8 +48,9 @@ The current project-documentation skill went back to Markdown tables only
   `roadmapTable` keeps only the shapes that change behaviour (blocked, near
   term, anything else); a `PLAN` or `GAPS` value would cost a migration and
   every consumer with no behavioural difference.
-- `Description` is the row's text when there is no `Outcome` column. `Severity`
-  and `Phase` are not imported (the task model has no field they map to).
+- `Description` is the row's text when there is no `Outcome` column.
+  `Severity` is not imported (the task model has no field it maps to);
+  `Phase` places a Gaps row (see below).
 - `Status` is `TODO`, `IN_PROGRESS`, `PAUSE` or `DONE`. `PAUSE` is a valid
   state with no Kanban column: the task keeps the column it has and no
   `UNRECOGNIZED_STATUS` conflict is raised.
@@ -60,8 +61,15 @@ The current project-documentation skill went back to Markdown tables only
   no Blocked table — it writes a paused row instead. `LIMITE` and `OTRO` are a
   plain stop. The row still has a `Depends on` cell (`carriesDependsOn`), so
   emptying it removes the dependencies the document listed.
-- Phase and epic headings, the `Vision` line and `<!-- context:end -->` are
-  prose: the hierarchy is not imported (Roadmap GAP-35d).
+- **The hierarchy is in the headings of `## Plan`** (Roadmap GAP-38). Inside that
+  section a `###` heading of the shape `ID — Title` names a phase and a `####`
+  heading an epic (`ParsedRoadmap.structure`); a new `##` section leaves the Plan,
+  a heading of another shape names nothing, and a code fence is not read. A row
+  of a table under an epic heading has that epic as its `parentRef`, one under
+  a phase heading that phase, and a Gaps row the phase its own `Phase` column
+  names. A row outside the Plan is placed by nothing — its id is never parsed
+  for a prefix (ADR-001), so `F01-E01-T01` in Active work is not in `F01-E01`.
+  The `Vision` line and `<!-- context:end -->` are prose.
 
 ## What a YAML entry adds to a row (Roadmap GAP-35c)
 

@@ -168,36 +168,6 @@ created_at: 2026-09-19T09:40:00Z
 updated_at: 2026-09-20T19:55:00Z
 ```
 
-### GAP-38 — Read the phases and epics of the latest skill's Plan tables
-
-```yaml
-id: GAP-38
-type: GAP
-title: Read the phases and epics of the latest skill's Plan tables
-status: READY
-priority: P2
-description: >
-  Found while doing GAP-35d. The latest project-documentation skill (tables
-  only) keeps its hierarchy in headings: a "### F01 - Import and export"
-  heading is a phase and a "#### F01-E01 - CSV support" heading an epic, with
-  the tasks in the Plan table beneath. PM Hub reads the rows but not the
-  headings, so a project in that format has no phases or epics and
-  /progress reports phases: [], the defect GAP-35d fixed for the YAML format.
-expected_behavior: >
-  A phase heading becomes a Phase and an epic heading an Epic, identified by
-  the id in the heading, and the tasks of the table under it sit in that epic
-  and phase. A task id is never parsed for its prefix (ADR-001): the heading
-  it is under is what places it. A move made in PM Hub cannot be written (the
-  tables have no such column) and is left as it is.
-technical_context:
-  backend: apps/api/src/modules/roadmap/markdown-table.util.ts, roadmap-parser.service.ts, synchronization/hierarchy-sync.service.ts
-next_action: >
-  Have the parser report, for each table row, the phase and epic headings it
-  sits under, and give them to HierarchySyncService as placements.
-created_at: 2026-09-21T20:46:00Z
-updated_at: 2026-09-21T20:46:00Z
-```
-
 ### IMPROVEMENT-01 — Performance and data limits (cycle check, progress N+1, pagination, indexes, DTO limits)
 
 ```yaml

@@ -263,6 +263,145 @@ describe('RoadmapParserService latest skill tables (Roadmap GAP-37a)', () => {
       '',
     ].join('\n');
 
-    expect(parser.parseTolerant(template)).toEqual({ rows: [], errors: [] });
+    expect(parser.parseTolerant(template)).toEqual({
+      rows: [],
+      errors: [],
+      structure: [],
+    });
+  });
+});
+
+describe('RoadmapParserService phases and epics of the Plan headings (Roadmap GAP-38)', () => {
+  const parser = new RoadmapParserService();
+
+  it('reads the phase and the epic headings of the Plan section, once each, with the phase an epic is under', () => {
+    const { structure } = parser.parseTolerant(SKILL_ROADMAP);
+
+    expect(structure).toEqual([
+      { externalId: 'F01', entryType: 'PHASE', outcome: 'Import and export' },
+      {
+        externalId: 'F01-E01',
+        entryType: 'EPIC',
+        outcome: 'CSV support',
+        parentRef: 'F01',
+      },
+    ]);
+  });
+
+  it('places a row of a Plan table under the epic heading above it', () => {
+    const { rows } = parser.parseTolerant(SKILL_ROADMAP);
+
+    const placed = (id: string) => rows.find((row) => row.externalId === id);
+    expect(placed('F01-E01-T05')?.parentRef).toBe('F01-E01');
+    expect(placed('F01-E01-T06')?.parentRef).toBe('F01-E01');
+  });
+
+  it('says nothing of a row outside the Plan section, whatever its id looks like', () => {
+    const { rows } = parser.parseTolerant(SKILL_ROADMAP);
+
+    // Active work and Near term hold rows with the ids of an epic's tasks, but
+    // the heading is what places a task, never its id (ADR-001).
+    expect(
+      rows.find((row) => row.externalId === 'F01-E01-T01')?.parentRef,
+    ).toBeUndefined();
+    expect(
+      rows.find((row) => row.externalId === 'F02-E01-T01')?.parentRef,
+    ).toBeUndefined();
+  });
+
+  it('places a Gaps row in the phase its own Phase column names', () => {
+    const { rows } = parser.parseTolerant(SKILL_ROADMAP);
+
+    expect(rows.find((row) => row.externalId === 'F01-BUG-01')?.parentRef).toBe(
+      'F01',
+    );
+  });
+
+  it('puts a table straight under a phase heading in that phase alone', () => {
+    const { rows, structure } = parser.parseTolerant(
+      [
+        '## Plan',
+        '',
+        '### P1 — First phase',
+        '',
+        '| ID | Outcome | Acceptance check | Status | Owner | Depends on | Pause reason |',
+        '|---|---|---|---|---|---|---|',
+        '| P1-T1 | Direct | done | TODO | — | — | — |',
+        '',
+        '#### P1-E1 — An epic',
+        '',
+        '| ID | Outcome | Acceptance check | Status | Owner | Depends on | Pause reason |',
+        '|---|---|---|---|---|---|---|',
+        '| P1-E1-T1 | Under the epic | done | TODO | — | — | — |',
+        '',
+        '### P2 — Second phase',
+        '',
+        '| ID | Outcome | Acceptance check | Status | Owner | Depends on | Pause reason |',
+        '|---|---|---|---|---|---|---|',
+        '| P2-T1 | In the second | done | TODO | — | — | — |',
+        '',
+      ].join('\n'),
+    );
+
+    expect(structure.map((entry) => entry.externalId)).toEqual([
+      'P1',
+      'P1-E1',
+      'P2',
+    ]);
+    const parents = Object.fromEntries(
+      rows.map((row) => [row.externalId, row.parentRef]),
+    );
+    expect(parents).toEqual({
+      'P1-T1': 'P1',
+      'P1-E1-T1': 'P1-E1',
+      // A new phase heading leaves the epic above it.
+      'P2-T1': 'P2',
+    });
+  });
+
+  it('ignores headings outside the Plan section, of another shape, or inside a code fence', () => {
+    const { rows, structure } = parser.parseTolerant(
+      [
+        '## Notes',
+        '',
+        '### N1 — Not a phase',
+        '',
+        '## Plan',
+        '',
+        '### Milestones',
+        '',
+        '```markdown',
+        '### FENCED — Not a phase either',
+        '```',
+        '',
+        '| ID | Outcome | Acceptance check | Status | Owner | Depends on | Pause reason |',
+        '|---|---|---|---|---|---|---|',
+        '| X-1 | Nowhere | done | TODO | — | — | — |',
+        '',
+      ].join('\n'),
+    );
+
+    expect(structure).toEqual([]);
+    expect(rows[0].parentRef).toBeUndefined();
+  });
+
+  it('has no structure for the older tables, or for a YAML document', () => {
+    expect(parser.parseTolerant(SAMPLE).structure).toEqual([]);
+    expect(
+      parser.parseTolerant(
+        [
+          '## Plan',
+          '',
+          '### T-1 — Entry',
+          '',
+          '```yaml',
+          'id: T-1',
+          'type: TASK',
+          'status: READY',
+          '```',
+          '',
+        ].join('\n'),
+      ).structure,
+    ).toEqual([]);
   });
 });

@@ -3,6 +3,7 @@ import { RoadmapTable, TaskPriority, TaskStatus } from '@pmhybrid/shared-types';
 import {
   discriminateRoadmapTable,
   extractMarkdownTables,
+  extractPlanStructure,
 } from './markdown-table.util.js';
 import type { RoadmapOwnerKind } from './roadmap-owner.util.js';
 import {
@@ -50,10 +51,25 @@ export function rowCarriesDependsOn(row: ParsedRoadmapRow): boolean {
   return row.carriesDependsOn ?? row.table !== RoadmapTable.BLOCKED;
 }
 
+/**
+ * A phase or an epic a document names without giving it a row: a heading of
+ * the latest skill's Plan section (Roadmap GAP-38). The YAML format has no
+ * such thing, its PHASE and EPIC entries being rows of their own.
+ */
+export interface StructureEntry {
+  externalId: string;
+  entryType: 'PHASE' | 'EPIC';
+  /** The heading's title. */
+  outcome: string;
+  /** For an epic, the phase heading it is under. */
+  parentRef?: string;
+}
+
 /** What a tolerant read yields: every entry that could be read, and — separately — the ones that could not (Roadmap BUG-05). */
 export interface ParsedRoadmap {
   rows: ParsedRoadmapRow[];
   errors: RoadmapEntryError[];
+  structure: StructureEntry[];
 }
 
 // Bidirectional + closed (docs/roadmap-parser.md "Status token mapping") — identity
@@ -125,6 +141,25 @@ function parseOwnerCell(raw: string): {
   };
 }
 
+/** The phases and epics the headings of the Plan section name, once each (the first of a repeated id wins). */
+function planStructure(rawMarkdown: string): StructureEntry[] {
+  const seen = new Set<string>();
+  const structure: StructureEntry[] = [];
+  for (const heading of extractPlanStructure(rawMarkdown)) {
+    if (seen.has(heading.id)) {
+      continue;
+    }
+    seen.add(heading.id);
+    structure.push({
+      externalId: heading.id,
+      entryType: heading.kind,
+      outcome: heading.title,
+      ...(heading.phaseId ? { parentRef: heading.phaseId } : {}),
+    });
+  }
+  return structure;
+}
+
 function isPlaceholder(value: string): boolean {
   return !value || value === '—' || value === '-';
 }
@@ -167,12 +202,21 @@ export class RoadmapParserService {
     if (looksLikeNewFormatRoadmap(rawMarkdown)) {
       const { entries, errors } =
         extractRoadmapYamlEntriesTolerant(rawMarkdown);
-      return { rows: entries.map(roadmapYamlEntryToRow), errors };
+      return {
+        rows: entries.map(roadmapYamlEntryToRow),
+        errors,
+        structure: [],
+      };
     }
-    return this.parseTables(rawMarkdown);
+    return {
+      ...this.parseTables(rawMarkdown),
+      structure: planStructure(rawMarkdown),
+    };
   }
 
-  private parseTables(rawMarkdown: string): ParsedRoadmap {
+  private parseTables(
+    rawMarkdown: string,
+  ): Pick<ParsedRoadmap, 'rows' | 'errors'> {
     const tables = extractMarkdownTables(rawMarkdown);
     const results: { row: ParsedRoadmapRow; line: number }[] = [];
 
@@ -203,6 +247,13 @@ export class RoadmapParserService {
         };
 
         const row: ParsedRoadmapRow = { externalId, table: kind };
+        // Where the row sits: under the epic or phase heading of the Plan
+        // section, else the phase a Gaps row names in its own column (Roadmap
+        // GAP-38).
+        const parentRef = table.epic?.id ?? table.phase?.id ?? get('Phase');
+        if (parentRef) {
+          row.parentRef = parentRef;
+        }
 
         if (kind === RoadmapTable.BLOCKED) {
           row.blocker = get('Blocker');
@@ -276,7 +327,7 @@ export class RoadmapParserService {
    */
   private withoutDuplicates(
     results: { row: ParsedRoadmapRow; line: number }[],
-  ): ParsedRoadmap {
+  ): Pick<ParsedRoadmap, 'rows' | 'errors'> {
     const linesById = new Map<string, number[]>();
     for (const { row, line } of results) {
       linesById.set(row.externalId, [

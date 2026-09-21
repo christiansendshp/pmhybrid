@@ -24,6 +24,7 @@ describe('the documents a new project starts with (Roadmap GAP-36a)', () => {
     expect(new RoadmapParserService().parseTolerant(ROADMAP_SKELETON)).toEqual({
       rows: [],
       errors: [],
+      structure: [],
     });
   });
 

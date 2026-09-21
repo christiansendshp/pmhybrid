@@ -253,8 +253,9 @@ this applies to entries only, and a row of a table leaves the three as they are.
 ### Hierarchy of a YAML Roadmap (Roadmap GAP-35d)
 
 An entry's `parent` (else the nearest of its `feature`, `epic`, `theme` and `phase`
-shortcuts, `ParsedRoadmapRow.parentRef`) places it. The tables have no hierarchy,
-and a project documented in them is untouched by all of this.
+shortcuts, `ParsedRoadmapRow.parentRef`) places it. The older tables have no
+hierarchy, and a project documented in them is untouched by all of this; the
+latest skill's tables have one, in headings (last item below).
 
 - **Phases and epics have an identity of their own.** A `type: PHASE` entry is a
   Phase and a `type: EPIC` entry an Epic, found by `externalId` (the entry's id),
@@ -287,8 +288,14 @@ and a project documented in them is untouched by all of this.
   entry with its `parent`, and a `SUBTASK` type when that is a task. A place the
   document has no id for (an epic or phase made in the app) cannot be named, so
   nothing is written.
-- The phase and epic headings of the latest skill's Plan tables are not read yet
-  (Roadmap GAP-38).
+- **The latest skill's tables say it with headings** (Roadmap GAP-38, `docs/roadmap-parser.md`):
+  a phase heading is a Phase, an epic heading an Epic, each identified by the id in
+  the heading, and the rows of the tables under them are placed in that epic and
+  phase, by the same rules; a Gaps row is placed in the phase its `Phase` column
+  names. The tables have no column to write a move into, so a move made in PM Hub
+  is not written, and it holds for a task in Active work or Near term (under no
+  heading) but is undone at the next run for a task in a Plan table, whose
+  heading says where it is.
 
 ### Unrecognized statuses, duplicate ids and blocked entries (Roadmap GAP-35b)
 
