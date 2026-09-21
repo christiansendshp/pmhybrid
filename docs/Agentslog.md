@@ -85,3 +85,25 @@ segments live in `docs/history/`.
 - Summary: The Kanban on a phone and its way back from a task: columns stack instead of scrolling sideways and show their first eight cards with a Mostrar N mas button (a card dropped on a column opens it), the filters and the view fold behind Filtros y vista (N) and the project's members behind Miembros (N) via a Viewport media-query signal, the page went from 10,805 to 3,733 px at 390 px; the search, filters, grouping and order are in the address (defaults omitted, replaced not pushed) and a BoardMemory gives a board reached without a query the one it was left with. Found and fixed on the way: the task detail's Tablero and Volver al tablero links pointed at /tasks/kanban, a task that does not exist, because ../kanban is relative to a route of two segments; they now go back to the board with its filters.
 - Files: apps/web/src/app/core/board-query.ts,apps/web/src/app/core/viewport.ts,apps/web/src/app/features/kanban/kanban.ts,apps/web/src/app/features/kanban/kanban.html,apps/web/src/app/features/kanban/kanban.scss,apps/web/src/app/features/task-detail/task-detail.html,apps/web/src/app/features/project-dashboard/project-dashboard.html,apps/web/a11y/board-navigation.a11y.spec.ts,apps/web/DESIGN.md
 - Verify: web unit 273 and eslint clean; Playwright a11y 48 pass (axe on every route, layout at 360 and 390 px, board navigation); web build ok
+
+## [2026-09-21T21:32:14Z] | claude | UX-02c | IN_PROGRESS
+
+- Summary: Settings form hints and read-only legibility, 24 px targets, unnamed selects
+- Verify: pending
+
+## [2026-09-21T21:38:52Z] | claude | UX-02c | DONE
+
+- Summary: Settings, small targets and unlabeled controls: the Settings fields size their hints dynamically (a long hint no longer overlaps the next field) with a roomier grid; a form that can only be read carries settings--readonly, which lifts Material's disabled tokens back to full contrast (text was 38% alpha); the remove-role button is 24 px and the dashboard activity and progress-tree links are at least 24 px tall, checked on every route by a Playwright target-size spec; the audit-log and task-detail selects are named for what they do.
+- Files: apps/web/src/app/features/project-settings/project-settings.html,apps/web/src/app/features/project-settings/project-settings.scss,apps/web/src/app/features/project-dashboard/project-dashboard.scss,apps/web/src/app/features/dashboard/dashboard.scss,apps/web/src/app/features/phases-progress/progress-task-node.scss,apps/web/src/app/features/audit-log/audit-log.html,apps/web/src/app/features/task-detail/task-detail.html,apps/web/a11y/target-size.a11y.spec.ts,apps/web/DESIGN.md
+- Verify: web unit 275 and eslint clean; Playwright a11y 60 pass (axe on every route, layout at 360 and 390 px, board navigation, no target under 24 px); web build ok
+
+## [2026-09-21T21:38:54Z] | claude | UX-02 | IN_PROGRESS
+
+- Summary: Closing the umbrella: 02a-02c are done
+- Verify: pending
+
+## [2026-09-21T21:38:55Z] | claude | UX-02 | DONE
+
+- Summary: Mobile layout, Kanban size and Settings overlaps: at 390 px the header is two rows and 85 px, no route scrolls the page sideways (checked at 360 and 390), navigations and tables fade where they go on, the Kanban stacks bounded columns with its filters in the address, the Settings hints no longer overlap and the read-only form is legible, every target is at least 24 px and the selects are named.
+- Files: docs/Roadmap.md,apps/web/DESIGN.md
+- Verify: All three slices done and verified: web unit 275 and eslint clean; Playwright a11y 60 pass (axe on every route, layout at 360 and 390 px, board navigation, no target under 24 px); web build ok

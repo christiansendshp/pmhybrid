@@ -169,6 +169,7 @@
       </p>
     }
     <mat-select
+      aria-label="Asignar a"
       placeholder="Asignar a…"
       [ngModel]="selectedAssigneeId()"
       (ngModelChange)="selectedAssigneeId.set($event)"
@@ -222,6 +223,7 @@
     </ul>
     @if (canWrite()) {
       <mat-select
+        aria-label="Añadir dependencia de"
         placeholder="Depende de…"
         [ngModel]="selectedDependsOnId()"
         (ngModelChange)="selectedDependsOnId.set($event)"

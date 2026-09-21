@@ -7,6 +7,7 @@
 
 <div class="audit-filters" role="search" aria-label="Filtros de auditoría">
   <mat-select
+    aria-label="Filtrar por origen"
     placeholder="Filtrar por origen…"
     [ngModel]="originFilter()"
     (ngModelChange)="originFilter.set($event); onFilterChange()"
@@ -18,6 +19,7 @@
   </mat-select>
 
   <mat-select
+    aria-label="Filtrar por entidad"
     placeholder="Filtrar por entidad…"
     [ngModel]="entityTypeFilter()"
     (ngModelChange)="entityTypeFilter.set($event); onFilterChange()"

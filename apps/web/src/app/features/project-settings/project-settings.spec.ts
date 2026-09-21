@@ -64,6 +64,18 @@ describe('ProjectSettings', () => {
     expect(text()).not.toContain('Guardar configuración');
   });
 
+  it('marks a form that can only be read, so that it stays legible instead of dimmed (Roadmap UX-02c)', () => {
+    const { fixture } = render([]);
+
+    expect(fixture.nativeElement.querySelector('form.settings--readonly')).not.toBeNull();
+  });
+
+  it('does not mark a form that can be changed (Roadmap UX-02c)', () => {
+    const { fixture } = render(['project.update']);
+
+    expect(fixture.nativeElement.querySelector('form.settings--readonly')).toBeNull();
+  });
+
   it('saves trimmed settings, clears emptied optional fields and updates the project header', async () => {
     const { fixture, component, context, text } = render(['project.update']);
     update.mockResolvedValue({ ...PROJECT, name: 'Site 2.0', status: 'PAUSED', description: null });

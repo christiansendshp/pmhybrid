@@ -65,6 +65,9 @@
 }
 
 .activity__primary {
+  display: block;
+  min-height: 24px;
+  line-height: 24px;
   overflow: hidden;
   font: var(--mat-sys-body-medium);
   text-overflow: ellipsis;

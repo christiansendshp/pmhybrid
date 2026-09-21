@@ -219,6 +219,13 @@ not hand-applied elsewhere.
   page's template. Now a seamed panel boundary: `border-bottom: 1px solid
 var(--mat-sys-outline-variant)` under its padding, matching `.tab-nav`'s
   existing seam so every page opens on the same hairline grammar.
+- **Targets and read-only forms** (Roadmap UX-02c) — every button and every link that is not
+  inside running text is at least 24 by 24 px (WCAG 2.5.8; `a11y/target-size.a11y.spec.ts`
+  fails on one that is not). A form the person can read and not change (Settings without
+  `project.update`) carries `settings--readonly`, which lifts Material's disabled tokens
+  back to full-contrast text: a whole form dimmed to 38% read as broken. Form fields that
+  carry a hint size their hint area dynamically, so a long hint does not overlap the next
+  field. A select is named for what it is for (`aria-label`), not only what it shows.
 - **The Kanban board on a phone** (Roadmap UX-02b) — the five columns stack instead
   of scrolling sideways, each shows its first eight cards (`COLUMN_CAP`) and a
   "Mostrar N más" button for the rest (a card dropped on a column opens it, so it

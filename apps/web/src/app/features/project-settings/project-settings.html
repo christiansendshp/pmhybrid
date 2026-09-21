@@ -6,19 +6,25 @@
     </p>
   }
 
-  <form class="settings" [formGroup]="form" (ngSubmit)="save()" novalidate>
-    <mat-form-field appearance="outline" class="settings__wide">
+  <form
+    class="settings"
+    [class.settings--readonly]="!canEdit()"
+    [formGroup]="form"
+    (ngSubmit)="save()"
+    novalidate
+  >
+    <mat-form-field appearance="outline" class="settings__wide" subscriptSizing="dynamic">
       <mat-label>Nombre</mat-label>
       <input matInput formControlName="name" />
       <mat-error>Un proyecto necesita un nombre.</mat-error>
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="settings__wide">
+    <mat-form-field appearance="outline" class="settings__wide" subscriptSizing="dynamic">
       <mat-label>Descripción</mat-label>
       <textarea matInput formControlName="description" rows="2"></textarea>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Estado</mat-label>
       <mat-select formControlName="status">
         @for (status of statuses; track status) {
@@ -28,13 +34,13 @@
       <mat-hint>Los proyectos pausados o archivados no se sincronizan por horario.</mat-hint>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Sincronizar cada (minutos)</mat-label>
       <input matInput type="number" min="1" step="1" formControlName="syncIntervalMinutes" />
       <mat-error>Un número entero de al menos 1 minuto.</mat-error>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Cálculo de progreso</mat-label>
       <mat-select formControlName="progressRollupStrategy">
         @for (strategy of rollupStrategies; track strategy) {
@@ -44,7 +50,7 @@
       <mat-hint>Cómo se promedia el progreso de fases y épicas a partir de sus hijos.</mat-hint>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Responsable</mat-label>
       <mat-select formControlName="leadActorId">
         <mat-option [value]="null">Sin responsable</mat-option>
@@ -57,7 +63,7 @@
       <mat-hint>El miembro, humano o agente IA, principal responsable de este proyecto.</mat-hint>
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="settings__wide">
+    <mat-form-field appearance="outline" class="settings__wide" subscriptSizing="dynamic">
       <mat-label>Ruta de documentos</mat-label>
       <input matInput formControlName="docsPath" />
       @if (canEdit()) {
@@ -67,7 +73,7 @@
       <mat-error>La ruta de documentos no puede estar vacía.</mat-error>
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="settings__wide">
+    <mat-form-field appearance="outline" class="settings__wide" subscriptSizing="dynamic">
       <mat-label>URL del repositorio</mat-label>
       <input matInput type="url" formControlName="repoUrl" />
     </mat-form-field>

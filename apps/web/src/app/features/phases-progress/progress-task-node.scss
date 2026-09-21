@@ -16,6 +16,13 @@
     flex: 1 1 10rem;
   }
 
+  /* A link is a target: at least 24px tall (WCAG 2.5.8, Roadmap UX-02c). */
+  .progress-task__row > a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+  }
+
   ul {
     margin: var(--space-1) 0 0;
     padding-left: var(--space-4);

@@ -5,8 +5,25 @@
 .settings {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
-  gap: var(--space-1) var(--space-4);
+  /* Room for a hint or an error under a field, which the fields size themselves for (Roadmap UX-02c). */
+  gap: var(--space-3) var(--space-4);
   max-width: 48rem;
+}
+
+/*
+ * A form that can be read and not changed (no project.update). Material dims a
+ * disabled field to 38%, which for a whole form reads as broken and is close to
+ * illegible: keep the text at full contrast, and let a plain seam, the note above
+ * the form and the lack of a focus ring say it is read only (Roadmap UX-02c).
+ */
+.settings--readonly {
+  --mat-form-field-outlined-disabled-input-text-color: var(--mat-sys-on-surface);
+  --mat-form-field-outlined-disabled-label-text-color: var(--mat-sys-on-surface-variant);
+  --mat-form-field-outlined-disabled-outline-color: var(--mat-sys-outline-variant);
+  --mat-form-field-disabled-input-text-placeholder-color: var(--mat-sys-on-surface-variant);
+  --mat-form-field-disabled-select-arrow-color: var(--mat-sys-on-surface-variant);
+  --mat-select-disabled-trigger-text-color: var(--mat-sys-on-surface);
+  --mat-select-disabled-arrow-color: var(--mat-sys-on-surface-variant);
 }
 
 .settings__wide {
