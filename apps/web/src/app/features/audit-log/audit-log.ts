@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { LabelPipe } from '../../shared/label.pipe.js';
+import { ScrollCue } from '../../shared/scroll-cue';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -26,7 +27,15 @@ const AUDIT_ENTITY_TYPES = [
 /** A project's change history (brief §25, §31 "historial de cambios"), newest first. */
 @Component({
   selector: 'app-audit-log',
-  imports: [LabelPipe, DatePipe, FormsModule, RouterLink, MatButtonModule, MatSelectModule],
+  imports: [
+    LabelPipe,
+    DatePipe,
+    FormsModule,
+    RouterLink,
+    MatButtonModule,
+    MatSelectModule,
+    ScrollCue,
+  ],
   templateUrl: './audit-log.html',
   styleUrl: './audit-log.scss',
 })

@@ -240,6 +240,26 @@ th {
   white-space: nowrap;
 }
 
+// A row that scrolls sideways fades where it goes on (ScrollCue writes
+// `data-scroll-more`), so what is out of sight is looked for (Roadmap UX-02a).
+[data-scroll-more='end'] {
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--space-8)), transparent);
+}
+
+[data-scroll-more='start'] {
+  mask-image: linear-gradient(to left, #000 calc(100% - var(--space-8)), transparent);
+}
+
+[data-scroll-more='both'] {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--space-8),
+    #000 calc(100% - var(--space-8)),
+    transparent
+  );
+}
+
 // A dense data table wider than its container scrolls instead of squeezing (.projects,
 // .workload, .team-table, ...) — the table element itself sets its own min-width.
 // The border reads as one seamed console panel, consistent with .page-header/.tab-nav.

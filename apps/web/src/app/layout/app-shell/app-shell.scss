@@ -139,6 +139,11 @@
   gap: var(--space-1);
 }
 
+/* The bell stands in for the word where the header has no room for it. */
+.notifications__icon {
+  display: none;
+}
+
 .notifications__badge {
   display: inline-flex;
   align-items: center;
@@ -219,21 +224,60 @@
   }
 }
 
+/*
+ * At phone width the header is two rows and no more (Roadmap UX-02a): the brand
+ * and the actions on one, the navigation, which scrolls sideways, on the other.
+ * It took three and 105px, with "Cerrar sesión" broken over two lines.
+ */
 @media (max-width: 720px) {
   .app-header {
     flex-wrap: wrap;
     gap: 0 var(--space-2);
+    min-height: 0;
     padding-inline: var(--space-3);
+  }
+
+  .brand,
+  .session {
+    min-height: 44px;
   }
 
   .primary-nav {
     order: 3;
     flex-basis: 100%;
-    padding-bottom: var(--space-2);
+    padding-bottom: var(--space-1);
   }
 
-  .session__name {
+  .session {
+    flex-wrap: nowrap;
+    gap: var(--space-1);
+
+    button {
+      white-space: nowrap;
+    }
+  }
+
+  /* Who is signed in has no room here. */
+  .session__actor {
     display: none;
+  }
+
+  .notifications__toggle {
+    min-width: 0;
+    padding-inline: var(--space-2);
+  }
+
+  .notifications__icon {
+    display: inline-block;
+  }
+
+  .notifications__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .app-main {
@@ -256,10 +300,10 @@
 
   .notifications__panel {
     position: fixed;
-    top: 3.5rem;
+    top: 5.5rem;
     right: var(--space-4);
     left: var(--space-4);
     width: auto;
-    max-height: calc(100dvh - 4.5rem);
+    max-height: calc(100dvh - 6.5rem);
   }
 }

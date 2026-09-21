@@ -4,6 +4,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { AuthService } from '../../core/auth.service.js';
 import { describeHttpError } from '../../core/http-error.js';
 import { Permission, Role, RolesService } from '../../core/roles.service.js';
+import { ScrollCue } from '../../shared/scroll-cue';
 
 const ROLES_MANAGE = 'roles.manage';
 
@@ -17,7 +18,7 @@ const ROLES_MANAGE = 'roles.manage';
  */
 @Component({
   selector: 'app-roles',
-  imports: [MatButtonModule, MatCheckboxModule],
+  imports: [MatButtonModule, MatCheckboxModule, ScrollCue],
   templateUrl: './roles.html',
   styleUrl: './roles.scss',
 })

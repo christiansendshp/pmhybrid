@@ -37,3 +37,15 @@
   gap: var(--space-3);
   margin-top: var(--space-3);
 }
+
+// A diff has three columns and values that can be long: they wrap, so the card
+// fits a phone screen instead of widening the page (Roadmap UX-02a).
+.conflict-card table {
+  table-layout: fixed;
+}
+
+.conflict-card th,
+.conflict-card td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

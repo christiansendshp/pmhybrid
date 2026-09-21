@@ -52,12 +52,15 @@
 .members__add,
 .members__add-role {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+  max-width: 100%;
 }
 
+/* Never wider than the row it is in: at phone width two of them and a button did not fit, and the page scrolled sideways (Roadmap UX-02a). */
 .members__select {
-  width: 14rem;
+  width: min(14rem, 100%);
 }
 
 .sync-entry-errors {

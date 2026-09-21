@@ -6,6 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { ApiKey, ApiKeyScope, ApiKeysService, CreatedApiKey } from '../../core/api-keys.service.js';
 import { LabelPipe } from '../../shared/label.pipe.js';
+import { ScrollCue } from '../../shared/scroll-cue';
 import { Actor, ActorsService, UpdateActorInput } from '../../core/actors.service.js';
 import { AuthService } from '../../core/auth.service.js';
 import { filterActors } from '../../core/actor-filter.js';
@@ -28,6 +29,7 @@ const INVALID_CONFIG = Symbol('invalid-config');
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
+    ScrollCue,
   ],
   templateUrl: './team.html',
   styleUrl: './team.scss',

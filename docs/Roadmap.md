@@ -262,10 +262,73 @@ expected_behavior: >
   the URL, no overlapping hints, 24 px minimum targets, labeled controls.
 technical_context:
   frontend: apps/web/src/app/layout/app-shell, features/kanban, project-dashboard, project-settings, audit-log, task-detail, styles.scss
+depends_on:
+  - UX-02a
+  - UX-02b
+  - UX-02c
 next_action: >
-  Extend the Playwright a11y suite to the routes that were not covered.
+  Umbrella only. Refined on 2026-09-21 into three slices (UX-02a the shell and
+  the page overflow at 390 px, UX-02b the Kanban and its filters, UX-02c the
+  Settings form, the small targets and the unlabeled controls); close this
+  entry when all three are done. The axe suite already covers every route
+  (TEST-01d); UX-02a adds a layout check at 390 px.
 created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T09:00:00Z
+```
+
+### UX-02b — The Kanban columns and their filters on a phone
+
+```yaml
+id: UX-02b
+type: UX
+title: The Kanban columns and their filters on a phone
+status: READY
+priority: P2
+parent: UX-02
+description: >
+  Second slice of UX-02. Kanban columns grow without limit (TERMINADA is
+  2,900 px tall with 12 cards) and the project header uses 290 px before any
+  content; the filters are lost when the task detail is left and the back
+  link returns to the board.
+expected_behavior: >
+  A column that shows a bounded number of cards and says how many more
+  there are, a board that starts near the top of a phone screen, and
+  filters (search, assignee, status) kept in the URL so that going to a task
+  and back, or reloading, keeps them.
+technical_context:
+  frontend: apps/web/src/app/features/kanban, project-dashboard
+next_action: >
+  Decide the cap and how a column expands, then keep the filters in the
+  query string.
+created_at: 2026-09-21T21:05:00Z
+updated_at: 2026-09-21T21:05:00Z
+```
+
+### UX-02c — Settings form, small targets and unlabeled controls
+
+```yaml
+id: UX-02c
+type: UX
+title: Settings form, small targets and unlabeled controls
+status: READY
+priority: P2
+parent: UX-02
+description: >
+  Third slice of UX-02. In Settings the hints overlap the next field
+  (subscriptSizing is not dynamic) and the read-only mode is nearly
+  illegible; the remove-role button is 20 px (WCAG 2.5.8 asks 24) as are some
+  card links; a few selects have no accessible name (audit log, task detail).
+expected_behavior: >
+  Settings fields with room for their hints, a read-only form that is
+  legible, every target at least 24 px in both directions, and every
+  control named.
+technical_context:
+  frontend: apps/web/src/app/features/project-settings, project-dashboard, audit-log, task-detail, styles.scss
+next_action: >
+  Measure the targets and the unnamed controls with the same Playwright
+  script, then fix them.
+created_at: 2026-09-21T21:05:00Z
+updated_at: 2026-09-21T21:05:00Z
 ```
 
 ### IMPROVEMENT-02 — Deployment, containerization and documentation gaps

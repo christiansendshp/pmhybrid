@@ -82,7 +82,9 @@ describe('AppShell', () => {
     harness.detectChanges();
     const root = harness.fixture.nativeElement as HTMLElement;
     const primaryLinks = () =>
-      Array.from(root.querySelectorAll<HTMLAnchorElement>('nav[aria-label="Primary"] a'));
+      Array.from(
+        root.querySelectorAll<HTMLAnchorElement>('nav[aria-label="Navegación principal"] a'),
+      );
     return { harness, root, primaryLinks };
   }
 
@@ -98,6 +100,30 @@ describe('AppShell', () => {
       'Roles',
     ]);
     expect(root.querySelector('main')?.textContent).toContain('page body');
+  });
+
+  it('brings the link of the page the person is on into view, for a navigation that scrolls sideways (Roadmap UX-02a)', async () => {
+    const scrolled: string[] = [];
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) {
+      scrolled.push(this.textContent?.trim() ?? '');
+    };
+    try {
+      await renderAt('/roles');
+    } finally {
+      HTMLElement.prototype.scrollIntoView = original;
+    }
+
+    expect(scrolled).toContain('Roles');
+    expect(scrolled).not.toContain('Panel');
+  });
+
+  it('keeps the name of the notifications button for a screen reader when only the bell shows', async () => {
+    const { root } = await renderAt('/dashboard');
+
+    const toggle = root.querySelector('.notifications__toggle') as HTMLElement;
+    expect(toggle.textContent).toContain('Notificaciones');
+    expect(toggle.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('marks the current section as the current page, including inside a project', async () => {

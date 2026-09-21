@@ -18,6 +18,7 @@ import {
   ProjectsService,
 } from '../../core/projects.service.js';
 import { FolderBrowserDialog } from '../../shared/folder-browser-dialog/folder-browser-dialog.js';
+import { ScrollCue } from '../../shared/scroll-cue';
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'Activo',
@@ -37,6 +38,7 @@ const STATUS_LABELS: Record<string, string> = {
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    ScrollCue,
   ],
   templateUrl: './my-projects.html',
   styleUrl: './my-projects.scss',

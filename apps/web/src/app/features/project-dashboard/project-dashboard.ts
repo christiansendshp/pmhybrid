@@ -12,6 +12,7 @@ import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { Role, RoleAssignment, RolesService } from '../../core/roles.service.js';
 import { syncNeedsAttention, syncStatusLabel } from '../../core/sync-status.js';
 import { SyncRun, SynchronizationService } from '../../core/synchronization.service.js';
+import { ScrollCue, showWhenActive } from '../../shared/scroll-cue';
 
 /** Project header inside the app shell: identity, sync, members and the section tabs. */
 @Component({
@@ -24,6 +25,7 @@ import { SyncRun, SynchronizationService } from '../../core/synchronization.serv
     FormsModule,
     MatButtonModule,
     MatSelectModule,
+    ScrollCue,
   ],
   providers: [ProjectContext],
   templateUrl: './project-dashboard.html',
@@ -46,6 +48,7 @@ export class ProjectDashboard implements OnInit {
     { label: 'Configuración', path: 'settings' },
   ] as const;
   readonly kindLabel = actorKindLabel;
+  readonly showWhenActive = showWhenActive;
 
   readonly project = this.context.project;
   readonly members = signal<ProjectMember[]>([]);

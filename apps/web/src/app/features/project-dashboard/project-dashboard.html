@@ -181,13 +181,15 @@
   }
 </section>
 
-<nav class="tab-nav" aria-label="Secciones del proyecto">
+<nav class="tab-nav" aria-label="Secciones del proyecto" appScrollCue>
   @for (tab of tabs; track tab.path) {
     <a
+      #tabLink
       class="tab-nav__link"
       [routerLink]="tab.path"
       routerLinkActive="is-active"
       ariaCurrentWhenActive="page"
+      (isActiveChange)="showWhenActive($event, tabLink)"
       >{{ tab.label }}</a
     >
   }

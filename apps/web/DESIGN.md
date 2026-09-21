@@ -171,8 +171,16 @@ category convention for both.
 - Content column caps at 1440px, centered, `var(--space-6)` side padding
   (`.app-main` in `app-shell.scss`); pages do not set their own max-width.
 - Responsive behavior is structural, not fluid type: `app-shell.scss`'s
-  `@media (max-width: 720px)` wraps the primary nav to its own row and hides
-  the signed-in name instead of shrinking text.
+  `@media (max-width: 720px)` makes the header two rows (the brand and the
+  actions on one, the primary nav, which scrolls sideways, on the other) and
+  drops the signed-in name and the word "Notificaciones" (a bell stays, named
+  for a screen reader) instead of shrinking text. No route may scroll the page
+  sideways at 360 or 390 px (`a11y/mobile-layout.a11y.spec.ts`); what is wider
+  than the screen scrolls inside its own box.
+- A row that scrolls sideways (the two navs, `.table-scroll`) carries `appScrollCue`,
+  which writes `data-scroll-more` (`start` / `end` / `both`) on it; `styles.scss`
+  fades that edge with a mask, so what is out of sight is looked for. The
+  primary and project navs also scroll the active link into view.
 - Spacing scale is fixed rem steps (`--space-1` … `--space-12` in
   `styles.scss`), not a fluid clamp — consistent with Operate mode.
 
@@ -212,7 +220,8 @@ not hand-applied elsewhere.
 var(--mat-sys-outline-variant)` under its padding, matching `.tab-nav`'s
   existing seam so every page opens on the same hairline grammar.
 - **`.tab-nav`** — the project-level second-level nav (Kanban / Progress /
-  Documents / Conflicts / Audit), directly under a project page's header.
+  Documents / Conflicts / Audit / Settings), directly under a project page's
+  header; scrolls sideways with `appScrollCue` on a phone.
 - **`.kind-badge[data-kind]`** — `HUMAN` uses neutral
   `surface-container-highest`; `AI_AGENT` uses `tertiary-container`
   (orange, was violet). This is the one place tertiary appears; keep it

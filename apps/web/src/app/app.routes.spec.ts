@@ -64,7 +64,7 @@ describe('app routes', () => {
     const { root, url } = await open('/team');
 
     expect(url).toBe('/login');
-    expect(root.querySelector('nav[aria-label="Primary"]')).toBeNull();
+    expect(root.querySelector('nav[aria-label="Navegación principal"]')).toBeNull();
   });
 
   it('renders signed-in pages inside the shell with exactly one navigation', async () => {

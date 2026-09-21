@@ -21,6 +21,7 @@ import { describeNotification } from '../../core/notification-format.js';
 import { Notification, NotificationsService } from '../../core/notifications.service.js';
 import { RealtimeService } from '../../core/realtime.service.js';
 import { ThemeService } from '../../core/theme.service.js';
+import { ScrollCue, showWhenActive } from '../../shared/scroll-cue';
 
 interface NavItem {
   label: string;
@@ -47,7 +48,7 @@ export interface NotificationGroup {
  */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatButtonModule, DatePipe],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatButtonModule, DatePipe, ScrollCue],
   templateUrl: './app-shell.html',
   styleUrl: './app-shell.scss',
 })
@@ -109,6 +110,7 @@ export class AppShell implements OnInit {
   });
   readonly notificationsPanelOpen = signal(false);
   readonly describeNotification = describeNotification;
+  readonly showWhenActive = showWhenActive;
 
   async ngOnInit(): Promise<void> {
     // Moving to another page closes the panel: it would otherwise sit over the new one.

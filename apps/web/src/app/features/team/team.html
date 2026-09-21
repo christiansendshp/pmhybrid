@@ -31,7 +31,7 @@
     @if (search() && visibleUsers().length === 0) {
       <p class="meta-text">Ninguna persona coincide con «{{ search() }}».</p>
     }
-    <div class="table-scroll">
+    <div class="table-scroll" appScrollCue>
       <table class="team-table" aria-label="Personas">
         <thead>
           <tr>
@@ -113,7 +113,7 @@
     @if (search() && visibleAgents().length === 0) {
       <p class="meta-text">Ningún agente coincide con «{{ search() }}».</p>
     }
-    <div class="table-scroll">
+    <div class="table-scroll" appScrollCue>
       <table class="team-table" aria-label="Agentes IA">
         <thead>
           <tr>
@@ -242,7 +242,7 @@
         } @else if (agentKeys().length === 0) {
           <p class="meta-text">Todavía no hay claves de API.</p>
         } @else {
-          <div class="table-scroll">
+          <div class="table-scroll" appScrollCue>
             <table class="team-table" aria-label="Claves de API">
               <thead>
                 <tr>

@@ -19,6 +19,7 @@ import {
   statusLabel as formatStatusLabel,
 } from '../../core/task-status-policy.js';
 import { TaskStatus } from '../../core/tasks.service.js';
+import { ScrollCue } from '../../shared/scroll-cue';
 import { WorkloadFilters, WorkloadRow, WorkloadService } from '../../core/workload.service.js';
 
 /**
@@ -35,6 +36,7 @@ import { WorkloadFilters, WorkloadRow, WorkloadService } from '../../core/worklo
     MatButtonModule,
     MatFormFieldModule,
     MatSelectModule,
+    ScrollCue,
   ],
   templateUrl: './workload.html',
   styleUrl: './workload.scss',

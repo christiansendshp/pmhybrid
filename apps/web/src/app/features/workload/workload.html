@@ -104,7 +104,7 @@
 } @else if (rows().length === 0) {
   <p class="empty">Nada coincide con estos filtros.</p>
 } @else {
-  <div class="table-scroll">
+  <div class="table-scroll" appScrollCue>
     <table class="workload" aria-label="Carga de trabajo" [attr.aria-busy]="loading()">
       <thead>
         <tr>
