@@ -427,6 +427,11 @@ type: IMPROVEMENT
 title: Performance and data limits (cycle check, progress N+1, pagination, indexes, DTO limits)
 status: BACKLOG
 priority: P2
+depends_on:
+  - IMPROVEMENT-01a
+  - IMPROVEMENT-01b
+  - IMPROVEMENT-01c
+  - IMPROVEMENT-01d
 description: >
   Measured by the 2026-09-21 evaluation. `wouldCreateCycle`
   (synchronization.service.ts) queries once per hop: a 150-entry dependency
@@ -448,9 +453,87 @@ expected_behavior: >
 technical_context:
   backend: apps/api/src/modules/synchronization, tasks, workload, projects, dashboard, prisma/schema.prisma
 next_action: >
-  Start with the cycle check (blocks large real projects) and the indexes.
+  Umbrella only, refined on 2026-09-21 into IMPROVEMENT-01a (cycle check and
+  indexes), 01b (DTO limits and enum validation), 01c (batch progress
+  rollup and the multi-project summary at scale) and 01d (pagination, the
+  activity payload and dependency removal); close it when all four are done.
 created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T18:30:00Z
+```
+
+### IMPROVEMENT-01b — DTO length limits and enum validation
+
+```yaml
+id: IMPROVEMENT-01b
+type: IMPROVEMENT
+title: DTO length limits and enum validation
+status: BACKLOG
+priority: P2
+parent: IMPROVEMENT-01
+description: >
+  Second slice of IMPROVEMENT-01. No DTO has a maximum length (a 90,000
+  character title made Roadmap.md 96 KB) and `?status=BOGUS` returns 500.
+expected_behavior: >
+  Every free-text DTO field has a maximum length sized for its use, and
+  an invalid enum in a query or body is a 400 that names the field.
+technical_context:
+  backend: apps/api/src/modules/*/dto, query parsing in tasks, audit, conflicts
+next_action: >
+  List the DTOs and pick limits (title, description, criteria, names, paths).
+created_at: 2026-09-21T18:30:00Z
+updated_at: 2026-09-21T18:30:00Z
+```
+
+### IMPROVEMENT-01c — Batch progress rollup and the multi-project summary at scale
+
+```yaml
+id: IMPROVEMENT-01c
+type: IMPROVEMENT
+title: Batch progress rollup and the multi-project summary at scale
+status: BACKLOG
+priority: P2
+parent: IMPROVEMENT-01
+description: >
+  Third slice of IMPROVEMENT-01. computeTaskProgress runs per task in
+  /tasks, /workload and /projects (N+1), and GET /projects returns a 500
+  once the database holds a few thousand projects (seen on the e2e
+  database), evidently through the size of one of its queries.
+expected_behavior: >
+  Progress for a whole list is computed from one read of the tasks it
+  needs, and the projects summary uses a bounded number of queries whatever
+  the number of projects.
+technical_context:
+  backend: apps/api/src/modules/tasks/progress-rollup.service.ts, projects, workload
+next_action: >
+  Reproduce the GET /projects failure to find the query first.
+created_at: 2026-09-21T18:30:00Z
+updated_at: 2026-09-21T18:30:00Z
+```
+
+### IMPROVEMENT-01d — Pagination, the activity payload and dependency removal
+
+```yaml
+id: IMPROVEMENT-01d
+type: IMPROVEMENT
+title: Pagination, the activity payload and dependency removal
+status: BACKLOG
+priority: P3
+parent: IMPROVEMENT-01
+description: >
+  Fourth slice of IMPROVEMENT-01. List endpoints return everything (95
+  tasks are 89 KB), /dashboard/activity returns the full rawContent of each
+  entry, and duplicate dependencies are stored and PM Hub has no endpoint to
+  remove one.
+expected_behavior: >
+  Lists accept limit and cursor with a sensible default, the activity feed
+  returns a summary and not the document, and a dependency can be removed
+  (written back to the document).
+technical_context:
+  backend: apps/api/src/modules/tasks, dashboard, synchronization write-back
+next_action: >
+  Decide the pagination contract before touching any list.
+created_at: 2026-09-21T18:30:00Z
+updated_at: 2026-09-21T18:30:00Z
 ```
 
 ### SECURITY-04 — Authentication and transport hardening

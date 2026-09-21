@@ -270,6 +270,8 @@ model Task {
 
   @@unique([projectId, externalId])
   @@index([projectId, status])
+  @@index([parentTaskId])
+  @@index([assigneeActorId])
 }
 
 model TaskDependency {
@@ -283,6 +285,9 @@ model TaskDependency {
   // add-dependency write-back). Only such a dependency is removed when the
   // document later stops listing it (Roadmap GAP-35e).
   inDocument      Boolean @default(false)
+
+  @@index([taskId])
+  @@index([dependsOnTaskId])
 }
 
 model TaskAssignment {
@@ -406,6 +411,8 @@ model SyncRun {
   trigger    SyncTrigger
   status     SyncStatus
   summary    Json?
+
+  @@index([projectId, startedAt])
 }
 
 model AgentLogEvent {
@@ -447,6 +454,8 @@ model Conflict {
   resolvedByActorId  String?
   resolvedBy         Actor?                   @relation("ConflictResolvedBy", fields: [resolvedByActorId], references: [id])
   resolutionStrategy ConflictResolutionKind?
+
+  @@index([projectId, resolvedAt])
 }
 
 model AuditEvent {
@@ -479,6 +488,8 @@ model Notification {
   payload   Json?
   readAt    DateTime?
   createdAt DateTime  @default(now())
+
+  @@index([actorId, createdAt])
 }
 
 // ---------------------------------------------------------------------------

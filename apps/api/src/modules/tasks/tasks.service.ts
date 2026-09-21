@@ -14,6 +14,7 @@ import {
   type RoadmapFieldEdit,
   WriteBackService,
 } from '../synchronization/write-back.service.js';
+import { buildDependencyGraph, wouldCloseCycle } from './dependency-graph.js';
 import { AddDependencyDto } from './dto/add-dependency.dto.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
 import { UpdateTaskDto } from './dto/update-task.dto.js';
@@ -536,7 +537,11 @@ export class TasksService {
         throw new BadRequestException('A task cannot depend on itself');
       }
       await this.getOwned(projectId, dto.dependsOnTaskId);
-      await this.assertNoDependencyCycle(taskId, dto.dependsOnTaskId);
+      await this.assertNoDependencyCycle(
+        projectId,
+        taskId,
+        dto.dependsOnTaskId,
+      );
     }
 
     return this.writeBack.inTransaction(projectId, async (tx) => {
@@ -725,31 +730,20 @@ export class TasksService {
     }
   }
 
-  /** Bounded DFS: adding taskId -> dependsOnTaskId is a cycle iff dependsOnTaskId can already reach taskId. */
+  /** Adding taskId -> dependsOnTaskId is a cycle iff dependsOnTaskId can already reach taskId — checked against the project's edges read once, not a query per hop (Roadmap IMPROVEMENT-01a). */
   private async assertNoDependencyCycle(
+    projectId: string,
     taskId: string,
     dependsOnTaskId: string,
   ) {
-    const visited = new Set<string>();
-    const stack = [dependsOnTaskId];
-    while (stack.length > 0) {
-      const current = stack.pop()!;
-      if (current === taskId) {
-        throw new BadRequestException('This dependency would create a cycle');
-      }
-      if (visited.has(current)) {
-        continue;
-      }
-      visited.add(current);
-      const deps = await this.prisma.taskDependency.findMany({
-        where: { taskId: current },
-        select: { dependsOnTaskId: true },
-      });
-      for (const dep of deps) {
-        if (dep.dependsOnTaskId) {
-          stack.push(dep.dependsOnTaskId);
-        }
-      }
+    const graph = buildDependencyGraph(
+      await this.prisma.taskDependency.findMany({
+        where: { task: { projectId } },
+        select: { taskId: true, dependsOnTaskId: true },
+      }),
+    );
+    if (wouldCloseCycle(graph, taskId, dependsOnTaskId)) {
+      throw new BadRequestException('This dependency would create a cycle');
     }
   }
 }

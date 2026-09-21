@@ -373,6 +373,14 @@ ever removed:
 - anything on an unreadable or duplicated entry, which is present but not
   understood (see "Unreadable Roadmap entries").
 
+**Cycles are checked in memory** (Roadmap IMPROVEMENT-01a). A run loads the project's
+dependency edges once and checks every link against that graph, which each link
+and removal it makes keeps current; adding `A -> B` is refused when `B` can
+already reach `A`. The check used to be one query per hop, so a chain of 150
+entries took 15 s and 500 outlasted the 20 s transaction; a chain of 500 now
+syncs in a few seconds. A dependency added in PM Hub is checked the same way,
+against the edges read once.
+
 The flag starts false for dependencies that existed before it did; the next
 sync that sees them listed sets it, so removal applies from then on. A
 document that loses a `depends_on` by accident (a bad merge) does remove the

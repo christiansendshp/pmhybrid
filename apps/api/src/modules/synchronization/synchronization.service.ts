@@ -22,6 +22,13 @@ import {
   type OwnerCandidate,
 } from '../roadmap/roadmap-owner.util.js';
 import { RoadmapFormatError } from '../roadmap/roadmap-yaml-entry.util.js';
+import {
+  addDependencyEdge,
+  buildDependencyGraph,
+  removeDependencyEdge,
+  wouldCloseCycle,
+  type DependencyGraph,
+} from '../tasks/dependency-graph.js';
 import { AgentslogIngestionService } from './agentslog-ingestion.service.js';
 import { rowContentHash } from './row-content-hash.util.js';
 import { describeSyncFailure } from './sync-failure.util.js';
@@ -429,6 +436,15 @@ export class SynchronizationService {
     // (which would otherwise complete it or raise a conflict for it).
     const seenExternalIds = new Set<string>(unreadableIds);
     const ownerCandidates = await this.loadOwnerCandidates(tx, projectId);
+    // The project's dependency edges, loaded once: cycle checks run against
+    // this graph, which every link and removal below keeps current, instead
+    // of one query per hop (Roadmap IMPROVEMENT-01a).
+    const dependencyGraph = buildDependencyGraph(
+      await tx.taskDependency.findMany({
+        where: { task: { projectId } },
+        select: { taskId: true, dependsOnTaskId: true },
+      }),
+    );
     // What is already open, per task, so a conflict is raised once and closes
     // itself when it stops being true (Roadmap BUG-06a).
     const openByTask = new Map<string, OpenConflict[]>();
@@ -557,6 +573,7 @@ export class SynchronizationService {
         row.dependsOnRaw,
         row.table !== 'BLOCKED',
         existingByExternalId,
+        dependencyGraph,
         summary,
       );
     }
@@ -572,6 +589,7 @@ export class SynchronizationService {
       tx,
       projectId,
       existingByExternalId,
+      dependencyGraph,
       summary,
     );
 
@@ -1265,6 +1283,7 @@ export class SynchronizationService {
     dependsOnRaw: string | undefined,
     carriesDependsOn: boolean,
     existingByExternalId: Map<string, { id: string }>,
+    graph: DependencyGraph,
     summary: SyncSummary,
   ): Promise<void> {
     const referencedIds = dependsOnRaw
@@ -1304,6 +1323,9 @@ export class SynchronizationService {
           continue;
         }
         await tx.taskDependency.delete({ where: { id: dep.id } });
+        if (dep.dependsOnTaskId) {
+          removeDependencyEdge(graph, taskId, dep.dependsOnTaskId);
+        }
         await this.audit.record(
           {
             projectId,
@@ -1342,7 +1364,7 @@ export class SynchronizationService {
         }
         continue;
       }
-      if (target && (await this.wouldCreateCycle(tx, taskId, target.id))) {
+      if (target && wouldCloseCycle(graph, taskId, target.id)) {
         continue; // a document-authoring mistake — skip rather than corrupt the graph
       }
       const created = await tx.taskDependency.create({
@@ -1353,6 +1375,9 @@ export class SynchronizationService {
           inDocument: true,
         },
       });
+      if (created.dependsOnTaskId) {
+        addDependencyEdge(graph, taskId, created.dependsOnTaskId);
+      }
       await this.audit.record(
         {
           projectId,
@@ -1386,6 +1411,7 @@ export class SynchronizationService {
     tx: Prisma.TransactionClient,
     projectId: string,
     existingByExternalId: Map<string, { id: string }>,
+    graph: DependencyGraph,
     summary: SyncSummary,
   ): Promise<void> {
     const dangling = await tx.taskDependency.findMany({
@@ -1400,13 +1426,14 @@ export class SynchronizationService {
       if (!target || target.id === dep.taskId) {
         continue; // still unresolved, or would now be a self-reference
       }
-      if (await this.wouldCreateCycle(tx, dep.taskId, target.id)) {
+      if (wouldCloseCycle(graph, dep.taskId, target.id)) {
         continue; // leave it dangling rather than close a cycle
       }
       await tx.taskDependency.update({
         where: { id: dep.id },
         data: { dependsOnTaskId: target.id },
       });
+      addDependencyEdge(graph, dep.taskId, target.id);
       await this.audit.record(
         {
           projectId,
@@ -1423,35 +1450,5 @@ export class SynchronizationService {
       );
       summary.dependenciesLinked += 1;
     }
-  }
-
-  /** Bounded DFS mirroring TasksService.assertNoDependencyCycle — adding taskId -> dependsOnTaskId is a cycle iff dependsOnTaskId can already reach taskId. */
-  private async wouldCreateCycle(
-    tx: Prisma.TransactionClient,
-    taskId: string,
-    dependsOnTaskId: string,
-  ): Promise<boolean> {
-    const visited = new Set<string>();
-    const stack = [dependsOnTaskId];
-    while (stack.length > 0) {
-      const current = stack.pop()!;
-      if (current === taskId) {
-        return true;
-      }
-      if (visited.has(current)) {
-        continue;
-      }
-      visited.add(current);
-      const deps = await tx.taskDependency.findMany({
-        where: { taskId: current },
-        select: { dependsOnTaskId: true },
-      });
-      for (const dep of deps) {
-        if (dep.dependsOnTaskId) {
-          stack.push(dep.dependsOnTaskId);
-        }
-      }
-    }
-    return false;
   }
 }
