@@ -90,7 +90,7 @@
                     }
                   </p>
                   <div class="notifications__item-meta">
-                    <span class="meta-text">{{ group.latestAt | date: 'medium' }}</span>
+                    <span class="meta-text">{{ group.latestAt | date: 'd MMM y, HH:mm' }}</span>
                     @if (group.unreadCount > 0) {
                       <button mat-button type="button" (click)="markGroupRead(group)">
                         Marcar como leída

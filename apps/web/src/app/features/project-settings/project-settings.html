@@ -75,7 +75,7 @@
     @if (project(); as p) {
       <dl class="settings__facts settings__wide">
         <dt>Creado</dt>
-        <dd>{{ p.createdAt | date: 'mediumDate' }}</dd>
+        <dd>{{ p.createdAt | date: 'd MMM y' }}</dd>
       </dl>
     }
 

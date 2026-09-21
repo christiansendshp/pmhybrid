@@ -53,7 +53,7 @@
     <mat-select formControlName="priority">
       <mat-option [value]="null">Sin prioridad</mat-option>
       @for (priority of priorities; track priority) {
-        <mat-option [value]="priority">{{ priority }}</mat-option>
+        <mat-option [value]="priority">{{ priority | label: 'priority' }}</mat-option>
       }
     </mat-select>
   </mat-form-field>

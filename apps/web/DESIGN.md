@@ -262,6 +262,12 @@ var(--mat-sys-outline-variant)` under its padding, matching `.tab-nav`'s
   (`PENDIENTE`/`ASIGNADA`/`EN_DESARROLLO`/`QA`/`TERMINADA`, written verbatim
   into the Roadmap per ADR-002) and proper nouns/method names (Kanban,
   Roadmap, Agentslog).
+- The document is `lang="es"` and the app runs in `es-ES` (Roadmap UX-03a):
+  dates are `d MMM y` or `d MMM y, HH:mm`, never a named `medium`/`short` format.
+  A value the API sends as a code (an audit operation, an origin, a conflict
+  kind, a priority, a ledger state) is never printed raw: it goes through
+  `core/labels.ts` (`{{ value | label: 'operation' }}`), whose fallback turns an
+  unnamed code into a sentence instead of SCREAMING_SNAKE.
 
 ## Rollout status (Roadmap GAP-33/GAP-34)
 

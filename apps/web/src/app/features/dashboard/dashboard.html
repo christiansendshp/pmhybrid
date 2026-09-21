@@ -62,7 +62,8 @@
                 <li>
                   <span class="activity__primary">{{ task.title }}</span>
                   <span class="meta-text"
-                    >{{ statusLabel(task.status) }} · {{ task.updatedAt | date: 'short' }}</span
+                    >{{ statusLabel(task.status) }} ·
+                    {{ task.updatedAt | date: 'd MMM y, HH:mm' }}</span
                   >
                 </li>
               }
@@ -82,7 +83,7 @@
                     >{{ change.previousValue ? statusLabel(change.previousValue.status) : '—' }} →
                     {{ change.newValue ? statusLabel(change.newValue.status) : '—' }}</span
                   >
-                  <span class="meta-text">{{ change.occurredAt | date: 'short' }}</span>
+                  <span class="meta-text">{{ change.occurredAt | date: 'd MMM y, HH:mm' }}</span>
                 </li>
               }
             </ul>
@@ -100,7 +101,9 @@
                   <span class="activity__primary"
                     >{{ assignment.task.title }} → {{ assignment.actor.displayName }}</span
                   >
-                  <span class="meta-text">{{ assignment.assignedAt | date: 'short' }}</span>
+                  <span class="meta-text">{{
+                    assignment.assignedAt | date: 'd MMM y, HH:mm'
+                  }}</span>
                 </li>
               }
             </ul>
@@ -120,10 +123,10 @@
                     @if (event.taskExternalId) {
                       — {{ event.taskExternalId }}
                     }
-                    — {{ event.statusWord }}</span
+                    — {{ event.statusWord | label: 'ledgerState' }}</span
                   >
                   <span class="meta-text"
-                    >{{ event.summary }} · {{ event.createdAt | date: 'short' }}</span
+                    >{{ event.summary }} · {{ event.createdAt | date: 'd MMM y, HH:mm' }}</span
                   >
                 </li>
               }
@@ -139,9 +142,12 @@
             <ul class="activity__list">
               @for (revision of a.recentDocumentChanges; track revision.id) {
                 <li>
-                  <span class="activity__primary">{{ revision.document.kind }}</span>
+                  <span class="activity__primary">{{
+                    revision.document.kind | label: 'documentKind'
+                  }}</span>
                   <span class="meta-text"
-                    >{{ revision.source }} · {{ revision.capturedAt | date: 'short' }}</span
+                    >{{ revision.source | label: 'revisionSource' }} ·
+                    {{ revision.capturedAt | date: 'd MMM y, HH:mm' }}</span
                   >
                 </li>
               }

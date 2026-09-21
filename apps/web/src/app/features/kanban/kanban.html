@@ -47,7 +47,7 @@
     <mat-select [ngModel]="filters().priority" (ngModelChange)="patchFilters({ priority: $event })">
       <mat-option [value]="null">Cualquier prioridad</mat-option>
       @for (priority of priorities; track priority) {
-        <mat-option [value]="priority">{{ priority }}</mat-option>
+        <mat-option [value]="priority">{{ priority | label: 'priority' }}</mat-option>
       }
     </mat-select>
   </mat-form-field>
@@ -163,7 +163,7 @@
                       <span class="card__id">{{ card.externalId ?? 'Sin ID de Roadmap' }}</span>
                       @if (card.priority) {
                         <span class="priority" [attr.data-priority]="card.priority">{{
-                          card.priority
+                          card.priority | label: 'priority'
                         }}</span>
                       }
                     </div>
@@ -221,7 +221,7 @@
                       }
                       @if (dateOf(card); as date) {
                         <li [class.card__alert]="date.overdue">
-                          {{ date.label }} {{ date.value | date: 'MMM d' : 'UTC' }}
+                          {{ date.label }} {{ date.value | date: 'd MMM' : 'UTC' }}
                         </li>
                       }
                       @if (card.roadmapTable === 'BLOCKED') {

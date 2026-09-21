@@ -1,4 +1,5 @@
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { LabelPipe } from '../../shared/label.pipe.js';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -38,7 +39,15 @@ const TASK_WRITE = 'task.write';
 /** Brief §6, §17: every task field, its hierarchy, subtasks, dependencies, agent activity and history. */
 @Component({
   selector: 'app-task-detail',
-  imports: [DatePipe, FormsModule, RouterLink, MatButtonModule, MatSelectModule, TaskForm],
+  imports: [
+    LabelPipe,
+    DatePipe,
+    FormsModule,
+    RouterLink,
+    MatButtonModule,
+    MatSelectModule,
+    TaskForm,
+  ],
   templateUrl: './task-detail.html',
   styleUrl: './task-detail.scss',
 })

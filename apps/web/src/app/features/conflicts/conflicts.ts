@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { LabelPipe } from '../../shared/label.pipe.js';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -62,6 +63,7 @@ const CONFLICT_RESOLVE = 'conflict.resolve';
 @Component({
   selector: 'app-conflicts',
   imports: [
+    LabelPipe,
     DatePipe,
     FormsModule,
     RouterLink,

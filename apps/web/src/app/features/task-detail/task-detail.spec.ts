@@ -173,8 +173,8 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
       limit: 50,
     });
     expect(text()).toContain('Codex');
-    expect(text()).toContain('IN_PROGRESS — Started the API');
-    expect(text()).toContain('Demo Human — STATUS_CHANGE (UI)');
+    expect(text()).toContain('En curso — Started the API');
+    expect(text()).toContain('Demo Human — Cambio de estado (Aplicación)');
     expect(text()).toContain('status: PENDIENTE → ASIGNADA');
   });
 
@@ -206,9 +206,9 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
 
     expect(text()).toContain('PMH-1');
     expect(text()).toContain('Endpoints documented');
-    expect(text()).toContain('HIGH');
+    expect(text()).toContain('Alta');
     expect(text()).toContain('Fase: Build · Épica: Public API');
-    expect(text()).toContain('Oct 10, 2026');
+    expect(text()).toContain('10 Oct 2026');
     expect(text()).toContain('Public endpoints only');
   });
 

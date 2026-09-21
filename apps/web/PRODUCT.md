@@ -32,7 +32,7 @@ Unlike a generic task tracker, each project's own Markdown documents remain the 
 - Angular (latest) with Angular Material/CDK on the front end; NestJS and PostgreSQL behind it (§21–§23).
 - Views: dashboard, my projects, workload ("¿quién está haciendo qué?"), team of humans and agents, and per project: Kanban, progress by phase, documents (documental and structured), conflicts, audit history, task detail (§14–§19, §25).
 - RBAC with global and per-project roles; actors are active or inactive (§3, §4).
-- Interface copy mixes English and Spanish today; Kanban state names are Spanish domain terms and stay verbatim.
+- Interface copy is Spanish (`lang="es"`, `es-ES` dates); API enums are shown through a label dictionary, and Kanban state names are Spanish domain terms that stay verbatim.
 
 ## Brand Commitments
 

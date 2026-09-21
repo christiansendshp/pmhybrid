@@ -78,7 +78,7 @@
         <dt>Criterio de aceptación</dt>
         <dd>{{ t.acceptanceCriteria ?? '—' }}</dd>
         <dt>Prioridad</dt>
-        <dd>{{ t.priority ?? '—' }}</dd>
+        <dd>{{ t.priority | label: 'priority' }}</dd>
         <dt>Progreso</dt>
         <dd>
           @if (t.subtasks.length > 0) {
@@ -98,13 +98,13 @@
           }
         </dd>
         <dt>Fecha de inicio</dt>
-        <dd>{{ (t.startDate | date: 'mediumDate' : 'UTC') ?? '—' }}</dd>
+        <dd>{{ (t.startDate | date: 'd MMM y' : 'UTC') ?? '—' }}</dd>
         <dt>Fecha estimada</dt>
-        <dd>{{ (t.estimatedDate | date: 'mediumDate' : 'UTC') ?? '—' }}</dd>
+        <dd>{{ (t.estimatedDate | date: 'd MMM y' : 'UTC') ?? '—' }}</dd>
         <dt>Fecha de vencimiento</dt>
-        <dd>{{ (t.dueDate | date: 'mediumDate' : 'UTC') ?? '—' }}</dd>
+        <dd>{{ (t.dueDate | date: 'd MMM y' : 'UTC') ?? '—' }}</dd>
         <dt>Creada</dt>
-        <dd>{{ t.createdAt | date: 'medium' }}</dd>
+        <dd>{{ t.createdAt | date: 'd MMM y, HH:mm' }}</dd>
         @if (t.description) {
           <dt>Descripción</dt>
           <dd>{{ t.description }}</dd>
@@ -219,9 +219,8 @@
     <ul>
       @for (entry of t.agentLogEvents; track entry.id) {
         <li>
-          <strong>{{ entry.agentName }}</strong> — {{ entry.statusWord }} — {{ entry.summary }} ({{
-            entry.timestampFromLog | date: 'medium'
-          }})
+          <strong>{{ entry.agentName }}</strong> — {{ entry.statusWord | label: 'ledgerState' }} —
+          {{ entry.summary }} ({{ entry.timestampFromLog | date: 'd MMM y, HH:mm' }})
         </li>
       }
     </ul>
@@ -235,10 +234,9 @@
     <ul>
       @for (event of history(); track event.id) {
         <li>
-          {{ event.occurredAt | date: 'medium' }} —
-          {{ event.actor ? event.actor.displayName : 'sistema' }} — {{ event.operation }} ({{
-            event.origin
-          }})
+          {{ event.occurredAt | date: 'd MMM y, HH:mm' }} —
+          {{ event.actor ? event.actor.displayName : 'sistema' }} —
+          {{ event.operation | label: 'operation' }} ({{ event.origin | label: 'origin' }})
           <ul>
             @for (change of describeChanges(event); track change.field) {
               <li>{{ change.field }}: {{ change.from }} → {{ change.to }}</li>

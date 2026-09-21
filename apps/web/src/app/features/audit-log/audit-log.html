@@ -13,7 +13,7 @@
   >
     <mat-option [value]="null">Todos los orígenes</mat-option>
     @for (origin of origins; track origin) {
-      <mat-option [value]="origin">{{ origin }}</mat-option>
+      <mat-option [value]="origin">{{ origin | label: 'origin' }}</mat-option>
     }
   </mat-select>
 
@@ -24,7 +24,7 @@
   >
     <mat-option [value]="null">Todas las entidades</mat-option>
     @for (entityType of entityTypes; track entityType) {
-      <mat-option [value]="entityType">{{ entityType }}</mat-option>
+      <mat-option [value]="entityType">{{ entityType | label: 'entity' }}</mat-option>
     }
   </mat-select>
 </div>
@@ -50,7 +50,7 @@
     <tbody>
       @for (event of events(); track event.id) {
         <tr>
-          <td>{{ event.occurredAt | date: 'medium' }}</td>
+          <td>{{ event.occurredAt | date: 'd MMM y, HH:mm' }}</td>
           <td>
             {{
               event.actor
@@ -58,13 +58,13 @@
                 : '—'
             }}
           </td>
-          <td>{{ event.origin }}</td>
-          <td>{{ event.operation }}</td>
+          <td>{{ event.origin | label: 'origin' }}</td>
+          <td>{{ event.operation | label: 'operation' }}</td>
           <td>
             @if (event.entityType === 'Task') {
               <a [routerLink]="['../tasks', event.entityId]">Tarea</a>
             } @else {
-              {{ event.entityType }}
+              {{ event.entityType | label: 'entity' }}
             }
           </td>
           <td>

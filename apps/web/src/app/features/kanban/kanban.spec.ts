@@ -99,14 +99,14 @@ describe('Kanban (brief §15)', () => {
     for (const expected of [
       'PMH-1',
       'Build API',
-      'HIGH',
+      'Alta',
       'Build › Public API',
       'Codex',
       'Agente IA',
       '45%',
       'Subtareas 1/2',
       'Depende de 1 · 1 abierta',
-      'Vence Oct 10',
+      'Vence 10 Oct',
       'Bloqueada',
     ]) {
       expect(cardText).toContain(expected);

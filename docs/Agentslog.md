@@ -898,3 +898,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: Write-back is atomic with the change (07a), task creation is idempotent (07b) and document revisions are bounded (07c)
 - Files: docs/synchronization.md,docs/domain-model.md,docs/api-reference.md
 - Verify: BUG-07a, BUG-07b and BUG-07c verified: api e2e 241 pass
+
+## [2026-09-21T18:20:33Z] | claude | UX-03a | IN_PROGRESS
+
+- Summary: Spanish locale and a label dictionary for every enum
+- Verify: pending
+
+## [2026-09-21T18:26:32Z] | claude | UX-03a | DONE
+
+- Summary: The document is lang=es and the app runs in es-ES with one date format per kind of date; a label dictionary and pipe name every API enum (audit operations, origins, entities, conflict kinds, resolutions, revision sources, document kinds, roadmap tables, priorities, ledger states) with a readable fallback
+- Files: apps/web/src/index.html,apps/web/src/app/app.config.ts,apps/web/src/app/core/labels.ts,apps/web/src/app/shared/label.pipe.ts,apps/web/DESIGN.md
+- Verify: web unit 202 pass, eslint and ng build clean, a11y 6 pass

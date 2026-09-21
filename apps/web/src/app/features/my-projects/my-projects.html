@@ -136,7 +136,7 @@
             </td>
             <td>
               @if (project.summary.lastSyncRun; as run) {
-                {{ run.finishedAt ?? run.startedAt | date: 'MMM d, HH:mm' }}
+                {{ run.finishedAt ?? run.startedAt | date: 'd MMM, HH:mm' }}
                 <span class="meta-text" [class.alert]="syncNeedsAttention(run.status)">{{
                   syncStatusLabel(run.status)
                 }}</span>

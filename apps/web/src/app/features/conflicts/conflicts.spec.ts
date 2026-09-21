@@ -70,7 +70,7 @@ describe('Conflicts (brief §26 — resolution UI)', () => {
   it('shows a field-by-field diff with the local vs. external values and an explanation', async () => {
     const { text } = await render([conflict()]);
 
-    expect(text()).toContain('CONCURRENT_FIELD_EDIT');
+    expect(text()).toContain('Edición simultánea');
     expect(text()).toContain('cambiaron el mismo campo');
     expect(text()).toContain('Resultado (título)');
     expect(text()).toContain('Local title');

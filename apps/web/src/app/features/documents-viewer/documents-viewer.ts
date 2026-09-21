@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { LabelPipe } from '../../shared/label.pipe.js';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -31,6 +32,7 @@ type ViewMode = 'documental' | 'structured';
 @Component({
   selector: 'app-documents-viewer',
   imports: [
+    LabelPipe,
     DatePipe,
     FormsModule,
     MatButtonModule,

@@ -1,4 +1,5 @@
 import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
+import { LabelPipe } from '../../shared/label.pipe.js';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -53,6 +54,7 @@ const TASK_WRITE = 'task.write';
 @Component({
   selector: 'app-kanban',
   imports: [
+    LabelPipe,
     DatePipe,
     DecimalPipe,
     FormsModule,

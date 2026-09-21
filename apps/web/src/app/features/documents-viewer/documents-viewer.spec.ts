@@ -81,7 +81,7 @@ describe('DocumentsViewer (brief §10)', () => {
     });
     const { harness, component, text } = await render();
 
-    expect(text()).toContain('SYNC');
+    expect(text()).toContain('Sincronización');
 
     await component.viewRevision('r1');
     harness.detectChanges();

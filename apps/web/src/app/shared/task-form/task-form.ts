@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, input, output } from '@angular/core';
+import { LabelPipe } from '../label.pipe.js';
 import {
   AbstractControl,
   FormBuilder,
@@ -51,6 +52,7 @@ const NOT_BLANK = /\S/;
 @Component({
   selector: 'app-task-form',
   imports: [
+    LabelPipe,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,

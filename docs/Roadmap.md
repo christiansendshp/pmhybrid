@@ -461,10 +461,67 @@ expected_behavior: >
   detail with visible block reason, linked dashboard items.
 technical_context:
   frontend: apps/web/src/app (index.html, features/phases-progress, task-detail, dashboard, audit-log, conflicts, roles, team)
+depends_on:
+  - UX-03a
+  - UX-03b
+  - UX-03c
 next_action: >
-  Start with lang/LOCALE_ID and the enum dictionary; both are mechanical.
+  Umbrella only. Refined on 2026-09-21 into three slices (UX-03a locale and
+  label dictionary, UX-03b progress view, UX-03c task detail, dashboard links
+  and copy); close this entry when all three are done.
 created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T22:00:00Z
+```
+
+### UX-03b — Progress view with rounded percentages and bars
+
+```yaml
+id: UX-03b
+type: UX
+title: Progress view with rounded percentages and bars
+status: BACKLOG
+priority: P2
+parent: UX-03
+description: >
+  Second slice of UX-03. The progress view prints "85.71428571428571%" as a
+  flat list of links with no bars (phases-progress.html).
+expected_behavior: >
+  Percentages are whole numbers and every phase, epic and task row has a
+  bar.
+technical_context:
+  frontend: apps/web/src/app
+next_action: >
+  Round in one place, then add the bar to phases-progress.
+created_at: 2026-09-21T22:00:00Z
+updated_at: 2026-09-21T22:00:00Z
+```
+
+### UX-03c — Task detail, dashboard links and copy
+
+```yaml
+id: UX-03c
+type: UX
+title: Task detail, dashboard links and copy
+status: BACKLOG
+priority: P2
+parent: UX-03
+description: >
+  Third slice of UX-03. The task detail is almost unstyled, "Depende de"
+  shows the hierarchy location, the history is raw ("externalId: ->
+  DEC-002"), the blocked reason lives only in a title attribute (unreachable
+  on touch); dashboard items are not links and change entries do not say
+  which task; voseo ("Asigna") is mixed with tuteo and internal terms leak
+  ("brief section 4", "permiso project.update"); Team has no search.
+expected_behavior: >
+  Breadcrumbs and a styled task detail with the block reason visible,
+  dashboard items that link to their task, one register (tuteo) with no
+  internal terms, and a search box on Team.
+technical_context:
+  frontend: apps/web/src/app
+next_action: >
+  Start with the task detail, then the dashboard links, then the copy pass.
+created_at: 2026-09-21T22:00:00Z
+updated_at: 2026-09-21T22:00:00Z
 ```
 
 ### GAP-36 — Agent experience and onboarding gaps

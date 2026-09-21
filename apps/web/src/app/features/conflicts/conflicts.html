@@ -48,17 +48,17 @@
   <section class="conflict-card">
     <header class="conflict-card__header">
       <div>
-        <h3>{{ conflict.kind }}</h3>
+        <h3>{{ conflict.kind | label: 'conflictKind' }}</h3>
         <p class="meta-text">
           @if (conflict.entityType === 'Task') {
             <a [routerLink]="['../tasks', conflict.entityId]">Tarea</a>
           } @else {
-            {{ conflict.entityType }}
+            {{ conflict.entityType | label: 'entity' }}
           }
-          — detectado {{ conflict.detectedAt | date: 'medium' }}
+          — detectado {{ conflict.detectedAt | date: 'd MMM y, HH:mm' }}
           @if (conflict.resolvedAt) {
-            — resuelto {{ conflict.resolvedAt | date: 'medium' }} ({{
-              conflict.resolutionStrategy
+            — resuelto {{ conflict.resolvedAt | date: 'd MMM y, HH:mm' }} ({{
+              conflict.resolutionStrategy | label: 'resolution'
             }})
           }
         </p>
@@ -116,7 +116,7 @@
                 >
                   <mat-option [value]="null">Ninguna</mat-option>
                   @for (table of roadmapTables; track table) {
-                    <mat-option [value]="table">{{ table }}</mat-option>
+                    <mat-option [value]="table">{{ table | label: 'roadmapTable' }}</mat-option>
                   }
                 </mat-select>
               } @else {

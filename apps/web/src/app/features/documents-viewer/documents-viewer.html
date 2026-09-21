@@ -105,7 +105,8 @@
               [disabled]="viewingRevisionId() === revision.id"
               (click)="viewRevision(revision.id)"
             >
-              {{ revision.capturedAt | date: 'medium' }} — {{ revision.source }}
+              {{ revision.capturedAt | date: 'd MMM y, HH:mm' }} —
+              {{ revision.source | label: 'revisionSource' }}
             </button>
           </li>
         }
@@ -163,8 +164,10 @@
     <ul>
       @for (entry of entries; track entry.rawEntryHash) {
         <li>
-          <strong>{{ entry.taskExternalId }}</strong> — {{ entry.statusWord }} —
-          {{ entry.summary }} ({{ entry.agentName }}, {{ entry.timestampFromLog }})
+          <strong>{{ entry.taskExternalId }}</strong> —
+          {{ entry.statusWord | label: 'ledgerState' }} — {{ entry.summary }} ({{
+            entry.agentName
+          }}, {{ entry.timestampFromLog }})
         </li>
       } @empty {
         <li class="meta-text">
