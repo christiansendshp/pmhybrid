@@ -20,6 +20,15 @@ a hand-copied route list would.
 - Request bodies are validated by a global `ValidationPipe({ whitelist: true,
 transform: true })` — unknown fields are stripped, not rejected; typed
   fields are coerced (e.g. a numeric string body field becomes a number).
+- **Limits** (Roadmap IMPROVEMENT-01b). Every request field that carries free
+  text or an identifier has a maximum length, from one table
+  (`apps/api/src/common/dto-limits.ts`): names 200, task titles 300, descriptions
+  10,000, acceptance criteria and comments 5,000, paths 1,024, URLs 2,048, ids
+  100, labels 200, emails 254, passwords 128, tokens 2,048, and at most 500
+  permission keys per request. An over-long value is a `400` whose message names
+  the field and the limit; so is an invalid enum in a query string
+  (`?status=BOGUS` on the task list). A request body larger than 100 KB is
+  refused with a `413` before any of this.
 - Error responses follow Nest's default `HttpException` JSON shape:
   `{ statusCode, message, error }`, where `message` is a string for a
   hand-thrown exception or an array of strings for `class-validator`

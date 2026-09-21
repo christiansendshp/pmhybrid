@@ -1,5 +1,6 @@
-import { IsEnum, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { TaskStatus } from '@pmhybrid/shared-types';
+import { LIMITS } from '../../../common/dto-limits.js';
 
 const ACTOR_KINDS = ['HUMAN', 'AI_AGENT'] as const;
 
@@ -7,10 +8,12 @@ const ACTOR_KINDS = ['HUMAN', 'AI_AGENT'] as const;
 export class WorkloadQueryDto {
   @IsString()
   @IsOptional()
+  @MaxLength(LIMITS.ID)
   projectId?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(LIMITS.ID)
   actorId?: string;
 
   /** People (HUMAN) or agents (AI_AGENT) only. */
@@ -24,9 +27,11 @@ export class WorkloadQueryDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(LIMITS.ID)
   phaseId?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(LIMITS.ID)
   epicId?: string;
 }

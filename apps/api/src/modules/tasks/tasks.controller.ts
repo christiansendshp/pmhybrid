@@ -9,7 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { PERMISSIONS, TaskStatus } from '@pmhybrid/shared-types';
+import { PERMISSIONS } from '@pmhybrid/shared-types';
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
 import { CurrentAuditOrigin } from '../../common/decorators/current-audit-origin.decorator.js';
 import type { AuditOrigin } from '@prisma/client';
@@ -17,6 +17,7 @@ import { RequirePermission } from '../../common/decorators/require-permission.de
 import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { ListTasksQueryDto } from './dto/list-tasks-query.dto.js';
 import { AddDependencyDto } from './dto/add-dependency.dto.js';
 import { AssignTaskDto } from './dto/assign-task.dto.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
@@ -44,16 +45,13 @@ export class TasksController {
   @Get()
   findAll(
     @Param('projectId') projectId: string,
-    @Query('phaseId') phaseId?: string,
-    @Query('epicId') epicId?: string,
-    @Query('status') status?: TaskStatus,
-    @Query('assigneeActorId') assigneeActorId?: string,
+    @Query() query: ListTasksQueryDto,
   ) {
     return this.tasksService.findAllForProject(projectId, {
-      phaseId,
-      epicId,
-      status,
-      assigneeActorId,
+      phaseId: query.phaseId,
+      epicId: query.epicId,
+      status: query.status,
+      assigneeActorId: query.assigneeActorId,
     });
   }
 

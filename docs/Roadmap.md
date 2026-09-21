@@ -461,29 +461,6 @@ created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T18:30:00Z
 ```
 
-### IMPROVEMENT-01b — DTO length limits and enum validation
-
-```yaml
-id: IMPROVEMENT-01b
-type: IMPROVEMENT
-title: DTO length limits and enum validation
-status: BACKLOG
-priority: P2
-parent: IMPROVEMENT-01
-description: >
-  Second slice of IMPROVEMENT-01. No DTO has a maximum length (a 90,000
-  character title made Roadmap.md 96 KB) and `?status=BOGUS` returns 500.
-expected_behavior: >
-  Every free-text DTO field has a maximum length sized for its use, and
-  an invalid enum in a query or body is a 400 that names the field.
-technical_context:
-  backend: apps/api/src/modules/*/dto, query parsing in tasks, audit, conflicts
-next_action: >
-  List the DTOs and pick limits (title, description, criteria, names, paths).
-created_at: 2026-09-21T18:30:00Z
-updated_at: 2026-09-21T18:30:00Z
-```
-
 ### IMPROVEMENT-01d — Pagination, the activity payload and dependency removal
 
 ```yaml

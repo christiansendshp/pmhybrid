@@ -1,6 +1,7 @@
 import { OmitType, PartialType } from '@nestjs/mapped-types';
-import { IsString, Matches, ValidateIf } from 'class-validator';
+import { IsString, Matches, MaxLength, ValidateIf } from 'class-validator';
 import { CreateTaskDto, NOT_BLANK } from './create-task.dto.js';
+import { LIMITS } from '../../../common/dto-limits.js';
 
 /**
  * status and assigneeActorId are intentionally excluded — see /transition and
@@ -13,10 +14,12 @@ export class UpdateTaskDto extends PartialType(
   @ValidateIf((_: UpdateTaskDto, value: unknown) => value !== undefined)
   @IsString()
   @Matches(NOT_BLANK, { message: 'title must not be blank' })
+  @MaxLength(LIMITS.TITLE)
   title?: string;
 
   @ValidateIf((_: UpdateTaskDto, value: unknown) => value !== undefined)
   @IsString()
   @Matches(NOT_BLANK, { message: 'acceptanceCriteria must not be blank' })
+  @MaxLength(LIMITS.CRITERIA)
   acceptanceCriteria?: string;
 }

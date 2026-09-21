@@ -7,8 +7,10 @@ import {
   IsString,
   Matches,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
+import { LIMITS } from '../../../common/dto-limits.js';
 
 /** At least one non-whitespace character. */
 export const NOT_BLANK = /\S/;
@@ -21,31 +23,38 @@ export const NOT_BLANK = /\S/;
 export class CreateTaskDto {
   @IsString()
   @Matches(NOT_BLANK, { message: 'title must not be blank' })
+  @MaxLength(LIMITS.TITLE)
   title!: string;
 
   @IsString()
   @Matches(NOT_BLANK, { message: 'acceptanceCriteria must not be blank' })
+  @MaxLength(LIMITS.CRITERIA)
   acceptanceCriteria!: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(LIMITS.TEXT)
   description?: string;
 
   /** Hierarchy links — none mandatory (brief §5); if set, they must exist in the same project and agree with each other. */
   @IsString()
   @IsOptional()
+  @MaxLength(LIMITS.ID)
   phaseId?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(LIMITS.ID)
   epicId?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(LIMITS.ID)
   templateId?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(LIMITS.ID)
   parentTaskId?: string;
 
   @IsEnum(TaskPriority)
