@@ -315,3 +315,45 @@ describe('roadmapYamlEntryToRow', () => {
     expect(row.ownerName).toBe('Cristian');
   });
 });
+
+describe('roadmapYamlEntryToRow owner kind (Roadmap GAP-35a)', () => {
+  const rowOf = (lines: string[]) => {
+    const markdown = [
+      '### T-1 — Entry',
+      '',
+      '```yaml',
+      'id: T-1',
+      'type: TASK',
+      'status: READY',
+      ...lines,
+      '```',
+      '',
+    ].join('\n');
+    return roadmapYamlEntryToRow(extractRoadmapYamlEntries(markdown)[0]);
+  };
+
+  it('reads an agent from executor: AI + assigned_agent, ahead of the accountable owner', () => {
+    expect(
+      rowOf([
+        'executor: AI',
+        'assigned_agent: claude',
+        'owner:',
+        '  type: HUMAN',
+        '  name: Cristian',
+      ]),
+    ).toMatchObject({ ownerName: 'claude', ownerKind: 'AI_AGENT' });
+  });
+
+  it('reads the kind of a plain owner from its type, and leaves it open when there is none', () => {
+    expect(rowOf(['owner:', '  type: HUMAN', '  name: Ana'])).toMatchObject({
+      ownerName: 'Ana',
+      ownerKind: 'HUMAN',
+    });
+    expect(rowOf(['owner:', '  type: AI', '  name: Bot'])).toMatchObject({
+      ownerKind: 'AI_AGENT',
+    });
+    const untyped = rowOf(['owner:', '  name: Ana']);
+    expect(untyped.ownerName).toBe('Ana');
+    expect(untyped.ownerKind).toBeUndefined();
+  });
+});

@@ -350,6 +350,15 @@ export class TasksService {
     const nextStatus =
       task.status === TaskStatus.PENDIENTE ? TaskStatus.ASIGNADA : task.status;
 
+    const previousAssigneeName = task.assigneeActorId
+      ? ((
+          await this.prisma.actor.findUnique({
+            where: { id: task.assigneeActorId },
+            select: { displayName: true },
+          })
+        )?.displayName ?? null)
+      : null;
+
     await this.prisma.$transaction(async (tx) => {
       // Everything above (the lock check, the permission it chose, the next
       // status) was decided from the task as it was read. The write only
@@ -397,13 +406,23 @@ export class TasksService {
       );
     });
 
-    // Locked reassignment is a write-back trigger (docs/synchronization.md);
-    // an ordinary PENDIENTE/ASIGNADA assignment is UI-only.
+    // A locked reassignment is a lifecycle write-back trigger (Agentslog entry
+    // + row). Any other assignment is an in-place edit of who the entry names
+    // (docs/synchronization.md "Field edits", Roadmap GAP-35a): no Agentslog
+    // entry, but the document must not keep naming the previous assignee.
     if (wasLocked) {
       return this.writeBack.recordTaskEvent(
         projectId,
         taskId,
         'LOCKED_REASSIGN',
+        requesterActorId,
+      );
+    }
+    if (task.externalId) {
+      await this.writeBack.recordFieldEdit(
+        projectId,
+        taskId,
+        { assignee: previousAssigneeName },
         requesterActorId,
       );
     }

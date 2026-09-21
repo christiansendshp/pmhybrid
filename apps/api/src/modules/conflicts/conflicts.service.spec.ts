@@ -1,4 +1,8 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import type { PermissionsResolverService } from '../../common/permissions-resolver.service.js';
 import type { PrismaService } from '../../prisma/prisma.service.js';
@@ -20,6 +24,9 @@ function setup(options: {
   externalVersion?: object;
   /** The task changed after it was read, so the guarded update matches nothing. */
   staleTask?: boolean;
+  currentAssignee?: string | null;
+  /** What the membership lookup finds for the assignee being applied; default is an active member. */
+  member?: { isActive: boolean; actor: { isActive: boolean } } | null;
 }) {
   const conflict = {
     id: 'c1',
@@ -37,12 +44,26 @@ function setup(options: {
   const conflictUpdate = vi.fn().mockResolvedValue({ id: 'c1' });
   const tx = {
     task: {
-      findUniqueOrThrow: vi
-        .fn()
-        .mockResolvedValue({ status: options.taskStatus }),
+      findUniqueOrThrow: vi.fn().mockResolvedValue({
+        status: options.taskStatus,
+        assigneeActorId: options.currentAssignee ?? null,
+      }),
       updateMany: taskUpdate,
     },
     conflict: { update: conflictUpdate },
+    projectMember: {
+      findUnique: vi
+        .fn()
+        .mockResolvedValue(
+          options.member === undefined
+            ? { isActive: true, actor: { isActive: true } }
+            : options.member,
+        ),
+    },
+    taskAssignment: {
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      create: vi.fn().mockResolvedValue({}),
+    },
   };
   const prisma = {
     conflict: { findFirst: vi.fn().mockResolvedValue(conflict) },
@@ -59,6 +80,7 @@ function setup(options: {
     taskUpdate,
     conflictUpdate,
     record,
+    assignmentCreate: tx.taskAssignment.create,
   };
 }
 
@@ -195,5 +217,94 @@ describe('ConflictsService.resolve permissions (Roadmap SECURITY-02)', () => {
     ).rejects.toBeInstanceOf(ConflictException);
     expect(conflictUpdate).not.toHaveBeenCalled();
     expect(record).not.toHaveBeenCalled();
+  });
+});
+
+describe('ConflictsService.resolve assignee (Roadmap GAP-35a)', () => {
+  const assigneeConflict = {
+    kind: 'CONCURRENT_FIELD_EDIT',
+    localVersion: { assigneeActorId: 'u1' },
+    externalVersion: { assigneeActorId: 'u2' },
+  };
+  const keepExternal = { strategy: 'KEEP_EXTERNAL' } as never;
+
+  it('needs task.assign, not task.write, and records the reassignment like any other', async () => {
+    const { service, taskUpdate, assignmentCreate, record } = setup({
+      held: ['task.assign'],
+      taskStatus: 'ASIGNADA',
+      currentAssignee: 'u1',
+      ...assigneeConflict,
+    });
+
+    await service.resolve('p1', 'c1', keepExternal, 'actor-1');
+
+    expect(taskUpdate).toHaveBeenCalledWith({
+      where: {
+        id: 't1',
+        deletedAt: null,
+        status: 'ASIGNADA',
+        assigneeActorId: 'u1',
+      },
+      data: { assigneeActorId: 'u2' },
+    });
+    expect(assignmentCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        taskId: 't1',
+        actorId: 'u2',
+        assignedByActorId: 'actor-1',
+      }),
+    });
+    expect(record.mock.calls.map(([event]) => event.operation)).toEqual([
+      'REASSIGN',
+      'CONFLICT_RESOLVED',
+    ]);
+  });
+
+  it('refuses without task.assign, and needs the locked-reassign key once the task is EN_DESARROLLO', async () => {
+    const withoutAssign = setup({
+      held: ['task.write'],
+      taskStatus: 'ASIGNADA',
+      currentAssignee: 'u1',
+      ...assigneeConflict,
+    });
+    await expect(
+      withoutAssign.service.resolve('p1', 'c1', keepExternal, 'actor-1'),
+    ).rejects.toThrow(
+      new ForbiddenException('Missing permission: task.assign'),
+    );
+
+    const locked = setup({
+      held: ['task.assign'],
+      taskStatus: 'EN_DESARROLLO',
+      currentAssignee: 'u1',
+      ...assigneeConflict,
+    });
+    await expect(
+      locked.service.resolve('p1', 'c1', keepExternal, 'actor-1'),
+    ).rejects.toThrow(
+      new ForbiddenException('Missing permission: task.reassign.locked'),
+    );
+    expect(locked.taskUpdate).not.toHaveBeenCalled();
+  });
+
+  it('refuses an assignee who is no longer an active member, changing nothing', async () => {
+    for (const member of [
+      null,
+      { isActive: false, actor: { isActive: true } },
+      { isActive: true, actor: { isActive: false } },
+    ]) {
+      const { service, taskUpdate, conflictUpdate } = setup({
+        held: ['task.assign'],
+        taskStatus: 'ASIGNADA',
+        currentAssignee: 'u1',
+        member,
+        ...assigneeConflict,
+      });
+      await expect(
+        service.resolve('p1', 'c1', keepExternal, 'actor-1'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(taskUpdate).not.toHaveBeenCalled();
+      expect(conflictUpdate).not.toHaveBeenCalled();
+    }
   });
 });

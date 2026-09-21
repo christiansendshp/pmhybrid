@@ -8,7 +8,12 @@ import { RoadmapParserService } from '../roadmap/roadmap-parser.service.js';
 import { rowContentHash } from './row-content-hash.util.js';
 import { appendAgentslogEntry } from '../roadmap/agentslog-writer.util.js';
 import {
+  normalizeOwnerName,
+  type RoadmapOwner,
+} from '../roadmap/roadmap-owner.util.js';
+import {
   removeRoadmapRow,
+  replaceRoadmapOwner,
   replaceRoadmapRowCells,
   sanitizeField,
   upsertLifecycleRoadmapRow,
@@ -23,6 +28,8 @@ export type WriteBackTrigger =
 export interface RoadmapFieldEdit {
   title?: string;
   acceptanceCriteria?: string | null;
+  /** Display name of the assignee before the edit, or null if there was none (Roadmap GAP-35a). */
+  assignee?: string | null;
 }
 
 const DOCUMENT_FILENAMES: Record<'ROADMAP' | 'AGENTSLOG', string> = {
@@ -380,11 +387,51 @@ export class WriteBackService {
       cells[edit.header] = edit.next;
     }
 
-    const written =
-      Object.keys(cells).length > 0
-        ? replaceRoadmapRowCells(roadmapContent, externalId, cells)
-        : null;
-    if (!written || written.replaced.length === 0) {
+    let updatedMarkdown = roadmapContent;
+    const writtenFields: string[] = [];
+    if (Object.keys(cells).length > 0) {
+      const replaced = replaceRoadmapRowCells(
+        roadmapContent,
+        externalId,
+        cells,
+      );
+      if (replaced && replaced.replaced.length > 0) {
+        updatedMarkdown = replaced.markdown;
+        writtenFields.push(
+          ...edits
+            .filter((edit) => replaced.replaced.includes(edit.header))
+            .map((edit) => edit.field),
+        );
+      }
+    }
+
+    // The assignee (Roadmap GAP-35a): same drift rule as the cells above — if
+    // the document changed since PM Hub last saw it and its owner is no longer
+    // the pre-edit assignee, it was reassigned there too, so it is left for
+    // sync to contest instead of being overwritten.
+    if ('assignee' in previous && task.assigneeActorId) {
+      const assignee = await tx.actor.findUnique({
+        where: { id: task.assigneeActorId },
+      });
+      const documentOwner = normalizeOwnerName(currentRow.ownerName ?? '');
+      const preEditOwner = normalizeOwnerName(previous.assignee ?? '');
+      if (assignee && drifted && documentOwner !== preEditOwner) {
+        deferred.push('assignee');
+      } else if (assignee) {
+        const withOwner = replaceRoadmapOwner(
+          updatedMarkdown,
+          externalId,
+          { name: assignee.displayName, kind: assignee.kind },
+          new Date().toISOString(),
+        );
+        if (withOwner !== null) {
+          updatedMarkdown = withOwner;
+          writtenFields.push('assignee');
+        }
+      }
+    }
+
+    if (writtenFields.length === 0) {
       if (deferred.length > 0) {
         await this.audit.record(
           {
@@ -405,14 +452,14 @@ export class WriteBackService {
     await this.repositoryProvider.writeFile(
       project.docsPath,
       DOCUMENT_FILENAMES.ROADMAP,
-      written.markdown,
+      updatedMarkdown,
     );
     await this.recordDocumentRevision(
       tx,
       projectId,
       'ROADMAP',
       DOCUMENT_FILENAMES.ROADMAP,
-      written.markdown,
+      updatedMarkdown,
     );
 
     // The written row becomes the baseline only if the row carried no
@@ -420,7 +467,7 @@ export class WriteBackService {
     // apply or contest — what the document changed in the row's other cells.
     let result = task;
     const writtenRow = this.roadmapParser
-      .parseTolerant(written.markdown)
+      .parseTolerant(updatedMarkdown)
       .rows.find((row) => row.externalId === externalId);
     if (
       writtenRow &&
@@ -431,7 +478,15 @@ export class WriteBackService {
         where: { id: task.id },
         data: {
           lastSyncedContentHash: rowContentHash(writtenRow),
-          lastSyncedAt: new Date(),
+          // An assignment also moves PENDIENTE to ASIGNADA, which the document
+          // does not record, so the row is not fully reflected: the window in
+          // which local edits count as unsynced stays open for that status.
+          ...(writtenFields.includes('assignee')
+            ? {}
+            : { lastSyncedAt: new Date() }),
+          // The owner as the document now names it: sync tells a document-side
+          // reassignment from a local one by comparing against this.
+          rawOwner: writtenRow.rawOwner ?? null,
         },
       });
     }
@@ -446,9 +501,7 @@ export class WriteBackService {
         origin: 'UI',
         newValue: {
           trigger: 'FIELD_EDIT',
-          fields: edits
-            .filter((edit) => written.replaced.includes(edit.header))
-            .map((edit) => edit.field),
+          fields: writtenFields,
           ...(deferred.length > 0 ? { deferred } : {}),
         },
       },
@@ -575,10 +628,9 @@ export class WriteBackService {
     const assignee = task.assigneeActorId
       ? await tx.actor.findUnique({ where: { id: task.assigneeActorId } })
       : null;
-    const ownerCell =
-      assignee?.kind === 'AI_AGENT'
-        ? `${assignee.displayName}@${new Date().toISOString()}`
-        : (assignee?.displayName ?? '');
+    const owner: RoadmapOwner | null = assignee
+      ? { name: assignee.displayName, kind: assignee.kind }
+      : null;
     // Fetched fresh rather than carried on `task` (Roadmap GAP-22): a
     // lifecycle write-back must render the task's actual current
     // dependencies, not blank the cell — this row already exists, so the
@@ -595,7 +647,7 @@ export class WriteBackService {
         outcome: task.title,
         acceptanceCheck: task.acceptanceCriteria ?? '',
         status: task.status, // verbatim Kanban state (ADR-002) — never mapped back to TODO/DONE
-        owner: ownerCell,
+        owner,
         dependsOn: renderDependsOnCell(dependencies),
       },
     );

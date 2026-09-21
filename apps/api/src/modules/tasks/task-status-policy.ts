@@ -80,6 +80,13 @@ export function isAssigneeLocked(status: TaskStatus): boolean {
   return status === TaskStatus.EN_DESARROLLO;
 }
 
+/** The permission changing the assignee of a task in `status` needs: `task.assign`, or the locked-reassign key once it is EN_DESARROLLO. */
+export function permissionForAssigneeChange(status: string): string {
+  return isAssigneeLocked(status as TaskStatus)
+    ? REASSIGN_LOCKED_PERMISSION
+    : PERMISSIONS.TASK_ASSIGN;
+}
+
 /**
  * The permission needed to put a task into `to` when it is in `from`, for a
  * change that does not come through the Kanban transition endpoint —

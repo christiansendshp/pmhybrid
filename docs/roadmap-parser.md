@@ -111,6 +111,13 @@ more than one agent concurrently; a plain name is also valid.
   regardless of whether name resolution succeeds — an unresolved owner name
   (e.g. an agent not yet registered as an `Actor`) must not be lost.
 
+In the per-entry format the owner is derived instead (Roadmap GAP-35a): `executor:
+AI` + `assigned_agent` names an agent (`ownerKind: AI_AGENT`) and wins over
+`owner`, which is the accountable person; without an agent, `owner.name` is the
+owner and `owner.type` gives the kind (`HUMAN`, or `AI`/`AI_AGENT`; absent means
+unknown). Resolution against `Actor` uses name **and** kind and is described in
+`docs/synchronization.md` "Owner and assignee".
+
 ## Blocked table field retention
 
 The Blocked table's column set (`ID | Blocker | Needed decision or event |

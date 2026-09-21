@@ -1,7 +1,9 @@
 import { RoadmapTable, TaskStatus } from '@pmhybrid/shared-types';
 import { findRoadmapTableLineRange, splitRow } from './markdown-table.util.js';
+import { ownerCell, type RoadmapOwner } from './roadmap-owner.util.js';
 import {
   appendRoadmapYamlEntry,
+  applyOwnerToEntry,
   extractRoadmapYamlEntriesForWrite,
   looksLikeNewFormatRoadmap,
   mapTaskStatusToNewStatus,
@@ -36,7 +38,8 @@ export function upsertLifecycleRoadmapRow(
     outcome: string;
     acceptanceCheck: string;
     status: string;
-    owner: string;
+    /** The task's assignee, or null when it has none (an existing owner is then left as it is). */
+    owner: RoadmapOwner | null;
     dependsOn: string;
   },
 ): string {
@@ -50,7 +53,7 @@ export function upsertLifecycleRoadmapRow(
     Outcome: sanitizeField(fields.outcome),
     'Acceptance check': sanitizeField(fields.acceptanceCheck),
     Status: sanitizeField(fields.status),
-    Owner: sanitizeField(fields.owner),
+    Owner: sanitizeField(ownerCell(fields.owner, new Date().toISOString())),
     'Depends on': sanitizeField(fields.dependsOn),
   };
 
@@ -135,6 +138,37 @@ export function replaceRoadmapRowCells(
 }
 
 /**
+ * Assignment write-back (Roadmap GAP-35a): rewrites only who the row or entry
+ * names as its assignee — the Owner cell of the old tables, or exactly one
+ * owner form of an entry (`applyOwnerToEntry`) — leaving everything else
+ * byte-for-byte. Returns null when there is nothing to write into: no such
+ * row, or a table with no Owner column (Near term).
+ */
+export function replaceRoadmapOwner(
+  markdown: string,
+  externalId: string,
+  owner: RoadmapOwner,
+  claimedAtIso: string,
+): string | null {
+  if (looksLikeNewFormatRoadmap(markdown)) {
+    const entry = extractRoadmapYamlEntriesForWrite(markdown, externalId).find(
+      (candidate) => candidate.id === externalId,
+    );
+    if (!entry) {
+      return null;
+    }
+    return replaceEntryYamlBlock(markdown, entry, (doc) => {
+      applyOwnerToEntry(doc, owner);
+      doc.set('updated_at', claimedAtIso);
+    });
+  }
+  const written = replaceRoadmapRowCells(markdown, externalId, {
+    Owner: ownerCell(owner, claimedAtIso),
+  });
+  return written && written.replaced.length > 0 ? written.markdown : null;
+}
+
+/**
  * Removal write-back (docs/synchronization.md "Removal"): takes the row
  * matching `externalId` out of whichever table holds it. A table left with no
  * rows gets the `—` placeholder row back, so its shape stays what the
@@ -190,22 +224,21 @@ function parseDependsOnList(dependsOn: string): string[] | undefined {
     .filter(Boolean);
 }
 
-/** Owner-cell convention (docs/roadmap-parser.md): "Name@timestamp" is an AI agent, a bare name is a human. */
-function applyOwnerCellToPlainData(
+/** A brand-new entry's assignee, in the same one-form-only shape `applyOwnerToEntry` writes. */
+function ownerToPlainData(
   data: Record<string, unknown>,
-  ownerCell: string,
+  owner: RoadmapOwner | null,
 ): void {
-  const trimmed = ownerCell.trim();
-  if (!trimmed || trimmed === '—') {
+  if (!owner) {
     return;
   }
-  const at = trimmed.lastIndexOf('@');
-  if (at !== -1) {
-    data.assigned_agent = trimmed.slice(0, at).trim();
+  if (owner.kind === 'AI_AGENT') {
     data.executor = 'AI';
-  } else {
-    data.owner = { type: 'HUMAN', name: trimmed };
+    data.assigned_agent = owner.name;
+    return;
   }
+  data.executor = 'HUMAN';
+  data.owner = { type: 'HUMAN', name: owner.name };
 }
 
 /** New-format sibling of `upsertLifecycleRoadmapRow` — same "whichever entry already holds this id, else append" contract. */
@@ -216,7 +249,8 @@ function upsertLifecycleRoadmapEntry(
     outcome: string;
     acceptanceCheck: string;
     status: string;
-    owner: string;
+    /** The task's assignee, or null when it has none (an existing owner is then left as it is). */
+    owner: RoadmapOwner | null;
     dependsOn: string;
   },
 ): string {
@@ -224,8 +258,6 @@ function upsertLifecycleRoadmapEntry(
   const entry = entries.find((candidate) => candidate.id === externalId);
   const nowIso = new Date().toISOString();
   const newStatus = mapTaskStatusToNewStatus(fields.status as TaskStatus);
-  const ownerCell = sanitizeField(fields.owner);
-
   if (entry) {
     const currentStatus =
       typeof entry.data.status === 'string'
@@ -243,15 +275,8 @@ function upsertLifecycleRoadmapEntry(
         doc.set('status', newStatus);
       }
       doc.set('updated_at', nowIso);
-      const trimmedOwner = ownerCell.trim();
-      if (trimmedOwner && trimmedOwner !== '—') {
-        const at = trimmedOwner.lastIndexOf('@');
-        if (at !== -1) {
-          doc.set('assigned_agent', trimmedOwner.slice(0, at).trim());
-          doc.set('executor', 'AI');
-        } else {
-          doc.set('owner', { type: 'HUMAN', name: trimmedOwner });
-        }
+      if (fields.owner) {
+        applyOwnerToEntry(doc, fields.owner);
       }
     });
   }
@@ -275,7 +300,7 @@ function upsertLifecycleRoadmapEntry(
     created_at: nowIso,
     updated_at: nowIso,
   };
-  applyOwnerCellToPlainData(data, ownerCell);
+  ownerToPlainData(data, fields.owner);
   return appendRoadmapYamlEntry(markdown, data);
 }
 

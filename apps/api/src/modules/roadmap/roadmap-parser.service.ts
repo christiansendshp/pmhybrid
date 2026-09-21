@@ -4,6 +4,7 @@ import {
   discriminateRoadmapTable,
   extractMarkdownTables,
 } from './markdown-table.util.js';
+import type { RoadmapOwnerKind } from './roadmap-owner.util.js';
 import {
   extractRoadmapYamlEntriesTolerant,
   looksLikeNewFormatRoadmap,
@@ -22,6 +23,8 @@ export interface ParsedRoadmapRow {
   statusMapped?: TaskStatus | null;
   rawOwner?: string;
   ownerName?: string;
+  /** Person or agent, when the document says (`executor: AI`, `owner.type`); absent in the old tables. */
+  ownerKind?: RoadmapOwnerKind;
   ownerClaimedAt?: string;
   dependsOnRaw?: string;
   blocker?: string;

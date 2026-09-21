@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   removeRoadmapRow,
+  replaceRoadmapOwner,
   replaceRoadmapRowCells,
   upsertLifecycleRoadmapRow,
 } from './roadmap-row-writer.util.js';
-import { extractRoadmapYamlEntries } from './roadmap-yaml-entry.util.js';
+import {
+  extractRoadmapYamlEntries,
+  roadmapYamlEntryToRow,
+} from './roadmap-yaml-entry.util.js';
 
 const ROADMAP = `# Roadmap
 
@@ -27,7 +31,7 @@ describe('upsertLifecycleRoadmapRow', () => {
       outcome: 'First task',
       acceptanceCheck: 'check it',
       status: 'EN DESARROLLO',
-      owner: 'claude-code',
+      owner: { name: 'claude-code', kind: 'HUMAN' },
       dependsOn: '—',
     });
 
@@ -44,7 +48,7 @@ describe('upsertLifecycleRoadmapRow', () => {
       outcome: 'Brand new',
       acceptanceCheck: 'n/a',
       status: 'PENDIENTE',
-      owner: '—',
+      owner: null,
       dependsOn: '—',
     });
 
@@ -61,7 +65,7 @@ describe('upsertLifecycleRoadmapRow', () => {
       outcome: 'has a | pipe\nand a newline',
       acceptanceCheck: 'ok',
       status: 'PENDIENTE',
-      owner: '—',
+      owner: null,
       dependsOn: '—',
     });
 
@@ -73,7 +77,7 @@ describe('upsertLifecycleRoadmapRow', () => {
       outcome: 'Later',
       acceptanceCheck: 'later check',
       status: 'EN DESARROLLO',
-      owner: 'claude-code', // Near term has no Owner column — must be dropped, not error
+      owner: { name: 'claude-code', kind: 'HUMAN' }, // Near term has no Owner column — must be dropped, not error
       dependsOn: '—',
     });
 
@@ -99,7 +103,7 @@ describe('upsertLifecycleRoadmapRow', () => {
       outcome: 'Ignored — Blocked has no Outcome column',
       acceptanceCheck: 'Ignored too',
       status: 'EN DESARROLLO', // Blocked has no Status column — must be dropped
-      owner: 'claude-code',
+      owner: { name: 'claude-code', kind: 'HUMAN' },
       dependsOn: '—',
     });
 
@@ -224,7 +228,7 @@ describe('upsertLifecycleRoadmapRow (new format)', () => {
       outcome: 'Add sync-strategy selector',
       acceptanceCheck: 'Original criterion.',
       status: 'EN_DESARROLLO',
-      owner: 'claude@2026-09-17T12:00:00Z',
+      owner: { name: 'claude', kind: 'AI_AGENT' },
       dependsOn: 'TASK-31',
     });
 
@@ -244,7 +248,7 @@ describe('upsertLifecycleRoadmapRow (new format)', () => {
       outcome: 'Brand new task',
       acceptanceCheck: 'n/a',
       status: 'PENDIENTE',
-      owner: '—',
+      owner: null,
       dependsOn: '—',
     });
 
@@ -271,7 +275,7 @@ describe('upsertLifecycleRoadmapRow (new format)', () => {
       outcome: 'First task in an empty file',
       acceptanceCheck: 'n/a',
       status: 'PENDIENTE',
-      owner: '—',
+      owner: null,
       dependsOn: '—',
     });
 
@@ -304,7 +308,7 @@ owner:
       outcome: 'Needs a decision first',
       acceptanceCheck: 'n/a',
       status: 'EN_DESARROLLO',
-      owner: 'claude@2026-09-18T00:00:00Z',
+      owner: { name: 'claude', kind: 'AI_AGENT' },
       dependsOn: '—',
     });
 
@@ -356,5 +360,108 @@ describe('removeRoadmapRow (new format)', () => {
 
   it('returns null for an id no entry holds', () => {
     expect(removeRoadmapRow(NEW_FORMAT_ROADMAP, 'PMH-99')).toBeNull();
+  });
+});
+
+describe('replaceRoadmapOwner (Roadmap GAP-35a)', () => {
+  const entry = (id: string, lines: string[]) =>
+    [
+      `### ${id} — Entry`,
+      '',
+      '```yaml',
+      `id: ${id}`,
+      'type: TASK',
+      ...lines,
+      '```',
+      '',
+    ].join('\n');
+  const doc = (...entries: string[]) =>
+    ['# Roadmap', '', '## Plan', '', ...entries].join('\n');
+  const at = '2026-09-21T10:00:00.000Z';
+
+  it('writes an agent as executor + assigned_agent and leaves the accountable owner alone', () => {
+    const markdown = doc(
+      entry('T-1', [
+        'status: READY',
+        'owner:',
+        '  type: HUMAN',
+        '  name: Cristian',
+      ]),
+      entry('T-2', ['status: READY']),
+    );
+
+    const updated = replaceRoadmapOwner(
+      markdown,
+      'T-1',
+      { name: 'claude', kind: 'AI_AGENT' },
+      at,
+    )!;
+    const t1 = extractRoadmapYamlEntries(updated).find((e) => e.id === 'T-1')!;
+
+    expect(t1.data.executor).toBe('AI');
+    expect(t1.data.assigned_agent).toBe('claude');
+    expect(t1.data.owner).toEqual({ type: 'HUMAN', name: 'Cristian' });
+    expect(t1.data.updated_at).toBe(at);
+    expect(roadmapYamlEntryToRow(t1)).toMatchObject({
+      ownerName: 'claude',
+      ownerKind: 'AI_AGENT',
+    });
+    // The other entry is byte-for-byte what it was.
+    expect(updated).toContain(entry('T-2', ['status: READY']));
+  });
+
+  it('moving a task from an agent to a person removes the agent form, so the next read does not hand it back', () => {
+    const markdown = doc(
+      entry('T-1', [
+        'status: IN_PROGRESS',
+        'executor: AI',
+        'assigned_agent: claude',
+      ]),
+    );
+
+    const updated = replaceRoadmapOwner(
+      markdown,
+      'T-1',
+      { name: 'Ana García', kind: 'HUMAN' },
+      at,
+    )!;
+    const t1 = extractRoadmapYamlEntries(updated).find((e) => e.id === 'T-1')!;
+
+    expect(t1.data.assigned_agent).toBeUndefined();
+    expect(t1.data.executor).toBe('HUMAN');
+    expect(t1.data.owner).toEqual({ type: 'HUMAN', name: 'Ana García' });
+    expect(roadmapYamlEntryToRow(t1)).toMatchObject({
+      ownerName: 'Ana García',
+      ownerKind: 'HUMAN',
+    });
+  });
+
+  it('returns null when there is nothing to write into', () => {
+    const markdown = doc(entry('T-1', ['status: READY']));
+    expect(
+      replaceRoadmapOwner(markdown, 'NOPE', { name: 'x', kind: 'HUMAN' }, at),
+    ).toBeNull();
+  });
+
+  it('rewrites the Owner cell of an old-format Active row, and does nothing for a table with no Owner column', () => {
+    const active = replaceRoadmapOwner(
+      ROADMAP,
+      'PMH-1',
+      { name: 'claude', kind: 'AI_AGENT' },
+      at,
+    );
+    expect(active).toContain(
+      `| PMH-1 | First task | check it | PENDIENTE | claude@${at} | — |`,
+    );
+
+    // PMH-2 sits in Near term, which has no Owner column.
+    expect(
+      replaceRoadmapOwner(
+        ROADMAP,
+        'PMH-2',
+        { name: 'claude', kind: 'AI_AGENT' },
+        at,
+      ),
+    ).toBeNull();
   });
 });

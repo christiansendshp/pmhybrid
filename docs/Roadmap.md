@@ -199,12 +199,106 @@ expected_behavior: >
   statuses raise a conflict; write-back preserves line endings.
 technical_context:
   backend: apps/api/src/modules/roadmap, synchronization, tasks/tasks.service.ts (assign), write-back.service.ts
+depends_on:
+  - GAP-35a
+  - GAP-35b
+  - GAP-35c
+  - GAP-35d
 next_action: >
-  Split into slices (import fields, owner resolution, write-back of
-  assignment, hierarchy write-back); start with owner -> actor because it
-  drives Workload and the agent experience.
+  Umbrella only. Refined on 2026-09-21 into four slices (GAP-35a owner
+  round trip, GAP-35b sync integrity, GAP-35c type/priority/progress,
+  GAP-35d hierarchy); close this entry when all four are done.
 created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T15:00:00Z
+```
+
+### GAP-35b — Sync integrity of statuses, duplicate ids, blocked titles, dependency removal and line endings
+
+```yaml
+id: GAP-35b
+type: GAP
+title: Sync integrity of statuses, duplicate ids, blocked titles, dependency removal and line endings
+status: BACKLOG
+priority: P1
+parent: GAP-35
+description: >
+  Second slice of GAP-35. In the new format an unrecognized status
+  (REVIEW, IDEA and similar) silently becomes PENDIENTE although
+  docs/synchronization.md promises a conflict; two entries with the same id
+  silently keep the last; a BLOCKED entry loses its title; removing a
+  `depends_on` in the document is ignored; and every write-back rewrites a
+  CRLF file as LF, touching every line.
+expected_behavior: >
+  An unknown status raises a conflict and leaves the task as it was; a
+  duplicate id is reported as an entry error naming both lines; a BLOCKED
+  entry keeps its title; a `depends_on` removed from the document is removed
+  in PM Hub when it was imported from the document; write-back preserves the
+  file's line endings.
+technical_context:
+  backend: apps/api/src/modules/roadmap, synchronization/synchronization.service.ts, write-back.service.ts
+next_action: >
+  Start with the unknown-status conflict and the duplicate-id report, which
+  reuse the entry-error path added by BUG-05.
+created_at: 2026-09-21T15:00:00Z
+updated_at: 2026-09-21T15:00:00Z
+```
+
+### GAP-35c — Import type, priority and progress, and write progress back
+
+```yaml
+id: GAP-35c
+type: GAP
+title: Import type, priority and progress, and write progress back
+status: BACKLOG
+priority: P2
+parent: GAP-35
+depends_on:
+  - GAP-35a
+description: >
+  Third slice of GAP-35. `type`, `priority` and `progress` in an entry are
+  not imported (Task has no type column), so the global progress is wrong
+  and a PATCH of a task's progress leaves the document at its old value.
+expected_behavior: >
+  Priority and progress round trip between the entry, the task and the UI;
+  the entry type is kept so PHASE, EPIC, DECISION and GAP entries can be
+  told apart from work items.
+technical_context:
+  backend: apps/api/prisma/schema.prisma (Task), roadmap-yaml-entry.util.ts, synchronization.service.ts, tasks/progress-rollup.service.ts
+next_action: >
+  Decide whether the entry type becomes a column or a derived value, then
+  import priority and progress.
+created_at: 2026-09-21T15:00:00Z
+updated_at: 2026-09-21T15:00:00Z
+```
+
+### GAP-35d — Import the document's hierarchy (parent, phases and epics)
+
+```yaml
+id: GAP-35d
+type: GAP
+title: Import the document's hierarchy (parent, phases and epics)
+status: BACKLOG
+priority: P2
+parent: GAP-35
+depends_on:
+  - GAP-35c
+description: >
+  Fourth slice of GAP-35. `parent` is not imported, so PHASE and EPIC
+  entries become flat tasks with no parent, phase or epic and `/progress`
+  returns `phases: []`. Phase and Epic have no `externalId`, so real
+  hierarchy needs either a migration adding one or a name-based identity
+  mapping; that is the largest and riskiest slice and is left for last.
+expected_behavior: >
+  `parent` links tasks to their parent task, PHASE and EPIC entries map to
+  Phase and Epic records with a stable identity, and `/progress` reports the
+  document's phases; hierarchy edits made in PM Hub are written back.
+technical_context:
+  backend: apps/api/prisma/schema.prisma (Phase, Epic), synchronization.service.ts, tasks/progress-rollup.service.ts, phases
+next_action: >
+  Decide the identity of Phase and Epic (externalId column versus name) and
+  record it as a DECISION before implementing.
+created_at: 2026-09-21T15:00:00Z
+updated_at: 2026-09-21T15:00:00Z
 ```
 
 ### BUG-06 — Conflicts pile up, resolving does not update the document, and an empty file floods them

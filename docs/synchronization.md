@@ -143,6 +143,68 @@ segment` section with an archive path + SHA-256), ingest the referenced
   wait before the next scheduled attempt, up to 16 × the project's
   `syncIntervalMinutes`; a success or a manual run resets it.
 
+### Owner and assignee (Roadmap GAP-35a)
+
+The document's owner is resolved to a project member and becomes the task's
+`assigneeActorId`; PM Hub's assignments are written back. Both directions
+share one rule set, so they cannot disagree.
+
+**Which field names the assignee.** In the per-entry format (schema §11) an
+agent is `executor: AI` + `assigned_agent`, and that wins over `owner`, which
+stays the _accountable_ person. Without an agent, `owner.name` is the
+assignee. `owner.type` (`HUMAN`, `AI`/`AI_AGENT`) narrows the match to a
+person or an agent; an `owner` with no type, and the old tables' Owner cell,
+search both.
+
+**Resolution.** By display name — case, surrounding and repeated whitespace
+and Unicode composition ignored; accents are _not_ folded — among the
+project's _active_ members with an active actor. Exactly one match resolves.
+None, or more than one, leaves the assignee alone and the raw owner intact:
+never an arbitrary pick, never an unassignment (a document that names nobody
+does not unassign either). Resolution runs on every sync for every row, not
+only when the row's content hash changed, because it also depends on who is a
+member _now_: an owner that named nobody at the last sync is picked up once
+that member is added.
+
+**Applying it.** A task with no assignee gets the document's owner. A task
+with a _different_ assignee keeps it if the document's owner is what it was at
+the last sync (`rawOwner`) — the difference is an assignment made in PM Hub.
+If the document's owner changed, it applies, unless the assignee was also
+changed in PM Hub and the document does not reflect that (its owner at the
+last sync is not the local assignee) and a person or API client changed it
+since — then it is a `CONCURRENT_FIELD_EDIT` on `assigneeActorId`. Resolving
+that conflict applies the chosen assignee like any reassignment: it needs
+`task.assign` (`task.reassign.locked` once EN_DESARROLLO), the assignee must
+be an active member, and it leaves a `TaskAssignment` row and an audit event.
+A document-side assignment leaves a `TaskAssignment` row too, with the
+assignee as `assignedBy` (the model requires one and the document has no
+actor; a claim is the closest fit) and the reason "Assigned by the Roadmap
+document".
+
+**The EN_DESARROLLO lock.** It restricts who may reassign _in PM Hub_. It does
+not stop the document: an agent claiming a task edits the document, usually
+together with the status. A document-side owner change therefore applies to a
+locked task; if the UI reassigned it too, that is the conflict above.
+
+**Status is untouched.** Assigning from the document does not move a
+`PENDIENTE` task to `ASIGNADA`; the document's own status wins.
+
+**Write-back.** Every `assign()` in PM Hub (not only a locked reassignment)
+rewrites who the entry names, as _one_ form: an agent sets `executor: AI` +
+`assigned_agent` and leaves `owner` alone; a person sets `executor: HUMAN`,
+`owner: {type: HUMAN, name}` and removes `assigned_agent` — a stale
+`assigned_agent` would win on the next read and hand the task back. (The
+schema has no field for a human performer other than `owner`, so assigning a
+person replaces the accountable owner; that is the mapping the reader already
+used.) The old tables get the Owner cell (`Name@timestamp` for an agent, the
+bare name for a person), and Near term rows, which have no Owner column, are
+left alone. No Agentslog entry is appended for an ordinary assignment. The
+usual drift rule applies: if the document changed since PM Hub last saw it and
+its owner is no longer the pre-edit assignee, the write is deferred
+(`WRITE_BACK_DEFERRED`) and sync contests it. The write does not advance the
+task's `lastSyncedAt`: assigning also moves `PENDIENTE` to `ASIGNADA`, which the
+document does not record, so that status edit must stay unsynced.
+
 ## Agentslog ingestion
 
 Entries matched on `## [ISO8601] | agent | TASK-ID | status-word` followed by
@@ -217,6 +279,8 @@ moved into Active work, and a Blocked row (which has neither column) is left
 alone. No Agentslog entry is appended: an in-place edit never makes a row
 vanish, so step 3's ordering has nothing to protect. Priority, dates,
 progress and hierarchy are not Roadmap columns and never touch the document.
+An ordinary assignment is a field edit of the same kind: it rewrites who the
+entry names (see "Owner and assignee").
 
 - Document unchanged since PM Hub last saw it: the cells are written.
 - Document drifted: a cell that no longer holds the pre-edit value was edited

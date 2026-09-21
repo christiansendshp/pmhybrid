@@ -9,6 +9,7 @@ import { PERMISSIONS } from '@pmhybrid/shared-types';
 import {
   AuditOrigin,
   ConflictResolutionKind,
+  Prisma,
   TaskStatus,
 } from '@prisma/client';
 import { PermissionsResolverService } from '../../common/permissions-resolver.service.js';
@@ -16,6 +17,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { NOT_BLANK } from '../tasks/dto/create-task.dto.js';
 import {
+  permissionForAssigneeChange,
   permissionForStatusChange,
   STALE_TASK_MESSAGE,
 } from '../tasks/task-status-policy.js';
@@ -46,6 +48,10 @@ const EDITABLE_FIELD_VALIDATORS: Record<
     typeof value === 'string' && TASK_STATUSES.has(value)
       ? null
       : `status must be one of: ${[...TASK_STATUSES].join(', ')}`,
+  assigneeActorId: (value) =>
+    typeof value === 'string' && value.length > 0
+      ? null
+      : 'assigneeActorId must be an actor id',
   rawOwner: (value) =>
     value === null || typeof value === 'string'
       ? null
@@ -123,8 +129,12 @@ export class ConflictsService {
       if (fieldsToApply && conflict.entityType === 'Task') {
         const task = await tx.task.findUniqueOrThrow({
           where: { id: conflict.entityId },
-          select: { status: true },
+          select: { status: true, assigneeActorId: true },
         });
+        const nextAssignee = fieldsToApply.assigneeActorId;
+        if (typeof nextAssignee === 'string') {
+          await this.assertAssignable(tx, projectId, nextAssignee);
+        }
         await this.assertCanApply(
           projectId,
           requesterActorId,
@@ -139,11 +149,47 @@ export class ConflictsService {
             id: conflict.entityId,
             deletedAt: null,
             status: task.status,
+            // An assignment applies only over the assignee it was decided against.
+            ...(typeof nextAssignee === 'string'
+              ? { assigneeActorId: task.assigneeActorId }
+              : {}),
           },
           data: fieldsToApply,
         });
         if (count !== 1) {
           throw new ConflictException(STALE_TASK_MESSAGE);
+        }
+        // Likewise an assignment: history and audit like any reassignment,
+        // so the reconciler sees this side just touched `assigneeActorId`.
+        if (
+          typeof nextAssignee === 'string' &&
+          nextAssignee !== task.assigneeActorId
+        ) {
+          await tx.taskAssignment.updateMany({
+            where: { taskId: conflict.entityId, unassignedAt: null },
+            data: { unassignedAt: new Date() },
+          });
+          await tx.taskAssignment.create({
+            data: {
+              taskId: conflict.entityId,
+              actorId: nextAssignee,
+              assignedByActorId: requesterActorId,
+              reason: 'Conflict resolution',
+            },
+          });
+          await this.audit.record(
+            {
+              projectId,
+              actorId: requesterActorId,
+              entityType: 'Task',
+              entityId: conflict.entityId,
+              operation: task.assigneeActorId ? 'REASSIGN' : 'ASSIGN',
+              previousValue: { assigneeActorId: task.assigneeActorId },
+              newValue: { assigneeActorId: nextAssignee },
+              origin,
+            },
+            tx,
+          );
         }
         // A resolution that moves the task is a status change like any
         // other: recorded as one, so the reconciler's per-field check sees
@@ -216,6 +262,8 @@ export class ConflictsService {
             permissionForStatusChange(currentStatus as never, value as never),
           );
         }
+      } else if (key === 'assigneeActorId') {
+        needed.add(permissionForAssigneeChange(currentStatus));
       } else {
         needed.add(PERMISSIONS.TASK_WRITE);
       }
@@ -229,6 +277,23 @@ export class ConflictsService {
       if (!allowed) {
         throw new ForbiddenException(`Missing permission: ${permission}`);
       }
+    }
+  }
+
+  /** Only an active member of the project, and an active actor, can be put on a task. */
+  private async assertAssignable(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    actorId: string,
+  ) {
+    const member = await tx.projectMember.findUnique({
+      where: { projectId_actorId: { projectId, actorId } },
+      include: { actor: { select: { isActive: true } } },
+    });
+    if (!member || !member.isActive || !member.actor.isActive) {
+      throw new BadRequestException(
+        'Assignee must be an active member of the project',
+      );
     }
   }
 

@@ -5,6 +5,7 @@ import {
 } from 'yaml';
 import { RoadmapTable, TaskStatus } from '@pmhybrid/shared-types';
 import type { ParsedRoadmapRow } from './roadmap-parser.service.js';
+import type { RoadmapOwner, RoadmapOwnerKind } from './roadmap-owner.util.js';
 
 /**
  * `references/roadmap-schema.md` §1: a `###` heading immediately followed by
@@ -353,6 +354,40 @@ function flattenAcceptanceCriteria(
   return parts.join('; ');
 }
 
+/** `owner.type` says whether the named owner is a person or an agent; anything else leaves it open. */
+function ownerKindOf(owner: unknown): RoadmapOwnerKind | undefined {
+  const type = (owner as { type?: unknown }).type;
+  const normalized = typeof type === 'string' ? type.trim().toUpperCase() : '';
+  if (normalized === 'HUMAN') {
+    return 'HUMAN';
+  }
+  return normalized === 'AI' || normalized === 'AI_AGENT'
+    ? 'AI_AGENT'
+    : undefined;
+}
+
+/**
+ * Writes an assignee into an entry, as exactly one form (Roadmap GAP-35a),
+ * following the schema's split (references/roadmap-schema.md): an agent is
+ * `executor: AI` + `assigned_agent` and never touches `owner` (who is
+ * accountable); a person becomes `owner` — the only field that can name one
+ * — and the agent form is removed, since a stale `assigned_agent` would win
+ * on the next read and hand the task back to the agent.
+ */
+export function applyOwnerToEntry(
+  doc: YamlDocument,
+  owner: RoadmapOwner,
+): void {
+  if (owner.kind === 'AI_AGENT') {
+    doc.set('executor', 'AI');
+    doc.set('assigned_agent', owner.name);
+    return;
+  }
+  doc.set('executor', 'HUMAN');
+  doc.delete('assigned_agent');
+  doc.set('owner', { type: 'HUMAN', name: owner.name });
+}
+
 /**
  * `owner`/`executor`/`assigned_agent` (schema §11) collapse into the same
  * single owner cell the old format used (`Name@timestamp` for an AI agent,
@@ -363,6 +398,7 @@ function flattenAcceptanceCriteria(
 function deriveOwnerFields(data: Record<string, unknown>): {
   rawOwner?: string;
   ownerName?: string;
+  ownerKind?: RoadmapOwnerKind;
   ownerClaimedAt?: string;
 } {
   const executor =
@@ -383,6 +419,7 @@ function deriveOwnerFields(data: Record<string, unknown>): {
         ? `${assignedAgent}@${validTimestamp}`
         : assignedAgent,
       ownerName: assignedAgent,
+      ownerKind: 'AI_AGENT',
       ownerClaimedAt: validTimestamp,
     };
   }
@@ -395,7 +432,7 @@ function deriveOwnerFields(data: Record<string, unknown>): {
       ? (owner as { name: string }).name
       : undefined;
   if (ownerName) {
-    return { rawOwner: ownerName, ownerName };
+    return { rawOwner: ownerName, ownerName, ownerKind: ownerKindOf(owner) };
   }
   return {};
 }
