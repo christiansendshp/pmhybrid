@@ -209,4 +209,42 @@ describe('Dashboard (cross-project summary + activity, e2e — brief §14)', () 
       globalProgress: null,
     });
   });
+
+  it('lists the recent document changes without their content (Roadmap IMPROVEMENT-01d1)', async () => {
+    const project = await request(server())
+      .post('/projects')
+      .set('Authorization', auth())
+      .send({
+        name: `Dashboard payload ${Date.now()}`,
+        docsPath: createScratchDocsPath(),
+      })
+      .expect(201);
+    // Writing the task into the Roadmap records a revision of it.
+    await request(server())
+      .post(`/projects/${project.body.id}/tasks`)
+      .set('Authorization', auth())
+      .send({ title: 'A task', acceptanceCriteria: 'Verified by e2e' })
+      .expect(201);
+
+    const activity = await request(server())
+      .get('/dashboard/activity')
+      .set('Authorization', auth())
+      .expect(200);
+
+    const changes = activity.body.recentDocumentChanges as object[];
+    expect(changes.length).toBeGreaterThan(0);
+    for (const revision of changes) {
+      // A revision holds the whole document; the feed shows when, what and where.
+      expect(revision).not.toHaveProperty('rawContent');
+      expect(revision).toMatchObject({
+        id: expect.any(String),
+        capturedAt: expect.any(String),
+        source: expect.any(String),
+        document: {
+          kind: expect.any(String),
+          projectId: expect.any(String),
+        },
+      });
+    }
+  });
 });

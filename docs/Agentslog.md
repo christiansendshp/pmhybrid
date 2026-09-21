@@ -107,3 +107,14 @@ segments live in `docs/history/`.
 - Summary: Mobile layout, Kanban size and Settings overlaps: at 390 px the header is two rows and 85 px, no route scrolls the page sideways (checked at 360 and 390), navigations and tables fade where they go on, the Kanban stacks bounded columns with its filters in the address, the Settings hints no longer overlap and the read-only form is legible, every target is at least 24 px and the selects are named.
 - Files: docs/Roadmap.md,apps/web/DESIGN.md
 - Verify: All three slices done and verified: web unit 275 and eslint clean; Playwright a11y 60 pass (axe on every route, layout at 360 and 390 px, board navigation, no target under 24 px); web build ok
+
+## [2026-09-21T21:40:39Z] | claude | IMPROVEMENT-01d1 | IN_PROGRESS
+
+- Summary: The dashboard activity feed's document revisions carry no content
+- Verify: pending
+
+## [2026-09-21T21:44:27Z] | claude | IMPROVEMENT-01d1 | DONE
+
+- Summary: The dashboard activity feed carries summaries, not documents: the recent document revisions are selected as id, capturedAt, source, contentHash and the document's kind and project, with no rawContent (ten whole documents used to go out on every load); the viewer is what reads a revision's content. An e2e test asserts no revision of the feed has rawContent.
+- Files: apps/api/src/modules/dashboard/dashboard.service.ts,apps/api/test/dashboard.e2e-spec.ts
+- Verify: api unit 455 and e2e 301 pass (coverage 88.0); api lint and tsc clean

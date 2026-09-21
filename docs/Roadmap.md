@@ -219,6 +219,10 @@ title: Pagination, the activity payload and dependency removal
 status: BACKLOG
 priority: P3
 parent: IMPROVEMENT-01
+depends_on:
+  - IMPROVEMENT-01d1
+  - IMPROVEMENT-01d2
+  - IMPROVEMENT-01d3
 description: >
   Fourth slice of IMPROVEMENT-01. List endpoints return everything (95
   tasks are 89 KB), /dashboard/activity returns the full rawContent of each
@@ -231,9 +235,62 @@ expected_behavior: >
 technical_context:
   backend: apps/api/src/modules/tasks, dashboard, synchronization write-back
 next_action: >
-  Decide the pagination contract before touching any list.
+  Umbrella only. Refined on 2026-09-21 into three slices (01d1 the activity
+  payload, 01d2 dependency removal and duplicates, 01d3 pagination); close
+  this entry when all three are done.
 created_at: 2026-09-21T18:30:00Z
-updated_at: 2026-09-21T18:30:00Z
+updated_at: 2026-09-21T21:50:00Z
+```
+
+### IMPROVEMENT-01d2 — Removing a dependency, and no duplicates
+
+```yaml
+id: IMPROVEMENT-01d2
+type: IMPROVEMENT
+title: Removing a dependency, and no duplicates
+status: READY
+priority: P3
+parent: IMPROVEMENT-01d
+description: >
+  Second slice of IMPROVEMENT-01d. Duplicate dependencies are stored
+  (nothing prevents the same pair twice) and PM Hub has no endpoint to remove
+  one, so a dependency added by mistake stays in the app and in the document.
+expected_behavior: >
+  A task cannot depend twice on the same task or the same raw reference; a
+  dependency can be removed from the task detail, which removes it from the
+  document's Depends on too, under the same drift rule as any field edit.
+technical_context:
+  backend: apps/api/src/modules/tasks, synchronization write-back, apps/web task-detail
+next_action: >
+  Add the endpoint and its write-back next to the add-dependency ones, then
+  the remove button.
+created_at: 2026-09-21T21:50:00Z
+updated_at: 2026-09-21T21:50:00Z
+```
+
+### IMPROVEMENT-01d3 — Task and notification lists take a limit and a cursor
+
+```yaml
+id: IMPROVEMENT-01d3
+type: IMPROVEMENT
+title: Task and notification lists take a limit and a cursor
+status: READY
+priority: P3
+parent: IMPROVEMENT-01d
+description: >
+  Third slice of IMPROVEMENT-01d. List endpoints return everything (95 tasks
+  are 89 KB and 143-174 ms against 48 ms for 14).
+expected_behavior: >
+  A list accepts limit and cursor, has a sensible default cap, and says
+  where the next page starts, without changing the shape of the array a
+  client reads today.
+technical_context:
+  backend: apps/api/src/modules/tasks, notifications, apps/web core services
+next_action: >
+  Decide the contract (the cursor in a response header, the body still an
+  array) before touching a list.
+created_at: 2026-09-21T21:50:00Z
+updated_at: 2026-09-21T21:50:00Z
 ```
 
 ### IMPROVEMENT-02 — Deployment, containerization and documentation gaps

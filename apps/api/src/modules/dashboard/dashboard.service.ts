@@ -156,7 +156,15 @@ export class DashboardService {
         where: { document: { projectId: { in: projectIds } } },
         orderBy: { capturedAt: 'desc' },
         take: 10,
-        include: { document: { select: { kind: true, projectId: true } } },
+        // What the feed shows, and no more: a revision holds the whole document,
+        // ten of them a page (Roadmap IMPROVEMENT-01d1). The viewer reads one.
+        select: {
+          id: true,
+          capturedAt: true,
+          source: true,
+          contentHash: true,
+          document: { select: { kind: true, projectId: true } },
+        },
       }),
     ]);
 
