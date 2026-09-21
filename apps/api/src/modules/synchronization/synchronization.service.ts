@@ -101,6 +101,10 @@ const RECONCILABLE_FIELDS = [
   'title',
   'acceptanceCriteria',
   'rawOwner',
+  // What a YAML entry adds (Roadmap GAP-35c).
+  'priority',
+  'progressPercent',
+  'entryType',
 ] as const;
 type ReconcilableField = (typeof RECONCILABLE_FIELDS)[number];
 
@@ -740,6 +744,9 @@ export class SynchronizationService {
           row.statusMapped ?? TaskStatus.PENDIENTE,
         ),
         acceptanceCriteria: row.acceptanceCheck,
+        entryType: row.entryType,
+        priority: row.priority,
+        progressPercent: row.progress,
         rawOwner: row.rawOwner,
         assigneeActorId,
         ownerClaimedAt: row.ownerClaimedAt
@@ -1124,6 +1131,12 @@ export class SynchronizationService {
           : undefined,
       rawOwner:
         row.rawOwner !== undefined ? row.rawOwner === task.rawOwner : undefined,
+      priority:
+        row.priority !== undefined ? row.priority === task.priority : undefined,
+      progressPercent:
+        row.progress !== undefined
+          ? row.progress === task.progressPercent
+          : undefined,
     };
     // Filtered, so it is a copy: closing a conflict removes it from `open`.
     const fieldConflicts = open.filter(
@@ -1221,6 +1234,27 @@ export class SynchronizationService {
     }
     if (row.rawOwner !== undefined && row.rawOwner !== task.rawOwner) {
       candidates.rawOwner = row.rawOwner;
+    }
+    // What a YAML entry states of itself (Roadmap GAP-35c). An entry that says
+    // nothing of a field leaves it as it is, and a value the app has no level
+    // for was never read into the row.
+    if (row.entryType !== undefined && row.entryType !== task.entryType) {
+      candidates.entryType = row.entryType;
+    }
+    if (row.priority !== undefined && row.priority !== task.priority) {
+      candidates.priority = row.priority;
+    }
+    // A task with subtasks takes its progress from them (docs/domain-model.md
+    // rollup rule 2), which the API also enforces on an explicit value: the
+    // document's figure for it is not stored.
+    if (
+      row.progress !== undefined &&
+      row.progress !== task.progressPercent &&
+      (await tx.task.count({
+        where: { parentTaskId: task.id, deletedAt: null },
+      })) === 0
+    ) {
+      candidates.progressPercent = row.progress;
     }
 
     const incomingFields = Object.keys(candidates) as ReconcilableField[];

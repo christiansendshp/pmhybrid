@@ -15,6 +15,7 @@ export type LabelKind =
   | 'roadmapTable'
   | 'apiKeyScope'
   | 'priority'
+  | 'entryType'
   | 'ledgerState'
   | 'taskField';
 
@@ -108,6 +109,30 @@ const DICTIONARIES: Record<LabelKind, Record<string, string>> = {
     MEDIUM: 'Media',
     HIGH: 'Alta',
     CRITICAL: 'Crítica',
+  },
+  // The type a Roadmap entry gives itself (Roadmap GAP-35c); a project may add
+  // its own, which the fallback shows as it is written.
+  entryType: {
+    VISION: 'Visión',
+    PHASE: 'Fase',
+    THEME: 'Tema',
+    EPIC: 'Épica',
+    FEATURE: 'Funcionalidad',
+    TASK: 'Tarea',
+    SUBTASK: 'Subtarea',
+    GAP: 'Carencia',
+    BUG: 'Error',
+    IMPROVEMENT: 'Mejora',
+    REFACTOR: 'Refactorización',
+    SPIKE: 'Investigación',
+    DECISION: 'Decisión',
+    BLOCKER: 'Bloqueo',
+    DEPENDENCY: 'Dependencia',
+    TECH_DEBT: 'Deuda técnica',
+    DOC: 'Documentación',
+    TEST: 'Pruebas',
+    SECURITY: 'Seguridad',
+    UX: 'Experiencia de uso',
   },
   taskField: {
     title: 'Título',

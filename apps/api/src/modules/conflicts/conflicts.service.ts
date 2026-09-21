@@ -6,7 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { PERMISSIONS } from '@pmhybrid/shared-types';
+import { PERMISSIONS, TaskPriority } from '@pmhybrid/shared-types';
 import {
   AuditOrigin,
   ConflictResolutionKind,
@@ -30,6 +30,7 @@ import {
 import { ResolveConflictDto } from './dto/resolve-conflict.dto.js';
 
 const TASK_STATUSES = new Set<string>(Object.values(TaskStatus));
+const PRIORITIES = new Set<string>(Object.values(TaskPriority));
 
 /**
  * Fields a MANUAL_EDIT may set on the Task, and how to validate each one —
@@ -58,6 +59,18 @@ const EDITABLE_FIELD_VALIDATORS: Record<
     typeof value === 'string' && value.length > 0
       ? null
       : 'assigneeActorId must be an actor id',
+  priority: (value) =>
+    value === null || PRIORITIES.has(String(value))
+      ? null
+      : `priority must be one of: ${[...PRIORITIES].join(', ')}, or null`,
+  progressPercent: (value) =>
+    value === null ||
+    (typeof value === 'number' &&
+      Number.isInteger(value) &&
+      value >= 0 &&
+      value <= 100)
+      ? null
+      : 'progressPercent must be a whole number from 0 to 100, or null',
   rawOwner: (value) =>
     value === null || typeof value === 'string'
       ? null
@@ -77,6 +90,8 @@ const WRITABLE_FIELDS = [
   'acceptanceCriteria',
   'status',
   'assigneeActorId',
+  'priority',
+  'progressPercent',
 ] as const;
 
 /**

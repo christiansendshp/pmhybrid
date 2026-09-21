@@ -15,6 +15,9 @@ describe('label (Roadmap UX-03a)', () => {
     expect(label('documentKind', 'AGENTS_RULES')).toBe('Reglas para agentes');
     expect(label('roadmapTable', 'NEAR_TERM')).toBe('Próximamente');
     expect(label('priority', 'HIGH')).toBe('Alta');
+    expect(label('entryType', 'GAP')).toBe('Carencia');
+    // A type a project made up is still readable.
+    expect(label('entryType', 'RESEARCH')).toBe('Research');
     expect(label('taskField', 'externalId')).toBe('ID del Roadmap');
     expect(label('taskField', 'acceptanceCriteria')).toBe('Criterio de aceptación');
     expect(label('ledgerState', 'IN_PROGRESS')).toBe('En curso');

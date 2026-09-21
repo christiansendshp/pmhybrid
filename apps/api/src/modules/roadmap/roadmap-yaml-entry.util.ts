@@ -7,6 +7,11 @@ import { RoadmapTable, TaskStatus } from '@pmhybrid/shared-types';
 import { detectLineEnding } from './line-ending.util.js';
 import type { ParsedRoadmapRow } from './roadmap-parser.service.js';
 import type { RoadmapOwner, RoadmapOwnerKind } from './roadmap-owner.util.js';
+import {
+  entryTypeFromDocument,
+  priorityFromDocument,
+  progressFromDocument,
+} from './roadmap-attributes.util.js';
 
 /**
  * `references/roadmap-schema.md` §1: a `###` heading immediately followed by
@@ -504,6 +509,13 @@ export function roadmapYamlEntryToRow(
   const statusRaw = typeof data.status === 'string' ? data.status : undefined;
   const isBlocked = statusRaw?.trim().toUpperCase() === 'BLOCKED';
   const owner = deriveOwnerFields(data);
+  // What the entry is and how far along it says it is; each only when the
+  // entry states a value the app understands (Roadmap GAP-35c).
+  const attributes = stripUndefined({
+    entryType: entryTypeFromDocument(data.type),
+    priority: priorityFromDocument(data.priority),
+    progress: progressFromDocument(data.progress),
+  });
 
   if (isBlocked) {
     return {
@@ -514,6 +526,7 @@ export function roadmapYamlEntryToRow(
       outcome: typeof data.title === 'string' ? data.title : undefined,
       blocker: flattenIdList(data.blocked_by),
       ...owner,
+      ...attributes,
     };
   }
 
@@ -531,6 +544,7 @@ export function roadmapYamlEntryToRow(
     acceptanceCheck: flattenAcceptanceCriteria(data),
     dependsOnRaw: flattenIdList(data.depends_on),
     ...owner,
+    ...attributes,
   };
   if (statusRaw) {
     row.statusRaw = statusRaw;

@@ -1139,3 +1139,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: Agent experience and onboarding: a new project scaffolds its docs folder (36a), MCP covers an agent's whole workflow (36b), assignments and comments notify the assignee (36c), a task has a completion date and LEAF_EQUAL_WEIGHT works (36d). The brief's remaining notification events are descoped in docs/domain-model.md.
 - Files: docs/Roadmap.md,docs/Features.md
 - Verify: All four slices done and verified: api unit 401 and e2e 276 pass (coverage 86.1); web unit 239 and eslint clean
+
+## [2026-09-21T20:18:31Z] | claude | GAP-35c | IN_PROGRESS
+
+- Summary: Import type, priority and progress from a YAML entry, keep the entry type, write priority and progress edits back into the entry
+- Verify: pending
+
+## [2026-09-21T20:32:06Z] | claude | GAP-35c | DONE
+
+- Summary: A YAML entry's type, priority and progress are imported and written back. Type is kept as a nullable Task.entryType column (ids are opaque, so it is not derived); P0-P3 map one to one to CRITICAL/HIGH/MEDIUM/LOW and a document's own words are kept; progress of a task with subtasks is not stored (rollup rule 2); VISION/PHASE/THEME/EPIC/DECISION/BLOCKER/DEPENDENCY entries stay out of the rollup; the row hash grows only for entries so table hashes stay valid; write-back is YAML only because the tables have no such column. Autonomous decisions, reversible.
+- Files: apps/api/prisma/schema.prisma,apps/api/prisma/migrations/20260921240000_add_task_entry_type/migration.sql,apps/api/src/modules/roadmap/roadmap-attributes.util.ts,apps/api/src/modules/roadmap/roadmap-yaml-entry.util.ts,apps/api/src/modules/roadmap/roadmap-row-writer.util.ts,apps/api/src/modules/synchronization/synchronization.service.ts,apps/api/src/modules/synchronization/write-back.service.ts,apps/api/src/modules/synchronization/row-content-hash.util.ts,apps/api/src/modules/tasks/progress-rollup.service.ts,apps/api/src/modules/conflicts/conflicts.service.ts,apps/api/test/roadmap-yaml-attributes.e2e-spec.ts,docs/synchronization.md
+- Verify: api unit 420 and e2e 285 pass (coverage 87.0); web unit 241 and eslint clean; api lint, nest build and web build ok

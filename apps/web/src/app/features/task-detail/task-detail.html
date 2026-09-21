@@ -99,6 +99,10 @@
       <dl class="details">
         <dt>Criterio de aceptación</dt>
         <dd>{{ t.acceptanceCriteria ?? '—' }}</dd>
+        @if (t.entryType) {
+          <dt>Tipo</dt>
+          <dd>{{ t.entryType | label: 'entryType' }}</dd>
+        }
         <dt>Prioridad</dt>
         <dd>{{ t.priority | label: 'priority' }}</dd>
         <dt>Progreso</dt>

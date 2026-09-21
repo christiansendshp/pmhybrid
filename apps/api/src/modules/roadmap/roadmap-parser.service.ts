@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { RoadmapTable, TaskStatus } from '@pmhybrid/shared-types';
+import { RoadmapTable, TaskPriority, TaskStatus } from '@pmhybrid/shared-types';
 import {
   discriminateRoadmapTable,
   extractMarkdownTables,
@@ -35,6 +35,12 @@ export interface ParsedRoadmapRow {
   pauseReason?: string;
   blocker?: string;
   neededDecision?: string;
+  /** The entry's `type`, upper-cased (YAML entries only; a table row has none) — Roadmap GAP-35c. */
+  entryType?: string;
+  /** The entry's `priority` as the app's level, when it says one it knows (YAML entries only). */
+  priority?: TaskPriority;
+  /** The entry's `progress`, a whole percent (YAML entries only). */
+  progress?: number;
 }
 
 /** Whether an empty `dependsOnRaw` on this row says "no dependencies" (true) or says nothing (false). */

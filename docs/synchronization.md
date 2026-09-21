@@ -209,6 +209,47 @@ its owner is no longer the pre-edit assignee, the write is deferred
 task's `lastSyncedAt`: assigning also moves `PENDIENTE` to `ASIGNADA`, which the
 document does not record, so that status edit must stay unsynced.
 
+### Type, priority and progress (Roadmap GAP-35c)
+
+An entry of the YAML format says what it is (`type`), how urgent (`priority`) and
+how far along (`progress`). The table formats have no such columns, so all of
+this applies to entries only, and a row of a table leaves the three as they are.
+
+- **Type** is stored as `Task.entryType`, upper-cased, and never derived from the
+  id, which is opaque (ADR-001). It is a string rather than an enum because the
+  taxonomy is extensible per project. It tells a decision, an epic or a bug apart
+  from a task, and the task detail shows it.
+- **Priority** maps one to one between the schema's `P0`-`P3` and the app's
+  `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`. A document that spells its priorities as
+  words (`priority: HIGH`) is read the same way and written back in its own
+  words. A value with no level in the app (`P9`, `urgent`) is ignored, not
+  guessed at.
+- **Progress** is a whole percent from 0 to 100; anything else is ignored. A task
+  that has subtasks takes its progress from them (`docs/domain-model.md` rule 2),
+  which the API already enforces on an edit, so the document's figure for such a
+  task is not stored.
+- **Reading is additive.** An entry that states a value sets it; an entry that
+  does not, or states one that is ignored, leaves it as it is. Taking a priority
+  out of the document therefore does not clear it in PM Hub.
+- **They are part of the row's fingerprint** (`rowContentHash`), so a document edit
+  that changes only one of them is seen. A table row has none, and is
+  fingerprinted exactly as before, so its stored hash stays valid.
+- **They are contested like any field.** A document change and a PM Hub edit of
+  the same priority or progress since the last sync raise one
+  `CONCURRENT_FIELD_EDIT`; resolving it in favour of PM Hub writes the value into
+  the entry, as for the other fields.
+- **Writing.** Editing either in PM Hub writes it into the entry (the resolved
+  notation, `priority: P1`, `progress: 40`; clearing removes the field), under the
+  same rule as the other field edits, and a task created in PM Hub gets an entry
+  that carries them. In a table document nothing is written and nothing is
+  recorded as deferred.
+- **Entries that are not work stay out of progress.** `VISION`, `PHASE`, `THEME`,
+  `EPIC` (levels above the tasks), `DECISION`, `BLOCKER` and `DEPENDENCY`
+  (coordination) are still cards on the board, but the project's progress is
+  the progress of the rest: an undecided decision is not a task that is 0% done.
+  Mapping a `PHASE` or an `EPIC` to the phases and epics of PM Hub is the next
+  slice (Roadmap GAP-35d).
+
 ### Unrecognized statuses, duplicate ids and blocked entries (Roadmap GAP-35b)
 
 - **A status in none of the document's vocabularies** (a typo such as
@@ -341,9 +382,10 @@ A UI edit that changes a Roadmap-backed field — `title` (Outcome) or
 task's existing row, in whichever table holds it: a Near term row is never
 moved into Active work, and a Blocked row (which has neither column) is left
 alone. No Agentslog entry is appended: an in-place edit never makes a row
-vanish, so step 3's ordering has nothing to protect. Priority, dates,
-progress and hierarchy are not Roadmap columns and never touch the document.
-An ordinary assignment is a field edit of the same kind: it rewrites who the
+vanish, so step 3's ordering has nothing to protect. In an entry of the YAML
+format the same holds for `priority` and `progress` (see "Type, priority and
+progress"); the tables have no such column, so for them dates, priority,
+progress and hierarchy never touch the document. An ordinary assignment is a field edit of the same kind: it rewrites who the
 entry names (see "Owner and assignee").
 
 - Document unchanged since PM Hub last saw it: the cells are written.

@@ -355,6 +355,14 @@ export class TasksService {
       previous.acceptanceCriteria = diff.previousValue.acceptanceCriteria as
         string | null;
     }
+    // Written into a YAML entry, which alone has such fields (Roadmap GAP-35c).
+    if ('priority' in diff.newValue) {
+      previous.priority = diff.previousValue.priority as string | null;
+    }
+    if ('progressPercent' in diff.newValue) {
+      previous.progressPercent = diff.previousValue.progressPercent as
+        number | null;
+    }
     return this.writeBack.inTransaction(projectId, async (tx) => {
       const result = await tx.task.update({
         where: { id: taskId },

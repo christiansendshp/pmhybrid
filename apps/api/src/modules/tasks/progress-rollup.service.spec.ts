@@ -83,3 +83,40 @@ describe('ProgressRollupService batching (Roadmap IMPROVEMENT-01c)', () => {
     expect(prisma.task.findMany).not.toHaveBeenCalled();
   });
 });
+
+describe('what counts towards progress (Roadmap GAP-35c)', () => {
+  it('asks only for tasks that are work: any with no entry type, and none of a level above the tasks or a decision', async () => {
+    const findTasks = vi.fn().mockResolvedValue([]);
+    const prisma = {
+      task: { findMany: findTasks },
+      epic: { findMany: vi.fn().mockResolvedValue([]) },
+      phase: { findMany: vi.fn().mockResolvedValue([]) },
+      project: {
+        findMany: vi.fn().mockResolvedValue([]),
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+    };
+    const service = new ProgressRollupService(
+      prisma as unknown as PrismaService,
+    );
+
+    await service.computeProjectProgress('p1');
+    await service.getProjectProgressTree('p1');
+
+    // `notIn` alone would drop the tasks whose entry type is null.
+    for (const [query] of findTasks.mock.calls) {
+      expect(query.where).toMatchObject({
+        deletedAt: null,
+        OR: [
+          { entryType: null },
+          {
+            entryType: {
+              notIn: expect.arrayContaining(['PHASE', 'EPIC', 'DECISION']),
+            },
+          },
+        ],
+      });
+    }
+    expect(findTasks).toHaveBeenCalledTimes(2);
+  });
+});

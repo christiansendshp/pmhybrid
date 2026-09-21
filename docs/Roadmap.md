@@ -214,34 +214,6 @@ created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T15:00:00Z
 ```
 
-### GAP-35c — Import type, priority and progress, and write progress back
-
-```yaml
-id: GAP-35c
-type: GAP
-title: Import type, priority and progress, and write progress back
-status: BACKLOG
-priority: P2
-parent: GAP-35
-depends_on:
-  - GAP-35a
-description: >
-  Third slice of GAP-35. `type`, `priority` and `progress` in an entry are
-  not imported (Task has no type column), so the global progress is wrong
-  and a PATCH of a task's progress leaves the document at its old value.
-expected_behavior: >
-  Priority and progress round trip between the entry, the task and the UI;
-  the entry type is kept so PHASE, EPIC, DECISION and GAP entries can be
-  told apart from work items.
-technical_context:
-  backend: apps/api/prisma/schema.prisma (Task), roadmap-yaml-entry.util.ts, synchronization.service.ts, tasks/progress-rollup.service.ts
-next_action: >
-  Decide whether the entry type becomes a column or a derived value, then
-  import priority and progress.
-created_at: 2026-09-21T15:00:00Z
-updated_at: 2026-09-21T15:00:00Z
-```
-
 ### GAP-35d — Import the document's hierarchy (parent, phases and epics)
 
 ```yaml

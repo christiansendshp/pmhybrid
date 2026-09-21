@@ -549,3 +549,105 @@ describe('line endings are preserved (Roadmap GAP-35e)', () => {
     expect(updated.includes('\r')).toBe(false);
   });
 });
+
+describe('replaceRoadmapRowCells priority and progress (Roadmap GAP-35c)', () => {
+  const ENTRY = `# Roadmap
+
+## Plan
+
+### TASK-1 — Entry
+
+\`\`\`yaml
+id: TASK-1
+type: TASK
+title: Entry
+status: READY
+priority: P2
+progress: 10
+\`\`\`
+
+### TASK-2 — Words
+
+\`\`\`yaml
+id: TASK-2
+type: TASK
+title: Words
+status: READY
+priority: LOW
+\`\`\`
+`;
+  const dataOf = (markdown: string, id: string) =>
+    extractRoadmapYamlEntries(markdown).find((e) => e.id === id)!.data;
+
+  it('sets both in an entry, in the notation the schema uses', () => {
+    const result = replaceRoadmapRowCells(ENTRY, 'TASK-1', {
+      Priority: 'CRITICAL',
+      Progress: '75',
+    });
+
+    expect(result?.replaced).toEqual(['Priority', 'Progress']);
+    expect(dataOf(result!.markdown, 'TASK-1')).toMatchObject({
+      priority: 'P0',
+      progress: 75,
+    });
+  });
+
+  it('keeps a document that spells its priorities as words in its own words', () => {
+    const result = replaceRoadmapRowCells(ENTRY, 'TASK-2', {
+      Priority: 'CRITICAL',
+    });
+
+    expect(dataOf(result!.markdown, 'TASK-2').priority).toBe('CRITICAL');
+  });
+
+  it('takes the field out when it is cleared', () => {
+    const result = replaceRoadmapRowCells(ENTRY, 'TASK-1', {
+      Priority: '',
+      Progress: '',
+    });
+
+    const data = dataOf(result!.markdown, 'TASK-1');
+    expect('priority' in data).toBe(false);
+    expect('progress' in data).toBe(false);
+  });
+
+  it('has nowhere to put them in a table, and says so by not reporting them written', () => {
+    const result = replaceRoadmapRowCells(ROADMAP, 'PMH-1', {
+      Priority: 'HIGH',
+      Progress: '50',
+    });
+
+    expect(result?.replaced).toEqual([]);
+    expect(result?.markdown).toBe(ROADMAP);
+  });
+
+  it('writes what a new entry has, and only when it has it', () => {
+    const fields = {
+      outcome: 'From the app',
+      acceptanceCheck: 'Verified',
+      status: 'PENDIENTE',
+      owner: null,
+      dependsOn: '',
+    };
+    const withBoth = upsertLifecycleRoadmapRow(ENTRY, 'PMH-9', {
+      ...fields,
+      priority: 'HIGH',
+      progress: 20,
+    });
+    expect(dataOf(withBoth, 'PMH-9')).toMatchObject({
+      priority: 'P1',
+      progress: 20,
+    });
+
+    const withNeither = dataOf(
+      upsertLifecycleRoadmapRow(ENTRY, 'PMH-10', {
+        ...fields,
+        priority: null,
+        progress: null,
+      }),
+      'PMH-10',
+    );
+    expect('priority' in withNeither).toBe(false);
+    expect('progress' in withNeither).toBe(false);
+  });
+});

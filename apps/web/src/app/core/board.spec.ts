@@ -19,6 +19,7 @@ function card(overrides: Partial<TaskCard> = {}): TaskCard {
     parentTaskId: null,
     assigneeActorId: null,
     priority: null,
+    entryType: null,
     progressPercent: null,
     acceptanceCriteria: 'Done',
     startDate: null,

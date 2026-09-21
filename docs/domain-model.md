@@ -152,6 +152,7 @@ Task(
   projectId, phaseId?, epicId?, templateId?, parentTaskId?,  // self-ref = subtask
   title, description?,
   status: PENDIENTE|ASIGNADA|EN_DESARROLLO|QA|TERMINADA,
+  entryType?,                            // the Roadmap entry's `type` (GAP, BUG...); null for a table row (GAP-35c)
   priority?: LOW|MEDIUM|HIGH|CRITICAL,
   progressPercent?,                      // explicit override; null = derive via rollup
   startDate?, estimatedDate?, dueDate?,
@@ -386,6 +387,10 @@ parentTaskId IS NULL`) — subtasks are already folded into their parent
 5. Project: mean of its Phases and any orphan Tasks/Epics without a Phase.
 6. A container with zero descendants shows "no data," not 0 — brief's
    fallback-to-manual case when nothing is computable.
+7. Only work counts: a task whose `entryType` is `VISION`, `PHASE`, `THEME`,
+   `EPIC`, `DECISION`, `BLOCKER` or `DEPENDENCY` is left out of every rollup
+   (Roadmap GAP-35c); a task with no entry type, which is any task from a table
+   or made in the app, counts.
 
 Known, documented pathology: a Phase with one 20-task Epic and one loose Task
 weights that loose task at 50% of the Phase's progress. That is what a project

@@ -9,6 +9,11 @@ import { isPauseCell, workflowStatusFor } from './status-vocabulary.util.js';
 import { detectLineEnding } from './line-ending.util.js';
 import { ownerCell, type RoadmapOwner } from './roadmap-owner.util.js';
 import {
+  priorityFromDocument,
+  priorityToDocument,
+  progressFromDocument,
+} from './roadmap-attributes.util.js';
+import {
   appendRoadmapYamlEntry,
   applyOwnerToEntry,
   extractRoadmapYamlEntriesForWrite,
@@ -48,6 +53,9 @@ export function upsertLifecycleRoadmapRow(
     /** The task's assignee, or null when it has none (an existing owner is then left as it is). */
     owner: RoadmapOwner | null;
     dependsOn: string;
+    /** Written into a new YAML entry only; the tables have no such column, and an existing entry keeps its own. */
+    priority?: string | null;
+    progress?: number | null;
   },
 ): string {
   if (looksLikeNewFormatRoadmap(markdown)) {
@@ -333,6 +341,8 @@ function upsertLifecycleRoadmapEntry(
     /** The task's assignee, or null when it has none (an existing owner is then left as it is). */
     owner: RoadmapOwner | null;
     dependsOn: string;
+    priority?: string | null;
+    progress?: number | null;
   },
 ): string {
   const entries = extractRoadmapYamlEntriesForWrite(markdown, externalId);
@@ -378,11 +388,20 @@ function upsertLifecycleRoadmapEntry(
         ]
       : undefined,
     depends_on: parseDependsOnList(fields.dependsOn),
+    priority: newEntryPriority(fields.priority),
+    progress: fields.progress ?? undefined,
     created_at: nowIso,
     updated_at: nowIso,
   };
   ownerToPlainData(data, fields.owner);
   return appendRoadmapYamlEntry(markdown, data);
+}
+
+function newEntryPriority(
+  priority: string | null | undefined,
+): string | undefined {
+  const level = priorityFromDocument(priority);
+  return level ? priorityToDocument(level) : undefined;
 }
 
 /** New-format sibling of `replaceRoadmapRowCells`. Returns null when no entry with this id exists. */
@@ -429,6 +448,26 @@ function replaceRoadmapEntryFields(
         parseDependsOnList(cellsByHeader['Depends on']) ?? [],
       );
       replaced.push('Depends on');
+    }
+    // Only an entry has these (Roadmap GAP-35c): the table formats have no
+    // such column, so a table skips both. An empty value takes the field out.
+    if ('Priority' in cellsByHeader) {
+      const level = priorityFromDocument(cellsByHeader.Priority);
+      if (level) {
+        doc.set('priority', priorityToDocument(level, doc.get('priority')));
+      } else {
+        doc.delete('priority');
+      }
+      replaced.push('Priority');
+    }
+    if ('Progress' in cellsByHeader) {
+      const percent = progressFromDocument(cellsByHeader.Progress);
+      if (percent === undefined) {
+        doc.delete('progress');
+      } else {
+        doc.set('progress', percent);
+      }
+      replaced.push('Progress');
     }
     if (replaced.length > 0) {
       doc.set('updated_at', new Date().toISOString());

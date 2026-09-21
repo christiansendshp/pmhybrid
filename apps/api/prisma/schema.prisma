@@ -241,6 +241,10 @@ model Task {
   parentTask   Task?   @relation("Subtasks", fields: [parentTaskId], references: [id])
   subtasks     Task[]  @relation("Subtasks")
 
+  // What the Roadmap entry says it is (`type: GAP`, `BUG`, `TASK`...), upper-cased;
+  // null for a row of a table format, which has no such field (Roadmap GAP-35c).
+  // Not an enum: the taxonomy is extensible per project.
+  entryType   String?
   title       String
   description String?
   status      TaskStatus @default(PENDIENTE)

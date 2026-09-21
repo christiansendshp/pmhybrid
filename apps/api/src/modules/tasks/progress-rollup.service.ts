@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { TaskStatus } from '@pmhybrid/shared-types';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { NON_WORK_ENTRY_TYPES } from '../roadmap/roadmap-attributes.util.js';
 import {
   ProgressCalculator,
   type RollupEpic,
@@ -58,6 +59,20 @@ export interface ProjectProgressTree {
  */
 const ID_CHUNK = 5000;
 
+/**
+ * The tasks that count towards progress: alive, and work to be done. A card
+ * for a decision, an obstacle or a level above the tasks stays on the board but
+ * is not a share of the project (Roadmap GAP-35c). Written as an OR because
+ * `notIn` alone drops the tasks with no entry type, which is most of them.
+ */
+const COUNTS_TOWARDS_PROGRESS = {
+  deletedAt: null,
+  OR: [
+    { entryType: null },
+    { entryType: { notIn: [...NON_WORK_ENTRY_TYPES] } },
+  ],
+};
+
 const TASK_ROLLUP_SELECT = {
   id: true,
   projectId: true,
@@ -92,7 +107,7 @@ export class ProgressRollupService {
       const ids = unique.slice(start, start + ID_CHUNK);
       const [taskRows, epicRows, phaseRows, projectRows] = await Promise.all([
         this.prisma.task.findMany({
-          where: { projectId: { in: ids }, deletedAt: null },
+          where: { projectId: { in: ids }, ...COUNTS_TOWARDS_PROGRESS },
           select: TASK_ROLLUP_SELECT,
         }),
         this.prisma.epic.findMany({
@@ -192,7 +207,7 @@ export class ProgressRollupService {
         orderBy: { order: 'asc' },
       }),
       this.prisma.task.findMany({
-        where: { projectId, deletedAt: null },
+        where: { projectId, ...COUNTS_TOWARDS_PROGRESS },
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.project.findUnique({

@@ -450,3 +450,64 @@ describe('duplicate ids, blocked titles and unrecognized statuses (Roadmap GAP-3
     expect(rowOf('in_progress').statusUnrecognized).toBeUndefined();
   });
 });
+
+describe('roadmapYamlEntryToRow type, priority and progress (Roadmap GAP-35c)', () => {
+  const rowOf = (lines: string[], type = 'TASK') => {
+    const markdown = [
+      '### T-1 — Entry',
+      '',
+      '```yaml',
+      'id: T-1',
+      `type: ${type}`,
+      'status: READY',
+      ...lines,
+      '```',
+      '',
+    ].join('\n');
+    return roadmapYamlEntryToRow(extractRoadmapYamlEntries(markdown)[0]);
+  };
+
+  it('carries the entry type, the app level of its priority, and its progress', () => {
+    expect(rowOf(['priority: P1', 'progress: 40'], 'gap')).toMatchObject({
+      entryType: 'GAP',
+      priority: 'HIGH',
+      progress: 40,
+    });
+  });
+
+  it('carries a blocked entry the same way', () => {
+    expect(rowOf(['priority: P0', 'blocked_by: [DEC-1]'], 'TASK').table).toBe(
+      RoadmapTable.ACTIVE,
+    );
+    const blocked = roadmapYamlEntryToRow(
+      extractRoadmapYamlEntries(
+        [
+          '### T-2 — Entry',
+          '',
+          '```yaml',
+          'id: T-2',
+          'type: BUG',
+          'status: BLOCKED',
+          'priority: P0',
+          'progress: 10',
+          '```',
+          '',
+        ].join('\n'),
+      )[0],
+    );
+    expect(blocked).toMatchObject({
+      table: RoadmapTable.BLOCKED,
+      entryType: 'BUG',
+      priority: 'CRITICAL',
+      progress: 10,
+    });
+  });
+
+  it('leaves out a value the app cannot hold instead of importing a wrong one', () => {
+    const row = rowOf(['priority: soon', 'progress: 250']);
+    expect(row.priority).toBeUndefined();
+    expect(row.progress).toBeUndefined();
+    expect(row.entryType).toBe('TASK');
+    expect('priority' in row).toBe(false);
+  });
+});

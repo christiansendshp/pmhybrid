@@ -25,6 +25,7 @@ function taskDetail(overrides: Partial<TaskDetailModel> = {}): TaskDetailModel {
     parentTaskId: null,
     assigneeActorId: null,
     priority: null,
+    entryType: null,
     progressPercent: null,
     acceptanceCriteria: 'Endpoints documented',
     startDate: null,
@@ -276,6 +277,21 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     listAudit.mockResolvedValue([]);
     const { text } = await render();
     expect(text()).not.toContain('Completada');
+  });
+
+  it('says what kind of entry the task is when its Roadmap entry says so (Roadmap GAP-35c)', async () => {
+    getById.mockResolvedValue(taskDetail({ entryType: 'DECISION' }));
+    listAudit.mockResolvedValue([]);
+    const { text } = await render();
+    expect(text()).toContain('Tipo');
+    expect(text()).toContain('Decisión');
+  });
+
+  it('shows no type for a task from a table, which has none (Roadmap GAP-35c)', async () => {
+    getById.mockResolvedValue(taskDetail());
+    listAudit.mockResolvedValue([]);
+    const { text } = await render();
+    expect(text()).not.toContain('Tipo');
   });
 
   it('removes the task after confirming and returns to the board', async () => {

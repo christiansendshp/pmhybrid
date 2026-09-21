@@ -18,6 +18,7 @@ function task(overrides: Partial<Task> = {}): Task {
     parentTaskId: null,
     assigneeActorId: null,
     priority: null,
+    entryType: null,
     progressPercent: null,
     acceptanceCriteria: 'Endpoints documented',
     startDate: null,

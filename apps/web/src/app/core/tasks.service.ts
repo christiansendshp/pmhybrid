@@ -24,6 +24,8 @@ export interface Task {
   parentTaskId: string | null;
   assigneeActorId: string | null;
   priority: TaskPriority | null;
+  /** What the Roadmap entry says it is (GAP, BUG, DECISION...); null for a row of a table (Roadmap GAP-35c). */
+  entryType: string | null;
   progressPercent: number | null;
   acceptanceCriteria: string | null;
   startDate: string | null;

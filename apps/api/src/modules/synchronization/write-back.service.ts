@@ -11,6 +11,7 @@ import { AuditService } from '../audit/audit.service.js';
 import { AgentslogParserService } from '../roadmap/agentslog-parser.service.js';
 import { isSkillRoadmap } from '../roadmap/markdown-table.util.js';
 import { RoadmapParserService } from '../roadmap/roadmap-parser.service.js';
+import { looksLikeNewFormatRoadmap } from '../roadmap/roadmap-yaml-entry.util.js';
 import { rowContentHash } from './row-content-hash.util.js';
 import { appendAgentslogEntry } from '../roadmap/agentslog-writer.util.js';
 import { skillLedgerEntries } from '../roadmap/skill-ledger.util.js';
@@ -36,6 +37,8 @@ export interface ResolvedTaskFields {
   acceptanceCriteria?: string | null;
   status?: TaskStatus;
   assigneeActorId?: string;
+  priority?: string | null;
+  progressPercent?: number | null;
 }
 
 export type WriteBackTrigger =
@@ -47,6 +50,9 @@ export interface RoadmapFieldEdit {
   acceptanceCriteria?: string | null;
   /** Display name of the assignee before the edit, or null if there was none (Roadmap GAP-35a). */
   assignee?: string | null;
+  /** Written only into a YAML entry, the one format with such a field (Roadmap GAP-35c). */
+  priority?: string | null;
+  progressPercent?: number | null;
 }
 
 const DOCUMENT_FILENAMES: Record<'ROADMAP' | 'AGENTSLOG', string> = {
@@ -252,6 +258,23 @@ export class WriteBackService {
       }
     }
 
+    if ('priority' in chosen) {
+      if ((currentRow.priority ?? null) === (documentSide.priority ?? null)) {
+        cells.Priority = chosen.priority ?? '';
+      } else {
+        deferred.push('priority');
+      }
+    }
+    if ('progressPercent' in chosen) {
+      if (
+        (currentRow.progress ?? null) === (documentSide.progressPercent ?? null)
+      ) {
+        cells.Progress = String(chosen.progressPercent ?? '');
+      } else {
+        deferred.push('progressPercent');
+      }
+    }
+
     let owner: RoadmapOwner | null = null;
     if ('assigneeActorId' in chosen) {
       const ids = [chosen.assigneeActorId, documentSide.assigneeActorId].filter(
@@ -289,6 +312,8 @@ export class WriteBackService {
           Outcome: 'title',
           'Acceptance check': 'acceptanceCriteria',
           Status: 'status',
+          Priority: 'priority',
+          Progress: 'progressPercent',
         };
         writtenFields.push(
           ...replaced.replaced.map((header) => byHeader[header] ?? header),
@@ -635,6 +660,25 @@ export class WriteBackService {
         current: currentRow.acceptanceCheck,
         next: task.acceptanceCriteria ?? '',
       },
+      // Only an entry of the YAML format has a priority and a progress; for a
+      // table there is nowhere to write them, and comparing against a cell
+      // that cannot exist would only look like a drift (Roadmap GAP-35c).
+      ...(looksLikeNewFormatRoadmap(roadmapContent)
+        ? ([
+            {
+              field: 'priority',
+              header: 'Priority',
+              current: currentRow.priority ?? '',
+              next: task.priority ?? '',
+            },
+            {
+              field: 'progressPercent',
+              header: 'Progress',
+              current: String(currentRow.progress ?? ''),
+              next: String(task.progressPercent ?? ''),
+            },
+          ] as const)
+        : []),
     ] as const;
     const cells: Record<string, string> = {};
     const deferred: string[] = [];
@@ -645,7 +689,7 @@ export class WriteBackService {
       // Once the document changed since PM Hub last saw it, a cell that no
       // longer holds the pre-edit value was edited on the document side too:
       // never overwrite it — sync raises it as CONCURRENT_FIELD_EDIT (step 5).
-      const before = sanitizeField(previous[edit.field] ?? '');
+      const before = sanitizeField(String(previous[edit.field] ?? ''));
       if (drifted && (edit.current ?? '') !== before) {
         deferred.push(edit.field);
         continue;
@@ -945,6 +989,8 @@ export class WriteBackService {
         status: task.status, // verbatim Kanban state (ADR-002) — never mapped back to TODO/DONE
         owner,
         dependsOn: renderDependsOnCell(dependencies),
+        priority: task.priority,
+        progress: task.progressPercent,
       },
     );
     await this.repositoryProvider.writeFile(
