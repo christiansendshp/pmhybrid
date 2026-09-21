@@ -416,33 +416,6 @@ created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T19:28:31Z
 ```
 
-### GAP-36b — MCP tools for the whole agent workflow
-
-```yaml
-id: GAP-36b
-type: GAP
-title: MCP tools for the whole agent workflow
-status: BACKLOG
-priority: P2
-parent: GAP-36
-description: >
-  Second slice of GAP-36. The MCP server exposes six tools (list_tasks,
-  get_task, update_task, transition_task, list_comments, add_comment), so an
-  agent cannot list its projects, claim or create a task, read a document or
-  the conflicts, or get the context of a project.
-expected_behavior: >
-  list_projects, claim_task, create_task, get_context and list_conflicts
-  exist as thin adapters over the services, held to the same permissions as
-  REST.
-technical_context:
-  backend: apps/api/src/modules/mcp
-next_action: >
-  Read mcp-tools.ts and its spec first; every tool must call the service
-  that REST calls, so RBAC applies unchanged.
-created_at: 2026-09-21T23:55:00Z
-updated_at: 2026-09-21T23:55:00Z
-```
-
 ### GAP-36c — Tell an agent it was assigned work
 
 ```yaml

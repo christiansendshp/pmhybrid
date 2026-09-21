@@ -186,6 +186,24 @@ so `update_task`/`transition_task` get the exact same audit trail and
 (`task.status.transition` etc.) a person's REST call would — MCP is a new
 transport onto existing authorization, not a second one.
 
+## The workflow tools (Roadmap GAP-36b)
+
+Six more MCP tools let an agent run its whole loop without the REST API:
+`list_projects` (the projects it belongs to, with a summary each — the place to
+start), `get_context` (one call for a project: figures by status, the agent's own
+open tasks, what is blocked, how many conflicts are open), `claim_task` (assign the
+task to the caller, and with `start` also move it to `EN_DESARROLLO`),
+`create_task` (a task or a subtask, with an optional `idempotencyKey` so a retry
+cannot create two), `list_conflicts` (open by default) and `read_document` (the
+Roadmap, the Agentslog, the rules, the other three documents). They follow the
+same rule as the first six and add no way in: `guarded()` checks membership
+(`isError: Not a member of this project` otherwise, except `list_projects`, which
+has no project to check), and every write goes through `TasksService`'s own
+method with `origin: 'API'`, so `claim_task` needs the assign permission and
+`create_task` needs `task.write` exactly as the REST call does — a refusal is an
+`isError` result with the service's message. Resolving a conflict stays with a
+person: there is deliberately no tool for it.
+
 ## Task comments (Roadmap GAP-31)
 
 `TaskCommentsController` (`GET`/`POST /projects/:projectId/tasks/:taskId/

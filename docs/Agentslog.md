@@ -1095,3 +1095,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: Creating a project creates the docs folder and whichever of Roadmap.md and Agentslog.md is missing (latest skill format, never overwriting, reported in scaffolded); the first sync succeeds and the first task lands in Active work; the skill's own init and check accept the skeletons
 - Files: apps/api/src/modules/projects/document-skeletons.ts,apps/api/src/modules/projects/projects.service.ts,apps/api/src/modules/git-providers/local-fs-git-provider.service.ts,docs/synchronization.md,docs/api-reference.md
 - Verify: api unit 390 and e2e 257 pass (coverage 86.2/76.4/89.8/86.1, above the floor); upstream init preserves the files and check is OK
+
+## [2026-09-21T19:39:40Z] | claude | GAP-36b | IN_PROGRESS
+
+- Summary: MCP tools for the whole agent workflow
+- Verify: pending
+
+## [2026-09-21T19:47:40Z] | claude | GAP-36b | DONE
+
+- Summary: An MCP agent can list its projects, get the context of one, claim a task (optionally starting it), create tasks and subtasks with an idempotency key, list conflicts and read a document; every tool goes through the same membership check and service call as REST, so the permissions are unchanged
+- Files: apps/api/src/modules/mcp/mcp-workflow-tools.ts,apps/api/src/modules/mcp/mcp.controller.ts,apps/api/src/modules/mcp/mcp.module.ts,docs/permissions.md
+- Verify: api unit 394 and e2e 265 pass (mcp e2e 19, coverage 86.3 statements)

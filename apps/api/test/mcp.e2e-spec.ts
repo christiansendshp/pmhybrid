@@ -30,7 +30,9 @@ describe('MCP server for agent task operations (e2e)', () => {
       imports: [AppModule],
     }).compile();
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.listen(0);
     const port = (app.getHttpServer().address() as AddressInfo).port;
     mcpUrl = new URL(`http://127.0.0.1:${port}/mcp`);
@@ -48,7 +50,8 @@ describe('MCP server for agent task operations (e2e)', () => {
 
   const server = () => app.getHttpServer();
   const auth = () => `Bearer ${ownerToken}`;
-  const unique = (label: string) => `${label}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const unique = (label: string) =>
+    `${label}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 
   async function createAgentWithKey() {
     const agent = await request(server())
@@ -111,16 +114,22 @@ describe('MCP server for agent task operations (e2e)', () => {
     await request(server()).delete('/mcp').set('X-API-Key', apiKey).expect(405);
   });
 
-  it('completes the initialize handshake and lists the 4 task tools', async () => {
+  it('completes the initialize handshake and lists the task tools and the workflow tools', async () => {
     const { apiKey } = await createAgentWithKey();
     const client = await connectedClient(apiKey);
 
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
       'add_comment',
+      'claim_task',
+      'create_task',
+      'get_context',
       'get_task',
       'list_comments',
+      'list_conflicts',
+      'list_projects',
       'list_tasks',
+      'read_document',
       'transition_task',
       'update_task',
     ]);
@@ -143,7 +152,9 @@ describe('MCP server for agent task operations (e2e)', () => {
       name: 'list_tasks',
       arguments: { projectId },
     });
-    const tasks = JSON.parse(text(listed as CallToolResult)) as { id: string }[];
+    const tasks = JSON.parse(text(listed as CallToolResult)) as {
+      id: string;
+    }[];
     expect(tasks.some((t) => t.id === taskId)).toBe(true);
   });
 
@@ -181,7 +192,12 @@ describe('MCP server for agent task operations (e2e)', () => {
 
     const updated = await client.callTool({
       name: 'update_task',
-      arguments: { projectId, taskId, title: 'Updated via MCP', progressPercent: 40 },
+      arguments: {
+        projectId,
+        taskId,
+        title: 'Updated via MCP',
+        progressPercent: 40,
+      },
     });
     expect(updated.isError).not.toBe(true);
 
@@ -189,7 +205,10 @@ describe('MCP server for agent task operations (e2e)', () => {
       .get(`/projects/${projectId}/tasks/${taskId}`)
       .set('Authorization', auth())
       .expect(200);
-    expect(after.body).toMatchObject({ title: 'Updated via MCP', progressPercent: 40 });
+    expect(after.body).toMatchObject({
+      title: 'Updated via MCP',
+      progressPercent: 40,
+    });
   });
 
   it('refuses update_task with an isError result for an agent member holding no task.write (Roadmap SECURITY-02)', async () => {
@@ -226,10 +245,214 @@ describe('MCP server for agent task operations (e2e)', () => {
     expect(text(result as CallToolResult)).toMatch(/Missing permission/);
   });
 
+  describe('workflow tools (Roadmap GAP-36b)', () => {
+    async function callJson(
+      client: Client,
+      name: string,
+      args: Record<string, unknown>,
+    ) {
+      const result = (await client.callTool({
+        name,
+        arguments: args,
+      })) as CallToolResult;
+      return {
+        result,
+        body: result.isError ? text(result) : JSON.parse(text(result)),
+      };
+    }
+
+    it('lists the projects the agent belongs to, and no other', async () => {
+      const { agentId, apiKey } = await createAgentWithKey();
+      const projectId = await createProjectWithMember(agentId);
+      await createProjectWithMember((await createAgentWithKey()).agentId);
+      const client = await connectedClient(apiKey);
+
+      const { body } = await callJson(client, 'list_projects', {});
+
+      expect((body as { id: string }[]).map((project) => project.id)).toEqual([
+        projectId,
+      ]);
+      expect(body[0]).toMatchObject({ status: 'ACTIVE' });
+      expect(body[0].summary).toBeDefined();
+    });
+
+    it("gives the state of a project in one call: figures, the agent's own open tasks and what is blocked", async () => {
+      const { agentId, apiKey } = await createAgentWithKey();
+      const projectId = await createProjectWithMember(agentId);
+      await assignProjectRole(server(), auth(), projectId, agentId, 'AI_AGENT');
+      const mine = await createTask(projectId, 'Mine to do');
+      await createTask(projectId, 'Nobody has it');
+      await request(server())
+        .post(`/projects/${projectId}/tasks/${mine}/assign`)
+        .set('Authorization', auth())
+        .send({ actorId: agentId })
+        .expect(201);
+      const client = await connectedClient(apiKey);
+
+      const { body } = await callJson(client, 'get_context', { projectId });
+
+      expect(body.project.id).toBe(projectId);
+      expect(body.totalTasks).toBe(2);
+      expect(body.statusCounts).toMatchObject({ PENDIENTE: 1, ASIGNADA: 1 });
+      expect(
+        body.myOpenTasks.map((task: { title: string }) => task.title),
+      ).toEqual(['Mine to do']);
+      expect(body.blocked).toEqual([]);
+      expect(body.openConflicts).toBe(0);
+    });
+
+    it('claims a task for the agent, and with start moves it to EN_DESARROLLO', async () => {
+      const { agentId, apiKey } = await createAgentWithKey();
+      const projectId = await createProjectWithMember(agentId);
+      await assignProjectRole(server(), auth(), projectId, agentId, 'AI_AGENT');
+      const taskId = await createTask(projectId, 'To be claimed');
+      const client = await connectedClient(apiKey);
+
+      const claimed = await callJson(client, 'claim_task', {
+        projectId,
+        taskId,
+      });
+      expect(claimed.result.isError).not.toBe(true);
+      expect(claimed.body).toMatchObject({
+        assigneeActorId: agentId,
+        status: 'ASIGNADA',
+      });
+
+      const started = await callJson(client, 'claim_task', {
+        projectId,
+        taskId,
+        start: true,
+      });
+      expect(started.body.status).toBe('EN_DESARROLLO');
+      const after = await request(server())
+        .get(`/projects/${projectId}/tasks/${taskId}`)
+        .set('Authorization', auth())
+        .expect(200);
+      expect(after.body).toMatchObject({
+        assigneeActorId: agentId,
+        status: 'EN_DESARROLLO',
+      });
+    });
+
+    it('refuses claim_task, as an isError result, to an agent that may not take work', async () => {
+      const { agentId, apiKey } = await createAgentWithKey();
+      const projectId = await createProjectWithMember(agentId);
+      const taskId = await createTask(projectId, 'Not for this agent');
+      const client = await connectedClient(apiKey);
+
+      const { result, body } = await callJson(client, 'claim_task', {
+        projectId,
+        taskId,
+      });
+
+      expect(result.isError).toBe(true);
+      expect(String(body)).toMatch(/Missing permission|not allowed|cannot/i);
+    });
+
+    it('creates a task and a subtask, and never a second copy when it retries with the same key', async () => {
+      const { agentId, apiKey } = await createAgentWithKey();
+      const projectId = await createProjectWithMember(agentId);
+      await assignProjectRole(server(), auth(), projectId, agentId, 'AI_AGENT');
+      const client = await connectedClient(apiKey);
+      const args = {
+        projectId,
+        title: 'Created by an agent',
+        acceptanceCriteria: 'It exists',
+        idempotencyKey: unique('agent-retry'),
+      };
+
+      const first = await callJson(client, 'create_task', args);
+      const again = await callJson(client, 'create_task', args);
+      expect(first.result.isError).not.toBe(true);
+      expect(again.body.id).toBe(first.body.id);
+
+      const sub = await callJson(client, 'create_task', {
+        projectId,
+        title: 'A subtask',
+        acceptanceCriteria: 'Also exists',
+        parentTaskId: first.body.id,
+      });
+      expect(sub.body.parentTaskId).toBe(first.body.id);
+      const listed = await request(server())
+        .get(`/projects/${projectId}/tasks`)
+        .set('Authorization', auth())
+        .expect(200);
+      expect(listed.body).toHaveLength(2);
+    });
+
+    it('refuses create_task to an agent without task.write, and creates nothing', async () => {
+      const { agentId, apiKey } = await createAgentWithKey();
+      const projectId = await createProjectWithMember(agentId);
+      const client = await connectedClient(apiKey);
+
+      const { result, body } = await callJson(client, 'create_task', {
+        projectId,
+        title: 'Nope',
+        acceptanceCriteria: 'Nope',
+      });
+
+      expect(result.isError).toBe(true);
+      expect(String(body)).toContain('task.write');
+      const listed = await request(server())
+        .get(`/projects/${projectId}/tasks`)
+        .set('Authorization', auth())
+        .expect(200);
+      expect(listed.body).toEqual([]);
+    });
+
+    it('lists the conflicts of a project, and reads its documents', async () => {
+      const { agentId, apiKey } = await createAgentWithKey();
+      const projectId = await createProjectWithMember(agentId);
+      const client = await connectedClient(apiKey);
+
+      const conflicts = await callJson(client, 'list_conflicts', { projectId });
+      expect(conflicts.body).toEqual([]);
+
+      const roadmap = await callJson(client, 'read_document', {
+        projectId,
+        kind: 'roadmap',
+      });
+      expect(roadmap.result.isError).not.toBe(true);
+      expect(text(roadmap.result)).toContain('Active work');
+      const log = await callJson(client, 'read_document', {
+        projectId,
+        kind: 'agentslog',
+      });
+      expect(text(log.result)).toContain('# Agents log');
+      const missing = await callJson(client, 'read_document', {
+        projectId,
+        kind: 'features',
+      });
+      expect(missing.result.isError).toBe(true);
+    });
+
+    it('answers a project the agent is not a member of with an isError result for every project tool', async () => {
+      const { apiKey } = await createAgentWithKey();
+      const { agentId: otherAgent } = await createAgentWithKey();
+      const projectId = await createProjectWithMember(otherAgent);
+      const client = await connectedClient(apiKey);
+
+      for (const call of [
+        ['get_context', { projectId }],
+        ['list_conflicts', { projectId }],
+        ['read_document', { projectId, kind: 'roadmap' }],
+        ['create_task', { projectId, title: 't', acceptanceCriteria: 'a' }],
+        ['claim_task', { projectId, taskId: 'x' }],
+      ] as const) {
+        const { result, body } = await callJson(client, call[0], call[1]);
+        expect(result.isError, call[0]).toBe(true);
+        expect(String(body), call[0]).toMatch(/not a member/i);
+      }
+    });
+  });
+
   it('closes the per-request McpServer/transport pair once the response completes (no leak)', async () => {
     const { apiKey } = await createAgentWithKey();
     const serverCloseSpy = vi.spyOn(McpServer.prototype, 'close');
-    const transportCloseSpy = vi.spyOn(StreamableHTTPServerTransport.prototype, 'close');
+    const transportCloseSpy = vi.spyOn(
+      StreamableHTTPServerTransport.prototype,
+      'close',
+    );
     const client = await connectedClient(apiKey);
 
     await client.listTools();
@@ -270,9 +493,15 @@ describe('MCP server for agent task operations (e2e)', () => {
     const otherProject = await request(server())
       .post('/projects')
       .set('Authorization', auth())
-      .send({ name: unique('MCP E2E Other'), docsPath: createScratchDocsPath() })
+      .send({
+        name: unique('MCP E2E Other'),
+        docsPath: createScratchDocsPath(),
+      })
       .expect(201);
-    const otherTaskId = await createTask(otherProject.body.id, 'Not visible to the agent');
+    const otherTaskId = await createTask(
+      otherProject.body.id,
+      'Not visible to the agent',
+    );
     const client = await connectedClient(apiKey);
 
     const result = await client.callTool({
