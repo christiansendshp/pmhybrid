@@ -473,29 +473,6 @@ created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T22:00:00Z
 ```
 
-### UX-03b — Progress view with rounded percentages and bars
-
-```yaml
-id: UX-03b
-type: UX
-title: Progress view with rounded percentages and bars
-status: BACKLOG
-priority: P2
-parent: UX-03
-description: >
-  Second slice of UX-03. The progress view prints "85.71428571428571%" as a
-  flat list of links with no bars (phases-progress.html).
-expected_behavior: >
-  Percentages are whole numbers and every phase, epic and task row has a
-  bar.
-technical_context:
-  frontend: apps/web/src/app
-next_action: >
-  Round in one place, then add the bar to phases-progress.
-created_at: 2026-09-21T22:00:00Z
-updated_at: 2026-09-21T22:00:00Z
-```
-
 ### UX-03c — Task detail, dashboard links and copy
 
 ```yaml

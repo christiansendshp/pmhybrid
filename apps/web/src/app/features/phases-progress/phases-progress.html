@@ -8,7 +8,8 @@
   <p class="meta-text">Cargando…</p>
 } @else if (tree(); as t) {
   <section class="progress-node">
-    <p>Progreso del proyecto: {{ t.project !== null ? t.project + '%' : 'sin datos' }}</p>
+    <h3>Progreso del proyecto</h3>
+    <app-progress-bar [value]="t.project" label="Progreso del proyecto" />
     <ul class="status-counts">
       @for (entry of countsFor(t.statusCounts); track entry.status) {
         <li>{{ entry.count }} {{ statusLabel(entry.status) }}</li>
@@ -18,7 +19,8 @@
 
   @for (phase of t.phases; track phase.id) {
     <section class="progress-node">
-      <h3>{{ phase.name }} — {{ phase.progress !== null ? phase.progress + '%' : 'sin datos' }}</h3>
+      <h3>{{ phase.name }}</h3>
+      <app-progress-bar [value]="phase.progress" [label]="'Progreso de ' + phase.name" />
       <ul class="status-counts">
         @for (entry of countsFor(phase.statusCounts); track entry.status) {
           <li>{{ entry.count }} {{ statusLabel(entry.status) }}</li>
@@ -27,9 +29,8 @@
 
       @for (epic of phase.epics; track epic.id) {
         <div class="progress-node progress-node--nested">
-          <h4>
-            {{ epic.name }} — {{ epic.progress !== null ? epic.progress + '%' : 'sin datos' }}
-          </h4>
+          <h4>{{ epic.name }}</h4>
+          <app-progress-bar [value]="epic.progress" [label]="'Progreso de ' + epic.name" />
           <ul class="status-counts">
             @for (entry of countsFor(epic.statusCounts); track entry.status) {
               <li>{{ entry.count }} {{ statusLabel(entry.status) }}</li>
@@ -53,7 +54,8 @@
 
   @for (epic of t.epics; track epic.id) {
     <section class="progress-node">
-      <h3>{{ epic.name }} — {{ epic.progress !== null ? epic.progress + '%' : 'sin datos' }}</h3>
+      <h3>{{ epic.name }}</h3>
+      <app-progress-bar [value]="epic.progress" [label]="'Progreso de ' + epic.name" />
       <ul class="status-counts">
         @for (entry of countsFor(epic.statusCounts); track entry.status) {
           <li>{{ entry.count }} {{ statusLabel(entry.status) }}</li>

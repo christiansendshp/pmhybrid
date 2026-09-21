@@ -38,7 +38,7 @@ describe('ProgressTaskNodeItem (brief §16 "subtareas en el árbol")', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Leaf');
     expect(text).toContain('QA');
-    expect(text).toContain('80%');
+    expect(text).toContain('80 %');
     expect(fixture.nativeElement.querySelector('ul')).toBeNull();
     expect(fixture.nativeElement.querySelector('.status-counts')).toBeNull();
   });

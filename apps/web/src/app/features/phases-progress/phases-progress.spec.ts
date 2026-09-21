@@ -84,8 +84,10 @@ describe('PhasesProgress (brief §16)', () => {
     const { text } = await render();
 
     expect(getProjectProgress).toHaveBeenCalledWith('p1');
-    expect(text()).toContain('Progreso del proyecto: 62%');
+    expect(text()).toContain('Progreso del proyecto');
+    expect(text()).toContain('62 %');
     expect(text()).toContain('Build');
+    expect(text()).toContain('50 %');
     expect(text()).toContain('1 EN DESARROLLO');
     expect(text()).toContain('Build API');
   });
@@ -94,6 +96,21 @@ describe('PhasesProgress (brief §16)', () => {
     getProjectProgress.mockResolvedValue({ ...TREE, project: null });
     const { text } = await render();
 
-    expect(text()).toContain('Progreso del proyecto: sin datos');
+    expect(text()).toContain('sin datos');
+  });
+
+  it('draws a bar for the project, each phase and each task, named after what it measures', async () => {
+    getProjectProgress.mockResolvedValue({ ...TREE, project: 61.53846153846154 });
+    const { harness } = await render();
+    const bars = Array.from(harness.routeNativeElement!.querySelectorAll('[role="progressbar"]'));
+
+    expect(bars.map((bar) => bar.getAttribute('aria-label'))).toEqual([
+      'Progreso del proyecto',
+      'Progreso de Build',
+      'Progreso de Build API',
+    ]);
+    // Whole numbers, never 61.53846153846154.
+    expect(bars[0].getAttribute('aria-valuenow')).toBe('62');
+    expect(harness.routeNativeElement!.textContent).not.toContain('61.5');
   });
 });

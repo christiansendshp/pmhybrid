@@ -66,4 +66,13 @@ test.describe('accessibility (Roadmap GAP-25)', () => {
     await expect(page.getByRole('heading', { name: 'Documentos' })).toBeVisible();
     await checkA11y(page, 'documents');
   });
+
+  test('project progress (bars and percentages, Roadmap UX-03b)', async ({ page }) => {
+    await page.goto('/projects');
+    await page.locator('.projects__name').first().click();
+    await page.getByRole('link', { name: 'Progreso' }).click();
+    await expect(page.getByRole('heading', { name: 'Fases y progreso' })).toBeVisible();
+    await expect(page.getByRole('progressbar').first()).toBeVisible();
+    await checkA11y(page, 'progress');
+  });
 });

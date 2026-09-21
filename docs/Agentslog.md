@@ -909,3 +909,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: The document is lang=es and the app runs in es-ES with one date format per kind of date; a label dictionary and pipe name every API enum (audit operations, origins, entities, conflict kinds, resolutions, revision sources, document kinds, roadmap tables, priorities, ledger states) with a readable fallback
 - Files: apps/web/src/index.html,apps/web/src/app/app.config.ts,apps/web/src/app/core/labels.ts,apps/web/src/app/shared/label.pipe.ts,apps/web/DESIGN.md
 - Verify: web unit 202 pass, eslint and ng build clean, a11y 6 pass
+
+## [2026-09-21T18:27:19Z] | claude | UX-03b | IN_PROGRESS
+
+- Summary: Progress view with rounded percentages and bars
+- Verify: pending
+
+## [2026-09-21T18:31:17Z] | claude | UX-03b | DONE
+
+- Summary: The progress view shows whole-number percentages and a bar for the project, every phase, epic and task, named for assistive technology; 'sin datos' when there is no figure; the a11y suite covers the route
+- Files: apps/web/src/app/shared/progress-bar/progress-bar.ts,apps/web/src/app/core/percent.ts,apps/web/src/app/features/phases-progress/phases-progress.html,apps/web/a11y/app-shell.a11y.spec.ts
+- Verify: web unit 210 pass, eslint and ng build clean, a11y 7 pass, screenshot checked

@@ -1,5 +1,10 @@
 .progress-node {
   margin-bottom: var(--space-4);
+
+  > h3,
+  > h4 {
+    margin-bottom: var(--space-1);
+  }
 }
 
 .progress-node--nested {

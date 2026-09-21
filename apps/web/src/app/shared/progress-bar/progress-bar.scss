@@ -1,0 +1,29 @@
+:host {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.bar {
+  flex: 1;
+  min-width: 4rem;
+  max-width: 24rem;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--mat-sys-surface-container-highest);
+}
+
+.bar__fill {
+  display: block;
+  height: 100%;
+  background: var(--mat-sys-primary);
+}
+
+.bar__text {
+  min-width: 4.5ch;
+  font: var(--mat-sys-label-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--mat-sys-on-surface-variant);
+}

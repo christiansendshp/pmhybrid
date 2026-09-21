@@ -1,0 +1,12 @@
+<span
+  class="bar"
+  role="progressbar"
+  aria-valuemin="0"
+  aria-valuemax="100"
+  [attr.aria-label]="label()"
+  [attr.aria-valuenow]="rounded()"
+  [attr.aria-valuetext]="text()"
+>
+  <span class="bar__fill" [style.width.%]="rounded() ?? 0"></span>
+</span>
+<span class="bar__text">{{ text() }}</span>
