@@ -168,35 +168,6 @@ created_at: 2026-09-19T09:40:00Z
 updated_at: 2026-09-20T19:55:00Z
 ```
 
-### BUG-04 — assign, transition and conflict resolve race on stale task state
-
-```yaml
-id: BUG-04
-type: BUG
-title: assign, transition and conflict resolve race on stale task state
-status: READY
-priority: P0
-description: >
-  Found by the 2026-09-21 evaluation (backend audit, reproduced 11 of 12
-  runs). TasksService.transition() and assign() read the task outside the
-  transaction and then do an unconditional update. A concurrent assign and
-  transition both returned 201 and the final status was ASIGNADA in the
-  database against EN_DESARROLLO in Roadmap.md; the audit shows a late
-  REASSIGN by a user that the assignment lock (brief section 7) should have
-  rejected. Nothing covers concurrency in the test suite.
-expected_behavior: >
-  Reads and writes of a task's status/assignee are atomic (SELECT ... FOR
-  UPDATE, or updateMany guarded by the expected status and a version
-  check); the loser gets a 409 with a clear message; a concurrency e2e
-  test fails on the old code.
-technical_context:
-  backend: apps/api/src/modules/tasks/tasks.service.ts (assign, transition), conflicts.service.ts
-next_action: >
-  Reproduce with a Promise.all e2e first, then fix with a guarded update.
-created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T09:00:00Z
-```
-
 ### SECURITY-03 — multer advisories in production dependencies and no audit in CI
 
 ```yaml

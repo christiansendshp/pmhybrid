@@ -105,3 +105,11 @@ export function permissionForStatusChange(
   }
   return PERMISSIONS.TASK_STATUS_TRANSITION;
 }
+
+/**
+ * The 409 message when a write finds the task no longer as it was read
+ * (Roadmap BUG-04): assign, transition and conflict resolution all decide
+ * from a snapshot and only apply if it still holds.
+ */
+export const STALE_TASK_MESSAGE =
+  'The task changed while this action was being processed; reload it and try again';

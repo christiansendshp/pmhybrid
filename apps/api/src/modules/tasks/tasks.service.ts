@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -21,6 +22,7 @@ import {
   findTransitionRule,
   isAssigneeLocked,
   REASSIGN_LOCKED_PERMISSION,
+  STALE_TASK_MESSAGE,
 } from './task-status-policy.js';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
 
@@ -349,6 +351,24 @@ export class TasksService {
       task.status === TaskStatus.PENDIENTE ? TaskStatus.ASIGNADA : task.status;
 
     await this.prisma.$transaction(async (tx) => {
+      // Everything above (the lock check, the permission it chose, the next
+      // status) was decided from the task as it was read. The write only
+      // lands if the task is still exactly that: otherwise a concurrent
+      // transition or assignment already changed it, and writing on would
+      // sneak past the EN_DESARROLLO lock or restore a stale status
+      // (Roadmap BUG-04). Done first, so a lost race leaves nothing behind.
+      const { count } = await tx.task.updateMany({
+        where: {
+          id: taskId,
+          deletedAt: null,
+          status: task.status,
+          assigneeActorId: task.assigneeActorId,
+        },
+        data: { assigneeActorId: actorId, status: nextStatus },
+      });
+      if (count !== 1) {
+        throw new ConflictException(STALE_TASK_MESSAGE);
+      }
       await tx.taskAssignment.updateMany({
         where: { taskId, unassignedAt: null },
         data: { unassignedAt: new Date() },
@@ -375,10 +395,6 @@ export class TasksService {
         },
         tx,
       );
-      return tx.task.update({
-        where: { id: taskId },
-        data: { assigneeActorId: actorId, status: nextStatus },
-      });
     });
 
     // Locked reassignment is a write-back trigger (docs/synchronization.md);
@@ -422,13 +438,19 @@ export class TasksService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.task.update({
-        where: { id: taskId },
+      // Only if the task is still in the status the rule and permission
+      // above were checked against (Roadmap BUG-04): two concurrent moves,
+      // or a move racing an assignment, must not both apply on stale state.
+      const { count } = await tx.task.updateMany({
+        where: { id: taskId, deletedAt: null, status: task.status },
         data: {
           status: toStatus,
           assigneeLockedAt: isAssigneeLocked(toStatus) ? new Date() : null,
         },
       });
+      if (count !== 1) {
+        throw new ConflictException(STALE_TASK_MESSAGE);
+      }
       await this.audit.record(
         {
           projectId,
@@ -442,7 +464,6 @@ export class TasksService {
         },
         tx,
       );
-      return updated;
     });
 
     // Only these two transitions are write-back triggers

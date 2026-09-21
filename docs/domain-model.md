@@ -297,6 +297,15 @@ Changing it requires `task.reassign.locked` and must, in one transaction,
 write a `TaskAssignment` row (closing the old assignment, opening the new one)
 and an `AuditEvent(operation=REASSIGN)`.
 
+**Concurrency** (Roadmap BUG-04): `assign`, `transition` and conflict resolution decide
+from a snapshot of the task (its status and assignee) — the lock check, the
+permission they require, the next status — and only apply if the task is still
+exactly that snapshot: the write is a conditional `updateMany` on the status and
+assignee that were read, and a lost race answers **409** ("the task changed
+while this action was being processed; reload it and try again") with nothing
+written. Without that, a reassignment racing a move to `EN_DESARROLLO` could
+slip past the lock or restore a stale status.
+
 Blocking (`roadmapTable = BLOCKED`) is orthogonal to Kanban status, not a
 sixth column — a task can be `EN_DESARROLLO` and blocked simultaneously. The
 "tareas bloqueadas" dashboard metric (brief §14) counts

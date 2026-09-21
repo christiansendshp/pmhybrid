@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -14,7 +15,10 @@ import { PermissionsResolverService } from '../../common/permissions-resolver.se
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { NOT_BLANK } from '../tasks/dto/create-task.dto.js';
-import { permissionForStatusChange } from '../tasks/task-status-policy.js';
+import {
+  permissionForStatusChange,
+  STALE_TASK_MESSAGE,
+} from '../tasks/task-status-policy.js';
 import { ResolveConflictDto } from './dto/resolve-conflict.dto.js';
 
 const TASK_STATUSES = new Set<string>(Object.values(TaskStatus));
@@ -127,10 +131,20 @@ export class ConflictsService {
           task.status,
           fieldsToApply,
         );
-        await tx.task.update({
-          where: { id: conflict.entityId },
+        // Applied only if the task is still in the status the permission
+        // check above was made against (Roadmap BUG-04) — otherwise a
+        // concurrent move would be silently overwritten by this resolution.
+        const { count } = await tx.task.updateMany({
+          where: {
+            id: conflict.entityId,
+            deletedAt: null,
+            status: task.status,
+          },
           data: fieldsToApply,
         });
+        if (count !== 1) {
+          throw new ConflictException(STALE_TASK_MESSAGE);
+        }
         // A resolution that moves the task is a status change like any
         // other: recorded as one, so the reconciler's per-field check sees
         // that this side just touched `status`.

@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import type { PermissionsResolverService } from '../../common/permissions-resolver.service.js';
 import type { PrismaService } from '../../prisma/prisma.service.js';
@@ -18,6 +18,8 @@ function setup(options: {
   kind?: string;
   localVersion?: object;
   externalVersion?: object;
+  /** The task changed after it was read, so the guarded update matches nothing. */
+  staleTask?: boolean;
 }) {
   const conflict = {
     id: 'c1',
@@ -29,14 +31,16 @@ function setup(options: {
     externalVersion: options.externalVersion ?? { status: 'TERMINADA' },
     resolvedAt: null,
   };
-  const taskUpdate = vi.fn().mockResolvedValue({});
+  const taskUpdate = vi
+    .fn()
+    .mockResolvedValue({ count: options.staleTask ? 0 : 1 });
   const conflictUpdate = vi.fn().mockResolvedValue({ id: 'c1' });
   const tx = {
     task: {
       findUniqueOrThrow: vi
         .fn()
         .mockResolvedValue({ status: options.taskStatus }),
-      update: taskUpdate,
+      updateMany: taskUpdate,
     },
     conflict: { update: conflictUpdate },
   };
@@ -95,7 +99,7 @@ describe('ConflictsService.resolve permissions (Roadmap SECURITY-02)', () => {
     );
 
     expect(taskUpdate).toHaveBeenCalledWith({
-      where: { id: 't1' },
+      where: { id: 't1', deletedAt: null, status: 'ASIGNADA' },
       data: { status: 'TERMINADA' },
     });
     const operations = record.mock.calls.map(([event]) => event.operation);
@@ -153,7 +157,7 @@ describe('ConflictsService.resolve permissions (Roadmap SECURITY-02)', () => {
       'actor-1',
     );
     expect(allowed.taskUpdate).toHaveBeenCalledWith({
-      where: { id: 't1' },
+      where: { id: 't1', deletedAt: null, status: 'ASIGNADA' },
       data: { title: 'Theirs' },
     });
     // No status change, so no STATUS_CHANGE event.
@@ -172,5 +176,24 @@ describe('ConflictsService.resolve permissions (Roadmap SECURITY-02)', () => {
       expect(taskUpdate).not.toHaveBeenCalled();
       expect(conflictUpdate).toHaveBeenCalled();
     }
+  });
+
+  it('answers 409 and resolves nothing when the task changed after it was read (Roadmap BUG-04)', async () => {
+    const { service, conflictUpdate, record } = setup({
+      held: ['task.qa.approve'],
+      taskStatus: 'ASIGNADA',
+      staleTask: true,
+    });
+
+    await expect(
+      service.resolve(
+        'p1',
+        'c1',
+        { strategy: 'KEEP_EXTERNAL' } as never,
+        'actor-1',
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(conflictUpdate).not.toHaveBeenCalled();
+    expect(record).not.toHaveBeenCalled();
   });
 });
