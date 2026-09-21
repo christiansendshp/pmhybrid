@@ -958,3 +958,36 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: Every task-shaped item on the dashboard links to its task, a status change names its task, an agent event with a task links to it, and a document change links to the documents page; a removed task's changes drop out of the feed
 - Files: apps/api/src/modules/dashboard/dashboard.service.ts,apps/web/src/app/features/dashboard/dashboard.html,apps/web/src/app/core/dashboard.service.ts,docs/api-reference.md
 - Verify: api unit 371 and e2e pass; web unit 214, eslint, ng build and a11y 8 pass; screenshot checked
+
+## [2026-09-21T18:54:20Z] | claude | UX-03c3 | IN_PROGRESS
+
+- Summary: One register, no internal terms, and a Team search
+- Verify: pending
+
+## [2026-09-21T18:57:25Z] | claude | UX-03c3 | DONE
+
+- Summary: The copy names no brief section, permission key or Roadmap column any more and uses one register (tuteo); Team has a search box that filters people and agents by name, email or provider, ignoring case and accents
+- Files: apps/web/src/app/core/actor-filter.ts,apps/web/src/app/features/team/team.html,apps/web/src/app/features/roles/roles.html,apps/web/src/app/features/project-settings/project-settings.html
+- Verify: web unit 220 pass, eslint, ng build and a11y clean
+
+## [2026-09-21T18:57:27Z] | claude | UX-03c | IN_PROGRESS
+
+- Summary: Close the umbrella: UX-03c1, c2 and c3 are done
+- Verify: pending
+
+## [2026-09-21T18:57:28Z] | claude | UX-03c | DONE
+
+- Summary: The task detail, the dashboard links and the copy pass are done
+- Files: apps/web/src/app
+- Verify: UX-03c1, UX-03c2 and UX-03c3 verified
+
+## [2026-09-21T18:57:29Z] | claude | UX-03 | IN_PROGRESS
+
+- Summary: Close the umbrella: UX-03a, b and c are done
+- Verify: pending
+
+## [2026-09-21T18:57:30Z] | claude | UX-03 | DONE
+
+- Summary: The interface speaks Spanish with readable labels, the progress view has bars and whole numbers, the task detail and dashboard are linked and readable, and the copy is consistent
+- Files: apps/web/src/app,apps/web/DESIGN.md
+- Verify: UX-03a, UX-03b and UX-03c verified: web unit 220, eslint, ng build, a11y 8

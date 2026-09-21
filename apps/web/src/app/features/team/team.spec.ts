@@ -101,6 +101,34 @@ describe('Team (brief §3 — administrable actors)', () => {
     expect(buttons().filter((label) => label === 'Desactivar')).toHaveLength(2);
   });
 
+  it('filters both lists as you type, and says so when nothing matches (Roadmap UX-03c3)', async () => {
+    const { fixture, component } = await render();
+    const root = fixture.nativeElement as HTMLElement;
+    const rows = (table: string) =>
+      Array.from(root.querySelectorAll(`table[aria-label="${table}"] tbody tr`));
+    const type = (value: string) => {
+      const input = root.querySelector('input[type="search"]') as HTMLInputElement;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    };
+
+    expect(rows('Personas').length).toBeGreaterThan(0);
+    type('garcia');
+    expect(rows('Personas')).toHaveLength(1);
+    expect(rows('Personas')[0].textContent).toContain('Ana García');
+    expect(rows('Agentes IA')).toHaveLength(0);
+    expect(root.textContent).toContain('Ningún agente coincide con «garcia»');
+
+    type('zzz');
+    expect(rows('Personas')).toHaveLength(0);
+    expect(root.textContent).toContain('Ninguna persona coincide con «zzz»');
+
+    type('');
+    expect(component.visibleUsers().length).toBeGreaterThan(0);
+    expect(root.textContent).not.toContain('coincide con');
+  });
+
   it('is read-only without the actors.manage permission', async () => {
     permissions = [];
     const { fixture, buttons } = await render();

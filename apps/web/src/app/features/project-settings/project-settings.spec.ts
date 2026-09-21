@@ -60,7 +60,7 @@ describe('ProjectSettings', () => {
       progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
     });
     expect(component.form.disabled).toBe(true);
-    expect(text()).toContain('para cambiarla necesitas el permiso project.update');
+    expect(text()).toContain('para cambiarla necesitas permiso para editar el proyecto');
     expect(text()).not.toContain('Guardar configuración');
   });
 

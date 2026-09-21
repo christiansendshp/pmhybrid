@@ -7,6 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { ApiKey, ApiKeysService, CreatedApiKey } from '../../core/api-keys.service.js';
 import { Actor, ActorsService, UpdateActorInput } from '../../core/actors.service.js';
 import { AuthService } from '../../core/auth.service.js';
+import { filterActors } from '../../core/actor-filter.js';
 import { describeHttpError } from '../../core/http-error.js';
 
 const ACTORS_MANAGE = 'actors.manage';
@@ -31,6 +32,10 @@ export class Team implements OnInit {
 
   readonly users = signal<Actor[]>([]);
   readonly agents = signal<Actor[]>([]);
+  /** What was typed in the search box (Roadmap UX-03c3). */
+  readonly search = signal('');
+  readonly visibleUsers = computed(() => filterActors(this.users(), this.search()));
+  readonly visibleAgents = computed(() => filterActors(this.agents(), this.search()));
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly errorMessage = signal<string | null>(null);
@@ -70,6 +75,10 @@ export class Team implements OnInit {
 
   async ngOnInit(): Promise<void> {
     await this.reload();
+  }
+
+  onSearch(event: Event): void {
+    this.search.set((event.target as HTMLInputElement).value);
   }
 
   async createUser(): Promise<void> {

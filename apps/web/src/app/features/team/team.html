@@ -14,8 +14,23 @@
 @if (loading()) {
   <p class="meta-text">Cargando…</p>
 } @else {
+  <div class="team-search" role="search" aria-label="Buscar en el equipo">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Buscar</mat-label>
+      <input
+        matInput
+        type="search"
+        placeholder="Nombre, email o proveedor"
+        [value]="search()"
+        (input)="onSearch($event)"
+      />
+    </mat-form-field>
+  </div>
   <section class="team-section">
     <h2>Personas</h2>
+    @if (search() && visibleUsers().length === 0) {
+      <p class="meta-text">Ninguna persona coincide con «{{ search() }}».</p>
+    }
     <div class="table-scroll">
       <table class="team-table" aria-label="Personas">
         <thead>
@@ -29,7 +44,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (user of users(); track user.id) {
+          @for (user of visibleUsers(); track user.id) {
             <tr>
               <td>{{ user.displayName }}</td>
               <td>{{ user.email ?? '—' }}</td>
@@ -95,6 +110,9 @@
 
   <section class="team-section">
     <h2>Agentes IA</h2>
+    @if (search() && visibleAgents().length === 0) {
+      <p class="meta-text">Ningún agente coincide con «{{ search() }}».</p>
+    }
     <div class="table-scroll">
       <table class="team-table" aria-label="Agentes IA">
         <thead>
@@ -108,7 +126,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (agent of agents(); track agent.id) {
+          @for (agent of visibleAgents(); track agent.id) {
             <tr>
               <td>
                 {{ agent.displayName }}
@@ -204,8 +222,7 @@
         <h2>Claves de API</h2>
         <p class="page-header__description">
           Permite que {{ actor.displayName }} se autentique directamente contra la API con un
-          encabezado <code>X-API-Key</code>, en lugar de un inicio de sesión humano (brief §27,
-          §28).
+          encabezado <code>X-API-Key</code>, en lugar de un inicio de sesión humano.
         </p>
 
         @if (keyErrorMessage()) {
