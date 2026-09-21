@@ -74,3 +74,14 @@ segments live in `docs/history/`.
 - Summary: A rotated ledger is read whichever way its pointer is written: the archive path is tried as written and then without a leading docs/, because the latest skill's rotate writes docs/history/... from the repository root while files are read from the docs folder. The hash is still verified. Before, a DONE entry that had rotated out was never seen and a task completed before the rotation and taken out of the Roadmap raised a false 'row disappeared' conflict (GAP-38 did in this repository's own project).
 - Files: apps/api/src/modules/synchronization/agentslog-ingestion.service.ts,apps/api/src/modules/synchronization/agentslog-ingestion.service.spec.ts,apps/api/test/synchronization.e2e-spec.ts,docs/synchronization.md
 - Verify: api unit 455 and e2e 300 pass (coverage 88.0); api lint and nest build ok
+
+## [2026-09-21T21:18:22Z] | claude | UX-02b | IN_PROGRESS
+
+- Summary: Kanban: bounded columns that say how many more cards there are, a board that starts near the top on a phone, filters kept in the URL
+- Verify: pending
+
+## [2026-09-21T21:31:17Z] | claude | UX-02b | DONE
+
+- Summary: The Kanban on a phone and its way back from a task: columns stack instead of scrolling sideways and show their first eight cards with a Mostrar N mas button (a card dropped on a column opens it), the filters and the view fold behind Filtros y vista (N) and the project's members behind Miembros (N) via a Viewport media-query signal, the page went from 10,805 to 3,733 px at 390 px; the search, filters, grouping and order are in the address (defaults omitted, replaced not pushed) and a BoardMemory gives a board reached without a query the one it was left with. Found and fixed on the way: the task detail's Tablero and Volver al tablero links pointed at /tasks/kanban, a task that does not exist, because ../kanban is relative to a route of two segments; they now go back to the board with its filters.
+- Files: apps/web/src/app/core/board-query.ts,apps/web/src/app/core/viewport.ts,apps/web/src/app/features/kanban/kanban.ts,apps/web/src/app/features/kanban/kanban.html,apps/web/src/app/features/kanban/kanban.scss,apps/web/src/app/features/task-detail/task-detail.html,apps/web/src/app/features/project-dashboard/project-dashboard.html,apps/web/a11y/board-navigation.a11y.spec.ts,apps/web/DESIGN.md
+- Verify: web unit 273 and eslint clean; Playwright a11y 48 pass (axe on every route, layout at 360 and 390 px, board navigation); web build ok

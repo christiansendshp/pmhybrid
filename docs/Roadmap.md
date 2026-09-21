@@ -276,34 +276,6 @@ created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T09:00:00Z
 ```
 
-### UX-02b — The Kanban columns and their filters on a phone
-
-```yaml
-id: UX-02b
-type: UX
-title: The Kanban columns and their filters on a phone
-status: READY
-priority: P2
-parent: UX-02
-description: >
-  Second slice of UX-02. Kanban columns grow without limit (TERMINADA is
-  2,900 px tall with 12 cards) and the project header uses 290 px before any
-  content; the filters are lost when the task detail is left and the back
-  link returns to the board.
-expected_behavior: >
-  A column that shows a bounded number of cards and says how many more
-  there are, a board that starts near the top of a phone screen, and
-  filters (search, assignee, status) kept in the URL so that going to a task
-  and back, or reloading, keeps them.
-technical_context:
-  frontend: apps/web/src/app/features/kanban, project-dashboard
-next_action: >
-  Decide the cap and how a column expands, then keep the filters in the
-  query string.
-created_at: 2026-09-21T21:05:00Z
-updated_at: 2026-09-21T21:05:00Z
-```
-
 ### UX-02c — Settings form, small targets and unlabeled controls
 
 ```yaml

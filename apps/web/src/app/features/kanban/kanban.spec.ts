@@ -1,13 +1,15 @@
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HierarchyService, ProjectHierarchy } from '../../core/hierarchy.service.js';
 import { ProjectContext } from '../../core/project-context.js';
 import { ProjectsService } from '../../core/projects.service.js';
 import { TaskCard, TasksService } from '../../core/tasks.service.js';
-import { Kanban } from './kanban.js';
+import { BoardMemory } from '../../core/board-query.js';
+import { Viewport } from '../../core/viewport.js';
+import { COLUMN_CAP, Kanban } from './kanban.js';
 
 function card(overrides: Partial<TaskCard> = {}): TaskCard {
   return {
@@ -80,11 +82,15 @@ describe('Kanban (brief §15)', () => {
     });
   });
 
-  async function render(cards: TaskCard[], permissions: string[] = ['task.write']) {
+  async function render(
+    cards: TaskCard[],
+    permissions: string[] = ['task.write'],
+    url = '/projects/p1/kanban',
+  ) {
     TestBed.inject(ProjectContext).permissions.set(permissions);
     listForProject.mockResolvedValue(cards);
     const harness = await RouterTestingHarness.create();
-    const component = await harness.navigateByUrl('/projects/p1/kanban', Kanban);
+    const component = await harness.navigateByUrl(url, Kanban);
     await harness.fixture.whenStable();
     await new Promise((resolve) => setTimeout(resolve));
     harness.detectChanges();
@@ -201,5 +207,157 @@ describe('Kanban (brief §15)', () => {
   it('hides "Nueva tarea" from a member without task.write', async () => {
     const readOnly = await render([card()], []);
     expect(readOnly.harness.routeNativeElement!.textContent).not.toContain('Nueva tarea');
+  });
+
+  describe('long columns (Roadmap UX-02b)', () => {
+    const finished = (count: number) =>
+      Array.from({ length: count }, (_, index) =>
+        card({
+          id: `d${index}`,
+          externalId: `PMH-${index}`,
+          title: `Done ${index}`,
+          status: 'TERMINADA',
+        }),
+      );
+    const cardsIn = (root: HTMLElement) => root.querySelectorAll('.card').length;
+
+    it('shows the first cards of a long column, says how many more there are, and counts them all in its title', async () => {
+      const { harness, text } = await render(finished(COLUMN_CAP + 4));
+
+      expect(cardsIn(harness.routeNativeElement!)).toBe(COLUMN_CAP);
+      expect(text()).toContain('Mostrar 4 más');
+      expect(text()).toContain(String(COLUMN_CAP + 4));
+    });
+
+    it('opens the column on request and closes it again', async () => {
+      const { harness, text } = await render(finished(COLUMN_CAP + 4));
+      const root = harness.routeNativeElement!;
+      const more = () => root.querySelector<HTMLButtonElement>('.column__more')!;
+
+      more().click();
+      harness.detectChanges();
+      expect(cardsIn(root)).toBe(COLUMN_CAP + 4);
+      expect(text()).toContain('Mostrar menos');
+      expect(text()).not.toContain('más');
+
+      more().click();
+      harness.detectChanges();
+      expect(cardsIn(root)).toBe(COLUMN_CAP);
+    });
+
+    it('offers nothing for a column that fits under the cap', async () => {
+      const { harness } = await render(finished(COLUMN_CAP));
+
+      expect(harness.routeNativeElement!.querySelector('.column__more')).toBeNull();
+    });
+
+    it('opens the column a card is dropped on, so the card does not seem to have vanished past the cap', async () => {
+      const moving = card({ id: 'moving', status: 'QA', roadmapTable: 'ACTIVE' });
+      const { component } = await render([moving, ...finished(COLUMN_CAP + 2)]);
+      const target = component.listId('none', 'TERMINADA');
+
+      await component.onDrop(
+        {
+          item: { data: moving },
+          previousContainer: { id: component.listId('none', 'QA') },
+          container: { id: target },
+        } as unknown as CdkDragDrop<TaskCard[]>,
+        'TERMINADA',
+      );
+
+      expect(component.expanded().has(target)).toBe(true);
+    });
+  });
+
+  describe('the address holds the view (Roadmap UX-02b)', () => {
+    it('reads the filters, the grouping and the order from the address', async () => {
+      const { component } = await render(
+        [card()],
+        ['task.write'],
+        '/projects/p1/kanban?q=api&priority=HIGH&blocked=1&group=epic&sort=priority',
+      );
+
+      expect(component.filters()).toMatchObject({
+        search: 'api',
+        priority: 'HIGH',
+        blockedOnly: true,
+      });
+      expect(component.groupBy()).toBe('epic');
+      expect(component.sortBy()).toBe('priority');
+    });
+
+    it('writes a change of the view into the address, without adding a page to go back to', async () => {
+      const { component, harness } = await render([card()]);
+      const router = TestBed.inject(Router);
+
+      component.patchFilters({ search: 'sync' });
+      component.groupBy.set('phase');
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+
+      expect(router.url).toBe('/projects/p1/kanban?q=sync&group=phase');
+      component.clearFilters();
+      component.groupBy.set('none');
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      expect(router.url).toBe('/projects/p1/kanban');
+    });
+
+    it('brings a board back to the view it was left with when the address says nothing', async () => {
+      TestBed.inject(BoardMemory).remember('p1', { q: 'left', priority: 'LOW' });
+
+      const { component, harness } = await render([card()]);
+      await harness.fixture.whenStable();
+
+      expect(component.filters()).toMatchObject({ search: 'left', priority: 'LOW' });
+      expect(TestBed.inject(Router).url).toBe('/projects/p1/kanban?q=left&priority=LOW');
+    });
+
+    it('lets what the address names win over what was left', async () => {
+      TestBed.inject(BoardMemory).remember('p1', { q: 'left' });
+
+      const { component } = await render([card()], ['task.write'], '/projects/p1/kanban?q=named');
+
+      expect(component.filters().search).toBe('named');
+    });
+  });
+
+  describe('on a phone (Roadmap UX-02b)', () => {
+    const phone = (compact: boolean) => {
+      TestBed.inject(Viewport).compact.set(compact);
+    };
+
+    it('folds the filters behind a button that says how many things are set, and unfolds them on request', async () => {
+      phone(true);
+      const { harness, component } = await render(
+        [card()],
+        ['task.write'],
+        '/projects/p1/kanban?priority=HIGH&group=epic',
+      );
+      const root = harness.routeNativeElement!;
+
+      expect(root.querySelector('#board-controls')).toBeNull();
+      const toggle = root.querySelector<HTMLButtonElement>('.board-toolbar__toggle')!;
+      expect(toggle.textContent).toContain('Filtros y vista (2)');
+      expect(toggle.getAttribute('aria-expanded')).toBe('false');
+      // The search stays where it can be reached.
+      expect(root.querySelector('input[type="search"]')).not.toBeNull();
+
+      toggle.click();
+      harness.detectChanges();
+
+      expect(component.toolbarOpen()).toBe(true);
+      expect(root.querySelector('#board-controls')).not.toBeNull();
+      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('shows every control, and no button to fold them, on a wide screen', async () => {
+      phone(false);
+      const { harness } = await render([card()]);
+      const root = harness.routeNativeElement!;
+
+      expect(root.querySelector('.board-toolbar__toggle')).toBeNull();
+      expect(root.querySelector('#board-controls')).not.toBeNull();
+    });
   });
 });

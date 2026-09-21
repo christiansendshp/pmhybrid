@@ -87,96 +87,114 @@
 }
 
 <section class="members" aria-labelledby="members-heading">
-  <h2 id="members-heading" class="members__heading">Miembros</h2>
-  <ul class="members__list">
-    @for (member of members(); track member.id) {
-      <li class="members__item">
-        <div class="members__identity">
-          {{ member.actor.displayName }}
-          <span class="kind-badge" [attr.data-kind]="member.actor.kind">{{
-            kindLabel(member.actor.kind)
-          }}</span>
-        </div>
+  <h2 id="members-heading" class="members__heading">
+    @if (viewport.compact()) {
+      <button
+        type="button"
+        class="members__toggle"
+        aria-controls="members-body"
+        [attr.aria-expanded]="membersOpen()"
+        (click)="membersOpen.set(!membersOpen())"
+      >
+        Miembros ({{ members().length }})
+      </button>
+    } @else {
+      Miembros
+    }
+  </h2>
+  @if (!viewport.compact() || membersOpen()) {
+    <div id="members-body" class="members__body">
+      <ul class="members__list">
+        @for (member of members(); track member.id) {
+          <li class="members__item">
+            <div class="members__identity">
+              {{ member.actor.displayName }}
+              <span class="kind-badge" [attr.data-kind]="member.actor.kind">{{
+                kindLabel(member.actor.kind)
+              }}</span>
+            </div>
 
-        <ul class="status-counts members__roles">
-          @for (assignment of rolesForMember(member.actorId); track assignment.id) {
-            <li>
-              {{ assignment.role.name }}
-              @if (canManageRoles()) {
-                <button
-                  mat-icon-button
-                  type="button"
-                  [attr.aria-label]="'Revocar ' + assignment.role.name"
-                  (click)="revokeRole(assignment)"
-                >
-                  ×
-                </button>
+            <ul class="status-counts members__roles">
+              @for (assignment of rolesForMember(member.actorId); track assignment.id) {
+                <li>
+                  {{ assignment.role.name }}
+                  @if (canManageRoles()) {
+                    <button
+                      mat-icon-button
+                      type="button"
+                      [attr.aria-label]="'Revocar ' + assignment.role.name"
+                      (click)="revokeRole(assignment)"
+                    >
+                      ×
+                    </button>
+                  }
+                </li>
               }
-            </li>
-          }
-        </ul>
+            </ul>
 
-        @if (canManageRoles() && availableRolesForMember(member.actorId).length > 0) {
-          <div class="members__add-role">
+            @if (canManageRoles() && availableRolesForMember(member.actorId).length > 0) {
+              <div class="members__add-role">
+                <mat-select
+                  class="members__select"
+                  [placeholder]="'Agregar un rol para ' + member.actor.displayName"
+                  [attr.aria-label]="'Rol para asignar a ' + member.actor.displayName"
+                  [ngModel]="selectedRoleFor(member.actorId)"
+                  (ngModelChange)="setSelectedRoleFor(member.actorId, $event)"
+                >
+                  @for (role of availableRolesForMember(member.actorId); track role.id) {
+                    <mat-option [value]="role.id">{{ role.name }}</mat-option>
+                  }
+                </mat-select>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="!selectedRoleFor(member.actorId)"
+                  (click)="assignRole(member.actorId)"
+                >
+                  Asignar
+                </button>
+              </div>
+            }
+          </li>
+        }
+      </ul>
+
+      @if (canManageMembers() && candidateActors().length > 0) {
+        <div class="members__add">
+          <mat-select
+            class="members__select"
+            placeholder="Agregar un miembro…"
+            aria-label="Actor para agregar como miembro"
+            [ngModel]="selectedActorId()"
+            (ngModelChange)="selectedActorId.set($event)"
+          >
+            @for (actor of candidateActors(); track actor.id) {
+              <mat-option [value]="actor.id">{{ actor.displayName }}</mat-option>
+            }
+          </mat-select>
+          @if (canManageRoles() && projectRoles().length > 0) {
             <mat-select
               class="members__select"
-              [placeholder]="'Agregar un rol para ' + member.actor.displayName"
-              [attr.aria-label]="'Rol para asignar a ' + member.actor.displayName"
-              [ngModel]="selectedRoleFor(member.actorId)"
-              (ngModelChange)="setSelectedRoleFor(member.actorId, $event)"
+              placeholder="Rol (opcional)"
+              aria-label="Rol para asignar al nuevo miembro"
+              [ngModel]="selectedNewMemberRoleId()"
+              (ngModelChange)="selectedNewMemberRoleId.set($event)"
             >
-              @for (role of availableRolesForMember(member.actorId); track role.id) {
+              @for (role of projectRoles(); track role.id) {
                 <mat-option [value]="role.id">{{ role.name }}</mat-option>
               }
             </mat-select>
-            <button
-              mat-stroked-button
-              type="button"
-              [disabled]="!selectedRoleFor(member.actorId)"
-              (click)="assignRole(member.actorId)"
-            >
-              Asignar
-            </button>
-          </div>
-        }
-      </li>
-    }
-  </ul>
-
-  @if (canManageMembers() && candidateActors().length > 0) {
-    <div class="members__add">
-      <mat-select
-        class="members__select"
-        placeholder="Agregar un miembro…"
-        aria-label="Actor para agregar como miembro"
-        [ngModel]="selectedActorId()"
-        (ngModelChange)="selectedActorId.set($event)"
-      >
-        @for (actor of candidateActors(); track actor.id) {
-          <mat-option [value]="actor.id">{{ actor.displayName }}</mat-option>
-        }
-      </mat-select>
-      @if (canManageRoles() && projectRoles().length > 0) {
-        <mat-select
-          class="members__select"
-          placeholder="Rol (opcional)"
-          aria-label="Rol para asignar al nuevo miembro"
-          [ngModel]="selectedNewMemberRoleId()"
-          (ngModelChange)="selectedNewMemberRoleId.set($event)"
-        >
-          @for (role of projectRoles(); track role.id) {
-            <mat-option [value]="role.id">{{ role.name }}</mat-option>
           }
-        </mat-select>
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="!selectedActorId()"
+            (click)="addMember()"
+          >
+            Agregar miembro
+          </button>
+        </div>
       }
-      <button
-        mat-stroked-button
-        type="button"
-        [disabled]="!selectedActorId()"
-        (click)="addMember()"
-      >
-        Agregar miembro
-      </button>
     </div>
   }
 </section>

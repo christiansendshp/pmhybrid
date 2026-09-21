@@ -49,6 +49,39 @@ for (const width of [360, 390]) {
       expect(signOut!.height).toBeLessThan(48);
     });
 
+    test('the board starts near the top, with its filters folded and its columns stacked (Roadmap UX-02b)', async ({
+      page,
+    }) => {
+      await page.goto('/projects/pmhybrid-self/kanban');
+      await page.waitForLoadState('networkidle');
+
+      // The members and the filters are one line each until they are asked for.
+      await expect(page.locator('#board-controls')).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /Filtros y vista/ })).toBeVisible();
+      await expect(page.getByRole('button', { name: /Miembros \(\d+\)/ })).toBeVisible();
+
+      const columns = page.locator('.column');
+      const first = await columns.nth(0).boundingBox();
+      const second = await columns.nth(1).boundingBox();
+      // Stacked: the second is under the first, not beside it.
+      expect(second!.x).toBeLessThanOrEqual(first!.x + 1);
+      expect(second!.y).toBeGreaterThan(first!.y);
+      // The first column is in the first screen.
+      expect(first!.y).toBeLessThan(700);
+    });
+
+    test('no column shows more cards than its cap, and offers the rest (Roadmap UX-02b)', async ({
+      page,
+    }) => {
+      await page.goto('/projects/pmhybrid-self/kanban');
+      await page.waitForLoadState('networkidle');
+
+      const counts = await page
+        .locator('.column__cards')
+        .evaluateAll((lists) => lists.map((list) => list.querySelectorAll('.card').length));
+      expect(Math.max(...counts)).toBeLessThanOrEqual(8);
+    });
+
     test('says a navigation that goes on past the edge does, and shows the page it is on', async ({
       page,
     }) => {

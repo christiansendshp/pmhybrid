@@ -26,8 +26,18 @@
   width: 14rem;
 }
 
+/* The controls after the search take part in the toolbar's own row, as they did before they were grouped. */
+.board-toolbar__controls {
+  display: contents;
+}
+
 .board-toolbar__count {
   margin-left: auto;
+}
+
+.column__more {
+  margin-top: var(--space-1);
+  align-self: stretch;
 }
 
 .board,
@@ -218,4 +228,34 @@
 
 .cdk-drag-placeholder {
   opacity: 0.4;
+}
+
+/*
+ * On a phone (Roadmap UX-02b) the search is the whole width, the rest of the
+ * toolbar is folded behind one button, and the columns are stacked instead of
+ * a row of five to scroll across.
+ */
+@media (max-width: 720px) {
+  .board-toolbar {
+    mat-form-field {
+      width: calc(50% - var(--space-2));
+    }
+
+    .board-toolbar__search {
+      width: 100%;
+    }
+  }
+
+  .board-toolbar__controls {
+    display: flex;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+  }
+
+  .lane__columns {
+    grid-template-columns: 1fr;
+    overflow-x: visible;
+  }
 }

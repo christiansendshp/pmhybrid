@@ -6,6 +6,29 @@
   margin-bottom: var(--space-4);
 }
 
+/* The list and the add forms sit in the section's own row, as they did before the fold. */
+.members__body {
+  display: contents;
+}
+
+.members__toggle {
+  min-height: 36px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+
+  &::after {
+    content: ' ▾';
+  }
+
+  &[aria-expanded='true']::after {
+    content: ' ▴';
+  }
+}
+
 .members__heading {
   margin: 0;
   font: var(--mat-sys-label-large);

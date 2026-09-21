@@ -12,6 +12,7 @@ import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { Role, RoleAssignment, RolesService } from '../../core/roles.service.js';
 import { syncNeedsAttention, syncStatusLabel } from '../../core/sync-status.js';
 import { SyncRun, SynchronizationService } from '../../core/synchronization.service.js';
+import { Viewport } from '../../core/viewport.js';
 import { ScrollCue, showWhenActive } from '../../shared/scroll-cue';
 
 /** Project header inside the app shell: identity, sync, members and the section tabs. */
@@ -49,6 +50,9 @@ export class ProjectDashboard implements OnInit {
   ] as const;
   readonly kindLabel = actorKindLabel;
   readonly showWhenActive = showWhenActive;
+  readonly viewport = inject(Viewport);
+  /** On a phone the members are folded away until asked for; on a wide screen they are always shown. */
+  readonly membersOpen = signal(false);
 
   readonly project = this.context.project;
   readonly members = signal<ProjectMember[]>([]);

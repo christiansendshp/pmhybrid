@@ -28,83 +28,109 @@
     />
   </mat-form-field>
 
-  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-    <mat-label>Responsable</mat-label>
-    <mat-select
-      [ngModel]="filters().assigneeId"
-      (ngModelChange)="patchFilters({ assigneeId: $event })"
+  @if (viewport.compact()) {
+    <button
+      mat-stroked-button
+      type="button"
+      class="board-toolbar__toggle"
+      aria-controls="board-controls"
+      [attr.aria-expanded]="toolbarOpen()"
+      (click)="toolbarOpen.set(!toolbarOpen())"
     >
-      <mat-option [value]="null">Todos</mat-option>
-      <mat-option [value]="unassigned">Sin asignar</mat-option>
-      @for (member of members(); track member.actorId) {
-        <mat-option [value]="member.actorId">{{ member.actor.displayName }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-
-  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-    <mat-label>Prioridad</mat-label>
-    <mat-select [ngModel]="filters().priority" (ngModelChange)="patchFilters({ priority: $event })">
-      <mat-option [value]="null">Cualquier prioridad</mat-option>
-      @for (priority of priorities; track priority) {
-        <mat-option [value]="priority">{{ priority | label: 'priority' }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
-
-  @if (hierarchy().phases.length > 0) {
-    <mat-form-field appearance="outline" subscriptSizing="dynamic">
-      <mat-label>Fase</mat-label>
-      <mat-select [ngModel]="filters().phaseId" (ngModelChange)="patchFilters({ phaseId: $event })">
-        <mat-option [value]="null">Cualquier fase</mat-option>
-        @for (phase of hierarchy().phases; track phase.id) {
-          <mat-option [value]="phase.id">{{ phase.name }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
+      Filtros y vista{{ changesCount() > 0 ? ' (' + changesCount() + ')' : '' }}
+    </button>
   }
 
-  @if (hierarchy().epics.length > 0) {
-    <mat-form-field appearance="outline" subscriptSizing="dynamic">
-      <mat-label>Épica</mat-label>
-      <mat-select [ngModel]="filters().epicId" (ngModelChange)="patchFilters({ epicId: $event })">
-        <mat-option [value]="null">Cualquier épica</mat-option>
-        @for (epic of hierarchy().epics; track epic.id) {
-          <mat-option [value]="epic.id">{{ epic.name }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
+  @if (showToolbar()) {
+    <div id="board-controls" class="board-toolbar__controls">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Responsable</mat-label>
+        <mat-select
+          [ngModel]="filters().assigneeId"
+          (ngModelChange)="patchFilters({ assigneeId: $event })"
+        >
+          <mat-option [value]="null">Todos</mat-option>
+          <mat-option [value]="unassigned">Sin asignar</mat-option>
+          @for (member of members(); track member.actorId) {
+            <mat-option [value]="member.actorId">{{ member.actor.displayName }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Prioridad</mat-label>
+        <mat-select
+          [ngModel]="filters().priority"
+          (ngModelChange)="patchFilters({ priority: $event })"
+        >
+          <mat-option [value]="null">Cualquier prioridad</mat-option>
+          @for (priority of priorities; track priority) {
+            <mat-option [value]="priority">{{ priority | label: 'priority' }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      @if (hierarchy().phases.length > 0) {
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Fase</mat-label>
+          <mat-select
+            [ngModel]="filters().phaseId"
+            (ngModelChange)="patchFilters({ phaseId: $event })"
+          >
+            <mat-option [value]="null">Cualquier fase</mat-option>
+            @for (phase of hierarchy().phases; track phase.id) {
+              <mat-option [value]="phase.id">{{ phase.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+
+      @if (hierarchy().epics.length > 0) {
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Épica</mat-label>
+          <mat-select
+            [ngModel]="filters().epicId"
+            (ngModelChange)="patchFilters({ epicId: $event })"
+          >
+            <mat-option [value]="null">Cualquier épica</mat-option>
+            @for (epic of hierarchy().epics; track epic.id) {
+              <mat-option [value]="epic.id">{{ epic.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+
+      <mat-checkbox
+        [ngModel]="filters().blockedOnly"
+        (ngModelChange)="patchFilters({ blockedOnly: $event })"
+      >
+        Solo bloqueadas
+      </mat-checkbox>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Agrupar por</mat-label>
+        <mat-select [ngModel]="groupBy()" (ngModelChange)="groupBy.set($event)">
+          <mat-option value="none">Sin agrupar</mat-option>
+          <mat-option value="assignee">Responsable</mat-option>
+          <mat-option value="phase">Fase</mat-option>
+          <mat-option value="epic">Épica</mat-option>
+          <mat-option value="priority">Prioridad</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Ordenar por</mat-label>
+        <mat-select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)">
+          <mat-option value="created">Más antiguas primero</mat-option>
+          <mat-option value="priority">Prioridad</mat-option>
+          <mat-option value="dueDate">Fecha de vencimiento</mat-option>
+          <mat-option value="progress">Menor progreso</mat-option>
+          <mat-option value="updated">Actualizadas recientemente</mat-option>
+          <mat-option value="externalId">ID del Roadmap</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
   }
-
-  <mat-checkbox
-    [ngModel]="filters().blockedOnly"
-    (ngModelChange)="patchFilters({ blockedOnly: $event })"
-  >
-    Solo bloqueadas
-  </mat-checkbox>
-
-  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-    <mat-label>Agrupar por</mat-label>
-    <mat-select [ngModel]="groupBy()" (ngModelChange)="groupBy.set($event)">
-      <mat-option value="none">Sin agrupar</mat-option>
-      <mat-option value="assignee">Responsable</mat-option>
-      <mat-option value="phase">Fase</mat-option>
-      <mat-option value="epic">Épica</mat-option>
-      <mat-option value="priority">Prioridad</mat-option>
-    </mat-select>
-  </mat-form-field>
-
-  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-    <mat-label>Ordenar por</mat-label>
-    <mat-select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)">
-      <mat-option value="created">Más antiguas primero</mat-option>
-      <mat-option value="priority">Prioridad</mat-option>
-      <mat-option value="dueDate">Fecha de vencimiento</mat-option>
-      <mat-option value="progress">Menor progreso</mat-option>
-      <mat-option value="updated">Actualizadas recientemente</mat-option>
-      <mat-option value="externalId">ID del Roadmap</mat-option>
-    </mat-select>
-  </mat-form-field>
 
   <span class="meta-text board-toolbar__count" aria-live="polite">
     {{ visibleCards().length }} de {{ cards().length }} tareas
@@ -152,7 +178,7 @@
                 [cdkDropListEnterPredicate]="canEnter[status]"
                 (cdkDropListDropped)="onDrop($event, status)"
               >
-                @for (card of lane.columns[status]; track card.id) {
+                @for (card of shownIn(lane, status); track card.id) {
                   <article
                     class="card"
                     cdkDrag
@@ -238,6 +264,25 @@
                   <p class="column__empty">Sin tareas</p>
                 }
               </div>
+              @if (hiddenIn(lane, status) > 0) {
+                <button
+                  mat-button
+                  type="button"
+                  class="column__more"
+                  (click)="expandColumn(listId(lane.key, status))"
+                >
+                  Mostrar {{ hiddenIn(lane, status) }} más
+                </button>
+              } @else if (canCollapse(lane, status)) {
+                <button
+                  mat-button
+                  type="button"
+                  class="column__more"
+                  (click)="collapseColumn(listId(lane.key, status))"
+                >
+                  Mostrar menos
+                </button>
+              }
             </div>
           }
         </div>

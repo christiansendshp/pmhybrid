@@ -5,6 +5,7 @@ import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuditEvent, AuditService } from '../../core/audit.service.js';
+import { BoardMemory } from '../../core/board-query.js';
 import { HierarchyService, ProjectHierarchy } from '../../core/hierarchy.service.js';
 import { ProjectsService } from '../../core/projects.service.js';
 import { TaskDetail as TaskDetailModel, TasksService } from '../../core/tasks.service.js';
@@ -228,6 +229,27 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
       'The parent',
     ]);
     expect(crumbs.querySelector('[aria-current="page"]')?.textContent).toBe('PMH-1');
+  });
+
+  it('goes back to the board with the filters it was left with (Roadmap UX-02b)', async () => {
+    TestBed.inject(BoardMemory).remember('p1', { q: 'sync', priority: 'HIGH' });
+    getById.mockResolvedValue(taskDetail());
+    listAudit.mockResolvedValue([]);
+
+    const { harness } = await render();
+    const crumb = harness.routeNativeElement!.querySelector('nav.breadcrumb a')!;
+
+    expect(crumb.getAttribute('href')).toBe('/projects/p1/kanban?q=sync&priority=HIGH');
+  });
+
+  it('goes back to a plain board when none was filtered (Roadmap UX-02b)', async () => {
+    getById.mockResolvedValue(taskDetail());
+    listAudit.mockResolvedValue([]);
+
+    const { harness } = await render();
+    const crumb = harness.routeNativeElement!.querySelector('nav.breadcrumb a')!;
+
+    expect(crumb.getAttribute('href')).toBe('/projects/p1/kanban');
   });
 
   it('shows empty states before anything has happened', async () => {

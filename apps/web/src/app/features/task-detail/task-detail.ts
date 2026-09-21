@@ -4,10 +4,11 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Params, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { actorKindLabel } from '../../core/actor-kind.js';
+import { BoardMemory } from '../../core/board-query.js';
 import { describeAuditChanges } from '../../core/audit-format.js';
 import { AuditEvent, AuditService } from '../../core/audit.service.js';
 import {
@@ -55,6 +56,7 @@ const TASK_WRITE = 'task.write';
 export class TaskDetail implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly boardMemory = inject(BoardMemory);
   private readonly destroyRef = inject(DestroyRef);
   private readonly tasksService = inject(TasksService);
   private readonly projectsService = inject(ProjectsService);
@@ -124,6 +126,11 @@ export class TaskDetail implements OnInit {
       Boolean(entry.value),
     );
   });
+
+  /** The filters the board was left with, so the way back to it does not lose them (Roadmap UX-02b). */
+  boardQuery(): Params {
+    return this.boardMemory.recall(this.projectId);
+  }
 
   private get projectId(): string {
     return this.route.parent!.snapshot.paramMap.get('projectId')!;
@@ -285,7 +292,10 @@ export class TaskDetail implements OnInit {
     this.deleteError.set(null);
     try {
       await this.tasksService.remove(this.projectId, this.taskId);
-      await this.router.navigate(['kanban'], { relativeTo: this.route.parent });
+      await this.router.navigate(['kanban'], {
+        relativeTo: this.route.parent,
+        queryParams: this.boardQuery(),
+      });
     } catch (error) {
       this.deleteError.set(describeHttpError(error, 'No se pudo eliminar la tarea.'));
       this.confirmingDelete.set(false);

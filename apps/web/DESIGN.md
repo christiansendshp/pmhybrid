@@ -219,6 +219,17 @@ not hand-applied elsewhere.
   page's template. Now a seamed panel boundary: `border-bottom: 1px solid
 var(--mat-sys-outline-variant)` under its padding, matching `.tab-nav`'s
   existing seam so every page opens on the same hairline grammar.
+- **The Kanban board on a phone** (Roadmap UX-02b) — the five columns stack instead
+  of scrolling sideways, each shows its first eight cards (`COLUMN_CAP`) and a
+  "Mostrar N más" button for the rest (a card dropped on a column opens it, so it
+  does not vanish past the cap), and the filters and the view fold behind one
+  "Filtros y vista (N)" button, N being how many things differ from a plain board;
+  the project page's members fold the same way. `Viewport.compact` (a media-query
+  signal at 720px) decides, because a stylesheet cannot leave a block out of the
+  page. The search, the filters, the grouping and the order live in the address
+  (`?q=&assignee=&priority=&phase=&epic=&blocked=1&group=&sort=`, defaults omitted,
+  replaced not pushed), and `BoardMemory` gives a board reached without a query the
+  one it was left with, so the way back from a task keeps them.
 - **`.tab-nav`** — the project-level second-level nav (Kanban / Progress /
   Documents / Conflicts / Audit / Settings), directly under a project page's
   header; scrolls sideways with `appScrollCue` on a phone.

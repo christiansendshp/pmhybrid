@@ -1,13 +1,13 @@
 @if (notFound()) {
   <p role="alert">
     Esta tarea no existe o se quitó del proyecto.
-    <a routerLink="../kanban">Volver al tablero</a>
+    <a routerLink="../../kanban" [queryParams]="boardQuery()">Volver al tablero</a>
   </p>
 } @else if (loadError()) {
   <p role="alert">{{ loadError() }}</p>
 } @else if (task(); as t) {
   <nav class="breadcrumb" aria-label="Ruta de navegación">
-    <a routerLink="../kanban">Tablero</a>
+    <a routerLink="../../kanban" [queryParams]="boardQuery()">Tablero</a>
     @if (parentTask(); as parent) {
       <span aria-hidden="true">›</span>
       <a [routerLink]="['../', parent.id]">{{ parent.title }}</a>

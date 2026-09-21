@@ -7,6 +7,7 @@ import { Actor, ActorsService } from '../../core/actors.service.js';
 import { Project, ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { Role, RoleAssignment, RolesService } from '../../core/roles.service.js';
 import { SynchronizationService } from '../../core/synchronization.service.js';
+import { Viewport } from '../../core/viewport.js';
 import { ProjectDashboard } from './project-dashboard.js';
 
 const PROJECT: Project = {
@@ -369,5 +370,37 @@ describe('ProjectDashboard — role assignment (brief §4)', () => {
 
     expect(component.loadError()).toBe('Something broke');
     expect(fixture.nativeElement.textContent).toContain('Something broke');
+  });
+
+  describe('members on a phone (Roadmap UX-02b)', () => {
+    async function renderCompact(compact: boolean) {
+      TestBed.inject(Viewport).compact.set(compact);
+      return render();
+    }
+
+    it('folds the members behind a button that says how many there are, and unfolds them on request', async () => {
+      const { fixture, component } = await renderCompact(true);
+      const root = fixture.nativeElement as HTMLElement;
+
+      expect(root.querySelector('.members__list')).toBeNull();
+      const toggle = root.querySelector<HTMLButtonElement>('.members__toggle')!;
+      expect(toggle.textContent).toContain('Miembros (1)');
+      expect(toggle.getAttribute('aria-expanded')).toBe('false');
+
+      toggle.click();
+      fixture.detectChanges();
+
+      expect(component.membersOpen()).toBe(true);
+      expect(root.querySelector('.members__list')).not.toBeNull();
+      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('shows the members, and no button to fold them, on a wide screen', async () => {
+      const { fixture } = await renderCompact(false);
+      const root = fixture.nativeElement as HTMLElement;
+
+      expect(root.querySelector('.members__toggle')).toBeNull();
+      expect(root.querySelector('.members__list')).not.toBeNull();
+    });
   });
 });
