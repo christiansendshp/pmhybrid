@@ -1,10 +1,11 @@
+import path from 'node:path';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './../prisma/demo-credentials.js';
-import { createScratchDocsPath } from './helpers/scratch-docs.js';
+import { createScratchDocsPath, uniqueDocsPath } from './helpers/scratch-docs.js';
 
 describe('Projects / RBAC (e2e)', () => {
   let app: INestApplication<App>;
@@ -57,7 +58,7 @@ describe('Projects / RBAC (e2e)', () => {
     const created = await request(app.getHttpServer())
       .post('/projects')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ name: 'E2E Project', docsPath: './e2e-project-docs' })
+      .send({ name: 'E2E Project', docsPath: uniqueDocsPath('e2e-project-docs') })
       .expect(201);
 
     expect(created.body.name).toBe('E2E Project');
@@ -82,7 +83,7 @@ describe('Projects / RBAC (e2e)', () => {
     const created = await request(app.getHttpServer())
       .post('/projects')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ name: 'Private Project', docsPath: './private-docs' })
+      .send({ name: 'Private Project', docsPath: uniqueDocsPath('private-docs') })
       .expect(201);
 
     await request(app.getHttpServer())
@@ -95,7 +96,7 @@ describe('Projects / RBAC (e2e)', () => {
     const created = await request(app.getHttpServer())
       .post('/projects')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ name: 'Agent Project', docsPath: './agent-docs' })
+      .send({ name: 'Agent Project', docsPath: uniqueDocsPath('agent-docs') })
       .expect(201);
     const projectId = created.body.id;
 
@@ -121,7 +122,7 @@ describe('Projects / RBAC (e2e)', () => {
     const created = await request(app.getHttpServer())
       .post('/projects')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ name: 'Guarded Project', docsPath: './guarded-docs' })
+      .send({ name: 'Guarded Project', docsPath: uniqueDocsPath('guarded-docs') })
       .expect(201);
     const projectId = created.body.id;
 
@@ -143,7 +144,7 @@ describe('Projects / RBAC (e2e)', () => {
     const created = await request(app.getHttpServer())
       .post('/projects')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ name: 'Updatable Project', docsPath: './updatable-docs' })
+      .send({ name: 'Updatable Project', docsPath: uniqueDocsPath('updatable-docs') })
       .expect(201);
 
     const updated = await request(app.getHttpServer())
@@ -159,7 +160,7 @@ describe('Projects / RBAC (e2e)', () => {
     const created = await request(app.getHttpServer())
       .post('/projects')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ name: 'Settings Project', docsPath: './settings-docs', repoUrl: 'https://example.test/old' })
+      .send({ name: 'Settings Project', docsPath: uniqueDocsPath('settings-docs'), repoUrl: 'https://example.test/old' })
       .expect(201);
     const patch = (body: object, token = ownerToken) =>
       request(app.getHttpServer())
@@ -184,7 +185,7 @@ describe('Projects / RBAC (e2e)', () => {
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({
         name: 'Rollup Project',
-        docsPath: './rollup-docs',
+        docsPath: uniqueDocsPath('rollup-docs'),
         progressRollupStrategy: 'LEAF_EQUAL_WEIGHT',
       })
       .expect(201);
@@ -193,7 +194,7 @@ describe('Projects / RBAC (e2e)', () => {
     const defaulted = await request(app.getHttpServer())
       .post('/projects')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ name: 'Default Rollup Project', docsPath: './default-rollup-docs' })
+      .send({ name: 'Default Rollup Project', docsPath: uniqueDocsPath('default-rollup-docs') })
       .expect(201);
     expect(defaulted.body.progressRollupStrategy).toBe('EQUAL_WEIGHT_AVERAGE');
 
@@ -215,7 +216,7 @@ describe('Projects / RBAC (e2e)', () => {
     const created = await request(app.getHttpServer())
       .post('/projects')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ name: 'Lead Project', docsPath: './lead-docs' })
+      .send({ name: 'Lead Project', docsPath: uniqueDocsPath('lead-docs') })
       .expect(201);
     const projectId = created.body.id;
 
@@ -283,6 +284,67 @@ describe('Projects / RBAC (e2e)', () => {
       activeAgents: 1,
       openConflicts: 0,
       lastSyncRun: { status: 'SUCCESS' },
+    });
+  });
+
+  describe('docsPath confinement (Roadmap SECURITY-01)', () => {
+    const SYSTEM_DIR = process.platform === 'win32' ? 'C:\\Windows\\System32' : '/etc';
+
+    const createAt = (docsPath: string, token = ownerToken) =>
+      request(app.getHttpServer())
+        .post('/projects')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: `Confinement ${Date.now()}`, docsPath });
+
+    it('rejects a docsPath outside the allowed roots, UNC/device paths and NUL bytes', async () => {
+      await createAt(SYSTEM_DIR).expect(400);
+      await createAt('\\\\server\\share\\docs').expect(400);
+      await createAt('//server/share/docs').expect(400);
+      await createAt('\\\\?\\C:\\docs').expect(400);
+      await createAt(`${uniqueDocsPath('nul')}\u0000`).expect(400);
+    });
+
+    it('rejects a ../ escape out of an allowed folder', async () => {
+      await createAt(`${uniqueDocsPath('dotdot')}/../../../..`).expect(400);
+    });
+
+    it("does not let a non-member point a new project at another project's folder", async () => {
+      const shared = createScratchDocsPath();
+      await createAt(shared).expect(201);
+
+      // Not a member of the first project: gets a generic answer that does
+      // not echo the folder, so it cannot be used to probe for one.
+      const stolen = await createAt(shared, outsiderToken).expect(409);
+      expect(stolen.body.message).toBe('docsPath is not available');
+      expect(JSON.stringify(stolen.body)).not.toContain(shared);
+
+      // A member of every project already using the folder may reuse it.
+      await createAt(shared).expect(201);
+    });
+
+    it('validates a changed docsPath on update but keeps an unchanged one editable', async () => {
+      const own = createScratchDocsPath();
+      const created = await createAt(own).expect(201);
+      const patch = (body: object) =>
+        request(app.getHttpServer())
+          .patch(`/projects/${created.body.id}`)
+          .set('Authorization', `Bearer ${ownerToken}`)
+          .send(body);
+
+      await patch({ docsPath: SYSTEM_DIR }).expect(400);
+
+      // The settings form resubmits the stored value on every save.
+      await patch({ docsPath: own, description: 'still editable' }).expect(200);
+
+      const other = createScratchDocsPath();
+      await createAt(other, outsiderToken).expect(201);
+      await patch({ docsPath: other }).expect(409);
+    });
+
+    it('stores the normalized absolute path', async () => {
+      const scratch = createScratchDocsPath();
+      const created = await createAt(`${scratch}/./sub/..`).expect(201);
+      expect(path.normalize(created.body.docsPath)).toBe(path.normalize(scratch));
     });
   });
 });

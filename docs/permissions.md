@@ -92,20 +92,44 @@ An API key management write (`API_KEY_CREATE`/`API_KEY_REVOKE`,
 owning agent `Actor`'s id, which the key's id previously sat behind, only
 visible inside the event's `newValue` blob.
 
-## Filesystem browser trust boundary (Roadmap GAP-27)
+## Filesystem browser and docsPath trust boundary (Roadmap GAP-27, SECURITY-01)
 
 `GET /filesystem-browser/browse` (backs the `docsPath` folder picker on
 create-project and Project Settings) requires only `JwtAuthGuard` — no
 `RequirePermission`, since `POST /projects` itself needs no permission beyond
-being authenticated, and this endpoint only supports that same flow. It
-returns directory **names** (never file content) confined to
-`PROJECT_DOCS_BROWSE_ROOT` (defaults to the API process's home directory) —
-that root confinement, not a permission check, is the actual safeguard
-against using it to enumerate the whole disk. Any authenticated actor can
-already point `docsPath` at an arbitrary folder the API process can read and
-have its `Roadmap.md`/`Agentslog.md` content synced and displayed back to
-project members with zero extra permission — this endpoint adds no new
-content exposure, only a bounded, read-only directory listing.
+being authenticated (any human or agent actor may create a project; the
+creator becomes its OWNER), and this endpoint only supports that same flow.
+It returns directory **names** (never file content).
+
+The safeguard is the **allowed roots**: `PROJECT_DOCS_BROWSE_ROOT` (defaults to
+the API process's home directory; several roots may be listed, separated by
+the platform path delimiter — `;` on Windows, `:` elsewhere). Since Roadmap
+SECURITY-01 the same roots confine the _stored_ `docsPath`, not just the
+picker. Before that, any authenticated actor could point a project at any
+folder the API process could read — another team's docs or a system folder —
+and have its `Roadmap.md`/`Agentslog.md` read, and written back to, with no
+permission.
+
+- **Create and update** (`local` provider): `docsPath` must resolve inside an
+  allowed root, judged on the real location too (a symlink or junction inside
+  a root cannot lead out of it). UNC and device paths (a leading `\\` or
+  `//`, which covers `\\server\share`, `\\?\` and `\\.\`) and NUL bytes are
+  rejected with 400. The stored value is the normalized absolute path. A
+  `github` provider slug only has to be free of `..` segments and NUL.
+- **No aliasing another team's folder**: a project may not use the folder of
+  a project the requester is not an active member of (409
+  `docsPath is not available`, deliberately not naming the other project);
+  reusing a folder that only the requester's own projects use is fine.
+- **Update** validates `docsPath` only when it actually changes, so a project
+  stored before the confinement stays editable for its other settings.
+- **Every read, write and `git log`** goes through `LocalFsGitProvider`, which
+  re-checks the path against the roots each time, so an old row (or a root
+  later narrowed) can no longer be used to touch a folder outside them.
+
+Not covered: everything _inside_ an allowed root is still reachable by any
+actor who creates a project there, so the roots must contain only project
+documentation folders — do not point them at a directory that also holds
+unrelated secrets.
 
 ## Realtime WebSocket handshake (Roadmap GAP-26)
 

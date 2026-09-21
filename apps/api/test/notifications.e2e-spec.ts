@@ -6,7 +6,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './../prisma/demo-credentials.js';
-import { createScratchDocsPath } from './helpers/scratch-docs.js';
+import { createScratchDocsPath, uniqueDocsPath } from './helpers/scratch-docs.js';
 
 const ACTIVE_HEADER = `| ID | Outcome | Acceptance check | Status | Owner | Depends on |
 | --- | --- | --- | --- | --- | --- |`;
@@ -161,7 +161,8 @@ describe('Internal notifications (e2e)', () => {
   });
 
   it('persists a FAILED sync run and notifies other members, where it used to vanish entirely', async () => {
-    const projectId = await createProjectAt('/nonexistent/docs/path/that/cannot/be/read');
+    // Allowed by the docsPath confinement but never created on disk, so reading it fails.
+    const projectId = await createProjectAt(uniqueDocsPath('unreadable'));
     const member = await createUser();
     await addMember(projectId, member.id);
 

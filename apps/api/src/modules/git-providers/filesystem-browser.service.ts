@@ -8,6 +8,11 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { EnvConfig } from '../../config/env.validation.js';
 import {
+  isInside,
+  parseAllowedRoots,
+  resolveAllowedLocalDocsPath,
+} from './docs-path-policy.js';
+import {
   DOCUMENT_KINDS,
   resolveDocumentFilename,
 } from '../roadmap/document-kind.util.js';
@@ -40,10 +45,11 @@ export interface BrowseDirectoryResult {
  * server the same way reading does.
  *
  * Confined to `PROJECT_DOCS_BROWSE_ROOT` (defaults to the API process's home
- * directory) so this doesn't become a way to enumerate the whole disk —
- * project creation itself needs no extra permission, so this endpoint only
- * requires being authenticated, and the root confinement is the actual
- * safeguard (docs/permissions.md).
+ * directory; several roots may be listed with the platform path delimiter)
+ * so this doesn't become a way to enumerate the whole disk. The same roots
+ * now also confine every stored `docsPath` (Roadmap SECURITY-01), so this
+ * endpoint only requires being authenticated and the root confinement is
+ * the actual safeguard (docs/permissions.md).
  *
  * Only meaningful when GIT_PROVIDER_TYPE=local: it browses the API server's
  * own disk to fill in a `docsPath` that, under GIT_PROVIDER_TYPE=github,
@@ -65,21 +71,17 @@ export class FilesystemBrowserService {
         'The filesystem browser is only available when GIT_PROVIDER_TYPE=local',
       );
     }
-    const root = path.resolve(
+    const roots = parseAllowedRoots(
       this.configService.get('PROJECT_DOCS_BROWSE_ROOT', { infer: true }),
     );
-    const target = path.resolve(
-      requestedPath && requestedPath.length > 0 ? requestedPath : root,
-    );
-
-    if (target !== root) {
-      const relative = path.relative(root, target);
-      if (relative.startsWith('..') || path.isAbsolute(relative)) {
-        throw new BadRequestException(
-          `Path is outside the allowed root: ${root}`,
-        );
-      }
-    }
+    // Same confinement a stored docsPath gets (real location included, so a
+    // symlink inside a root cannot lead out of it); the picker starts at the
+    // first configured root and can browse any of them.
+    const target =
+      requestedPath && requestedPath.length > 0
+        ? await resolveAllowedLocalDocsPath(requestedPath, roots)
+        : roots[0];
+    const root = roots.find((candidate) => isInside(candidate, target))!;
 
     let stat;
     try {

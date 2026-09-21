@@ -168,40 +168,6 @@ created_at: 2026-09-19T09:40:00Z
 updated_at: 2026-09-20T19:55:00Z
 ```
 
-### SECURITY-01 — Project docsPath is not confined and any authenticated actor can create a project
-
-```yaml
-id: SECURITY-01
-type: SECURITY
-title: Project docsPath is not confined and any authenticated actor can create a project
-status: READY
-priority: P0
-description: >
-  Found by the 2026-09-21 full evaluation (backend audit, reproduced live,
-  code re-checked). `CreateProjectDto.docsPath` is only `@IsString
-  @IsNotEmpty`, `POST /projects` is guarded by JwtAuthGuard alone, and
-  PROJECT_DOCS_BROWSE_ROOT only restricts the folder-picker UI, not the
-  stored path. A user with no roles (403 on SMARTRH) created a project
-  whose docsPath was SMARTRH's docs folder and read its Roadmap.md (22 KB);
-  `C:\Windows\System32\drivers\etc` was accepted too, also for an
-  agent API key. Write-back would let the same actor write into that
-  folder. A Windows UNC path could leak NTLM credentials (not verified).
-expected_behavior: >
-  A project's docsPath resolves (realpath) inside the configured browse
-  root, rejects UNC/device paths, is unique across projects, and cannot be
-  used to reach another project's or a system folder. Negative e2e tests
-  cover each rejection.
-technical_context:
-  backend: apps/api/src/modules/projects/projects.service.ts, dto/create-project.dto.ts, git-providers/local-fs-git-provider.service.ts, filesystem browser
-next_action: >
-  Validate and normalize docsPath on create and update against
-  PROJECT_DOCS_BROWSE_ROOT (require it in non-dev), add a unique index or
-  check, and decide at implementation time whether agent API keys may
-  create projects (recommended no -- humans add agents).
-created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T09:00:00Z
-```
-
 ### SECURITY-02 — Write routes lack a permission and conflict resolution bypasses the transition policy
 
 ```yaml
@@ -644,10 +610,16 @@ description: >
   Playwright a11y suite covers 5 routes only. Very large services:
   synchronization.service.ts (808 lines), tasks.service.ts (738),
   write-back.service.ts (719).
+  The local e2e database also keeps every run's throwaway projects (2,806
+  after a few days, found 2026-09-21 while closing SECURITY-01): past that
+  size GET /projects returned 500 under the suite's parallel load because
+  it builds every project summary at once (see IMPROVEMENT-01), so the
+  suite needs a global teardown or a per-run schema.
 expected_behavior: >
   Negative RBAC and concurrency tests for the critical routes, a coverage
   report with a floor in CI, unit specs for the untested web core pieces,
-  a11y coverage of all routes, and a plan to split the three large services.
+  a11y coverage of all routes, a plan to split the three large services,
+  and an e2e database that does not grow without bound.
 technical_context:
   backend: apps/api/test, apps/api/src
   frontend: apps/web/src/app/core, apps/web/a11y

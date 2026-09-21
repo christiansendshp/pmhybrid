@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './../prisma/demo-credentials.js';
-import { createScratchDocsPath } from './helpers/scratch-docs.js';
+import { createScratchDocsPath, uniqueDocsPath } from './helpers/scratch-docs.js';
 
 describe('Tasks (hierarchy, assignment, transitions, dependencies, progress — e2e)', () => {
   let app: INestApplication<App>;
@@ -196,7 +196,7 @@ describe('Tasks (hierarchy, assignment, transitions, dependencies, progress — 
     const otherProject = await request(server())
       .post('/projects')
       .set('Authorization', auth(ownerToken))
-      .send({ name: `Other ${Date.now()}`, docsPath: './other-docs' })
+      .send({ name: `Other ${Date.now()}`, docsPath: uniqueDocsPath('other-docs') })
       .expect(201);
     const foreignPhase = await request(server())
       .post(`/projects/${otherProject.body.id}/phases`)

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -39,4 +40,15 @@ export function createScratchDocsPath(): string {
   writeFileSync(path.join(dir, 'Roadmap.md'), SKELETON_ROADMAP, 'utf-8');
   writeFileSync(path.join(dir, 'Agentslog.md'), SKELETON_AGENTSLOG, 'utf-8');
   return dir;
+}
+
+/**
+ * A docsPath that is unique per call and never created on disk — for tests
+ * that only need a valid, allowed value stored on a project. Fixed literals
+ * like './private-docs' stopped working once creating a project on a folder
+ * another project the caller is not a member of already uses became a 409
+ * (Roadmap SECURITY-01), because the test database outlives each run.
+ */
+export function uniqueDocsPath(label: string): string {
+  return path.join(tmpdir(), `pmhybrid-e2e-${label}-${randomUUID()}`);
 }

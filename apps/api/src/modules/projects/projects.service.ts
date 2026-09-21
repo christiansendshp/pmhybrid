@@ -1,11 +1,20 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AuditOrigin, TaskStatus } from '@prisma/client';
+import type { EnvConfig } from '../../config/env.validation.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
+import {
+  assertSafeRemoteDocsPath,
+  docsPathKey,
+  parseAllowedRoots,
+  resolveAllowedLocalDocsPath,
+} from '../git-providers/docs-path-policy.js';
 import { ProgressRollupService } from '../tasks/progress-rollup.service.js';
 import { CreateProjectDto } from './dto/create-project.dto.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
@@ -24,7 +33,53 @@ export class ProjectsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly progressRollup: ProgressRollupService,
+    private readonly config: ConfigService<EnvConfig, true>,
   ) {}
+
+  /**
+   * Validates and normalizes a `docsPath` before it is stored (Roadmap
+   * SECURITY-01). Local provider: it must sit inside an allowed root and
+   * must not be the folder of a project the requester does not belong to
+   * (otherwise anyone could alias another team's documents and read or
+   * overwrite them). A project may still reuse a folder that only projects
+   * the requester belongs to already use. `excludeProjectId` skips the
+   * project being edited.
+   */
+  private async checkedDocsPath(
+    raw: string,
+    requesterActorId: string,
+    excludeProjectId?: string,
+  ): Promise<string> {
+    if (this.config.get('GIT_PROVIDER_TYPE', { infer: true }) !== 'local') {
+      assertSafeRemoteDocsPath(raw);
+      return raw;
+    }
+    const roots = parseAllowedRoots(
+      this.config.get('PROJECT_DOCS_BROWSE_ROOT', { infer: true }),
+    );
+    const resolved = await resolveAllowedLocalDocsPath(raw, roots);
+    const key = docsPathKey(resolved);
+    const others = await this.prisma.project.findMany({
+      where: excludeProjectId ? { id: { not: excludeProjectId } } : {},
+      select: { id: true, docsPath: true },
+    });
+    const sharing = others
+      .filter((project) => docsPathKey(project.docsPath) === key)
+      .map((project) => project.id);
+    if (sharing.length > 0) {
+      const memberOf = await this.prisma.projectMember.count({
+        where: {
+          actorId: requesterActorId,
+          isActive: true,
+          projectId: { in: sharing },
+        },
+      });
+      if (memberOf < sharing.length) {
+        throw new ConflictException('docsPath is not available');
+      }
+    }
+    return resolved;
+  }
 
   /** "My Projects" (brief §19): the projects the actor is an active member of, each with its summary. */
   async findAllForActor(actorId: string) {
@@ -115,6 +170,7 @@ export class ProjectsService {
     creatorActorId: string,
     origin: AuditOrigin = 'UI',
   ) {
+    const docsPath = await this.checkedDocsPath(dto.docsPath, creatorActorId);
     const ownerRole = await this.prisma.role.findUniqueOrThrow({
       where: { name_scope: { name: 'OWNER', scope: 'PROJECT' } },
     });
@@ -125,7 +181,7 @@ export class ProjectsService {
           name: dto.name,
           description: dto.description,
           repoUrl: dto.repoUrl,
-          docsPath: dto.docsPath,
+          docsPath,
           syncIntervalMinutes: dto.syncIntervalMinutes,
           progressRollupStrategy: dto.progressRollupStrategy,
         },
@@ -195,8 +251,18 @@ export class ProjectsService {
     }
 
     const project = await this.findById(id);
+    const data: UpdateProjectDto = { ...dto };
+    if (dto.docsPath !== undefined) {
+      // Only a real change is validated: the settings form resubmits the
+      // stored value on every save, and a project stored before the
+      // confinement existed must stay editable for its other settings.
+      data.docsPath =
+        docsPathKey(dto.docsPath) === docsPathKey(project.docsPath)
+          ? project.docsPath
+          : await this.checkedDocsPath(dto.docsPath, requesterActorId, id);
+    }
     const diff = diffFields(project as unknown as Record<string, unknown>, {
-      ...dto,
+      ...data,
     });
     if (!diff) {
       return project;
@@ -204,7 +270,7 @@ export class ProjectsService {
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.project.update({
         where: { id },
-        data: dto,
+        data,
         include: { lead: LEAD_SELECT },
       });
       await this.audit.record(

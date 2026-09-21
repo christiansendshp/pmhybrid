@@ -26,7 +26,7 @@ import { PROJECT_REPOSITORY_PROVIDER } from './project-repository-provider.inter
       useFactory: (configService: ConfigService<EnvConfig, true>) =>
         configService.get('GIT_PROVIDER_TYPE', { infer: true }) === 'github'
           ? new GitHubGitProvider(configService)
-          : new LocalFsGitProvider(),
+          : new LocalFsGitProvider(configService),
       inject: [ConfigService],
     },
   ],
