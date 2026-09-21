@@ -444,15 +444,44 @@ export class WriteBackService {
     tx?: Prisma.TransactionClient,
   ) {
     return this.within(projectId, tx, (client) =>
-      this.dependencyAddedLocked(client, projectId, taskId, requesterActorId),
+      this.dependencyChangedLocked(
+        client,
+        projectId,
+        taskId,
+        requesterActorId,
+        'DEPENDENCY_ADD',
+      ),
     );
   }
 
-  private async dependencyAddedLocked(
+  /**
+   * A dependency taken away in PM Hub (Roadmap IMPROVEMENT-01d2): the cell is
+   * rendered from what the task depends on now, so the one removed is no longer
+   * in it — the same write as an addition, which always lists the whole set.
+   */
+  async recordDependencyRemoved(
+    projectId: string,
+    taskId: string,
+    requesterActorId: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.within(projectId, tx, (client) =>
+      this.dependencyChangedLocked(
+        client,
+        projectId,
+        taskId,
+        requesterActorId,
+        'DEPENDENCY_REMOVE',
+      ),
+    );
+  }
+
+  private async dependencyChangedLocked(
     tx: Prisma.TransactionClient,
     projectId: string,
     taskId: string,
     requesterActorId: string,
+    trigger: 'DEPENDENCY_ADD' | 'DEPENDENCY_REMOVE',
   ): Promise<Task> {
     const project = await tx.project.findUniqueOrThrow({
       where: { id: projectId },
@@ -524,7 +553,7 @@ export class WriteBackService {
         entityId: task.id,
         operation: 'WRITE_BACK',
         origin: 'UI',
-        newValue: { trigger: 'DEPENDENCY_ADD' },
+        newValue: { trigger },
       },
       tx,
     );

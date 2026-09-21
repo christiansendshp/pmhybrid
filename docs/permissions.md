@@ -17,7 +17,7 @@ Authoritative source: `packages/shared-types/src/permissions.ts` (the
 | `task.reopen`            | Project | Reopen a `TERMINADA` task                                                      |
 | `task.reassign.locked`   | Project | Reassign a task locked by `EN_DESARROLLO`                                      |
 | `task.delete`            | Project | Remove a task (soft delete; its Roadmap row is taken out)                      |
-| `task.write`             | Project | Create and edit a task's own fields and declare its dependencies               |
+| `task.write`             | Project | Create and edit a task's own fields and declare or remove its dependencies     |
 | `conflict.resolve`       | Project | Resolve a sync conflict (applying a status change still needs that move's key) |
 | `project.update`         | Project | Update project settings, and create/edit phases/epics/templates                |
 | `project.members.manage` | Project | Add or remove project members                                                  |

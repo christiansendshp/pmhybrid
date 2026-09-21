@@ -199,6 +199,15 @@ export class TasksService {
     );
   }
 
+  /** Takes one dependency off a task, and out of the Roadmap row's "Depends on" (Roadmap IMPROVEMENT-01d2). */
+  removeDependency(projectId: string, taskId: string, dependencyId: string): Promise<unknown> {
+    return firstValueFrom(
+      this.http.delete(
+        `${API_BASE_URL}/projects/${projectId}/tasks/${taskId}/dependencies/${dependencyId}`,
+      ),
+    );
+  }
+
   addDependency(
     projectId: string,
     taskId: string,

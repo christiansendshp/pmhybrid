@@ -99,9 +99,13 @@ export class TaskDetail implements OnInit {
     return parentId ? (this.allTasks().find((other) => other.id === parentId) ?? null) : null;
   });
 
-  readonly otherTasks = computed(() =>
-    this.allTasks().filter((task) => task.id !== this.task()?.id),
-  );
+  /** The tasks this one could depend on: not itself, and not one it already depends on. */
+  readonly otherTasks = computed(() => {
+    const already = new Set(
+      this.task()?.dependencies.map((dependency) => dependency.dependsOnTaskId),
+    );
+    return this.allTasks().filter((task) => task.id !== this.task()?.id && !already.has(task.id));
+  });
 
   /** Where the task sits in the hierarchy, by name (brief §17 "jerarquía"). */
   readonly placement = computed(() => {
@@ -215,6 +219,20 @@ export class TaskDetail implements OnInit {
       await this.tasksService.assign(this.projectId, this.taskId, actorId);
       this.selectedAssigneeId.set(null);
     }, 'No se pudo asignar la tarea.');
+  }
+
+  /** What a dependency is called: the task it is on, else the outside reference the Roadmap gave. */
+  dependencyName(dependency: TaskDetailModel['dependencies'][number]): string {
+    return dependency.dependsOnTask
+      ? dependency.dependsOnTask.title
+      : (dependency.rawExternalRef ?? '');
+  }
+
+  async removeDependency(dependencyId: string): Promise<void> {
+    await this.runAction(
+      () => this.tasksService.removeDependency(this.projectId, this.taskId, dependencyId),
+      'No se pudo quitar la dependencia.',
+    );
   }
 
   async addDependency(): Promise<void> {

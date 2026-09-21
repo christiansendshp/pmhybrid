@@ -460,14 +460,23 @@ never makes a row vanish. A task with no `externalId` yet, or whose row has
 disappeared from the document, is left alone — its dependencies render on
 its next real write-back.
 
+**Removing one** (Roadmap IMPROVEMENT-01d2) is `DELETE
+/projects/:id/tasks/:taskId/dependencies/:dependencyId`, with `task.write`: it
+deletes the `TaskDependency` (a dependency belongs to its task, so an id from
+another task is a 404), audits `DEPENDENCY_REMOVE` with what it was, and re-renders
+the cell from what is left, in the same transaction — the same write as an
+addition, which is why the removed one is simply no longer in the set. The cell
+reads `—` once none is left. **The same one cannot be added twice**: a dependency on
+the task already depended on, or on the same outside reference, is a 409, checked
+under the project's lock so two requests cannot both pass.
+
 Sync keeps a task's dependencies equal to its row's `Depends on` cell in
 both directions (Roadmap GAP-35e). Each `TaskDependency` records whether the
 document has listed it (`inDocument`): set when sync sees it in a row, and by
 the add-dependency write-back above, which writes the whole set into the cell.
 A dependency the document listed and no longer lists is **removed** (audited as
-`DEPENDENCY_REMOVE`, origin ROADMAP) — PM Hub has no endpoint to remove one
-itself, so the document is the only place it can be dropped. Nothing else is
-ever removed:
+`DEPENDENCY_REMOVE`, origin ROADMAP), whether the document dropped it by hand or
+PM Hub took it off and wrote the cell. Nothing else is ever removed:
 
 - a dependency the document never listed (added in PM Hub while the row sat in
   a table with no `Depends on` column, so there was nowhere to write it);

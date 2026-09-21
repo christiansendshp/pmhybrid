@@ -218,7 +218,21 @@
     <h3>Dependencias</h3>
     <ul>
       @for (dep of t.dependencies; track dep.id) {
-        <li>{{ dep.dependsOnTask ? dep.dependsOnTask.title : dep.rawExternalRef }}</li>
+        <li class="dependency">
+          {{ dependencyName(dep) }}
+          @if (canWrite()) {
+            <button
+              mat-button
+              type="button"
+              class="dependency__remove"
+              [attr.aria-label]="'Quitar la dependencia de ' + dependencyName(dep)"
+              [disabled]="acting()"
+              (click)="removeDependency(dep.id)"
+            >
+              Quitar
+            </button>
+          }
+        </li>
       }
     </ul>
     @if (canWrite()) {

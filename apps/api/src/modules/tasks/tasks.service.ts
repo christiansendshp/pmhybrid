@@ -660,6 +660,23 @@ export class TasksService {
     }
 
     return this.writeBack.inTransaction(projectId, async (tx) => {
+      // Checked under the project's lock, so two requests for the same one
+      // cannot both find it missing (Roadmap IMPROVEMENT-01d2).
+      const same = [
+        ...(dto.dependsOnTaskId
+          ? [{ dependsOnTaskId: dto.dependsOnTaskId }]
+          : []),
+        ...(dto.rawExternalRef ? [{ rawExternalRef: dto.rawExternalRef }] : []),
+      ];
+      if (
+        same.length > 0 &&
+        (await tx.taskDependency.findFirst({
+          where: { taskId, OR: same },
+          select: { id: true },
+        }))
+      ) {
+        throw new ConflictException('The task already depends on that');
+      }
       await tx.taskDependency.create({
         data: {
           taskId,
@@ -686,6 +703,53 @@ export class TasksService {
         tx,
       );
       return this.writeBack.recordDependencyAdded(
+        projectId,
+        taskId,
+        requesterActorId,
+        tx,
+      );
+    });
+  }
+
+  /**
+   * Takes one dependency off a task (Roadmap IMPROVEMENT-01d2), and out of the
+   * "Depends on" cell of its Roadmap row in the same transaction. A dependency
+   * belongs to the task it is on, so an id from another task is not found.
+   */
+  async removeDependency(
+    projectId: string,
+    taskId: string,
+    dependencyId: string,
+    requesterActorId: string,
+    origin: AuditOrigin = 'UI',
+  ) {
+    await this.assertCanWrite(projectId, requesterActorId);
+    await this.getOwned(projectId, taskId);
+
+    return this.writeBack.inTransaction(projectId, async (tx) => {
+      const dependency = await tx.taskDependency.findFirst({
+        where: { id: dependencyId, taskId },
+      });
+      if (!dependency) {
+        throw new NotFoundException('Dependency not found');
+      }
+      await tx.taskDependency.delete({ where: { id: dependency.id } });
+      await this.audit.record(
+        {
+          projectId,
+          actorId: requesterActorId,
+          entityType: 'Task',
+          entityId: taskId,
+          operation: 'DEPENDENCY_REMOVE',
+          origin,
+          previousValue: {
+            dependsOnTaskId: dependency.dependsOnTaskId,
+            rawExternalRef: dependency.rawExternalRef,
+          },
+        },
+        tx,
+      );
+      return this.writeBack.recordDependencyRemoved(
         projectId,
         taskId,
         requesterActorId,

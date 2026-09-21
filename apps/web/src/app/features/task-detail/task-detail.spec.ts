@@ -100,6 +100,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
   let update: ReturnType<typeof vi.fn>;
   let create: ReturnType<typeof vi.fn>;
   let remove: ReturnType<typeof vi.fn>;
+  let removeDependency: ReturnType<typeof vi.fn>;
   let myPermissions: ReturnType<typeof vi.fn>;
   let listAudit: ReturnType<typeof vi.fn>;
   let listForProject: ReturnType<typeof vi.fn>;
@@ -110,6 +111,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     update = vi.fn().mockResolvedValue({});
     create = vi.fn().mockResolvedValue({});
     remove = vi.fn().mockResolvedValue({});
+    removeDependency = vi.fn().mockResolvedValue({});
     myPermissions = vi.fn().mockResolvedValue(['task.delete', 'task.write']);
     listAudit = vi.fn();
     listForProject = vi.fn().mockResolvedValue([]);
@@ -132,6 +134,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
             update,
             create,
             remove,
+            removeDependency,
             listForProject,
           },
         },
@@ -519,5 +522,93 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     component.startSubtask();
     await component.createSubtask({ ...FORM_VALUE, parentTaskId: 't1' });
     expect(keys()[2]).not.toBe(keys()[0]);
+  });
+
+  describe('dependencies (Roadmap IMPROVEMENT-01d2)', () => {
+    const dependency = (
+      id: string,
+      taskId: string | null,
+      title: string,
+      ref: string | null = null,
+    ) => ({
+      id,
+      dependsOnTaskId: taskId,
+      rawExternalRef: ref,
+      dependsOnTask: taskId ? { id: taskId, title, status: 'PENDIENTE' as const } : null,
+    });
+
+    it('takes a dependency off when asked, and reloads the task', async () => {
+      getById.mockResolvedValue(
+        taskDetail({ dependencies: [dependency('d1', 't2', 'The prerequisite')] }),
+      );
+      listAudit.mockResolvedValue([]);
+      const { harness, component } = await render();
+      const button =
+        harness.routeNativeElement!.querySelector<HTMLButtonElement>('.dependency__remove')!;
+
+      expect(button.getAttribute('aria-label')).toBe('Quitar la dependencia de The prerequisite');
+      button.click();
+      await harness.fixture.whenStable();
+
+      expect(removeDependency).toHaveBeenCalledWith('p1', 't1', 'd1');
+      expect(getById).toHaveBeenCalledTimes(2);
+      expect(component.actionError()).toBeNull();
+    });
+
+    it('names a dependency on something outside the project by its reference', async () => {
+      getById.mockResolvedValue(
+        taskDetail({ dependencies: [dependency('d2', null, '', 'EXT-9')] }),
+      );
+      listAudit.mockResolvedValue([]);
+
+      const { harness } = await render();
+
+      const button = harness.routeNativeElement!.querySelector('.dependency__remove')!;
+      expect(button.getAttribute('aria-label')).toBe('Quitar la dependencia de EXT-9');
+    });
+
+    it('offers no button to a member who cannot write tasks', async () => {
+      myPermissions.mockResolvedValue([]);
+      getById.mockResolvedValue(
+        taskDetail({ dependencies: [dependency('d1', 't2', 'The prerequisite')] }),
+      );
+      listAudit.mockResolvedValue([]);
+
+      const { harness, text } = await render();
+
+      expect(harness.routeNativeElement!.querySelector('.dependency__remove')).toBeNull();
+      expect(text()).toContain('The prerequisite');
+    });
+
+    it('says why a dependency was not taken off', async () => {
+      getById.mockResolvedValue(
+        taskDetail({ dependencies: [dependency('d1', 't2', 'The prerequisite')] }),
+      );
+      listAudit.mockResolvedValue([]);
+      removeDependency.mockRejectedValueOnce(
+        new HttpErrorResponse({ status: 404, error: { message: 'Dependency not found' } }),
+      );
+      const { component } = await render();
+
+      await component.removeDependency('d1');
+
+      expect(component.actionError()).toBe('Dependency not found');
+    });
+
+    it('does not offer the picker a task this one already depends on', async () => {
+      getById.mockResolvedValue(
+        taskDetail({ dependencies: [dependency('d1', 't2', 'Already a prerequisite')] }),
+      );
+      listAudit.mockResolvedValue([]);
+      listForProject.mockResolvedValue([
+        { ...taskDetail(), id: 't1', title: 'This one' },
+        { ...taskDetail(), id: 't2', title: 'Already a prerequisite' },
+        { ...taskDetail(), id: 't3', title: 'Free to pick' },
+      ]);
+
+      const { component } = await render();
+
+      expect(component.otherTasks().map((task) => task.title)).toEqual(['Free to pick']);
+    });
   });
 });

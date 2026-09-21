@@ -150,6 +150,23 @@ export class TasksController {
     );
   }
 
+  @Delete(':taskId/dependencies/:dependencyId')
+  removeDependency(
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @Param('dependencyId') dependencyId: string,
+    @CurrentActorId() requesterActorId: string,
+    @CurrentAuditOrigin() origin: AuditOrigin,
+  ) {
+    return this.tasksService.removeDependency(
+      projectId,
+      taskId,
+      dependencyId,
+      requesterActorId,
+      origin,
+    );
+  }
+
   @Post(':taskId/dependencies')
   addDependency(
     @Param('projectId') projectId: string,

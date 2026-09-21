@@ -118,3 +118,9 @@ segments live in `docs/history/`.
 - Summary: The dashboard activity feed carries summaries, not documents: the recent document revisions are selected as id, capturedAt, source, contentHash and the document's kind and project, with no rawContent (ten whole documents used to go out on every load); the viewer is what reads a revision's content. An e2e test asserts no revision of the feed has rawContent.
 - Files: apps/api/src/modules/dashboard/dashboard.service.ts,apps/api/test/dashboard.e2e-spec.ts
 - Verify: api unit 455 and e2e 301 pass (coverage 88.0); api lint and tsc clean
+
+## [2026-09-21T21:53:57Z] | claude | IMPROVEMENT-01d2 | DONE
+
+- Summary: A dependency can be removed, and the same one cannot be added twice: DELETE /projects/:id/tasks/:taskId/dependencies/:dependencyId (task.write; a dependency belongs to its task so another task's id is a 404) deletes it, audits DEPENDENCY_REMOVE with what it was and re-renders the Roadmap row's Depends on cell from what is left in the same transaction (the cell reads a dash once none is left), reusing the whole-set write of the addition; adding one the task already has, by task or by outside reference, is a 409 checked under the project lock. The task detail shows a Quitar button per dependency to a member with task.write and the picker no longer offers a task already depended on.
+- Files: apps/api/src/modules/tasks/tasks.service.ts,apps/api/src/modules/tasks/tasks.controller.ts,apps/api/src/modules/synchronization/write-back.service.ts,apps/api/test/task-dependency-removal.e2e-spec.ts,apps/web/src/app/features/task-detail/task-detail.html,apps/web/src/app/core/tasks.service.ts,docs/synchronization.md
+- Verify: api unit 455 and e2e 307 pass (coverage 88.0); web unit 280 and eslint clean; Playwright a11y 60 pass; api lint, nest build and web build ok
