@@ -627,33 +627,111 @@ type: TEST
 title: Negative RBAC, concurrency and coverage gaps
 status: BACKLOG
 priority: P2
+depends_on:
+  - TEST-01a
+  - TEST-01b
+  - TEST-01c
+  - TEST-01d
 description: >
   From the 2026-09-21 evaluation. 53 of 60 services, guards and controllers
   have no unit spec (module-level coverage relies on 25 e2e files); only
-  about 43 assertions check 401/403/404, none check concurrency, and the
-  critical findings SECURITY-01, SECURITY-02 and BUG-04 have no negative
-  test. Coverage is not measured or gated. auth.interceptor (401 refresh),
-  login and project-member.guard have no spec in the web app, and the
-  Playwright a11y suite covers 5 routes only. Very large services:
-  synchronization.service.ts (808 lines), tasks.service.ts (738),
-  write-back.service.ts (719).
-  The local e2e database also keeps every run's throwaway projects (2,806
-  after a few days, found 2026-09-21 while closing SECURITY-01): past that
-  size GET /projects returned 500 under the suite's parallel load because
-  it builds every project summary at once (see IMPROVEMENT-01), so the
-  suite needs a global teardown or a per-run schema.
+  about 43 assertions check 401/403/404. Since then SECURITY-01, SECURITY-02
+  and BUG-04 each landed with their own negative and concurrency e2e tests,
+  so what remains is the rest: coverage is not measured or gated,
+  auth.interceptor (401 refresh), login and project-member.guard have no spec
+  in the web app, the Playwright a11y suite covers 5 routes only, and three
+  services are very large (synchronization.service.ts, tasks.service.ts,
+  write-back.service.ts). The local e2e database also kept every run's
+  throwaway projects (2,806 after a few days): past that size GET /projects
+  returned 500 (fixed at the source by IMPROVEMENT-01c), and it still had to be
+  reset by hand every few runs.
 expected_behavior: >
-  Negative RBAC and concurrency tests for the critical routes, a coverage
-  report with a floor in CI, unit specs for the untested web core pieces,
-  a11y coverage of all routes, a plan to split the three large services,
-  and an e2e database that does not grow without bound.
+  An e2e database that does not grow without bound, a coverage report with a
+  floor in CI, unit specs for the untested web core pieces, a11y coverage of
+  all routes, and a plan to split the three large services.
 technical_context:
-  backend: apps/api/test, apps/api/src
+  backend: apps/api/test, apps/api/vitest.config.e2e.ts
   frontend: apps/web/src/app/core, apps/web/a11y
 next_action: >
-  Write each negative test together with the fix of its finding.
+  Umbrella only, refined on 2026-09-21 into TEST-01a (e2e database reset per
+  local run), TEST-01b (coverage floor), TEST-01c (web core specs) and
+  TEST-01d (a11y on every route, plan for the large services); close it when
+  all four are done.
 created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T19:30:00Z
+```
+
+### TEST-01b — Coverage is measured and has a floor in CI
+
+```yaml
+id: TEST-01b
+type: TEST
+title: Coverage is measured and has a floor in CI
+status: BACKLOG
+priority: P2
+parent: TEST-01
+depends_on:
+  - TEST-01a
+description: >
+  Second slice of TEST-01. Coverage is not measured or gated, so it can fall
+  without anyone seeing it.
+expected_behavior: >
+  CI reports coverage for the API unit and e2e runs and fails when it drops
+  below a floor set just under today's measured value.
+technical_context:
+  backend: apps/api/package.json (test:cov), vitest configs, .github/workflows/ci.yml
+next_action: >
+  Measure first, then set the floor a little under it.
+created_at: 2026-09-21T19:30:00Z
+updated_at: 2026-09-21T19:30:00Z
+```
+
+### TEST-01c — Unit specs for the untested web core pieces
+
+```yaml
+id: TEST-01c
+type: TEST
+title: Unit specs for the untested web core pieces
+status: BACKLOG
+priority: P2
+parent: TEST-01
+description: >
+  Third slice of TEST-01. auth.interceptor (the 401 refresh), the login page
+  and the project-member guard have no spec.
+expected_behavior: >
+  Each has a spec for its success path and its refusal path, including a
+  refresh that fails and a request retried exactly once.
+technical_context:
+  frontend: apps/web/src/app/core, features/auth, guards
+next_action: >
+  Read each piece and list its branches before writing the specs.
+created_at: 2026-09-21T19:30:00Z
+updated_at: 2026-09-21T19:30:00Z
+```
+
+### TEST-01d — Accessibility coverage on every route, and a plan for the large services
+
+```yaml
+id: TEST-01d
+type: TEST
+title: Accessibility coverage on every route, and a plan for the large services
+status: BACKLOG
+priority: P3
+parent: TEST-01
+description: >
+  Fourth slice of TEST-01. The axe suite covers 5 routes, and three services
+  are large enough to be hard to change safely.
+expected_behavior: >
+  The axe suite visits every signed-in route (kanban, progress, conflicts,
+  audit, workload, team, roles, settings, task detail) and a short written
+  plan says how synchronization, tasks and write-back would be split, so the
+  next person to touch them has a direction.
+technical_context:
+  frontend: apps/web/a11y, docs/architecture.md
+next_action: >
+  Extend the route list first; the plan is a decision record.
+created_at: 2026-09-21T19:30:00Z
+updated_at: 2026-09-21T19:30:00Z
 ```
 
 ### IMPROVEMENT-02 — Deployment, containerization and documentation gaps

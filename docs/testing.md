@@ -50,10 +50,17 @@ Re-run `test:e2e:db:setup` after adding a new Prisma migration.
   server use. Every e2e spec creates several throwaway projects with no
   cleanup — before this, that meant every local `test:e2e` run leaked dozens
   of "... E2E ..." rows straight into "My Projects" in the actual app. One-
-  time setup: `pnpm --filter api test:e2e:db:setup`. It is still shared
-  _across e2e runs_ and never reset between them, same as before — scope
-  assertions to IDs your own test created; never assert "the list does NOT
-  contain X" against a shared resource's full history. `notifications.e2e-spec.ts`
+  time setup: `pnpm --filter api test:e2e:db:setup`. **A local run starts by
+  resetting that database** (Roadmap TEST-01a): `test/global-setup.ts` runs
+  `prisma migrate reset` and the seed against `pmhybrid_test` before the suite, so
+  it no longer grows by thousands of rows across runs (it did, and past a few
+  thousand projects the list endpoints degraded). It costs about ten seconds, only
+  ever touches a database named exactly `pmhybrid_test` (it refuses anything
+  else), and does nothing in CI, whose Postgres is a fresh container. Set
+  `E2E_KEEP_DB=1` to skip it and inspect what a run left behind. Within one run
+  the database is still shared by every spec — scope assertions to IDs your own
+  test created; never assert "the list does NOT contain X" against a shared
+  resource's full history. `notifications.e2e-spec.ts`
   and `roadmap-dependencies.e2e-spec.ts` show this pattern (scoping by
   `syncRunId`/target id, not by type alone).
 - Tests that write to a Roadmap document use `createScratchDocsPath()`
