@@ -21,6 +21,7 @@ import {
   resolveOwner,
   type OwnerCandidate,
 } from '../roadmap/roadmap-owner.util.js';
+import { RoadmapFormatError } from '../roadmap/roadmap-yaml-entry.util.js';
 import { AgentslogIngestionService } from './agentslog-ingestion.service.js';
 import { rowContentHash } from './row-content-hash.util.js';
 import { describeSyncFailure } from './sync-failure.util.js';
@@ -54,6 +55,8 @@ export function entryErrorsFingerprint(
     .join('\n');
 }
 
+type OpenConflict = Prisma.ConflictGetPayload<object>;
+
 interface SyncSummary {
   /** Entries that could not be read this run; their tasks were left untouched. */
   entryErrors: SyncEntryError[];
@@ -63,6 +66,8 @@ interface SyncSummary {
   tableChanged: number;
   completedViaRemoval: number;
   conflictsRaised: number;
+  /** Open conflicts closed by themselves because the row is back or the two sides agree again (Roadmap BUG-06a). */
+  conflictsClosed: number;
   /** Tasks whose assignee was set or changed because the document names a different member (Roadmap GAP-35a). */
   assigneesUpdated: number;
   /** Dependencies the document listed and then dropped, removed here (Roadmap GAP-35e). */
@@ -239,6 +244,7 @@ export class SynchronizationService {
       tableChanged: 0,
       completedViaRemoval: 0,
       conflictsRaised: 0,
+      conflictsClosed: 0,
       assigneesUpdated: 0,
       dependenciesLinked: 0,
       dependenciesRemoved: 0,
@@ -282,6 +288,21 @@ export class SynchronizationService {
       project.docsPath,
       DOCUMENT_FILENAMES.ROADMAP,
     );
+    // A Roadmap.md that is empty is not a Roadmap that drained: a drained one
+    // keeps its structure. Read as "every row disappeared" it raised one
+    // conflict per task (Roadmap BUG-06a), so a project that has tasks from
+    // the document refuses it instead — inside the transaction, so nothing
+    // of this run, the document's own revision included, is kept.
+    if (roadmapContent.trim() === '') {
+      const documentTasks = await tx.task.count({
+        where: { projectId, externalId: { not: null }, deletedAt: null },
+      });
+      if (documentTasks > 0) {
+        throw new RoadmapFormatError(
+          `Roadmap.md is empty, but ${documentTasks} task(s) of this project come from it — refusing to read that as removing all of them`,
+        );
+      }
+    }
     // Tolerant (Roadmap BUG-05): one unreadable entry no longer fails the
     // whole run. It is reported, and its task is left exactly as it was.
     const { rows, errors } = this.roadmapParser.parseTolerant(roadmapContent);
@@ -408,6 +429,27 @@ export class SynchronizationService {
     // (which would otherwise complete it or raise a conflict for it).
     const seenExternalIds = new Set<string>(unreadableIds);
     const ownerCandidates = await this.loadOwnerCandidates(tx, projectId);
+    // What is already open, per task, so a conflict is raised once and closes
+    // itself when it stops being true (Roadmap BUG-06a).
+    const openByTask = new Map<string, OpenConflict[]>();
+    for (const conflict of await tx.conflict.findMany({
+      where: {
+        projectId,
+        resolvedAt: null,
+        entityType: 'Task',
+        kind: {
+          in: [
+            'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG',
+            'CONCURRENT_FIELD_EDIT',
+          ],
+        },
+      },
+    })) {
+      openByTask.set(conflict.entityId, [
+        ...(openByTask.get(conflict.entityId) ?? []),
+        conflict,
+      ]);
+    }
 
     for (const row of rows) {
       seenExternalIds.add(row.externalId);
@@ -438,17 +480,60 @@ export class SynchronizationService {
         // Before the row is reconciled: it compares the document's owner with
         // the one recorded at the last sync (`rawOwner`), which
         // reconcileExistingRow is about to overwrite.
+        const openForTask = openByTask.get(existing.id) ?? [];
+        // A task that has no table has no row as far as PM Hub knows (removed,
+        // or kept without it after a conflict, or its row was written by
+        // PM Hub and never read back). Seeing its row again gives it its table
+        // — whether or not the row's content changed, which the hash check
+        // below would otherwise decide — so that losing the row later is noticed.
+        if (existing.roadmapTable === null) {
+          await tx.task.update({
+            where: { id: existing.id },
+            data: { roadmapTable: row.table },
+          });
+          await this.audit.record(
+            {
+              projectId,
+              entityType: 'Task',
+              entityId: existing.id,
+              operation: 'ROADMAP_TABLE_CHANGE',
+              origin: 'SYNC',
+              previousValue: { roadmapTable: null },
+              newValue: { roadmapTable: row.table },
+            },
+            tx,
+          );
+          existing.roadmapTable = row.table;
+          summary.tableChanged += 1;
+        }
+        // A row that is back closes the "disappeared" conflicts it had raised.
+        // Filtered, so it is a copy: closing a conflict removes it from the list.
+        const disappeared = openForTask.filter(
+          (conflict) =>
+            conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG',
+        );
+        for (const conflict of disappeared) {
+          await this.closeConflictAutomatically(
+            tx,
+            conflict,
+            openForTask,
+            'the row is back in the document',
+            summary,
+          );
+        }
         await this.reconcileAssignee(
           tx,
           existing,
           row,
           ownerCandidates,
+          openForTask,
           summary,
         );
         const changed = await this.reconcileExistingRow(
           tx,
           existing,
           row,
+          openForTask,
           summary,
         );
         if (changed) {
@@ -497,8 +582,20 @@ export class SynchronizationService {
       if (task.deletedAt) {
         continue; // its row was taken out on purpose when the task was removed
       }
-      if (task.status === TaskStatus.TERMINADA && task.roadmapTable === null) {
-        continue; // already resolved by a previous run
+      if (task.roadmapTable === null) {
+        // No row, and that was already settled: completed by a previous run, or
+        // a person kept the task without it (resolving the conflict clears the
+        // table). Asking again on every run is what made conflicts pile up.
+        // The row coming back sets the table again and re-arms this.
+        continue;
+      }
+      if (
+        (openByTask.get(task.id) ?? []).some(
+          (conflict) =>
+            conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG',
+        )
+      ) {
+        continue; // already asked, and still open
       }
 
       const hasTerminal = await this.agentslogIngestion.hasTerminalEntry(
@@ -638,6 +735,7 @@ export class SynchronizationService {
     task: Prisma.TaskGetPayload<object>,
     row: ParsedRoadmapRow,
     candidates: readonly OwnerCandidate[],
+    open: OpenConflict[],
     summary: SyncSummary,
   ): Promise<void> {
     if (!row.ownerName) {
@@ -660,20 +758,14 @@ export class SynchronizationService {
         return;
       }
       if (await this.assigneeEditedLocally(tx, task)) {
-        const conflict = await tx.conflict.create({
-          data: {
-            projectId: task.projectId,
-            kind: 'CONCURRENT_FIELD_EDIT',
-            entityType: 'Task',
-            entityId: task.id,
-            localVersion: {
-              assigneeActorId: task.assigneeActorId,
-            } as Prisma.InputJsonValue,
-            externalVersion: { assigneeActorId: actorId },
-          },
-        });
-        await this.audit.recordConflictDetected(conflict, 'SYNC', tx);
-        summary.conflictsRaised += 1;
+        await this.raiseFieldConflict(
+          tx,
+          task,
+          open,
+          { assigneeActorId: task.assigneeActorId },
+          { assigneeActorId: actorId },
+          summary,
+        );
         return;
       }
     }
@@ -823,11 +915,162 @@ export class SynchronizationService {
     summary.conflictsRaised += 1;
   }
 
+  /**
+   * One open conflict per task and field (Roadmap BUG-06a). A field that is
+   * already contested in an open CONCURRENT_FIELD_EDIT conflict updates that
+   * conflict to the latest local and document values instead of stacking a
+   * second one (seven had piled up on one task); only the fields no open
+   * conflict covers get a new one, which is the only case that counts as
+   * "raised" — and so the only one members are notified about.
+   */
+  private async raiseFieldConflict(
+    tx: Prisma.TransactionClient,
+    task: Prisma.TaskGetPayload<object>,
+    open: OpenConflict[],
+    local: Record<string, unknown>,
+    external: Record<string, unknown>,
+    summary: SyncSummary,
+  ): Promise<void> {
+    const remaining = new Set(Object.keys(external));
+    for (const conflict of open) {
+      if (conflict.kind !== 'CONCURRENT_FIELD_EDIT') {
+        continue;
+      }
+      const localVersion = {
+        ...(conflict.localVersion as Record<string, unknown>),
+      };
+      const externalVersion = {
+        ...(conflict.externalVersion as Record<string, unknown> | null),
+      };
+      let covered = false;
+      for (const field of remaining) {
+        if (field in localVersion || field in externalVersion) {
+          localVersion[field] = local[field];
+          externalVersion[field] = external[field];
+          remaining.delete(field);
+          covered = true;
+        }
+      }
+      if (covered) {
+        await tx.conflict.update({
+          where: { id: conflict.id },
+          data: {
+            localVersion: localVersion as Prisma.InputJsonValue,
+            externalVersion: externalVersion as Prisma.InputJsonValue,
+          },
+        });
+        // Kept current in memory: a later call in this run works from it.
+        conflict.localVersion = localVersion as Prisma.JsonValue;
+        conflict.externalVersion = externalVersion as Prisma.JsonValue;
+      }
+    }
+    if (remaining.size === 0) {
+      return;
+    }
+    const created = await tx.conflict.create({
+      data: {
+        projectId: task.projectId,
+        kind: 'CONCURRENT_FIELD_EDIT',
+        entityType: 'Task',
+        entityId: task.id,
+        localVersion: Object.fromEntries(
+          [...remaining].map((field) => [field, local[field]]),
+        ) as Prisma.InputJsonValue,
+        externalVersion: Object.fromEntries(
+          [...remaining].map((field) => [field, external[field]]),
+        ) as Prisma.InputJsonValue,
+      },
+    });
+    await this.audit.recordConflictDetected(created, 'SYNC', tx);
+    open.push(created);
+    summary.conflictsRaised += 1;
+  }
+
+  /**
+   * Closes a conflict nobody needs to decide any more — the row is back, or
+   * the two sides agree again (Roadmap BUG-06a). Recorded as DISMISSED with
+   * no resolving actor and an audit event that says it was automatic.
+   */
+  private async closeConflictAutomatically(
+    tx: Prisma.TransactionClient,
+    conflict: OpenConflict,
+    open: OpenConflict[],
+    reason: string,
+    summary: SyncSummary,
+  ): Promise<void> {
+    await tx.conflict.update({
+      where: { id: conflict.id },
+      data: { resolvedAt: new Date(), resolutionStrategy: 'DISMISSED' },
+    });
+    await this.audit.record(
+      {
+        projectId: conflict.projectId,
+        entityType: conflict.entityType,
+        entityId: conflict.entityId,
+        operation: 'CONFLICT_RESOLVED',
+        origin: 'SYNC',
+        previousValue: conflict.localVersion as Record<string, unknown>,
+        newValue: {
+          conflictId: conflict.id,
+          strategy: 'DISMISSED',
+          automatic: true,
+          reason,
+        },
+      },
+      tx,
+    );
+    open.splice(open.indexOf(conflict), 1);
+    summary.conflictsClosed += 1;
+  }
+
+  /** Closes the open field conflicts whose every contested field now holds the same value in the document and in PM Hub. */
+  private async closeAgreedFieldConflicts(
+    tx: Prisma.TransactionClient,
+    task: Prisma.TaskGetPayload<object>,
+    row: ParsedRoadmapRow,
+    open: OpenConflict[],
+    summary: SyncSummary,
+  ): Promise<void> {
+    // undefined: the row does not carry the field, which says nothing.
+    const agrees: Record<string, boolean | undefined> = {
+      status: row.statusMapped ? row.statusMapped === task.status : undefined,
+      title: row.outcome !== undefined ? row.outcome === task.title : undefined,
+      acceptanceCriteria:
+        row.acceptanceCheck !== undefined
+          ? row.acceptanceCheck === task.acceptanceCriteria
+          : undefined,
+      rawOwner:
+        row.rawOwner !== undefined ? row.rawOwner === task.rawOwner : undefined,
+    };
+    // Filtered, so it is a copy: closing a conflict removes it from `open`.
+    const fieldConflicts = open.filter(
+      (conflict) => conflict.kind === 'CONCURRENT_FIELD_EDIT',
+    );
+    for (const conflict of fieldConflicts) {
+      const fields = Object.keys(
+        (conflict.externalVersion as Record<string, unknown> | null) ?? {},
+      );
+      if (
+        fields.length > 0 &&
+        fields.every((field) => agrees[field] === true)
+      ) {
+        await this.closeConflictAutomatically(
+          tx,
+          conflict,
+          open,
+          'the document and PM Hub agree again',
+          summary,
+        );
+      }
+    }
+  }
+
   /** Step 5. Returns whether anything was actually written. */
   private async reconcileExistingRow(
     tx: Prisma.TransactionClient,
     task: Prisma.TaskGetPayload<object>,
     row: ParsedRoadmapRow,
+    open: OpenConflict[],
     summary: SyncSummary,
   ): Promise<boolean> {
     // The row is exactly what was last reconciled (or last written back):
@@ -840,6 +1083,8 @@ export class SynchronizationService {
 
     const updates: Record<string, unknown> = {};
     let conflictRaised = false;
+
+    await this.closeAgreedFieldConflicts(tx, task, row, open, summary);
 
     if (task.roadmapTable !== row.table) {
       updates.roadmapTable = row.table;
@@ -936,19 +1181,15 @@ export class SynchronizationService {
           ];
           externalVersion[field] = candidates[field];
         }
-        const conflict = await tx.conflict.create({
-          data: {
-            projectId: task.projectId,
-            kind: 'CONCURRENT_FIELD_EDIT',
-            entityType: 'Task',
-            entityId: task.id,
-            localVersion: localVersion as Prisma.InputJsonValue,
-            externalVersion: externalVersion as Prisma.InputJsonValue,
-          },
-        });
-        await this.audit.recordConflictDetected(conflict, 'SYNC', tx);
+        await this.raiseFieldConflict(
+          tx,
+          task,
+          open,
+          localVersion,
+          externalVersion,
+          summary,
+        );
         conflictRaised = true;
-        summary.conflictsRaised += 1;
       }
       for (const field of clean) {
         updates[field] = candidates[field];

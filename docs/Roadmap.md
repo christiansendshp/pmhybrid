@@ -280,6 +280,10 @@ type: BUG
 title: Conflicts pile up, resolving does not update the document, and an empty file floods them
 status: BACKLOG
 priority: P1
+depends_on:
+  - BUG-06a
+  - BUG-06b
+  - BUG-06c
 description: >
   Found by the 2026-09-21 evaluation (sync audit, live). KEEP_LOCAL leaves
   the database with the UI value and the document with the external one and
@@ -296,9 +300,63 @@ expected_behavior: >
 technical_context:
   backend: apps/api/src/modules/conflicts, synchronization/synchronization.service.ts
 next_action: >
-  Depends on the SECURITY-02 change to resolve(); design dedupe key first.
+  Umbrella only, refined on 2026-09-21 into BUG-06a (conflict hygiene and
+  the empty-document guard), BUG-06b (resolution writes back) and BUG-06c
+  (dependency cycles reported); close it when all three are done.
 created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T17:30:00Z
+```
+
+### BUG-06b — Resolving a conflict does not write the chosen value to the document
+
+```yaml
+id: BUG-06b
+type: BUG
+title: Resolving a conflict does not write the chosen value to the document
+status: BACKLOG
+priority: P1
+parent: BUG-06
+depends_on:
+  - BUG-06a
+description: >
+  Second slice of BUG-06. KEEP_LOCAL and MANUAL_EDIT change only PostgreSQL;
+  the document keeps the value that lost, and the stored hash has already
+  advanced so no later sync repairs it.
+expected_behavior: >
+  Resolving with KEEP_LOCAL or MANUAL_EDIT writes the chosen value to the
+  document through the same field-edit path a UI edit uses, with the same
+  drift rule; KEEP_EXTERNAL needs no write.
+technical_context:
+  backend: apps/api/src/modules/conflicts/conflicts.service.ts, synchronization/write-back.service.ts
+next_action: >
+  Reuse recordFieldEdit for title, acceptance criteria and assignee; decide
+  how a status is written back outside the lifecycle triggers.
+created_at: 2026-09-21T17:30:00Z
+updated_at: 2026-09-21T17:30:00Z
+```
+
+### BUG-06c — A dependency cycle in the document is dropped silently
+
+```yaml
+id: BUG-06c
+type: BUG
+title: A dependency cycle in the document is dropped silently
+status: BACKLOG
+priority: P3
+parent: BUG-06
+description: >
+  Third slice of BUG-06. When the document declares A depends on B and B
+  depends on A, sync skips the edge that would close the cycle and says
+  nothing, so the document and PM Hub disagree with no trace.
+expected_behavior: >
+  The skipped edge is reported on the run (which row, which reference) so the
+  authoring mistake can be found.
+technical_context:
+  backend: apps/api/src/modules/synchronization/synchronization.service.ts (reconcileDependencies, resolveDanglingDependencies)
+next_action: >
+  Add the skipped references to the run summary next to entryErrors.
+created_at: 2026-09-21T17:30:00Z
+updated_at: 2026-09-21T17:30:00Z
 ```
 
 ### BUG-07 — Write-back runs outside the transaction and is not idempotent

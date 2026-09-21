@@ -212,6 +212,23 @@ export class ConflictsService {
         }
       }
 
+      // Settling a "row disappeared" conflict without applying the removal
+      // (keep the task, or dismiss it) records that the task has no row: the
+      // sweep asks about a task with a table on every run, so without this it
+      // would raise the same conflict again straight away (Roadmap BUG-06a).
+      // The row coming back sets the table and re-arms it. Not an edit of the
+      // task's content, so it needs no task permission.
+      if (
+        conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG' &&
+        (dto.strategy === ConflictResolutionKind.KEEP_LOCAL ||
+          dto.strategy === ConflictResolutionKind.DISMISSED)
+      ) {
+        await tx.task.updateMany({
+          where: { id: conflict.entityId, deletedAt: null },
+          data: { roadmapTable: null },
+        });
+      }
+
       await this.audit.record(
         {
           projectId,

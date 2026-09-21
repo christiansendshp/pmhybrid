@@ -366,7 +366,37 @@ updates it, and its missing row never raises
 ## Conflicts (brief §26)
 
 `Conflict` is a first-class entity with its own endpoints/UI route, not just
-a log line. A conflict is never auto-resolved; an authorized user sees local
+a log line. Sync never _decides_ a conflict; an authorized user sees local
 vs. external versions and chooses `KEEP_LOCAL`, `KEEP_EXTERNAL`, or
 `MANUAL_EDIT` (or dismisses it). Resolving a conflict writes an `AuditEvent`
 and, if the resolution changes stored data, may trigger a normal write-back.
+
+### Keeping the list honest (Roadmap BUG-06a)
+
+Conflicts used to pile up (a missing row raised a new one on every run — 7 on
+one task — and stayed open after the cause was gone). Now:
+
+- **One open conflict per task and kind for a disappeared row.** While it is
+  open the sweep does not ask again. When the row comes back, the conflict
+  closes itself.
+- **One open conflict per task and field.** A later document change to a
+  field that is already contested updates the open conflict to the latest local
+  and document values instead of adding another; only fields no open conflict
+  covers get a new one, which is also the only case that counts as "raised" (and
+  notified). When every contested field holds the same value on both sides
+  again, the conflict closes itself.
+- **Automatic closing is not a decision.** It is recorded as `DISMISSED` with no
+  resolving actor and a `CONFLICT_RESOLVED` audit event marked `automatic`, with
+  the reason; the run counts it in `summary.conflictsClosed`. No value is chosen
+  or written anywhere.
+- **A settled disappeared-row conflict stays settled.** Keeping the task or
+  dismissing the conflict records that it has no row (`roadmapTable` null, no
+  task permission needed — it is not an edit of the task's content), and the
+  sweep skips a task without a table. Seeing its row again gives it its table
+  back — whether or not the row's content changed, which the row-hash check
+  would otherwise decide — so losing the row later is noticed again.
+- **An empty `Roadmap.md` is refused, not read as mass deletion.** A drained
+  Roadmap keeps its structure (headings, table skeletons); a file that is empty
+  or only whitespace, in a project that has tasks from the document, fails the
+  run as a fixable document problem (422) inside the transaction, so nothing of
+  the run is kept. An empty file in a project with no such tasks yet is fine.

@@ -386,3 +386,44 @@ describe('ConflictsService.resolve unrecognized status (Roadmap GAP-35b)', () =>
     expect(taskUpdate).not.toHaveBeenCalled();
   });
 });
+
+describe('ConflictsService.resolve of a disappeared row (Roadmap BUG-06a)', () => {
+  const disappeared = {
+    kind: 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG',
+    localVersion: { externalId: 'PMH-5', status: 'ASIGNADA' },
+    externalVersion: undefined,
+  };
+
+  it('records that the task has no row when it is kept or dismissed, so the sweep does not ask again — with no task permission', async () => {
+    for (const strategy of ['KEEP_LOCAL', 'DISMISSED']) {
+      const { service, taskUpdate } = setup({
+        held: [],
+        taskStatus: 'ASIGNADA',
+        ...disappeared,
+      });
+
+      await service.resolve('p1', 'c1', { strategy } as never, 'actor-1');
+
+      expect(taskUpdate).toHaveBeenCalledWith({
+        where: { id: 't1', deletedAt: null },
+        data: { roadmapTable: null },
+      });
+    }
+  });
+
+  it('leaves the table alone for any other kind of conflict', async () => {
+    const { service, taskUpdate } = setup({
+      held: [],
+      taskStatus: 'ASIGNADA',
+    });
+
+    await service.resolve(
+      'p1',
+      'c1',
+      { strategy: 'KEEP_LOCAL' } as never,
+      'actor-1',
+    );
+
+    expect(taskUpdate).not.toHaveBeenCalled();
+  });
+});
