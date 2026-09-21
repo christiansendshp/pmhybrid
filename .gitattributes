@@ -1,0 +1,5 @@
+# Files that run inside a Linux container must keep LF endings whatever the checkout does
+# (Roadmap IMPROVEMENT-02c): a CRLF entrypoint fails with "not found".
+*.sh text eol=lf
+**/Dockerfile text eol=lf
+*.conf text eol=lf

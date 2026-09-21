@@ -14,12 +14,12 @@
 
 ## Components
 
-| Area           | Technology and version                                                                    | Source       | Status    |
-| -------------- | ----------------------------------------------------------------------------------------- | ------------ | --------- |
-| Frontend       | Angular (latest stable), TypeScript, Signals, standalone components, Angular Material/CDK | brief §21    | CONFIRMED |
-| Backend        | Node.js + TypeScript, NestJS                                                              | brief §22    | CONFIRMED |
-| Data           | PostgreSQL (latest stable compatible), Prisma ORM                                         | brief §23    | CONFIRMED |
-| Infrastructure | docker-compose (Postgres only, MVP)                                                       | this project | CONFIRMED |
+| Area           | Technology and version                                                                                                         | Source       | Status    |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------ | --------- |
+| Frontend       | Angular (latest stable), TypeScript, Signals, standalone components, Angular Material/CDK                                      | brief §21    | CONFIRMED |
+| Backend        | Node.js + TypeScript, NestJS                                                                                                   | brief §22    | CONFIRMED |
+| Data           | PostgreSQL (latest stable compatible), Prisma ORM                                                                              | brief §23    | CONFIRMED |
+| Infrastructure | Docker images for the API (node) and the web (nginx), `docker-compose.prod.yml`; `docker-compose.yml` is the dev database only | this project | CONFIRMED |
 
 ## Architecture anchors
 

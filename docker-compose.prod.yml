@@ -1,0 +1,74 @@
+# PM Hub as containers: the database, the API and the web (Roadmap IMPROVEMENT-02c).
+# docker-compose.yml, next to this file, is only the database a laptop develops against.
+#
+#   cp deploy.env.example .env.prod     # then fill it in
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# The values that must be set are marked below with :?, so a missing one stops the
+# start with its name instead of starting a stack that cannot work. See docs/deployment.md.
+name: pmhybrid
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pmhybrid
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (letters and digits, it goes in a URL)}
+      POSTGRES_DB: pmhybrid
+    volumes:
+      - pmhybrid_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U pmhybrid -d pmhybrid']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: pmhybrid-api:${PMHYBRID_VERSION:-local}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://pmhybrid:${POSTGRES_PASSWORD}@postgres:5432/pmhybrid?schema=public
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (openssl rand -base64 48)}
+      CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS to the address the web app is opened at}
+      # Who the first administrator is, used only while there is none.
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-}
+      GIT_PROVIDER_TYPE: ${GIT_PROVIDER_TYPE:-local}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
+      # Where the projects' docs folders are, inside the container (see volumes).
+      PROJECT_DOCS_BROWSE_ROOT: /data/projects
+    volumes:
+      # The folders of the projects PM Hub manages when GIT_PROVIDER_TYPE is local. The API
+      # runs as the container's node user (uid 1000): it must be able to write here.
+      - ${PROJECTS_DIR:-./deploy/projects}:/data/projects
+    ports:
+      - '${API_PORT:-3000}:3000'
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: pmhybrid-web:${PMHYBRID_VERSION:-local}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # Where the browser reaches the API (not where this container does).
+      API_BASE_URL: ${API_BASE_URL:?set API_BASE_URL to the address the browser reaches the API at}
+    ports:
+      - '${WEB_PORT:-8080}:8080'
+
+volumes:
+  pmhybrid_data:

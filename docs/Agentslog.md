@@ -174,3 +174,14 @@ segments live in `docs/history/`.
 - Summary: The web reads its API address when it starts: index.html loads config.js (in public/, so it is served next to the app and a deployment replaces it) before the bundle, which sets window.**PMHYBRID**.apiBaseUrl; API_BASE_URL is that value without a trailing slash, else http://localhost:3000, so one build serves any API (the realtime socket derives from it too). Unit-tested, and a Playwright spec proves the address follows config.js and defaults to the development one.
 - Files: apps/web/public/config.js,apps/web/src/index.html,apps/web/src/app/core/api-base-url.ts,apps/web/a11y/runtime-config.a11y.spec.ts
 - Verify: web unit 285 and eslint clean; Playwright 62 pass (the address follows config.js and defaults to localhost:3000); web build ok
+
+## [2026-09-21T22:12:41Z] | claude | IMPROVEMENT-02c | IN_PROGRESS
+
+- Summary: Dockerfiles for the API and the web, a compose file that runs the stack, liveness and readiness endpoints, and a deployment guide, each built and run for real
+- Verify: pending
+
+## [2026-09-21T22:45:29Z] | claude | IMPROVEMENT-02c | DONE
+
+- Summary: PM Hub deploys as containers, checked by building and running them: apps/api/Dockerfile (node 22 alpine, multi-stage, production dependencies only, runs as node) migrates the database, writes the access model and, only while there is no administrator, creates the first one from BOOTSTRAP_ADMIN_* (new src/bootstrap: the demo seed refuses production, which left a fresh production database with no roles and nobody able to sign in), then serves; apps/web/Dockerfile serves the build on nginx and writes config.js from API_BASE_URL at start; docker-compose.prod.yml runs the database, the API and the web with required values marked so a missing one names itself; GET /health/live answers without the database, /health is readiness; docs/deployment.md, deploy.env.example, a CI job that builds both images, and .gitattributes keeping LF on the scripts. The seed and the bootstrap share one access catalog. prisma moved to production dependencies for migrate deploy. Verified: a smoke stack under its own project name came up healthy, an admin bootstrapped on a fresh database and logged in, roles existed, the demo login was refused, a restart bootstrapped nothing twice, and it was torn down.
+- Files: apps/api/Dockerfile,apps/web/Dockerfile,apps/web/nginx.conf,apps/web/docker-entrypoint.sh,apps/api/docker-entrypoint.sh,docker-compose.prod.yml,deploy.env.example,.dockerignore,.gitattributes,apps/api/src/bootstrap/bootstrap.ts,apps/api/src/bootstrap/access-catalog.ts,apps/api/src/modules/health/health.controller.ts,.github/workflows/ci.yml,docs/deployment.md
+- Verify: api unit 480 and e2e 317 pass (coverage 86.3); api lint and nest build ok; both images built and the stack run for real (health, CORS, bootstrap on a fresh database and again on a restart, non-root user)

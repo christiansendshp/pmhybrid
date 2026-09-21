@@ -11,6 +11,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The two images build (Roadmap IMPROVEMENT-02c). Nothing is pushed; a Dockerfile that has
+  # drifted from the code fails here instead of at a deployment.
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build the API image
+        run: docker build -f apps/api/Dockerfile -t pmhybrid-api:ci .
+
+      - name: Build the web image
+        run: docker build -f apps/web/Dockerfile -t pmhybrid-web:ci .
+
   ci:
     runs-on: ubuntu-latest
 

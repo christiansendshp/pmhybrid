@@ -275,33 +275,6 @@ and with the user's explicit sign-off, given the next sync tick will still
 process this change (see `BUG-01` above for a second hazard found and
 deliberately _not_ fixed in this same pass, kept out of scope on purpose).
 
-### IMPROVEMENT-02c — Container images, a compose file for them, and liveness and readiness
-
-```yaml
-id: IMPROVEMENT-02c
-type: IMPROVEMENT
-title: Container images, a compose file for them, and liveness and readiness
-status: READY
-priority: P3
-parent: IMPROVEMENT-02
-description: >
-  Third slice of IMPROVEMENT-02. There is no Dockerfile for the API or the
-  web app (docker-compose.yml only runs PostgreSQL), and /health checks the
-  database, which makes it a readiness probe with no liveness one.
-expected_behavior: >
-  A Dockerfile for each, built and run for real; a compose file that runs the
-  database, the API and the web with the API address and the secrets as
-  environment variables; /health/live that does not touch the database and
-  /health that does; and a documented deployment path.
-technical_context:
-  backend: apps/api/Dockerfile, apps/web/Dockerfile, docker-compose.prod.yml, apps/api/src/modules/health, docs/
-next_action: >
-  Build both images, bring the stack up under a project name of its own, and
-  probe it, before anything is written down.
-created_at: 2026-09-21T22:30:00Z
-updated_at: 2026-09-21T22:30:00Z
-```
-
 ### IMPROVEMENT-02d — A development database without the old test users
 
 ```yaml

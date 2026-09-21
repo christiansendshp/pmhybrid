@@ -20,6 +20,12 @@ describe('AppModule (e2e)', () => {
     return request(app.getHttpServer()).get('/health').expect(200);
   });
 
+  it('/health/live (GET) answers without the database, for a liveness probe (Roadmap IMPROVEMENT-02c)', async () => {
+    const res = await request(app.getHttpServer()).get('/health/live').expect(200);
+
+    expect(res.body).toEqual({ status: 'ok' });
+  });
+
   afterEach(async () => {
     await app.close();
   });

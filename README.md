@@ -24,6 +24,13 @@ pnpm dev
 API: http://localhost:3000 (health check at `/health`)
 Web: http://localhost:4200
 
+### Running it as containers
+
+`docker-compose.prod.yml` runs the database, the API and the web app from images built
+in this repository, configured by environment variables; `docs/deployment.md` is the
+guide. The API migrates the database and writes the access model on start, and creates the
+first administrator from `BOOTSTRAP_ADMIN_*` — never the demo login below, nor demo data.
+
 ### Demo login (local dev only)
 
 The seed script creates one HUMAN actor you can log in as at `/login`:

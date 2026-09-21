@@ -1,0 +1,23 @@
+# The build context of both images is the repository root; send only what an
+# image builds from (Roadmap IMPROVEMENT-02c).
+**/node_modules
+**/dist
+**/dist-watch
+**/coverage
+**/.angular
+**/*.tsbuildinfo
+**/test-results
+**/playwright-report
+.git
+.github
+.husky
+.claude
+.dev-logs
+.env
+.env.*
+docs
+*.md
+apps/api/test
+apps/api/prisma/demo-projects
+apps/web/a11y
+apps/web/.playwright-a11y-auth.json
