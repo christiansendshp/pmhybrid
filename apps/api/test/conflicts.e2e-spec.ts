@@ -6,6 +6,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './../prisma/demo-credentials.js';
+import { assignProjectRole } from './helpers/roles.js';
 import { createScratchDocsPath } from './helpers/scratch-docs.js';
 
 const ACTIVE_HEADER = `| ID | Outcome | Acceptance check | Status | Owner | Depends on |
@@ -274,5 +275,72 @@ describe('Conflicts (resolve — e2e, brief §26)', () => {
       .set('Authorization', auth())
       .expect(200);
     expect(task.body).toMatchObject({ status: 'TERMINADA', roadmapTable: null });
+  });
+
+  describe('who may resolve, and what a resolution may apply (Roadmap SECURITY-02)', () => {
+    async function memberToken(projectId: string, roleName?: string) {
+      const email = `conflict-member-${Date.now()}-${Math.random().toString(36).slice(2)}@pmhybrid.local`;
+      const created = await request(server())
+        .post('/users')
+        .set('Authorization', auth())
+        .send({ displayName: 'Conflict member', email, password: 'member1234' })
+        .expect(201);
+      await request(server())
+        .post(`/projects/${projectId}/members`)
+        .set('Authorization', auth())
+        .send({ actorId: created.body.id })
+        .expect(201);
+      if (roleName) {
+        await assignProjectRole(server(), auth(), projectId, created.body.id, roleName);
+      }
+      const login = await request(server())
+        .post('/auth/login')
+        .send({ email, password: 'member1234' })
+        .expect(200);
+      return `Bearer ${login.body.accessToken}`;
+    }
+
+    it('refuses a member without conflict.resolve, whether they hold no role or only DEVELOPER', async () => {
+      const { projectId, conflictId } = await concurrentStatusConflict();
+      const roleless = await memberToken(projectId);
+      const developer = await memberToken(projectId, 'DEVELOPER');
+
+      for (const token of [roleless, developer]) {
+        const denied = await request(server())
+          .post(`/projects/${projectId}/conflicts/${conflictId}/resolve`)
+          .set('Authorization', token)
+          .send({ strategy: 'KEEP_EXTERNAL' })
+          .expect(403);
+        expect(denied.body.message).toContain('conflict.resolve');
+      }
+
+      const stillOpen = await request(server())
+        .get(`/projects/${projectId}/conflicts?resolved=false`)
+        .set('Authorization', auth())
+        .expect(200);
+      expect(stillOpen.body.some((c: { id: string }) => c.id === conflictId)).toBe(true);
+    });
+
+    it('lets a PROJECT_MANAGER resolve and audits the status it applied as a STATUS_CHANGE', async () => {
+      const { projectId, taskId, conflictId } = await concurrentStatusConflict();
+      const manager = await memberToken(projectId, 'PROJECT_MANAGER');
+
+      await request(server())
+        .post(`/projects/${projectId}/conflicts/${conflictId}/resolve`)
+        .set('Authorization', manager)
+        .send({ strategy: 'KEEP_EXTERNAL' })
+        .expect(201);
+
+      const audit = await request(server())
+        .get(`/projects/${projectId}/audit?entityType=Task&operation=STATUS_CHANGE`)
+        .set('Authorization', auth())
+        .expect(200);
+      const change = audit.body.find(
+        (event: { entityId: string; newValue?: { status?: string } }) =>
+          event.entityId === taskId && event.newValue?.status === 'EN_DESARROLLO',
+      );
+      expect(change).toBeDefined();
+      expect(change.previousValue).toMatchObject({ status: 'ASIGNADA' });
+    });
   });
 });

@@ -1,16 +1,20 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { PERMISSIONS } from '@pmhybrid/shared-types';
 import {
   AuditOrigin,
   ConflictResolutionKind,
   TaskStatus,
 } from '@prisma/client';
+import { PermissionsResolverService } from '../../common/permissions-resolver.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { NOT_BLANK } from '../tasks/dto/create-task.dto.js';
+import { permissionForStatusChange } from '../tasks/task-status-policy.js';
 import { ResolveConflictDto } from './dto/resolve-conflict.dto.js';
 
 const TASK_STATUSES = new Set<string>(Object.values(TaskStatus));
@@ -65,6 +69,7 @@ export class ConflictsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly permissionsResolver: PermissionsResolverService,
   ) {}
 
   findAllForProject(projectId: string, resolved?: boolean) {
@@ -112,10 +117,39 @@ export class ConflictsService {
     return this.prisma.$transaction(async (tx) => {
       const fieldsToApply = this.resolveTaskFields(conflict, dto);
       if (fieldsToApply && conflict.entityType === 'Task') {
+        const task = await tx.task.findUniqueOrThrow({
+          where: { id: conflict.entityId },
+          select: { status: true },
+        });
+        await this.assertCanApply(
+          projectId,
+          requesterActorId,
+          task.status,
+          fieldsToApply,
+        );
         await tx.task.update({
           where: { id: conflict.entityId },
           data: fieldsToApply,
         });
+        // A resolution that moves the task is a status change like any
+        // other: recorded as one, so the reconciler's per-field check sees
+        // that this side just touched `status`.
+        const nextStatus = fieldsToApply.status;
+        if (typeof nextStatus === 'string' && nextStatus !== task.status) {
+          await this.audit.record(
+            {
+              projectId,
+              actorId: requesterActorId,
+              entityType: 'Task',
+              entityId: conflict.entityId,
+              operation: 'STATUS_CHANGE',
+              previousValue: { status: task.status },
+              newValue: { status: nextStatus },
+              origin,
+            },
+            tx,
+          );
+        }
       }
 
       await this.audit.record(
@@ -145,6 +179,43 @@ export class ConflictsService {
         },
       });
     });
+  }
+
+  /**
+   * Resolving a conflict needs `conflict.resolve` (checked on the route),
+   * but that must not become a way around the rules of the change it
+   * applies: a status change needs the permission the same move would need
+   * as a transition (a jump takes the strongest key it crosses), and any
+   * other field needs `task.write` (Roadmap SECURITY-02).
+   */
+  private async assertCanApply(
+    projectId: string,
+    actorId: string,
+    currentStatus: TaskStatus,
+    fields: Record<string, unknown>,
+  ) {
+    const needed = new Set<string>();
+    for (const [key, value] of Object.entries(fields)) {
+      if (key === 'status') {
+        if (value !== currentStatus) {
+          needed.add(
+            permissionForStatusChange(currentStatus as never, value as never),
+          );
+        }
+      } else {
+        needed.add(PERMISSIONS.TASK_WRITE);
+      }
+    }
+    for (const permission of needed) {
+      const allowed = await this.permissionsResolver.hasPermission(
+        actorId,
+        permission,
+        projectId,
+      );
+      if (!allowed) {
+        throw new ForbiddenException(`Missing permission: ${permission}`);
+      }
+    }
   }
 
   /** null = no Task write needed for this strategy/kind combination. */

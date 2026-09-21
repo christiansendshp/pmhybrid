@@ -10,6 +10,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './../prisma/demo-credentials.js';
+import { assignProjectRole } from './helpers/roles.js';
 import { createScratchDocsPath } from './helpers/scratch-docs.js';
 
 /**
@@ -174,6 +175,7 @@ describe('MCP server for agent task operations (e2e)', () => {
   it('updates a task via update_task, reusing TasksService.update unchanged', async () => {
     const { agentId, apiKey } = await createAgentWithKey();
     const projectId = await createProjectWithMember(agentId);
+    await assignProjectRole(server(), auth(), projectId, agentId, 'AI_AGENT');
     const taskId = await createTask(projectId, 'Original title');
     const client = await connectedClient(apiKey);
 
@@ -188,6 +190,26 @@ describe('MCP server for agent task operations (e2e)', () => {
       .set('Authorization', auth())
       .expect(200);
     expect(after.body).toMatchObject({ title: 'Updated via MCP', progressPercent: 40 });
+  });
+
+  it('refuses update_task with an isError result for an agent member holding no task.write (Roadmap SECURITY-02)', async () => {
+    const { agentId, apiKey } = await createAgentWithKey();
+    const projectId = await createProjectWithMember(agentId);
+    const taskId = await createTask(projectId, 'Must stay untouched');
+    const client = await connectedClient(apiKey);
+
+    const result = await client.callTool({
+      name: 'update_task',
+      arguments: { projectId, taskId, title: 'Hijacked via MCP' },
+    });
+    expect(result.isError).toBe(true);
+    expect(text(result as CallToolResult)).toContain('task.write');
+
+    const after = await request(server())
+      .get(`/projects/${projectId}/tasks/${taskId}`)
+      .set('Authorization', auth())
+      .expect(200);
+    expect(after.body.title).toBe('Must stay untouched');
   });
 
   it('returns a protocol-level isError result (not a transport failure) when the agent lacks the transition permission', async () => {

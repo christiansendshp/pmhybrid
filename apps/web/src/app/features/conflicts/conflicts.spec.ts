@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ProjectContext } from '../../core/project-context.js';
 import { Conflict, SynchronizationService } from '../../core/synchronization.service.js';
 import { Conflicts } from './conflicts.js';
 
@@ -41,6 +42,7 @@ describe('Conflicts (brief §26 — resolution UI)', () => {
       .mockResolvedValue(conflict({ resolvedAt: '2026-09-15T10:00:00.000Z' }));
     TestBed.configureTestingModule({
       providers: [
+        ProjectContext,
         provideRouter([
           { path: 'projects/:projectId', children: [{ path: 'conflicts', component: Conflicts }] },
         ]),
@@ -49,7 +51,8 @@ describe('Conflicts (brief §26 — resolution UI)', () => {
     });
   });
 
-  async function render(conflicts: Conflict[]) {
+  async function render(conflicts: Conflict[], permissions: string[] = ['conflict.resolve']) {
+    TestBed.inject(ProjectContext).permissions.set(permissions);
     listConflicts.mockResolvedValue(conflicts);
     const harness = await RouterTestingHarness.create();
     const component = await harness.navigateByUrl('/projects/p1/conflicts', Conflicts);
@@ -146,6 +149,14 @@ describe('Conflicts (brief §26 — resolution UI)', () => {
     const { text, buttons } = await render([resolved]);
 
     expect(text()).toContain('resuelto');
+    expect(buttons()).not.toContain('Conservar versión de la app');
+    expect(buttons()).not.toContain('Descartar');
+  });
+
+  it('shows no resolution controls, and says why, without conflict.resolve (Roadmap SECURITY-02)', async () => {
+    const { text, buttons } = await render([conflict()], []);
+
+    expect(text()).toContain('Solo quien tenga permiso para resolver conflictos');
     expect(buttons()).not.toContain('Conservar versión de la app');
     expect(buttons()).not.toContain('Descartar');
   });

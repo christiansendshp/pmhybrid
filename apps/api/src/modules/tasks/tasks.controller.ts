@@ -25,13 +25,16 @@ import { UpdateTaskDto } from './dto/update-task.dto.js';
 import { TasksService } from './tasks.service.js';
 
 /**
- * Base gate is project membership only — the seeded permission catalog
- * (task.assign, task.status.transition, ...) targets transitions and
- * assignment specifically, so create/update/dependency declaration are left
- * to "any member can edit" (pragmatic FASE-07 scope call). Removal is the
- * exception: it takes a row out of the project's documents, so it needs
- * task.delete. /assign and /transition resolve their own dynamic permission
- * inside TasksService (see its docstring).
+ * Base gate is project membership. Reading is open to every member; writing
+ * is not (Roadmap SECURITY-02, superseding the original "any member can
+ * edit" FASE-07 scope call, which left the read-only VIEWER role — and a
+ * member holding no role at all — able to create and edit tasks):
+ * create/update/dependency declaration need `task.write`, checked inside
+ * TasksService so the MCP tools that call it directly are held to the same
+ * rule; removal needs task.delete via PermissionGuard here; /assign and
+ * /transition resolve their own dynamic permission inside TasksService (see
+ * its docstring). Commenting is deliberately left to any member (the
+ * comments ticket, GAP-31, specifies it).
  */
 @UseGuards(JwtAuthGuard, ProjectMemberGuard)
 @Controller('projects/:projectId/tasks')

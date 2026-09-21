@@ -104,7 +104,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     update = vi.fn().mockResolvedValue({});
     create = vi.fn().mockResolvedValue({});
     remove = vi.fn().mockResolvedValue({});
-    myPermissions = vi.fn().mockResolvedValue(['task.delete']);
+    myPermissions = vi.fn().mockResolvedValue(['task.delete', 'task.write']);
     listAudit = vi.fn();
     TestBed.configureTestingModule({
       providers: [
@@ -244,6 +244,29 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
 
     expect(component.deleteError()).toBeTruthy();
     expect(TestBed.inject(Router).url).toBe('/projects/p1/tasks/t1');
+  });
+
+  it('offers edit, subtask and dependency controls only with task.write (Roadmap SECURITY-02)', async () => {
+    getById.mockResolvedValue(taskDetail());
+    listAudit.mockResolvedValue([]);
+
+    const writer = await render();
+    expect(writer.component.canWrite()).toBe(true);
+    expect(writer.text()).toContain('Editar tarea');
+    expect(writer.text()).toContain('Agregar subtarea');
+    expect(writer.text()).toContain('Agregar dependencia');
+  });
+
+  it('shows a member without task.write the task read-only', async () => {
+    getById.mockResolvedValue(taskDetail());
+    listAudit.mockResolvedValue([]);
+    myPermissions.mockResolvedValue([]);
+
+    const reader = await render();
+    expect(reader.component.canWrite()).toBe(false);
+    expect(reader.text()).not.toContain('Editar tarea');
+    expect(reader.text()).not.toContain('Agregar subtarea');
+    expect(reader.text()).not.toContain('Agregar dependencia');
   });
 
   it('reloads the history after an action, so it reflects the change just made', async () => {

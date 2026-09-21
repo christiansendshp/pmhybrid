@@ -88,7 +88,11 @@
       </tbody>
     </table>
 
-    @if (!conflict.resolvedAt) {
+    @if (!conflict.resolvedAt && !canResolve()) {
+      <p class="meta-text">
+        Solo quien tenga permiso para resolver conflictos puede elegir una resolución.
+      </p>
+    } @else if (!conflict.resolvedAt) {
       @if (editingConflictId() === conflict.id) {
         <form class="manual-edit" (ngSubmit)="submitManualEdit(conflict)">
           @for (field of manualFields(); track field.field) {

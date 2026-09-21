@@ -6,7 +6,9 @@
     </div>
     @if (!editing()) {
       <div class="page-header__actions">
-        <button mat-stroked-button type="button" (click)="startEditing()">Editar tarea</button>
+        @if (canWrite()) {
+          <button mat-stroked-button type="button" (click)="startEditing()">Editar tarea</button>
+        }
         @if (canDelete()) {
           @if (confirmingDelete()) {
             <span class="meta-text">¿Quitarla del tablero y del Roadmap?</span>
@@ -154,7 +156,7 @@
         (save)="createSubtask($event)"
         (cancelled)="addingSubtask.set(false)"
       />
-    } @else {
+    } @else if (canWrite()) {
       <button mat-stroked-button type="button" (click)="startSubtask()">Agregar subtarea</button>
     }
   </section>
@@ -166,23 +168,25 @@
         <li>{{ dep.dependsOnTask ? dep.dependsOnTask.title : dep.rawExternalRef }}</li>
       }
     </ul>
-    <mat-select
-      placeholder="Depende de…"
-      [ngModel]="selectedDependsOnId()"
-      (ngModelChange)="selectedDependsOnId.set($event)"
-    >
-      @for (other of otherTasks(); track other.id) {
-        <mat-option [value]="other.id">{{ other.title }}</mat-option>
-      }
-    </mat-select>
-    <button
-      mat-flat-button
-      type="button"
-      [disabled]="!selectedDependsOnId()"
-      (click)="addDependency()"
-    >
-      Agregar dependencia
-    </button>
+    @if (canWrite()) {
+      <mat-select
+        placeholder="Depende de…"
+        [ngModel]="selectedDependsOnId()"
+        (ngModelChange)="selectedDependsOnId.set($event)"
+      >
+        @for (other of otherTasks(); track other.id) {
+          <mat-option [value]="other.id">{{ other.title }}</mat-option>
+        }
+      </mat-select>
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="!selectedDependsOnId()"
+        (click)="addDependency()"
+      >
+        Agregar dependencia
+      </button>
+    }
   </section>
 
   <section>

@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HierarchyService, ProjectHierarchy } from '../../core/hierarchy.service.js';
+import { ProjectContext } from '../../core/project-context.js';
 import { ProjectsService } from '../../core/projects.service.js';
 import { TaskCard, TasksService } from '../../core/tasks.service.js';
 import { Kanban } from './kanban.js';
@@ -66,6 +67,7 @@ describe('Kanban (brief §15)', () => {
     transition = vi.fn().mockResolvedValue({});
     TestBed.configureTestingModule({
       providers: [
+        ProjectContext,
         provideRouter([
           { path: 'projects/:projectId', children: [{ path: 'kanban', component: Kanban }] },
         ]),
@@ -76,7 +78,8 @@ describe('Kanban (brief §15)', () => {
     });
   });
 
-  async function render(cards: TaskCard[]) {
+  async function render(cards: TaskCard[], permissions: string[] = ['task.write']) {
+    TestBed.inject(ProjectContext).permissions.set(permissions);
     listForProject.mockResolvedValue(cards);
     const harness = await RouterTestingHarness.create();
     const component = await harness.navigateByUrl('/projects/p1/kanban', Kanban);
@@ -171,5 +174,15 @@ describe('Kanban (brief §15)', () => {
     await component.onDrop(drop({}, {}), 'EN_DESARROLLO');
     expect(transition).toHaveBeenCalledWith('p1', 't1', 'EN_DESARROLLO');
     expect(listForProject).toHaveBeenCalledTimes(2);
+  });
+
+  it('offers "Nueva tarea" only to a member holding task.write (Roadmap SECURITY-02)', async () => {
+    const allowed = await render([card()], ['task.write']);
+    expect(allowed.harness.routeNativeElement!.textContent).toContain('Nueva tarea');
+  });
+
+  it('hides "Nueva tarea" from a member without task.write', async () => {
+    const readOnly = await render([card()], []);
+    expect(readOnly.harness.routeNativeElement!.textContent).not.toContain('Nueva tarea');
   });
 });

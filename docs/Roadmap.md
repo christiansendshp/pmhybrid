@@ -168,42 +168,6 @@ created_at: 2026-09-19T09:40:00Z
 updated_at: 2026-09-20T19:55:00Z
 ```
 
-### SECURITY-02 — Write routes lack a permission and conflict resolution bypasses the transition policy
-
-```yaml
-id: SECURITY-02
-type: SECURITY
-title: Write routes lack a permission and conflict resolution bypasses the transition policy
-status: READY
-priority: P0
-description: >
-  Found by the 2026-09-21 evaluation (backend audit, reproduced live). A
-  project member with an empty permission set can create and edit tasks,
-  comment, resolve conflicts and trigger sync, although permissions.md says
-  VIEWER is read-only. `POST /conflicts/:id/resolve` has no
-  `@RequirePermission`; KEEP_EXTERNAL forces status TERMINADA and
-  MANUAL_EDIT accepts any status, so a user holding only `task.assign` and
-  `task.status.transition` moved a task ASIGNADA -> TERMINADA without
-  `task.qa.approve`. The change is audited only as CONFLICT_RESOLVED, never
-  as STATUS_CHANGE, so sync's per-field conflict check cannot see it. Also:
-  PermissionGuard ignores a class-level `@RequirePermission` (fail-open
-  risk) and `removeMember` neither revokes roles nor unassigns tasks.
-expected_behavior: >
-  Every write route requires an explicit permission (a new task.write or
-  equivalent); conflict resolution applies status changes through the same
-  transition policy and permissions as a normal transition and audits
-  STATUS_CHANGE; a class-level RequirePermission is honored or rejected at
-  startup; removing a member cleans up roles and assignments. Each has a
-  negative e2e test.
-technical_context:
-  backend: apps/api/src/modules/tasks/tasks.controller.ts, conflicts/conflicts.controller.ts and conflicts.service.ts, roles/permission.guard.ts, project-members
-next_action: >
-  Add the permission and guard coverage first, then route resolve()
-  through TasksService.transition(). Update docs/permissions.md.
-created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T09:00:00Z
-```
-
 ### BUG-04 — assign, transition and conflict resolve race on stale task state
 
 ```yaml
@@ -658,6 +622,37 @@ next_action: >
   Decide the target runtime before writing images.
 created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T09:00:00Z
+```
+
+### BUG-08 — Removing a project member keeps their roles and assignments
+
+```yaml
+id: BUG-08
+type: BUG
+title: Removing a project member keeps their roles and assignments
+status: BACKLOG
+priority: P2
+description: >
+  Split off from SECURITY-02 on 2026-09-21. `ProjectMembersService.removeMember`
+  only sets `isActive: false`. The member's project-scoped ActorRole rows stay,
+  so re-adding them silently restores every role they held, and their
+  assigned tasks keep pointing at an actor who can no longer act on them
+  (a locked EN_DESARROLLO task in particular can only be reassigned by
+  someone holding task.reassign.locked). ProjectMemberGuard already stops a
+  removed member from acting, so this is hygiene and predictability, not an
+  open door.
+expected_behavior: >
+  Removing a member revokes their project-scoped roles in the same
+  transaction and defines what happens to their open assignments (unassign
+  with a visible audit event, or refuse the removal until reassigned), with
+  an e2e test for each outcome.
+technical_context:
+  backend: apps/api/src/modules/project-members/project-members.service.ts, roles
+next_action: >
+  Product decision on assignments (unassign vs block); roles can be revoked
+  unconditionally.
+created_at: 2026-09-21T11:10:00Z
+updated_at: 2026-09-21T11:10:00Z
 ```
 
 Post-MVP gap backlog derived from a brief-vs-code review on 2026-09-15

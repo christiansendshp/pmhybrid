@@ -141,6 +141,26 @@ export class TasksService {
   }
 
   /**
+   * Creating and editing a task's own fields, and declaring its
+   * dependencies, need `task.write` (Roadmap SECURITY-02) — checked here,
+   * not on the controller, so the MCP tools that call this service
+   * directly are held to the same rule as REST. Moving and assigning keep
+   * their own dynamic permissions (`transition`, `assign`).
+   */
+  private async assertCanWrite(projectId: string, actorId: string) {
+    const allowed = await this.permissionsResolver.hasPermission(
+      actorId,
+      PERMISSIONS.TASK_WRITE,
+      projectId,
+    );
+    if (!allowed) {
+      throw new ForbiddenException(
+        `Missing permission: ${PERMISSIONS.TASK_WRITE}`,
+      );
+    }
+  }
+
+  /**
    * Task creation is a write-back trigger (docs/synchronization.md) — mints an
    * externalId and appends an Agentslog entry. The DTO already refuses an
    * incomplete task (brief §9); this validates the structure it hangs from.
@@ -151,6 +171,7 @@ export class TasksService {
     requesterActorId: string,
     origin: AuditOrigin = 'UI',
   ) {
+    await this.assertCanWrite(projectId, requesterActorId);
     await this.assertHierarchy(projectId, dto);
     assertDateOrder(dto);
     const fields = toTaskFields(dto);
@@ -200,6 +221,7 @@ export class TasksService {
     requesterActorId: string,
     origin: AuditOrigin = 'UI',
   ) {
+    await this.assertCanWrite(projectId, requesterActorId);
     const task = await this.getOwned(projectId, taskId);
     const patch = dto as TaskPatch;
 
@@ -451,6 +473,7 @@ export class TasksService {
     requesterActorId: string,
     origin: AuditOrigin = 'UI',
   ) {
+    await this.assertCanWrite(projectId, requesterActorId);
     await this.getOwned(projectId, taskId);
 
     if (dto.dependsOnTaskId) {

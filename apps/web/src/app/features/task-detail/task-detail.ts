@@ -31,6 +31,7 @@ import {
 
 const HISTORY_LIMIT = 50;
 const TASK_DELETE = 'task.delete';
+const TASK_WRITE = 'task.write';
 
 /** Brief §6, §17: every task field, its hierarchy, subtasks, dependencies, agent activity and history. */
 @Component({
@@ -61,6 +62,8 @@ export class TaskDetail implements OnInit {
   readonly formError = signal<string | null>(null);
   /** Hides a doomed action only; the API enforces task.delete regardless. */
   readonly canDelete = signal(false);
+  /** Creating/editing a task and declaring dependencies need `task.write`; the API enforces it regardless (Roadmap SECURITY-02). */
+  readonly canWrite = signal(false);
   readonly confirmingDelete = signal(false);
   readonly deleting = signal(false);
   readonly deleteError = signal<string | null>(null);
@@ -133,6 +136,7 @@ export class TaskDetail implements OnInit {
     this.allTasks.set(allTasks);
     this.hierarchy.set(hierarchy);
     this.canDelete.set(permissions.includes(TASK_DELETE));
+    this.canWrite.set(permissions.includes(TASK_WRITE));
   }
 
   /** Task and its change history together, so the history always reflects the action just taken (brief §17). */

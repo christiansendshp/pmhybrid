@@ -1,6 +1,6 @@
 <div class="board-header">
   <h2 class="board-header__title">Kanban</h2>
-  @if (!showCreateForm()) {
+  @if (!showCreateForm() && canWrite()) {
     <button mat-flat-button type="button" (click)="openCreateForm()">Nueva tarea</button>
   }
 </div>

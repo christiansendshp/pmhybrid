@@ -6,6 +6,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './../prisma/demo-credentials.js';
+import { assignProjectRole } from './helpers/roles.js';
 import { createScratchDocsPath } from './helpers/scratch-docs.js';
 
 interface AuditEventBody {
@@ -263,6 +264,7 @@ describe('Audit trail (brief §25 — e2e)', () => {
       .set('Authorization', auth())
       .send({ actorId: agent.body.id })
       .expect(201);
+    await assignProjectRole(server(), auth(), projectId, agent.body.id, 'AI_AGENT');
 
     await request(server())
       .post(`/projects/${projectId}/tasks`)

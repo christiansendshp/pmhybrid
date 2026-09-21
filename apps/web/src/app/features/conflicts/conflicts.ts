@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -12,6 +12,7 @@ import {
   isFieldEditable,
 } from '../../core/conflict-diff.js';
 import { describeHttpError } from '../../core/http-error.js';
+import { ProjectContext } from '../../core/project-context.js';
 import { KANBAN_STATUSES } from '../../core/task-status-policy.js';
 import {
   Conflict,
@@ -52,6 +53,8 @@ interface ManualField {
  * versions, field by field, with KEEP_LOCAL / KEEP_EXTERNAL / MANUAL_EDIT /
  * DISMISSED. Never auto-resolved — docs/synchronization.md "Conflicts".
  */
+const CONFLICT_RESOLVE = 'conflict.resolve';
+
 @Component({
   selector: 'app-conflicts',
   imports: [
@@ -69,6 +72,10 @@ interface ManualField {
 export class Conflicts implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly syncService = inject(SynchronizationService);
+  private readonly context = inject(ProjectContext);
+
+  /** Resolving needs `conflict.resolve`; the API enforces it regardless (Roadmap SECURITY-02). */
+  readonly canResolve = computed(() => this.context.permissions().includes(CONFLICT_RESOLVE));
 
   readonly statuses = KANBAN_STATUSES;
   readonly roadmapTables = ROADMAP_TABLES;

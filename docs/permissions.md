@@ -8,20 +8,22 @@ Authoritative source: `packages/shared-types/src/permissions.ts` (the
 
 ## Permission keys
 
-| Key                      | Scope   | Grants                                                                      |
-| ------------------------ | ------- | --------------------------------------------------------------------------- |
-| `task.assign`            | Project | Assign or unassign a task while not `EN_DESARROLLO`                         |
-| `task.status.transition` | Project | Move a task between ordinary Kanban states                                  |
-| `task.qa.approve`        | Project | Approve `QA` → `TERMINADA`                                                  |
-| `task.qa.reject`         | Project | Reject `QA` → `EN_DESARROLLO`                                               |
-| `task.reopen`            | Project | Reopen a `TERMINADA` task                                                   |
-| `task.reassign.locked`   | Project | Reassign a task locked by `EN_DESARROLLO`                                   |
-| `task.delete`            | Project | Remove a task (soft delete; its Roadmap row is taken out)                   |
-| `project.update`         | Project | Update project settings, and create/edit phases/epics/templates             |
-| `project.members.manage` | Project | Add or remove project members                                               |
-| `project.roles.manage`   | Project | Assign or revoke project-scoped roles                                       |
-| `actors.manage`          | Global  | Create, edit and deactivate users and AI agents; mint/revoke agent API keys |
-| `roles.manage`           | Global  | Edit any role's permission set (the catalog, not one project's assignments) |
+| Key                      | Scope   | Grants                                                                         |
+| ------------------------ | ------- | ------------------------------------------------------------------------------ |
+| `task.assign`            | Project | Assign or unassign a task while not `EN_DESARROLLO`                            |
+| `task.status.transition` | Project | Move a task between ordinary Kanban states                                     |
+| `task.qa.approve`        | Project | Approve `QA` → `TERMINADA`                                                     |
+| `task.qa.reject`         | Project | Reject `QA` → `EN_DESARROLLO`                                                  |
+| `task.reopen`            | Project | Reopen a `TERMINADA` task                                                      |
+| `task.reassign.locked`   | Project | Reassign a task locked by `EN_DESARROLLO`                                      |
+| `task.delete`            | Project | Remove a task (soft delete; its Roadmap row is taken out)                      |
+| `task.write`             | Project | Create and edit a task's own fields and declare its dependencies               |
+| `conflict.resolve`       | Project | Resolve a sync conflict (applying a status change still needs that move's key) |
+| `project.update`         | Project | Update project settings, and create/edit phases/epics/templates                |
+| `project.members.manage` | Project | Add or remove project members                                                  |
+| `project.roles.manage`   | Project | Assign or revoke project-scoped roles                                          |
+| `actors.manage`          | Global  | Create, edit and deactivate users and AI agents; mint/revoke agent API keys    |
+| `roles.manage`           | Global  | Edit any role's permission set (the catalog, not one project's assignments)    |
 
 A **Global**-scope key can only ever be granted via a `GLOBAL` role
 (`ActorRole.projectId = null`) — `RolesService.updateRolePermissions` refuses
@@ -35,16 +37,16 @@ One `GLOBAL` role and seven `PROJECT` roles ship in `prisma/seed.ts`. A
 admin stripped via `PATCH /roles/:id/permissions` (known limitation,
 `Features.md`).
 
-| Role              | Scope   | Default permissions                                                                                                                                          |
-| ----------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ADMIN`           | Global  | `actors.manage`, `roles.manage` (every global key)                                                                                                           |
-| `OWNER`           | Project | Every project key (all ten rows above)                                                                                                                       |
-| `PROJECT_ADMIN`   | Project | Every project key (identical to `OWNER` — `isSystem` protects a role's identity, not its permission set)                                                     |
-| `PROJECT_MANAGER` | Project | `task.assign`, `task.status.transition`, `task.qa.approve`, `task.qa.reject`, `task.reopen`, `task.reassign.locked`, `task.delete`, `project.members.manage` |
-| `DEVELOPER`       | Project | `task.assign`, `task.status.transition`                                                                                                                      |
-| `QA`              | Project | `task.qa.approve`, `task.qa.reject`                                                                                                                          |
-| `VIEWER`          | Project | None — read-only via every project's default JWT-authenticated GET routes                                                                                    |
-| `AI_AGENT`        | Project | `task.assign`, `task.status.transition`                                                                                                                      |
+| Role              | Scope   | Default permissions                                                                                                                                                                            |
+| ----------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ADMIN`           | Global  | `actors.manage`, `roles.manage` (every global key)                                                                                                                                             |
+| `OWNER`           | Project | Every project key (all twelve rows above)                                                                                                                                                      |
+| `PROJECT_ADMIN`   | Project | Every project key (identical to `OWNER` — `isSystem` protects a role's identity, not its permission set)                                                                                       |
+| `PROJECT_MANAGER` | Project | `task.assign`, `task.status.transition`, `task.qa.approve`, `task.qa.reject`, `task.reopen`, `task.reassign.locked`, `task.delete`, `task.write`, `conflict.resolve`, `project.members.manage` |
+| `DEVELOPER`       | Project | `task.write`, `task.assign`, `task.status.transition`                                                                                                                                          |
+| `QA`              | Project | `task.write`, `task.qa.approve`, `task.qa.reject`                                                                                                                                              |
+| `VIEWER`          | Project | None — read-only via every project's default JWT-authenticated GET routes (and it may still comment)                                                                                           |
+| `AI_AGENT`        | Project | `task.write`, `task.assign`, `task.status.transition`                                                                                                                                          |
 
 Any of these (`OWNER` included) can have its own permission set edited later
 via `PATCH /roles/:id/permissions` — the table above is only the seed
@@ -58,9 +60,9 @@ never lock every admin out of managing it.
    GAP-15) — proves who is calling. No permission check.
 2. `ProjectMemberGuard` — on every `projects/:projectId/...` route: refuses a
    non-member outright, before any permission is even considered.
-3. `PermissionGuard` + `@RequirePermission(key)` — applied per-handler (a
-   class-level `@RequirePermission` is silently ignored: `PermissionGuard`
-   reads metadata off `context.getHandler()`, never the controller class).
+3. `PermissionGuard` + `@RequirePermission(key)` — applied per-handler or
+   per-controller (a handler-level key overrides a class-level one; before
+   Roadmap SECURITY-02 a class-level key was silently ignored).
    Resolves the caller's global grants ∪ the route's `:projectId` grants (if
    the route has that param) via `PermissionsResolverService`, which does no
    caching — a permission edit takes effect on the very next request.
@@ -198,3 +200,30 @@ same `TaskCommentsService` a REST request would. `AuditOrigin` follows the
 same rule as every other write: `UI` for a person's JWT, `API` for an
 agent's key (MCP tools hardcode `'API'`, matching `update_task`/
 `transition_task`).
+
+## Who may write, and what a resolution may apply (Roadmap SECURITY-02)
+
+Before this change any project member — including one holding no role at all
+or the read-only `VIEWER` role — could create and edit tasks, declare
+dependencies and resolve conflicts, because only membership was checked.
+Now:
+
+- **Create / edit / declare dependencies** need `task.write`. It is checked
+  inside `TasksService`, so the MCP `update_task` tool (which calls the
+  service directly) is held to the same rule as REST. Moving and assigning
+  keep their own keys. **A member added without a role can therefore only
+  read** (and comment); give them a role such as `DEVELOPER` or `AI_AGENT`.
+- **Commenting** stays open to any member (the comments ticket, GAP-31,
+  specifies it) — the one write a `VIEWER` keeps.
+- **`POST /projects/:id/conflicts/:id/resolve`** needs `conflict.resolve`
+  (seeded for `OWNER`, `PROJECT_ADMIN`, `PROJECT_MANAGER`). On top of that, what
+  the resolution _applies_ is held to the same rules as doing it by hand: a
+  status change needs the key that move needs (a legal single step keeps its
+  rule's key; a jump into `TERMINADA` needs `task.qa.approve`, out of
+  `TERMINADA` needs `task.reopen`, any other jump `task.status.transition`),
+  and any other field needs `task.write`. A resolution that moves a task is
+  audited as `STATUS_CHANGE` as well as `CONFLICT_RESOLVED`.
+- Existing databases pick the new keys up by re-running `prisma db seed`
+  (it only adds); roles edited via `PATCH /roles/:id/permissions` are not
+  touched, so grant `task.write`/`conflict.resolve` to any custom-edited role
+  that should keep them.

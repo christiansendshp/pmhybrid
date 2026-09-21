@@ -12,7 +12,9 @@ import { PERMISSION_METADATA_KEY } from '../decorators/require-permission.decora
 import { PermissionsResolverService } from '../permissions-resolver.service.js';
 
 /**
- * Reads the @RequirePermission() key off the handler, resolves the current
+ * Reads the @RequirePermission() key off the handler (or, failing that, the
+ * controller class — a class-level key used to be silently ignored, leaving
+ * the whole controller open, Roadmap SECURITY-02), resolves the current
  * actor's effective permissions (global ∪ the :projectId route param, if
  * present) and denies with 403 if the key isn't held. No metadata = no
  * check (route didn't opt in). Must run after JwtAuthGuard (needs
@@ -26,9 +28,9 @@ export class PermissionGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const required = this.reflector.get<string | undefined>(
+    const required = this.reflector.getAllAndOverride<string | undefined>(
       PERMISSION_METADATA_KEY,
-      context.getHandler(),
+      [context.getHandler(), context.getClass()],
     );
     if (!required) {
       return true;

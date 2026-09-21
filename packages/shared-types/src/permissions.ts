@@ -12,6 +12,10 @@ export const PERMISSIONS = {
   TASK_REOPEN: 'task.reopen',
   TASK_REASSIGN_LOCKED: 'task.reassign.locked',
   TASK_DELETE: 'task.delete',
+  /** Create and edit a task's own fields and declare its dependencies (Roadmap SECURITY-02); moving or assigning it has its own keys. */
+  TASK_WRITE: 'task.write',
+  /** Resolve a sync conflict (Roadmap SECURITY-02); applying a status/assignee change still needs the key that change needs on its own. */
+  CONFLICT_RESOLVE: 'conflict.resolve',
   PROJECT_UPDATE: 'project.update',
   PROJECT_MEMBERS_MANAGE: 'project.members.manage',
   PROJECT_ROLES_MANAGE: 'project.roles.manage',

@@ -10,6 +10,9 @@ import {
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
 import { CurrentAuditOrigin } from '../../common/decorators/current-audit-origin.decorator.js';
 import type { AuditOrigin } from '@prisma/client';
+import { PERMISSIONS } from '@pmhybrid/shared-types';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
+import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { ConflictsService } from './conflicts.service.js';
@@ -37,6 +40,8 @@ export class ConflictsController {
   }
 
   @Post(':id/resolve')
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.CONFLICT_RESOLVE)
   resolve(
     @Param('projectId') projectId: string,
     @Param('id') id: string,

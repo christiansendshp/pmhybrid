@@ -26,6 +26,7 @@ import {
   ProjectHierarchy,
 } from '../../core/hierarchy.service.js';
 import { describeHttpError } from '../../core/http-error.js';
+import { ProjectContext } from '../../core/project-context.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import {
   KANBAN_STATUSES,
@@ -46,6 +47,8 @@ const DROP_TARGET_STATUSES = KANBAN_STATUSES.filter(
  * accepts a legal transition; the API still checks the transition and the
  * requester's permission.
  */
+const TASK_WRITE = 'task.write';
+
 @Component({
   selector: 'app-kanban',
   imports: [
@@ -71,6 +74,10 @@ export class Kanban implements OnInit {
   private readonly tasksService = inject(TasksService);
   private readonly projectsService = inject(ProjectsService);
   private readonly hierarchyService = inject(HierarchyService);
+  private readonly context = inject(ProjectContext);
+
+  /** Creating a task needs `task.write`; the API enforces it regardless (Roadmap SECURITY-02). */
+  readonly canWrite = computed(() => this.context.permissions().includes(TASK_WRITE));
 
   readonly statuses = KANBAN_STATUSES;
   readonly priorities = TASK_PRIORITIES;
