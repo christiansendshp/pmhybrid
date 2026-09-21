@@ -77,6 +77,15 @@ Every `/projects/:projectId/...` route (except `/projects` itself) sits
 behind `ProjectMemberGuard`: a non-member is refused before any handler runs,
 regardless of what permission the route would otherwise require.
 
+## Retrying a task creation
+
+`POST /projects/:projectId/tasks` accepts an optional `Idempotency-Key` header.
+Send the same key (and the same body) again after a timeout and the response is
+the task the first request created, not a second task; the same key with a
+different body is a `422`, a malformed key a `400`. Keys are per project and
+caller and are remembered for 24 hours (`docs/domain-model.md`,
+`IdempotencyKey`). Other endpoints ignore the header.
+
 ## Where the real contract lives
 
 - Request/response shapes: each module's `dto/` folder.

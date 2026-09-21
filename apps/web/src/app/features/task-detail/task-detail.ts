@@ -15,6 +15,7 @@ import {
   ProjectHierarchy,
 } from '../../core/hierarchy.service.js';
 import { describeHttpError } from '../../core/http-error.js';
+import { newIdempotencyKey } from '../../core/idempotency-key.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { LEGAL_NEXT_STATUSES, statusLabel } from '../../core/task-status-policy.js';
 import {
@@ -59,6 +60,8 @@ export class TaskDetail implements OnInit {
   readonly selectedDependsOnId = signal<string | null>(null);
   readonly editing = signal(false);
   readonly addingSubtask = signal(false);
+  /** Names this subtask form's creation, so retrying it cannot make two (Roadmap BUG-07b). */
+  private subtaskKey = newIdempotencyKey();
   readonly saving = signal(false);
   readonly formError = signal<string | null>(null);
   /** Hides a doomed action only; the API enforces task.delete regardless. */
@@ -236,6 +239,7 @@ export class TaskDetail implements OnInit {
   }
 
   startSubtask(): void {
+    this.subtaskKey = newIdempotencyKey();
     this.formError.set(null);
     this.editing.set(false);
     this.addingSubtask.set(true);
@@ -250,7 +254,8 @@ export class TaskDetail implements OnInit {
 
   async createSubtask(value: TaskFormValue): Promise<void> {
     await this.submitForm(async () => {
-      await this.tasksService.create(this.projectId, toCreateTaskInput(value));
+      await this.tasksService.create(this.projectId, toCreateTaskInput(value), this.subtaskKey);
+      this.subtaskKey = newIdempotencyKey();
       this.addingSubtask.set(false);
     });
   }

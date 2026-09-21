@@ -307,34 +307,6 @@ created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T18:00:00Z
 ```
 
-### BUG-07b — Task creation has no idempotency key
-
-```yaml
-id: BUG-07b
-type: BUG
-title: Task creation has no idempotency key
-status: BACKLOG
-priority: P2
-parent: BUG-07
-depends_on:
-  - BUG-07a
-description: >
-  Second slice of BUG-07. A client that times out after the server created a
-  task cannot tell, and retrying creates a second one. Nothing identifies a
-  retry as the same request.
-expected_behavior: >
-  POST /projects/:id/tasks accepts an Idempotency-Key header; a repeat with
-  the same key from the same actor in the same project returns the task the
-  first request created instead of creating another. Keys expire.
-technical_context:
-  backend: apps/api/src/modules/tasks (controller, service), a new key table with a migration
-next_action: >
-  Store (project, actor, key) -> task id in the creating transaction, unique,
-  with a retention window.
-created_at: 2026-09-21T18:00:00Z
-updated_at: 2026-09-21T18:00:00Z
-```
-
 ### BUG-07c — DocumentRevision grows without a retention policy
 
 ```yaml

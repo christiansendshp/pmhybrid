@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   Param,
   Patch,
   Post,
@@ -23,6 +24,7 @@ import { AssignTaskDto } from './dto/assign-task.dto.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
 import { TransitionTaskDto } from './dto/transition-task.dto.js';
 import { UpdateTaskDto } from './dto/update-task.dto.js';
+import { parseIdempotencyKey } from './idempotency.util.js';
 import { TasksService } from './tasks.service.js';
 
 /**
@@ -69,8 +71,15 @@ export class TasksController {
     @Body() dto: CreateTaskDto,
     @CurrentActorId() requesterActorId: string,
     @CurrentAuditOrigin() origin: AuditOrigin,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    return this.tasksService.create(projectId, dto, requesterActorId, origin);
+    return this.tasksService.create(
+      projectId,
+      dto,
+      requesterActorId,
+      origin,
+      parseIdempotencyKey(idempotencyKey),
+    );
   }
 
   @Patch(':taskId')

@@ -383,6 +383,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
         acceptanceCriteria: 'Endpoints documented',
         parentTaskId: 't1',
       }),
+      expect.any(String),
     );
     expect(component.addingSubtask()).toBe(false);
 
@@ -396,5 +397,23 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     await component.createSubtask({ ...FORM_VALUE, parentTaskId: 't1' });
     expect(component.addingSubtask()).toBe(true);
     expect(component.formError()).toBeTruthy();
+  });
+
+  it('retries a failed subtask with the same idempotency key, and gives the next form a new one (Roadmap BUG-07b)', async () => {
+    getById.mockResolvedValue(taskDetail());
+    listAudit.mockResolvedValue([]);
+    const { component } = await render();
+    const keys = () => create.mock.calls.map((call) => call[2] as string);
+
+    component.startSubtask();
+    create.mockRejectedValueOnce(new HttpErrorResponse({ status: 0 }));
+    await component.createSubtask({ ...FORM_VALUE, parentTaskId: 't1' });
+    await component.createSubtask({ ...FORM_VALUE, parentTaskId: 't1' });
+    expect(keys()).toHaveLength(2);
+    expect(keys()[0]).toBe(keys()[1]);
+
+    component.startSubtask();
+    await component.createSubtask({ ...FORM_VALUE, parentTaskId: 't1' });
+    expect(keys()[2]).not.toBe(keys()[0]);
   });
 });

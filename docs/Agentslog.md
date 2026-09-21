@@ -865,3 +865,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: PM Hub reads and writes projects documented with the latest project-documentation skill: tables, PAUSE, Pause reason, ledger states and the root AGENTS.md; the skill's own check passes after every PM Hub write
 - Files: docs/roadmap-parser.md,docs/synchronization.md,docs/architecture.md
 - Verify: GAP-37a, GAP-37b and GAP-37c verified: api unit 360, e2e 230, upstream check OK after each write
+
+## [2026-09-21T18:07:31Z] | claude | BUG-07b | IN_PROGRESS
+
+- Summary: Task creation accepts an Idempotency-Key
+- Verify: pending
+
+## [2026-09-21T18:07:32Z] | claude | BUG-07b | DONE
+
+- Summary: POST /projects/:id/tasks accepts an Idempotency-Key: a repeat returns the first task (per project and actor, 24 h, mismatched body is a 422); the web forms send one per form open
+- Files: apps/api/prisma/schema.prisma,apps/api/prisma/migrations/20260921200000_add_idempotency_key/migration.sql,apps/api/src/modules/tasks/tasks.service.ts,apps/api/src/modules/tasks/idempotency.util.ts,apps/web/src/app/core/idempotency-key.ts,docs/domain-model.md,docs/api-reference.md
+- Verify: api unit 366 and e2e 237 pass (incl. a simultaneous-request race); web unit 196 pass, eslint and ng build clean

@@ -176,6 +176,20 @@ Task(
   `Actor`), while `TaskComment` is a direct interactive write path with no
   document counterpart — never read from or written back to `Roadmap.md`/
   `Agentslog.md` (see `docs/Stack_Tecnologies.md` ADR-019).
+- `IdempotencyKey(id, projectId, actorId, key, requestHash, taskId, createdAt)`
+  (Roadmap BUG-07b) — remembers which task a creation request made, so a
+  client that retries after a timeout gets that task back instead of a second
+  one. `POST /projects/:projectId/tasks` reads an optional `Idempotency-Key`
+  header (1-128 printable characters, no spaces; a malformed one is a 400).
+  With a key, the lookup and the insert run in the creating transaction under
+  the project's advisory lock, so two simultaneous requests cannot both miss
+  each other. Unique per `(projectId, actorId, key)`: a key is one caller's, and
+  never reveals another's task. `requestHash` (a SHA-256 of the request body)
+  catches a key reused for a different request — a 422, nothing created. A
+  remembered key is dropped after 24 hours (the project's expired keys are
+  deleted whenever a keyed creation runs, so there is no separate job), and is
+  released early when its task has been removed. No header: exactly the old
+  behaviour.
 - Creating and editing a task from the app (brief §6, §9, `TasksService`):
   `title` and `acceptanceCriteria` are required and can change but never be
   cleared; every other field is optional and cleared with `null`. Hierarchy

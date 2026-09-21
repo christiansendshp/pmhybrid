@@ -42,6 +42,7 @@ model Actor {
   apiKeys          ApiKey[]
   taskComments     TaskComment[]    @relation("CommentAuthor")
   leadProjects     Project[]        @relation("ProjectLead")
+  idempotencyKeys  IdempotencyKey[]
 }
 
 model UserCredential {
@@ -267,6 +268,7 @@ model Task {
   assignments     TaskAssignment[]
   agentLogEvents  AgentLogEvent[]
   comments        TaskComment[]
+  idempotencyKeys IdempotencyKey[]
 
   @@unique([projectId, externalId])
   @@index([projectId, status])
@@ -534,4 +536,26 @@ model Project {
   conflicts     Conflict[]
   notifications Notification[]
   auditEvents   AuditEvent[]
+  idempotencyKeys IdempotencyKey[]
+}
+
+/// A task-creation request the API already answered (Roadmap BUG-07b): a client
+/// that retries with the same Idempotency-Key gets the task the first request
+/// made instead of a second one. Scoped to (project, actor) so one caller's
+/// key never reveals another's task; `requestHash` catches a key reused for a
+/// different request; a row is dropped once its retention window has passed.
+model IdempotencyKey {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  actorId     String
+  actor       Actor    @relation(fields: [actorId], references: [id])
+  key         String
+  requestHash String
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@unique([projectId, actorId, key])
+  @@index([projectId, createdAt])
 }

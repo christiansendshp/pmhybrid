@@ -152,9 +152,14 @@ export class TasksService {
     );
   }
 
-  create(projectId: string, input: CreateTaskInput): Promise<Task> {
+  /** With a key, a repeat of this same creation (after a timeout) returns the first task instead of making another (Roadmap BUG-07b). */
+  create(projectId: string, input: CreateTaskInput, idempotencyKey?: string): Promise<Task> {
     return firstValueFrom(
-      this.http.post<Task>(`${API_BASE_URL}/projects/${projectId}/tasks`, input),
+      this.http.post<Task>(
+        `${API_BASE_URL}/projects/${projectId}/tasks`,
+        input,
+        idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {},
+      ),
     );
   }
 

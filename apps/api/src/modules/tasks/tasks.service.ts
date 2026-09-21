@@ -4,9 +4,10 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { TaskStatus } from '@pmhybrid/shared-types';
-import type { AuditOrigin } from '@prisma/client';
+import type { AuditOrigin, Prisma } from '@prisma/client';
 import { PermissionsResolverService } from '../../common/permissions-resolver.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
@@ -17,6 +18,10 @@ import {
 import { buildDependencyGraph, wouldCloseCycle } from './dependency-graph.js';
 import { AddDependencyDto } from './dto/add-dependency.dto.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
+import {
+  IDEMPOTENCY_WINDOW_MS,
+  requestFingerprint,
+} from './idempotency.util.js';
 import { UpdateTaskDto } from './dto/update-task.dto.js';
 import { ProgressRollupService } from './progress-rollup.service.js';
 import {
@@ -173,12 +178,27 @@ export class TasksService {
     dto: CreateTaskDto,
     requesterActorId: string,
     origin: AuditOrigin = 'UI',
+    idempotencyKey?: string,
   ) {
     await this.assertCanWrite(projectId, requesterActorId);
     await this.assertHierarchy(projectId, dto);
     assertDateOrder(dto);
     const fields = toTaskFields(dto);
     return this.writeBack.inTransaction(projectId, async (tx) => {
+      // Under the project's lock, so two requests with one key cannot both
+      // miss each other's row (Roadmap BUG-07b).
+      if (idempotencyKey) {
+        const earlier = await this.earlierCreation(
+          tx,
+          projectId,
+          requesterActorId,
+          idempotencyKey,
+          requestFingerprint(dto),
+        );
+        if (earlier) {
+          return earlier;
+        }
+      }
       const created = await tx.task.create({
         data: {
           projectId,
@@ -202,14 +222,65 @@ export class TasksService {
       );
       // The document is written in the same transaction: a failure to write it
       // undoes the task too, so there is nothing to duplicate on a retry.
-      return this.writeBack.recordTaskEvent(
+      const result = await this.writeBack.recordTaskEvent(
         projectId,
         created.id,
         'CREATED',
         requesterActorId,
         tx,
       );
+      if (idempotencyKey) {
+        await tx.idempotencyKey.create({
+          data: {
+            projectId,
+            actorId: requesterActorId,
+            key: idempotencyKey,
+            requestHash: requestFingerprint(dto),
+            taskId: created.id,
+          },
+        });
+      }
+      return result;
     });
+  }
+
+  /**
+   * The task a request with this key already created, if the key is still
+   * remembered (Roadmap BUG-07b). Expired keys of the project are dropped on
+   * the way, so the table needs no separate job. The same key for a different
+   * request is a client bug and is refused; a key whose task has since been
+   * removed no longer stands for anything, so it is released for a new task.
+   */
+  private async earlierCreation(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    actorId: string,
+    key: string,
+    requestHash: string,
+  ) {
+    await tx.idempotencyKey.deleteMany({
+      where: {
+        projectId,
+        createdAt: { lt: new Date(Date.now() - IDEMPOTENCY_WINDOW_MS) },
+      },
+    });
+    const remembered = await tx.idempotencyKey.findUnique({
+      where: { projectId_actorId_key: { projectId, actorId, key } },
+      include: { task: true },
+    });
+    if (!remembered) {
+      return null;
+    }
+    if (remembered.requestHash !== requestHash) {
+      throw new UnprocessableEntityException(
+        'This Idempotency-Key was already used for a different request',
+      );
+    }
+    if (remembered.task.deletedAt) {
+      await tx.idempotencyKey.delete({ where: { id: remembered.id } });
+      return null;
+    }
+    return remembered.task;
   }
 
   /**

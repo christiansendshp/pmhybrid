@@ -26,6 +26,7 @@ import {
   ProjectHierarchy,
 } from '../../core/hierarchy.service.js';
 import { describeHttpError } from '../../core/http-error.js';
+import { newIdempotencyKey } from '../../core/idempotency-key.js';
 import { ProjectContext } from '../../core/project-context.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import {
@@ -92,6 +93,8 @@ export class Kanban implements OnInit {
   readonly boardError = signal<string | null>(null);
   readonly showCreateForm = signal(false);
   readonly creating = signal(false);
+  /** Names this create form's creation, so retrying it cannot make two (Roadmap BUG-07b). */
+  private createKey = newIdempotencyKey();
   readonly createError = signal<string | null>(null);
 
   readonly filters = signal<BoardFilters>(NO_FILTERS);
@@ -221,6 +224,7 @@ export class Kanban implements OnInit {
 
   openCreateForm(): void {
     this.createError.set(null);
+    this.createKey = newIdempotencyKey();
     this.showCreateForm.set(true);
   }
 
@@ -231,7 +235,10 @@ export class Kanban implements OnInit {
     this.creating.set(true);
     this.createError.set(null);
     try {
-      await this.tasksService.create(this.projectId, toCreateTaskInput(value));
+      // The same key on every retry of this form: a request that timed out
+      // after the server made the task cannot make a second one.
+      await this.tasksService.create(this.projectId, toCreateTaskInput(value), this.createKey);
+      this.createKey = newIdempotencyKey();
       this.showCreateForm.set(false);
       await this.reloadCards();
     } catch (error) {
