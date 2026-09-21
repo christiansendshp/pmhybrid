@@ -244,6 +244,47 @@ describe('Synchronization (read path, disappeared rows, archive-following, confl
     expect(task.status).toBe('TERMINADA');
   });
 
+  it("finds the archive when the pointer is written from the repository root, as the latest skill's rotate writes it (Roadmap BUG-09)", async () => {
+    const docsPath = createScratchDocsPath();
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmapWithActiveRow('| PMH-5 | Rotates out | check | IN_PROGRESS | — | — |'),
+      'utf-8',
+    );
+    const projectId = await createProjectAt(docsPath);
+    await request(server()).post(`/projects/${projectId}/sync`).set('Authorization', auth()).expect(201);
+
+    const archiveContent = agentslogWith(entryBlock('PMH-5', 'DONE'));
+    mkdirSync(path.join(docsPath, 'history'), { recursive: true });
+    writeFileSync(path.join(docsPath, 'history', 'Agentslog-20260921-001.md'), archiveContent, 'utf-8');
+    const archiveHash = createHash('sha256').update(archiveContent).digest('hex');
+    // "docs/history/..." from the repository root, though the project's docs
+    // folder is what the files are read from.
+    writeFileSync(
+      path.join(docsPath, 'Agentslog.md'),
+      `# Agents log
+
+## Previous segment
+
+- Archive: \`docs/history/Agentslog-20260921-001.md\`
+- SHA-256: \`${archiveHash}\`
+
+## Entries
+`,
+      'utf-8',
+    );
+    writeFileSync(path.join(docsPath, 'Roadmap.md'), roadmapWithActiveRow('| — | — | — | — | — | — |'), 'utf-8');
+
+    const syncRun = await request(server())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth())
+      .expect(201);
+
+    // Completed, not asked about.
+    expect(syncRun.body.summary.completedViaRemoval).toBe(1);
+    expect(syncRun.body.summary.conflictsRaised).toBe(0);
+  });
+
   it('raises CONCURRENT_FIELD_EDIT when a UI edit and a document edit touch the same field, and still applies non-contested fields', async () => {
     const docsPath = createScratchDocsPath();
     writeFileSync(

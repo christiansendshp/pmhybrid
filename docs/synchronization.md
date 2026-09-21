@@ -110,7 +110,11 @@ statusWord IN terminalSet` (seed `terminalSet = ["DONE"]`, an extensible
 segment` section with an archive path + SHA-256), ingest the referenced
      archived segment first (verifying its hash), so a `DONE` entry that
      rotated out of the hot log _before_ the row vanished from `Roadmap.md`
-     is still found.
+     is still found. The archive path is tried as written and then without
+     a leading `docs/`, because the latest skill's rotate writes it from the
+     repository root (`docs/history/Agentslog-….md`) while the project's
+     files are read from its docs folder, where it is `history/…` (Roadmap
+     BUG-09); a hash that does not match still means the archive is not read.
    - **Found** → `Task.status = TERMINADA`, `roadmapTable = null`,
      `AuditEvent(operation=COMPLETE_VIA_ROADMAP_REMOVAL, origin=SYNC)`.
    - **Not found** → `Conflict(kind=ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG)`;

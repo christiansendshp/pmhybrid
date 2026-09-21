@@ -12,6 +12,19 @@ import type { ProjectRepositoryProvider } from '../git-providers/project-reposit
 export const TERMINAL_STATUS_WORDS = ['DONE'];
 
 /**
+ * The places a `## Previous segment` pointer can name its archive (Roadmap
+ * BUG-09): as written, and without a leading `docs/`. The latest skill's rotate
+ * writes the path from the repository root (`docs/history/Agentslog-...md`),
+ * while the project's files are read relative to its docs folder, where that
+ * archive is `history/Agentslog-...md`.
+ */
+export function archiveCandidates(archivePath: string): string[] {
+  const written = archivePath.trim().replaceAll('\\', '/').replace(/^\.\//, '');
+  const fromDocs = written.replace(/^docs\//, '');
+  return fromDocs === written ? [written] : [written, fromDocs];
+}
+
+/**
  * Parses Agentslog.md, following a `## Previous segment` rotation pointer
  * exactly once and verifying its SHA-256 before trusting it (the
  * disappeared-row hazard in docs/synchronization.md step 6 depends on this
@@ -35,13 +48,11 @@ export class AgentslogIngestionService {
       return hot.entries;
     }
 
-    let archiveContent: string;
-    try {
-      archiveContent = await this.repositoryProvider.readFile(
-        docsPath,
-        hot.previousSegment.archivePath,
-      );
-    } catch {
+    const archiveContent = await this.readArchive(
+      docsPath,
+      hot.previousSegment.archivePath,
+    );
+    if (archiveContent === null) {
       // Archive referenced but unreadable — proceed with the hot log only
       // rather than failing the whole sync over a missing history file.
       return hot.entries;
@@ -59,6 +70,21 @@ export class AgentslogIngestionService {
 
     const archived = this.parser.parse(archiveContent);
     return [...hot.entries, ...archived.entries];
+  }
+
+  /** The archive under whichever of its possible paths is readable, or null. */
+  private async readArchive(
+    docsPath: string,
+    archivePath: string,
+  ): Promise<string | null> {
+    for (const candidate of archiveCandidates(archivePath)) {
+      try {
+        return await this.repositoryProvider.readFile(docsPath, candidate);
+      } catch {
+        // Try the next place it can be.
+      }
+    }
+    return null;
   }
 
   /** Idempotent via the rawEntryHash unique constraint. */
