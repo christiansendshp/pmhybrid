@@ -355,6 +355,19 @@ export class TasksService {
       previous.acceptanceCriteria = diff.previousValue.acceptanceCriteria as
         string | null;
     }
+    // Where the task sits is written into a YAML entry as its `parent` (Roadmap
+    // GAP-35d).
+    if (
+      'parentTaskId' in diff.newValue ||
+      'epicId' in diff.newValue ||
+      'phaseId' in diff.newValue
+    ) {
+      previous.hierarchy = {
+        parentTaskId: task.parentTaskId,
+        epicId: task.epicId,
+        phaseId: task.phaseId,
+      };
+    }
     // Written into a YAML entry, which alone has such fields (Roadmap GAP-35c).
     if ('priority' in diff.newValue) {
       previous.priority = diff.previousValue.priority as string | null;

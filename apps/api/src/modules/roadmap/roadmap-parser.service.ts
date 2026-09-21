@@ -41,6 +41,8 @@ export interface ParsedRoadmapRow {
   priority?: TaskPriority;
   /** The entry's `progress`, a whole percent (YAML entries only). */
   progress?: number;
+  /** The id of the entry's parent: its `parent`, else the nearest of its `feature`, `epic`, `theme` and `phase` shortcuts (YAML entries only) — Roadmap GAP-35d. */
+  parentRef?: string;
 }
 
 /** Whether an empty `dependsOnRaw` on this row says "no dependencies" (true) or says nothing (false). */

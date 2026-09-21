@@ -1150,3 +1150,25 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: A YAML entry's type, priority and progress are imported and written back. Type is kept as a nullable Task.entryType column (ids are opaque, so it is not derived); P0-P3 map one to one to CRITICAL/HIGH/MEDIUM/LOW and a document's own words are kept; progress of a task with subtasks is not stored (rollup rule 2); VISION/PHASE/THEME/EPIC/DECISION/BLOCKER/DEPENDENCY entries stay out of the rollup; the row hash grows only for entries so table hashes stay valid; write-back is YAML only because the tables have no such column. Autonomous decisions, reversible.
 - Files: apps/api/prisma/schema.prisma,apps/api/prisma/migrations/20260921240000_add_task_entry_type/migration.sql,apps/api/src/modules/roadmap/roadmap-attributes.util.ts,apps/api/src/modules/roadmap/roadmap-yaml-entry.util.ts,apps/api/src/modules/roadmap/roadmap-row-writer.util.ts,apps/api/src/modules/synchronization/synchronization.service.ts,apps/api/src/modules/synchronization/write-back.service.ts,apps/api/src/modules/synchronization/row-content-hash.util.ts,apps/api/src/modules/tasks/progress-rollup.service.ts,apps/api/src/modules/conflicts/conflicts.service.ts,apps/api/test/roadmap-yaml-attributes.e2e-spec.ts,docs/synchronization.md
 - Verify: api unit 420 and e2e 285 pass (coverage 87.0); web unit 241 and eslint clean; api lint, nest build and web build ok
+
+## [2026-09-21T20:35:58Z] | claude | GAP-35d | IN_PROGRESS
+
+- Summary: Import a YAML entry's hierarchy: parent links, PHASE and EPIC entries as Phase and Epic records with a stable identity, hierarchy edits written back
+- Verify: pending
+
+## [2026-09-21T20:49:34Z] | claude | GAP-35d | DONE
+
+- Summary: A YAML Roadmap's hierarchy is imported: PHASE and EPIC entries become Phase and Epic records identified by a new nullable externalId (an id, not a name, which a rename would orphan), and are no longer tasks (a task an earlier run made from one is removed, audited); every other entry is placed by its parent chain (a subtask of a work parent, else in its epic and phase; THEME and VISION are passed through). The document owns the structure where it states one and no conflict is raised, a move is audited as ROADMAP_FIELD_UPDATE; a move made in PM Hub is written into the entry's parent (removed with its shortcuts when cleared), a new subtask gets a SUBTASK entry, and a place with no id in the document cannot be written. /progress now reports the document's phases. The skill's table headings are a separate gap (GAP-38). Autonomous decisions, reversible.
+- Files: apps/api/prisma/schema.prisma,apps/api/prisma/migrations/20260921250000_add_phase_epic_external_id/migration.sql,apps/api/src/modules/roadmap/roadmap-hierarchy.util.ts,apps/api/src/modules/synchronization/hierarchy-sync.service.ts,apps/api/src/modules/synchronization/synchronization.service.ts,apps/api/src/modules/synchronization/write-back.service.ts,apps/api/src/modules/roadmap/roadmap-row-writer.util.ts,apps/api/test/roadmap-yaml-hierarchy.e2e-spec.ts,docs/synchronization.md,docs/domain-model.md
+- Verify: api unit 440 and e2e 295 pass (coverage 87.9); web unit 241 and eslint clean; api lint, nest build and web build ok
+
+## [2026-09-21T20:49:35Z] | claude | GAP-35 | IN_PROGRESS
+
+- Summary: Closing the umbrella: 35a-35e are done
+- Verify: pending
+
+## [2026-09-21T20:49:36Z] | claude | GAP-35 | DONE
+
+- Summary: Round trip parity between Roadmap.md, PostgreSQL and the UI for owner, statuses, duplicates, blocked entries, type, priority, progress, hierarchy, dependencies and line endings (35a-35e); unknown statuses raise a conflict, write-back preserves line endings. Left open, as its own gap: the skill's table headings (GAP-38).
+- Files: docs/Roadmap.md,docs/synchronization.md
+- Verify: All five slices done and verified: api unit 440 and e2e 295 pass (coverage 87.9); web unit 241 and eslint clean; api lint, nest build and web build ok

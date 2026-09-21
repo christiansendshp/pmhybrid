@@ -168,80 +168,34 @@ created_at: 2026-09-19T09:40:00Z
 updated_at: 2026-09-20T19:55:00Z
 ```
 
-### GAP-35 — Sync ignores the document's hierarchy, owner, priority and progress
+### GAP-38 — Read the phases and epics of the latest skill's Plan tables
 
 ```yaml
-id: GAP-35
+id: GAP-38
 type: GAP
-title: Sync ignores the document's hierarchy, owner, priority and progress
-status: BACKLOG
-priority: P1
-description: >
-  Found by the 2026-09-21 evaluation (sync audit, live tests; code
-  re-checked: `parent` appears nowhere in the parser or sync service).
-  In the new YAML format `parent`, `type`, `priority`, `progress`, `owner`
-  and `executor` are not imported, so PHASE/EPIC/DECISION/GAP rows become
-  flat tasks with null parent/phase/epic, `/progress` returns `phases: []`
-  and the global progress is wrong (23 percent on a test project). The
-  document's `owner` is never resolved to `assigneeActorId`, so Kanban and
-  Workload cannot see what an agent claims in the document. In the other
-  direction `assign()` does not write back (brief section 8 says the
-  assignment must reach ROADMAP, not stay in PostgreSQL), hierarchy and
-  progress edits are not written, and a UI progress PATCH leaves the
-  document at its old value. Related: BLOCKED entries lose their title,
-  REVIEW/IDEA silently become PENDIENTE (synchronization.md promises a
-  conflict), duplicate ids silently keep the last, removing `depends_on`
-  is ignored, and CRLF files are rewritten to LF.
-expected_behavior: >
-  Round trip parity for type, parent, priority, progress, owner/executor,
-  dependencies and status between Roadmap.md, PostgreSQL and the UI,
-  matching docs/synchronization.md and brief sections 8, 9 and 12; unknown
-  statuses raise a conflict; write-back preserves line endings.
-technical_context:
-  backend: apps/api/src/modules/roadmap, synchronization, tasks/tasks.service.ts (assign), write-back.service.ts
-depends_on:
-  - GAP-35a
-  - GAP-35b
-  - GAP-35c
-  - GAP-35d
-  - GAP-35e
-next_action: >
-  Umbrella only. Refined on 2026-09-21 into four slices (GAP-35a owner
-  round trip, GAP-35b statuses/duplicates/blocked, GAP-35c
-  type/priority/progress, GAP-35d hierarchy, GAP-35e dependency removal and
-  line endings); close this entry when all four are done.
-created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T15:00:00Z
-```
-
-### GAP-35d — Import the document's hierarchy (parent, phases and epics)
-
-```yaml
-id: GAP-35d
-type: GAP
-title: Import the document's hierarchy (parent, phases and epics)
-status: BACKLOG
+title: Read the phases and epics of the latest skill's Plan tables
+status: READY
 priority: P2
-parent: GAP-35
-depends_on:
-  - GAP-35c
 description: >
-  Fourth slice of GAP-35. `parent` is not imported, so PHASE and EPIC
-  entries become flat tasks with no parent, phase or epic and `/progress`
-  returns `phases: []`. Phase and Epic have no `externalId`, so real
-  hierarchy needs either a migration adding one or a name-based identity
-  mapping; that is the largest and riskiest slice and is left for last.
+  Found while doing GAP-35d. The latest project-documentation skill (tables
+  only) keeps its hierarchy in headings: a "### F01 - Import and export"
+  heading is a phase and a "#### F01-E01 - CSV support" heading an epic, with
+  the tasks in the Plan table beneath. PM Hub reads the rows but not the
+  headings, so a project in that format has no phases or epics and
+  /progress reports phases: [], the defect GAP-35d fixed for the YAML format.
 expected_behavior: >
-  `parent` links tasks to their parent task, PHASE and EPIC entries map to
-  Phase and Epic records with a stable identity, and `/progress` reports the
-  document's phases; hierarchy edits made in PM Hub are written back.
+  A phase heading becomes a Phase and an epic heading an Epic, identified by
+  the id in the heading, and the tasks of the table under it sit in that epic
+  and phase. A task id is never parsed for its prefix (ADR-001): the heading
+  it is under is what places it. A move made in PM Hub cannot be written (the
+  tables have no such column) and is left as it is.
 technical_context:
-  backend: apps/api/prisma/schema.prisma (Phase, Epic), synchronization.service.ts, tasks/progress-rollup.service.ts, phases
+  backend: apps/api/src/modules/roadmap/markdown-table.util.ts, roadmap-parser.service.ts, synchronization/hierarchy-sync.service.ts
 next_action: >
-  Decide the identity of Phase and Epic (externalId column versus name) and
-  record it as a DECISION before implementing.
-created_at: 2026-09-21T15:00:00Z
-updated_at: 2026-09-21T15:00:00Z
+  Have the parser report, for each table row, the phase and epic headings it
+  sits under, and give them to HierarchySyncService as placements.
+created_at: 2026-09-21T20:46:00Z
+updated_at: 2026-09-21T20:46:00Z
 ```
 
 ### IMPROVEMENT-01 — Performance and data limits (cycle check, progress N+1, pagination, indexes, DTO limits)

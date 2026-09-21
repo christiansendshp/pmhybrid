@@ -33,7 +33,12 @@ import {
   type DependencyGraph,
 } from '../tasks/dependency-graph.js';
 import { completedAtFor } from '../tasks/completion-date.util.js';
+import { isStructuralEntry } from '../roadmap/roadmap-hierarchy.util.js';
 import { AgentslogIngestionService } from './agentslog-ingestion.service.js';
+import {
+  HierarchySyncService,
+  type HierarchySummary,
+} from './hierarchy-sync.service.js';
 import { rowContentHash } from './row-content-hash.util.js';
 import { describeSyncFailure } from './sync-failure.util.js';
 
@@ -74,7 +79,7 @@ export function entryErrorsFingerprint(
 
 type OpenConflict = Prisma.ConflictGetPayload<object>;
 
-interface SyncSummary {
+interface SyncSummary extends HierarchySummary {
   /** Entries that could not be read this run; their tasks were left untouched. */
   entryErrors: SyncEntryError[];
   /** Dependencies left unlinked because they would close a cycle; the document has a loop to fix. */
@@ -126,6 +131,7 @@ export class SynchronizationService {
     private readonly agentslogIngestion: AgentslogIngestionService,
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly hierarchy: HierarchySyncService,
   ) {}
 
   /**
@@ -272,6 +278,9 @@ export class SynchronizationService {
       assigneesUpdated: 0,
       dependenciesLinked: 0,
       dependenciesRemoved: 0,
+      structureSynced: 0,
+      placementsChanged: 0,
+      structuralTasksRetired: 0,
     };
 
     // No try/catch here: on a mid-step failure this simply throws out of the
@@ -518,6 +527,16 @@ export class SynchronizationService {
         // updates it (docs/synchronization.md "Removal").
         continue;
       }
+      // A phase or an epic is not a task: it is kept as one (after the loop),
+      // and a task an earlier run made from the entry is taken away (Roadmap
+      // GAP-35d). Seen, so it is not mistaken for a row that disappeared.
+      if (isStructuralEntry(row)) {
+        if (existing) {
+          await this.hierarchy.retireStructuralTask(tx, existing, summary);
+          existingByExternalId.delete(row.externalId);
+        }
+        continue;
+      }
       let taskId: string;
       if (!existing) {
         const owner = row.ownerName
@@ -649,6 +668,16 @@ export class SynchronizationService {
       projectId,
       existingByExternalId,
       dependencyGraph,
+      summary,
+    );
+
+    // Phases, epics and where every task sits, once every task of the run
+    // exists (Roadmap GAP-35d).
+    await this.hierarchy.reconcile(
+      tx,
+      projectId,
+      rows,
+      existingByExternalId,
       summary,
     );
 

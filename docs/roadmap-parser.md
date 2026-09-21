@@ -69,7 +69,8 @@ Besides the fields every format has, an entry of the YAML format is read for
 `type` (`ParsedRoadmapRow.entryType`, upper-cased), `priority` (`priority`, the
 app's level: `P0`-`P3` or a word) and `progress` (`progress`, a whole percent 0-100).
 A value the app cannot hold is left off the row instead of guessed at, and a
-row of a table carries none of the three. `docs/synchronization.md` ("Type,
+row of a table carries none of the three. Its `parent` (`parentRef`; else the
+nearest of `feature`, `epic`, `theme`, `phase`) is read too, for the hierarchy. `docs/synchronization.md` ("Type,
 priority and progress") says what sync does with them.
 
 ## Unreadable entries (new per-entry YAML format)

@@ -247,8 +247,48 @@ this applies to entries only, and a row of a table leaves the three as they are.
   `EPIC` (levels above the tasks), `DECISION`, `BLOCKER` and `DEPENDENCY`
   (coordination) are still cards on the board, but the project's progress is
   the progress of the rest: an undecided decision is not a task that is 0% done.
-  Mapping a `PHASE` or an `EPIC` to the phases and epics of PM Hub is the next
-  slice (Roadmap GAP-35d).
+  A `PHASE` or an `EPIC` is not a card at all: it is a phase or an epic
+  (see "Hierarchy of a YAML Roadmap").
+
+### Hierarchy of a YAML Roadmap (Roadmap GAP-35d)
+
+An entry's `parent` (else the nearest of its `feature`, `epic`, `theme` and `phase`
+shortcuts, `ParsedRoadmapRow.parentRef`) places it. The tables have no hierarchy,
+and a project documented in them is untouched by all of this.
+
+- **Phases and epics have an identity of their own.** A `type: PHASE` entry is a
+  Phase and a `type: EPIC` entry an Epic, found by `externalId` (the entry's id),
+  created when first seen, renamed when the title changes, and given the phase
+  its parent chain names. A name would orphan and duplicate the record on every
+  rename, so it is not the identity. Phases and epics made in the app have no
+  `externalId` and are never touched by sync; one whose entry leaves the file
+  (the schema takes a finished entry out of it) is kept.
+- **They are not tasks.** A task an earlier run made from such an entry is removed
+  (soft, audited as a `DELETE` by `SYNC`, `structuralTasksRetired`), and its
+  subtasks are set free. `THEME` and `VISION` have no record in PM Hub, so they stay
+  as cards that count for nothing (`docs/domain-model.md` rollup rule 7), and a
+  parent chain passes through them.
+- **Where a task sits.** A parent that is an epic puts the task in that epic and in
+  the epic's phase; a parent that is a phase, in the phase; a parent that is work
+  (a task, a feature), makes it a subtask of that parent, which then sits where the
+  parent sits. Sync sets `parentTaskId`, `epicId` and `phaseId` to match
+  (`placementsChanged`) and audits a move as `ROADMAP_FIELD_UPDATE`.
+- **The document owns it, without a conflict.** An entry that names a parent is
+  placed there on every run; one that names none, or names one that is not in the
+  file, is left as it is. No `CONCURRENT_FIELD_EDIT` is raised for the hierarchy:
+  the values are internal ids a person could not judge, and a conflict resolved in
+  favour of PM Hub could not always be written back. A placement made in PM Hub
+  that the document could not take (see below) is therefore undone by the next
+  run, and the audit shows both moves. A loop of parents is left alone.
+- **Writing.** Moving a task in PM Hub writes its new place into the entry's
+  `parent` (its parent task, else its epic, else its phase), under the same drift
+  rule as the other field edits; moving it out of everything removes `parent`
+  and the shortcuts, which would put it back. A task created in PM Hub gets an
+  entry with its `parent`, and a `SUBTASK` type when that is a task. A place the
+  document has no id for (an epic or phase made in the app) cannot be named, so
+  nothing is written.
+- The phase and epic headings of the latest skill's Plan tables are not read yet
+  (Roadmap GAP-38).
 
 ### Unrecognized statuses, duplicate ids and blocked entries (Roadmap GAP-35b)
 

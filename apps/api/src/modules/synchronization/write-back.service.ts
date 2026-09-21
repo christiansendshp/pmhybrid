@@ -53,6 +53,12 @@ export interface RoadmapFieldEdit {
   /** Written only into a YAML entry, the one format with such a field (Roadmap GAP-35c). */
   priority?: string | null;
   progressPercent?: number | null;
+  /** Where the task sat before the edit, when the edit moved it: written into a YAML entry as its `parent` (Roadmap GAP-35d). */
+  hierarchy?: {
+    parentTaskId: string | null;
+    epicId: string | null;
+    phaseId: string | null;
+  };
 }
 
 const DOCUMENT_FILENAMES: Record<'ROADMAP' | 'AGENTSLOG', string> = {
@@ -612,6 +618,50 @@ export class WriteBackService {
     return task;
   }
 
+  /**
+   * How a YAML document names where a task sits (its `parent`): its parent
+   * task, else its epic, else its phase (Roadmap GAP-35d). `ref` is null for a
+   * task that sits nowhere; the whole result is undefined when the place is
+   * something the document has no id for — an epic or phase made in the app.
+   */
+  private async hierarchyRef(
+    tx: Prisma.TransactionClient,
+    placement: {
+      parentTaskId: string | null;
+      epicId: string | null;
+      phaseId: string | null;
+    },
+  ): Promise<{ ref: string | null; underTask: boolean } | undefined> {
+    if (placement.parentTaskId) {
+      const parent = await tx.task.findUnique({
+        where: { id: placement.parentTaskId },
+        select: { externalId: true },
+      });
+      return parent?.externalId
+        ? { ref: parent.externalId, underTask: true }
+        : undefined;
+    }
+    if (placement.epicId) {
+      const epic = await tx.epic.findUnique({
+        where: { id: placement.epicId },
+        select: { externalId: true },
+      });
+      return epic?.externalId
+        ? { ref: epic.externalId, underTask: false }
+        : undefined;
+    }
+    if (placement.phaseId) {
+      const phase = await tx.phase.findUnique({
+        where: { id: placement.phaseId },
+        select: { externalId: true },
+      });
+      return phase?.externalId
+        ? { ref: phase.externalId, underTask: false }
+        : undefined;
+    }
+    return { ref: null, underTask: false };
+  }
+
   private async fieldEditLocked(
     tx: Prisma.TransactionClient,
     projectId: string,
@@ -647,6 +697,20 @@ export class WriteBackService {
       roadmapDocument?.lastKnownHash !==
       createHash('sha256').update(roadmapContent).digest('hex');
 
+    const yamlDocument = looksLikeNewFormatRoadmap(roadmapContent);
+    // Where the task sits, as the document names it, before and after the edit
+    // (Roadmap GAP-35d). Left out when the target has no id in the document
+    // (an epic made in the app): there is nothing to write.
+    const before: Record<string, unknown> = { ...previous };
+    let hierarchyNext: string | undefined;
+    if (yamlDocument && previous.hierarchy) {
+      const now = await this.hierarchyRef(tx, task);
+      if (now) {
+        hierarchyNext = now.ref ?? '';
+        before.hierarchy =
+          (await this.hierarchyRef(tx, previous.hierarchy))?.ref ?? '';
+      }
+    }
     const edits = [
       {
         field: 'title',
@@ -663,7 +727,17 @@ export class WriteBackService {
       // Only an entry of the YAML format has a priority and a progress; for a
       // table there is nowhere to write them, and comparing against a cell
       // that cannot exist would only look like a drift (Roadmap GAP-35c).
-      ...(looksLikeNewFormatRoadmap(roadmapContent)
+      ...(hierarchyNext !== undefined
+        ? ([
+            {
+              field: 'hierarchy',
+              header: 'Parent',
+              current: currentRow.parentRef ?? '',
+              next: hierarchyNext,
+            },
+          ] as const)
+        : []),
+      ...(yamlDocument
         ? ([
             {
               field: 'priority',
@@ -689,8 +763,8 @@ export class WriteBackService {
       // Once the document changed since PM Hub last saw it, a cell that no
       // longer holds the pre-edit value was edited on the document side too:
       // never overwrite it — sync raises it as CONCURRENT_FIELD_EDIT (step 5).
-      const before = sanitizeField(String(previous[edit.field] ?? ''));
-      if (drifted && (edit.current ?? '') !== before) {
+      const preEdit = sanitizeField(String(before[edit.field] ?? ''));
+      if (drifted && (edit.current ?? '') !== preEdit) {
         deferred.push(edit.field);
         continue;
       }
@@ -980,6 +1054,7 @@ export class WriteBackService {
       where: { taskId: task.id },
       include: { dependsOnTask: { select: { externalId: true } } },
     });
+    const hierarchy = await this.hierarchyRef(tx, task);
     const updatedRoadmap = upsertLifecycleRoadmapRow(
       roadmapContent,
       externalId,
@@ -991,6 +1066,8 @@ export class WriteBackService {
         dependsOn: renderDependsOnCell(dependencies),
         priority: task.priority,
         progress: task.progressPercent,
+        parent: hierarchy?.ref ?? null,
+        subtask: hierarchy?.underTask ?? false,
       },
     );
     await this.repositoryProvider.writeFile(

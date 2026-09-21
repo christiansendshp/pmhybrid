@@ -26,6 +26,10 @@ export interface SyncRunSummary {
   dependenciesLinked?: number;
   assigneesUpdated?: number;
   dependenciesRemoved?: number;
+  /** Phases and epics made or updated from the document's PHASE and EPIC entries (Roadmap GAP-35d). */
+  structureSynced?: number;
+  /** Tasks placed in the parent, epic and phase the document names. */
+  placementsChanged?: number;
   /** Absent on runs recorded before entries were isolated. */
   entryErrors?: SyncEntryError[];
   /** Absent on runs recorded before cycles were reported. */

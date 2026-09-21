@@ -132,10 +132,17 @@ All nullable/app-level, since the managed project's own documents don't define
 these levels:
 
 ```
-Phase(id, projectId, name, order, description?, status?)
-Epic(id, projectId, phaseId?, name, order, description?, status?)
+Phase(id, externalId?, projectId, name, order, description?, status?)
+Epic(id, externalId?, projectId, phaseId?, name, order, description?, status?)
 Template(id, projectId, epicId?, name, order, description?)
 ```
+
+**Phases and epics of a YAML Roadmap** (Roadmap GAP-35d). `externalId` is the id of
+the `type: PHASE` or `type: EPIC` entry a phase or an epic mirrors, opaque like
+`Task.externalId` and unique per project; it is null for one made in the app, and
+NULLs do not collide. It is an id rather than the name because a name would orphan
+and duplicate the record on every rename. `docs/synchronization.md` ("Hierarchy of
+a YAML Roadmap") says how sync reads and writes the hierarchy.
 
 "Template" here is the brief's hierarchy rung between Epic and Task (§5, §6) —
 unrelated to the `project-documentation` skill's own unrelated use of the word

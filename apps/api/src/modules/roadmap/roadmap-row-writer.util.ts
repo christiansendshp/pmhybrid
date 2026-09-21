@@ -56,6 +56,9 @@ export function upsertLifecycleRoadmapRow(
     /** Written into a new YAML entry only; the tables have no such column, and an existing entry keeps its own. */
     priority?: string | null;
     progress?: number | null;
+    /** The id of the entry the task sits under (`parent`), and whether that is a task, which makes this a SUBTASK — Roadmap GAP-35d. */
+    parent?: string | null;
+    subtask?: boolean;
   },
 ): string {
   if (looksLikeNewFormatRoadmap(markdown)) {
@@ -343,6 +346,8 @@ function upsertLifecycleRoadmapEntry(
     dependsOn: string;
     priority?: string | null;
     progress?: number | null;
+    parent?: string | null;
+    subtask?: boolean;
   },
 ): string {
   const entries = extractRoadmapYamlEntriesForWrite(markdown, externalId);
@@ -374,7 +379,7 @@ function upsertLifecycleRoadmapEntry(
 
   const data: Record<string, unknown> = {
     id: externalId,
-    type: 'TASK',
+    type: fields.subtask ? 'SUBTASK' : 'TASK',
     title: sanitizeField(fields.outcome),
     status: newStatus,
     description: sanitizeField(fields.outcome),
@@ -388,6 +393,7 @@ function upsertLifecycleRoadmapEntry(
         ]
       : undefined,
     depends_on: parseDependsOnList(fields.dependsOn),
+    parent: fields.parent ?? undefined,
     priority: newEntryPriority(fields.priority),
     progress: fields.progress ?? undefined,
     created_at: nowIso,
@@ -459,6 +465,19 @@ function replaceRoadmapEntryFields(
         doc.delete('priority');
       }
       replaced.push('Priority');
+    }
+    // Where the task sits (Roadmap GAP-35d). Clearing it takes out the shortcuts
+    // to an ancestor too: they name a place as well, and would put it back.
+    if ('Parent' in cellsByHeader) {
+      const parent = cellsByHeader.Parent.trim();
+      if (parent) {
+        doc.set('parent', parent);
+      } else {
+        for (const key of ['parent', 'feature', 'epic', 'theme', 'phase']) {
+          doc.delete(key);
+        }
+      }
+      replaced.push('Parent');
     }
     if ('Progress' in cellsByHeader) {
       const percent = progressFromDocument(cellsByHeader.Progress);

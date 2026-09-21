@@ -494,6 +494,25 @@ function deriveOwnerFields(data: Record<string, unknown>): {
 }
 
 /**
+ * The id of an entry's parent (Roadmap GAP-35d): `parent`, the direct link of
+ * the schema's spine, else the nearest of the optional shortcuts to an ancestor
+ * (`references/roadmap-schema.md` §5). A shortcut naming the entry itself says
+ * nothing.
+ */
+function parentRefOf(
+  data: Record<string, unknown>,
+  ownId: string,
+): string | undefined {
+  for (const key of ['parent', 'feature', 'epic', 'theme', 'phase']) {
+    const value = data[key];
+    if (typeof value === 'string' && value.trim() && value.trim() !== ownId) {
+      return value.trim();
+    }
+  }
+  return undefined;
+}
+
+/**
  * Maps one parsed new-format entry to the same `ParsedRoadmapRow` shape the
  * old table parser produces, so `reconcileRoadmap`/`rowContentHash`/write-back
  * need no changes to consume either format. Every entry type becomes a row,
@@ -515,6 +534,7 @@ export function roadmapYamlEntryToRow(
     entryType: entryTypeFromDocument(data.type),
     priority: priorityFromDocument(data.priority),
     progress: progressFromDocument(data.progress),
+    parentRef: parentRefOf(data, entry.id),
   });
 
   if (isBlocked) {
