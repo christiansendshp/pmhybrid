@@ -484,32 +484,6 @@ created_at: 2026-09-21T18:30:00Z
 updated_at: 2026-09-21T18:30:00Z
 ```
 
-### IMPROVEMENT-01c — Batch progress rollup and the multi-project summary at scale
-
-```yaml
-id: IMPROVEMENT-01c
-type: IMPROVEMENT
-title: Batch progress rollup and the multi-project summary at scale
-status: BACKLOG
-priority: P2
-parent: IMPROVEMENT-01
-description: >
-  Third slice of IMPROVEMENT-01. computeTaskProgress runs per task in
-  /tasks, /workload and /projects (N+1), and GET /projects returns a 500
-  once the database holds a few thousand projects (seen on the e2e
-  database), evidently through the size of one of its queries.
-expected_behavior: >
-  Progress for a whole list is computed from one read of the tasks it
-  needs, and the projects summary uses a bounded number of queries whatever
-  the number of projects.
-technical_context:
-  backend: apps/api/src/modules/tasks/progress-rollup.service.ts, projects, workload
-next_action: >
-  Reproduce the GET /projects failure to find the query first.
-created_at: 2026-09-21T18:30:00Z
-updated_at: 2026-09-21T18:30:00Z
-```
-
 ### IMPROVEMENT-01d — Pagination, the activity payload and dependency removal
 
 ```yaml

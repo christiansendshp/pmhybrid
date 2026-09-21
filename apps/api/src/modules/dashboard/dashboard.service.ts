@@ -71,16 +71,14 @@ export class DashboardService {
         this.prisma.task.count({
           where: { projectId: { in: projectIds }, deletedAt: null },
         }),
-        Promise.all(
-          projectIds.map((id) =>
-            this.progressRollup.computeProjectProgress(id),
-          ),
-        ),
+        this.progressRollup.computeProjectsProgress(projectIds),
       ]);
 
     const countFor = (status: TaskStatus): number =>
       statusCounts.find((row) => row.status === status)?._count._all ?? 0;
-    const nonNullProgresses = progresses.filter((p): p is number => p !== null);
+    const nonNullProgresses = [...progresses.values()].filter(
+      (p): p is number => p !== null,
+    );
 
     return {
       activeProjects,

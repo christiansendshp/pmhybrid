@@ -76,21 +76,22 @@ export class WorkloadService {
       orderBy: { updatedAt: 'desc' },
     });
 
+    const assigned = tasks.filter((task) => task.assignee !== null);
+    // One batch of reads for every task in the view (Roadmap IMPROVEMENT-01c).
+    const progress = await this.progressRollup.computeTasksProgress(assigned);
     const taskRows: WorkloadRow[] = await Promise.all(
-      tasks
-        .filter((task) => task.assignee !== null)
-        .map(async (task) => ({
-          actor: task.assignee!,
-          task: {
-            id: task.id,
-            title: task.title,
-            phaseId: task.phaseId,
-            epicId: task.epicId,
-          },
-          project: task.project,
-          status: task.status,
-          progress: await this.progressRollup.computeTaskProgress(task.id),
-        })),
+      assigned.map(async (task) => ({
+        actor: task.assignee!,
+        task: {
+          id: task.id,
+          title: task.title,
+          phaseId: task.phaseId,
+          epicId: task.epicId,
+        },
+        project: task.project,
+        status: task.status,
+        progress: progress.get(task.id) ?? 0,
+      })),
     );
 
     const narrowedToTasks = Boolean(

@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { TaskStatus } from '@pmhybrid/shared-types';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import {
+  ProgressCalculator,
+  type RollupEpic,
+  type RollupPhase,
+  type RollupTask,
+} from './progress-calc.js';
 
 export type StatusCounts = Record<TaskStatus, number>;
 
@@ -45,120 +51,128 @@ export interface ProjectProgressTree {
 }
 
 /**
+ * Ids per query, well under Postgres' 32,767 bind parameters — a database
+ * with thousands of projects otherwise fails the whole request (Roadmap
+ * IMPROVEMENT-01c).
+ */
+const ID_CHUNK = 5000;
+
+const TASK_ROLLUP_SELECT = {
+  id: true,
+  projectId: true,
+  parentTaskId: true,
+  phaseId: true,
+  epicId: true,
+  status: true,
+  progressPercent: true,
+} as const;
+
+/**
  * EQUAL_WEIGHT_AVERAGE rollup (docs/domain-model.md, Project.progressRollupStrategy
- * default). A leaf task's progress is its explicit progressPercent, falling
- * back to a status-implied value; a parent's progress is the unweighted
- * average of its immediate children, computed recursively up the tree.
+ * default), computed by `ProgressCalculator` from three reads per batch of
+ * projects rather than a query per node of the tree (Roadmap IMPROVEMENT-01c):
+ * a project list, a task list and the workload view used to run one query per
+ * task, per epic and per phase, for every project.
  */
 @Injectable()
 export class ProgressRollupService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async computeTaskProgress(taskId: string): Promise<number> {
-    const task = await this.prisma.task.findUniqueOrThrow({
-      where: { id: taskId },
-      include: {
-        subtasks: { where: { deletedAt: null }, select: { id: true } },
-      },
-    });
-    if (task.subtasks.length === 0) {
-      // Prisma's generated TaskStatus and shared-types' hand-authored one are
-      // structurally identical string unions but nominally distinct types.
-      return (
-        task.progressPercent ??
-        statusFallback(task.status as unknown as TaskStatus)
-      );
+  /** One calculator per project, whatever the number of projects: the live tasks, epics and phases of all of them. */
+  private async calculators(
+    projectIds: readonly string[],
+  ): Promise<Map<string, ProgressCalculator>> {
+    const tasks = new Map<string, RollupTask[]>();
+    const epics = new Map<string, RollupEpic[]>();
+    const phases = new Map<string, RollupPhase[]>();
+    const unique = [...new Set(projectIds)];
+    for (let start = 0; start < unique.length; start += ID_CHUNK) {
+      const ids = unique.slice(start, start + ID_CHUNK);
+      const [taskRows, epicRows, phaseRows] = await Promise.all([
+        this.prisma.task.findMany({
+          where: { projectId: { in: ids }, deletedAt: null },
+          select: TASK_ROLLUP_SELECT,
+        }),
+        this.prisma.epic.findMany({
+          where: { projectId: { in: ids } },
+          select: { id: true, projectId: true, phaseId: true },
+        }),
+        this.prisma.phase.findMany({
+          where: { projectId: { in: ids } },
+          select: { id: true, projectId: true },
+        }),
+      ]);
+      for (const row of taskRows) {
+        push(tasks, row.projectId, row);
+      }
+      for (const row of epicRows) {
+        push(epics, row.projectId, row);
+      }
+      for (const row of phaseRows) {
+        push(phases, row.projectId, row);
+      }
     }
-    const childValues = await Promise.all(
-      task.subtasks.map((subtask) => this.computeTaskProgress(subtask.id)),
+    return new Map(
+      unique.map((id) => [
+        id,
+        new ProgressCalculator(
+          tasks.get(id) ?? [],
+          epics.get(id) ?? [],
+          phases.get(id) ?? [],
+        ),
+      ]),
     );
-    return average(childValues);
   }
 
-  async computeEpicProgress(epicId: string): Promise<number | null> {
-    const topLevelTasks = await this.prisma.task.findMany({
-      where: { epicId, parentTaskId: null, deletedAt: null },
-      select: { id: true },
-    });
-    if (topLevelTasks.length === 0) {
-      return null;
-    }
-    const values = await Promise.all(
-      topLevelTasks.map((task) => this.computeTaskProgress(task.id)),
+  /** The progress of each project (null for one with nothing to average), in one batch. */
+  async computeProjectsProgress(
+    projectIds: readonly string[],
+  ): Promise<Map<string, number | null>> {
+    const calculators = await this.calculators(projectIds);
+    return new Map(
+      [...calculators].map(([id, calculator]) => [id, calculator.project()]),
     );
-    return average(values);
-  }
-
-  async computePhaseProgress(phaseId: string): Promise<number | null> {
-    const [epics, directTasks] = await Promise.all([
-      this.prisma.epic.findMany({ where: { phaseId }, select: { id: true } }),
-      this.prisma.task.findMany({
-        where: { phaseId, epicId: null, parentTaskId: null, deletedAt: null },
-        select: { id: true },
-      }),
-    ]);
-    const epicValues = await Promise.all(
-      epics.map((epic) => this.computeEpicProgress(epic.id)),
-    );
-    const taskValues = await Promise.all(
-      directTasks.map((task) => this.computeTaskProgress(task.id)),
-    );
-    const all = [...epicValues.filter(isNumber), ...taskValues];
-    return all.length === 0 ? null : average(all);
   }
 
   async computeProjectProgress(projectId: string): Promise<number | null> {
-    const [phases, orphanEpics, orphanTasks] = await Promise.all([
-      this.prisma.phase.findMany({
-        where: { projectId },
-        select: { id: true },
-      }),
-      this.prisma.epic.findMany({
-        where: { projectId, phaseId: null },
-        select: { id: true },
-      }),
-      this.prisma.task.findMany({
-        where: {
-          projectId,
-          phaseId: null,
-          epicId: null,
-          parentTaskId: null,
-          deletedAt: null,
-        },
-        select: { id: true },
-      }),
-    ]);
-    const phaseValues = await Promise.all(
-      phases.map((phase) => this.computePhaseProgress(phase.id)),
+    return (await this.computeProjectsProgress([projectId])).get(projectId)!;
+  }
+
+  /** The rolled-up progress of each of these tasks, from one batch of reads for all their projects. */
+  async computeTasksProgress(
+    tasks: readonly { id: string; projectId: string }[],
+  ): Promise<Map<string, number>> {
+    const calculators = await this.calculators(
+      tasks.map((task) => task.projectId),
     );
-    const epicValues = await Promise.all(
-      orphanEpics.map((epic) => this.computeEpicProgress(epic.id)),
-    );
-    const taskValues = await Promise.all(
-      orphanTasks.map((task) => this.computeTaskProgress(task.id)),
-    );
-    const all = [
-      ...phaseValues.filter(isNumber),
-      ...epicValues.filter(isNumber),
-      ...taskValues,
-    ];
-    return all.length === 0 ? null : average(all);
+    const result = new Map<string, number>();
+    for (const task of tasks) {
+      const progress = calculators.get(task.projectId)?.taskProgress(task.id);
+      if (progress !== undefined) {
+        result.set(task.id, progress);
+      }
+    }
+    return result;
+  }
+
+  async computeTaskProgress(taskId: string): Promise<number> {
+    const task = await this.prisma.task.findUniqueOrThrow({
+      where: { id: taskId },
+      select: { id: true, projectId: true },
+    });
+    return (await this.computeTasksProgress([task])).get(taskId)!;
   }
 
   /**
    * Display tree for the Progress view (brief §16): every phase and epic
-   * with its own rolled-up `progress` (unchanged, via the compute* methods
-   * above — other callers depend on those exact semantics) plus a
-   * `statusCounts` breakdown and a full subtask tree, both new for GAP-08.
-   * A task's subtree is walked once for counts+subtasks here and once more
-   * inside `computeTaskProgress` for its rollup number — the same shape of
-   * redundancy `computeEpicProgress`/`computePhaseProgress` already had
-   * against this method before GAP-08, not a new regression.
+   * with its own rolled-up `progress`, a `statusCounts` breakdown and a full
+   * subtask tree — all from one read of the project's phases, epics and
+   * tasks.
    */
   async getProjectProgressTree(
     projectId: string,
   ): Promise<ProjectProgressTree> {
-    const [phases, epics, topLevelTasks] = await Promise.all([
+    const [phases, epics, tasks] = await Promise.all([
       this.prisma.phase.findMany({
         where: { projectId },
         orderBy: { order: 'asc' },
@@ -168,21 +182,24 @@ export class ProgressRollupService {
         orderBy: { order: 'asc' },
       }),
       this.prisma.task.findMany({
-        where: { projectId, parentTaskId: null, deletedAt: null },
+        where: { projectId, deletedAt: null },
         orderBy: { createdAt: 'asc' },
       }),
     ]);
+    const calculator = new ProgressCalculator(tasks, epics, phases);
 
-    const taskNode = async (task: {
-      id: string;
-      title: string;
-      status: string;
-    }): Promise<{ node: ProgressTaskNode; counts: StatusCounts }> => {
-      const subtasks = await this.prisma.task.findMany({
-        where: { parentTaskId: task.id, deletedAt: null },
-        orderBy: { createdAt: 'asc' },
-      });
-      const children = await Promise.all(subtasks.map(taskNode));
+    const subtasksOf = new Map<string, typeof tasks>();
+    for (const task of tasks) {
+      if (task.parentTaskId) {
+        push(subtasksOf, task.parentTaskId, task);
+      }
+    }
+    const topLevelTasks = tasks.filter((task) => !task.parentTaskId);
+
+    const taskNode = (
+      task: (typeof tasks)[number],
+    ): { node: ProgressTaskNode; counts: StatusCounts } => {
+      const children = (subtasksOf.get(task.id) ?? []).map(taskNode);
       const counts = emptyCounts();
       counts[task.status as TaskStatus] += 1;
       for (const child of children) {
@@ -194,7 +211,7 @@ export class ProgressRollupService {
           id: task.id,
           name: task.title,
           status: task.status as TaskStatus,
-          progress: await this.computeTaskProgress(task.id),
+          progress: calculator.task(task),
           statusCounts: counts,
           subtasks: children.map((child) => child.node),
         },
@@ -202,20 +219,20 @@ export class ProgressRollupService {
       };
     };
 
-    const epicNode = async (epic: {
+    const epicNode = (epic: {
       id: string;
       name: string;
-    }): Promise<{ node: ProgressEpicNode; counts: StatusCounts }> => {
-      const results = await Promise.all(
-        topLevelTasks.filter((task) => task.epicId === epic.id).map(taskNode),
-      );
+    }): { node: ProgressEpicNode; counts: StatusCounts } => {
+      const results = topLevelTasks
+        .filter((task) => task.epicId === epic.id)
+        .map(taskNode);
       const counts = combineCounts(results.map((result) => result.counts));
       return {
         node: {
           kind: 'EPIC',
           id: epic.id,
           name: epic.name,
-          progress: await this.computeEpicProgress(epic.id),
+          progress: calculator.epic(epic.id),
           statusCounts: counts,
           tasks: results.map((result) => result.node),
         },
@@ -223,46 +240,40 @@ export class ProgressRollupService {
       };
     };
 
-    const phaseResults = await Promise.all(
-      phases.map(async (phase) => {
-        const epicResults = await Promise.all(
-          epics.filter((epic) => epic.phaseId === phase.id).map(epicNode),
-        );
-        const directTaskResults = await Promise.all(
-          topLevelTasks
-            .filter((task) => task.phaseId === phase.id && !task.epicId)
-            .map(taskNode),
-        );
-        const counts = combineCounts([
-          ...epicResults.map((result) => result.counts),
-          ...directTaskResults.map((result) => result.counts),
-        ]);
-        return {
-          node: {
-            kind: 'PHASE' as const,
-            id: phase.id,
-            name: phase.name,
-            progress: await this.computePhaseProgress(phase.id),
-            statusCounts: counts,
-            epics: epicResults.map((result) => result.node),
-            tasks: directTaskResults.map((result) => result.node),
-          },
-          counts,
-        };
-      }),
-    );
+    const phaseResults = phases.map((phase) => {
+      const epicResults = epics
+        .filter((epic) => epic.phaseId === phase.id)
+        .map(epicNode);
+      const directTaskResults = topLevelTasks
+        .filter((task) => task.phaseId === phase.id && !task.epicId)
+        .map(taskNode);
+      const counts = combineCounts([
+        ...epicResults.map((result) => result.counts),
+        ...directTaskResults.map((result) => result.counts),
+      ]);
+      return {
+        node: {
+          kind: 'PHASE' as const,
+          id: phase.id,
+          name: phase.name,
+          progress: calculator.phase(phase.id),
+          statusCounts: counts,
+          epics: epicResults.map((result) => result.node),
+          tasks: directTaskResults.map((result) => result.node),
+        },
+        counts,
+      };
+    });
 
-    const orphanEpicResults = await Promise.all(
-      epics.filter((epic) => !epic.phaseId).map(epicNode),
-    );
-    const orphanTaskResults = await Promise.all(
-      topLevelTasks
-        .filter((task) => !task.phaseId && !task.epicId)
-        .map(taskNode),
-    );
+    const orphanEpicResults = epics
+      .filter((epic) => !epic.phaseId)
+      .map(epicNode);
+    const orphanTaskResults = topLevelTasks
+      .filter((task) => !task.phaseId && !task.epicId)
+      .map(taskNode);
 
     return {
-      project: await this.computeProjectProgress(projectId),
+      project: calculator.project(),
       statusCounts: combineCounts([
         ...phaseResults.map((result) => result.counts),
         ...orphanEpicResults.map((result) => result.counts),
@@ -272,6 +283,15 @@ export class ProgressRollupService {
       epics: orphanEpicResults.map((result) => result.node),
       tasks: orphanTaskResults.map((result) => result.node),
     };
+  }
+}
+
+function push<K, V>(map: Map<K, V[]>, key: K, value: V): void {
+  const list = map.get(key);
+  if (list) {
+    list.push(value);
+  } else {
+    map.set(key, [value]);
   }
 }
 
@@ -297,26 +317,4 @@ function combineCounts(all: StatusCounts[]): StatusCounts {
     mergeCounts(counts, source);
   }
   return counts;
-}
-
-function statusFallback(status: TaskStatus): number {
-  switch (status) {
-    case TaskStatus.PENDIENTE:
-    case TaskStatus.ASIGNADA:
-      return 0;
-    case TaskStatus.EN_DESARROLLO:
-      return 50;
-    case TaskStatus.QA:
-      return 80;
-    case TaskStatus.TERMINADA:
-      return 100;
-  }
-}
-
-function average(values: number[]): number {
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
-function isNumber(value: number | null): value is number {
-  return value !== null;
 }

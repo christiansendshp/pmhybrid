@@ -346,6 +346,17 @@ immediate-child count).
 Computed on read; no persisted rollup columns, to avoid a stale-cache bug
 class at MVP data volumes.
 
+**In batches, from memory** (Roadmap IMPROVEMENT-01c). The rollup is computed by a
+pure `ProgressCalculator` from one read of a project's live tasks, epics and
+phases; `ProgressRollupService` reads them for a whole batch of projects at once
+(at most 5,000 ids per query, under Postgres' bind-parameter limit) and answers
+for every project or task in it. The project list, the task list, the workload
+view and the dashboard therefore run a fixed number of queries however many
+projects or tasks they show; they used to walk the tree with a query per node,
+per task, per project, and a few thousand projects exhausted the connection pool
+and answered 500. The semantics above are unchanged — a removed task never counts
+towards its parent, and an empty container is `null`, not 0.
+
 ## Task ID minting for app-created tasks
 
 `PMH-<n>` via `Project.nextTaskSeq` (a monotonic per-project counter).

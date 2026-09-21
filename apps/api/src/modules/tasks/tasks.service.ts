@@ -80,12 +80,12 @@ export class TasksService {
         },
       },
     });
+    // Progress for the whole list from one batch of reads, not a query per task.
+    const progress = await this.progressRollup.computeTasksProgress(tasks);
     return Promise.all(
       tasks.map(async ({ subtasks, dependencies, ...task }) => ({
         ...task,
-        computedProgress: await this.progressRollup.computeTaskProgress(
-          task.id,
-        ),
+        computedProgress: progress.get(task.id) ?? 0,
         subtaskCounts: {
           total: subtasks.length,
           done: subtasks.filter(

@@ -22,6 +22,20 @@ import { UpdateProjectDto } from './dto/update-project.dto.js';
 /** Work someone has picked up and not finished. */
 const ACTIVE_TASK_STATUSES: TaskStatus[] = ['ASIGNADA', 'EN_DESARROLLO', 'QA'];
 
+/** One project's figures in "My Projects" (brief §19). */
+export interface ProjectSummary {
+  progress: number | null;
+  activeTasks: number;
+  overdueTasks: number;
+  activeAgents: number;
+  openConflicts: number;
+  lastSyncRun: {
+    status: string;
+    startedAt: Date;
+    finishedAt: Date | null;
+  } | null;
+}
+
 /** `findById`/`findAllForActor` (Roadmap GAP-32): the lead's identity, same shape Task's assignee already returns. */
 const LEAD_SELECT = {
   select: { id: true, displayName: true, kind: true },
@@ -88,40 +102,52 @@ export class ProjectsService {
       orderBy: { createdAt: 'desc' },
       include: { lead: LEAD_SELECT },
     });
-    return Promise.all(
-      projects.map(async (project) => ({
-        ...project,
-        summary: await this.summarize(project.id),
-      })),
+    const summaries = await this.summarize(
+      projects.map((project) => project.id),
     );
+    return projects.map((project) => ({
+      ...project,
+      summary: summaries.get(project.id)!,
+    }));
   }
 
   /**
    * Brief §19 per-project figures: progress; active tasks (ASIGNADA,
    * EN_DESARROLLO or QA); overdue tasks (past their due date and not
    * TERMINADA); active agents (active AI agents assigned to active tasks);
-   * unresolved conflicts; and the latest sync run.
+   * unresolved conflicts; and the latest sync run — for all the projects at
+   * once, with a fixed number of queries whatever their number (Roadmap
+   * IMPROVEMENT-01c). It ran six queries per project, all projects at the
+   * same time, so an account with a few thousand projects exhausted the
+   * connection pool and the list answered 500.
    */
-  private async summarize(projectId: string) {
-    const live = { projectId, deletedAt: null };
+  private async summarize(projectIds: string[]) {
+    if (projectIds.length === 0) {
+      return new Map<string, ProjectSummary>();
+    }
+    const live = { projectId: { in: projectIds }, deletedAt: null };
     const [
       progress,
       activeTasks,
       overdueTasks,
       agentAssignees,
       openConflicts,
-      lastSyncRun,
+      lastRuns,
     ] = await Promise.all([
-      this.progressRollup.computeProjectProgress(projectId),
-      this.prisma.task.count({
+      this.progressRollup.computeProjectsProgress(projectIds),
+      this.prisma.task.groupBy({
+        by: ['projectId'],
         where: { ...live, status: { in: ACTIVE_TASK_STATUSES } },
+        _count: { _all: true },
       }),
-      this.prisma.task.count({
+      this.prisma.task.groupBy({
+        by: ['projectId'],
         where: {
           ...live,
           status: { not: 'TERMINADA' },
           dueDate: { lt: new Date() },
         },
+        _count: { _all: true },
       }),
       this.prisma.task.findMany({
         where: {
@@ -129,26 +155,59 @@ export class ProjectsService {
           status: { in: ACTIVE_TASK_STATUSES },
           assignee: { kind: 'AI_AGENT', isActive: true },
         },
-        distinct: ['assigneeActorId'],
-        select: { assigneeActorId: true },
+        distinct: ['projectId', 'assigneeActorId'],
+        select: { projectId: true },
       }),
-      this.prisma.conflict.count({ where: { projectId, resolvedAt: null } }),
-      this.prisma.syncRun.findFirst({
-        where: { projectId },
+      this.prisma.conflict.groupBy({
+        by: ['projectId'],
+        where: { projectId: { in: projectIds }, resolvedAt: null },
+        _count: { _all: true },
+      }),
+      this.prisma.syncRun.findMany({
+        where: { projectId: { in: projectIds } },
         orderBy: { startedAt: 'desc' },
-        select: { status: true, startedAt: true, finishedAt: true },
+        distinct: ['projectId'],
+        select: {
+          projectId: true,
+          status: true,
+          startedAt: true,
+          finishedAt: true,
+        },
       }),
     ]);
-    return {
-      progress,
-      activeTasks,
-      overdueTasks,
-      activeAgents: agentAssignees.length,
-      openConflicts,
-      lastSyncRun,
-    };
+    const counts = (rows: { projectId: string; _count: { _all: number } }[]) =>
+      new Map(rows.map((row) => [row.projectId, row._count._all]));
+    const active = counts(activeTasks);
+    const overdue = counts(overdueTasks);
+    const conflicts = counts(openConflicts);
+    const agents = new Map<string, number>();
+    for (const row of agentAssignees) {
+      agents.set(row.projectId, (agents.get(row.projectId) ?? 0) + 1);
+    }
+    const lastRunOf = new Map(lastRuns.map((run) => [run.projectId, run]));
+    return new Map<string, ProjectSummary>(
+      projectIds.map((id) => {
+        const run = lastRunOf.get(id);
+        return [
+          id,
+          {
+            progress: progress.get(id) ?? null,
+            activeTasks: active.get(id) ?? 0,
+            overdueTasks: overdue.get(id) ?? 0,
+            activeAgents: agents.get(id) ?? 0,
+            openConflicts: conflicts.get(id) ?? 0,
+            lastSyncRun: run
+              ? {
+                  status: run.status,
+                  startedAt: run.startedAt,
+                  finishedAt: run.finishedAt,
+                }
+              : null,
+          },
+        ];
+      }),
+    );
   }
-
   async findById(id: string) {
     const project = await this.prisma.project.findUnique({
       where: { id },
