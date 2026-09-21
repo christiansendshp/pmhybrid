@@ -75,4 +75,12 @@ test.describe('accessibility (Roadmap GAP-25)', () => {
     await expect(page.getByRole('progressbar').first()).toBeVisible();
     await checkA11y(page, 'progress');
   });
+
+  test('task detail (styled sections, breadcrumb, Roadmap UX-03c1)', async ({ page }) => {
+    // This repository's own project is the seeded one that has tasks.
+    await page.goto('/projects/pmhybrid-self/kanban');
+    await page.locator('.card__title').first().click();
+    await expect(page.getByRole('navigation', { name: 'Ruta de navegación' })).toBeVisible();
+    await checkA11y(page, 'task-detail');
+  });
 });

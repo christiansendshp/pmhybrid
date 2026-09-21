@@ -112,6 +112,10 @@ describe('Kanban (brief §15)', () => {
       expect(cardText).toContain(expected);
     }
     expect(harness.routeNativeElement!.querySelector('.card--blocked')).not.toBeNull();
+    // The reason is text on the card, not only a tooltip (Roadmap UX-03c1).
+    expect(harness.routeNativeElement!.querySelector('.card__alert-reason')?.textContent).toContain(
+      'Waiting on credentials',
+    );
     expect(text()).toContain('EN DESARROLLO');
     expect(text()).toContain('1 de 1 tareas');
   });

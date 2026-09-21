@@ -70,7 +70,9 @@
           <td>
             <ul class="audit-changes">
               @for (change of describeChanges(event); track change.field) {
-                <li>{{ change.field }}: {{ change.from }} → {{ change.to }}</li>
+                <li>
+                  {{ change.field | label: 'taskField' }}: {{ change.from }} → {{ change.to }}
+                </li>
               }
             </ul>
           </td>

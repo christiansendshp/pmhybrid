@@ -14,7 +14,8 @@ export type LabelKind =
   | 'documentKind'
   | 'roadmapTable'
   | 'priority'
-  | 'ledgerState';
+  | 'ledgerState'
+  | 'taskField';
 
 const DICTIONARIES: Record<LabelKind, Record<string, string>> = {
   operation: {
@@ -103,6 +104,29 @@ const DICTIONARIES: Record<LabelKind, Record<string, string>> = {
     HIGH: 'Alta',
     CRITICAL: 'Crítica',
   },
+  taskField: {
+    title: 'Título',
+    description: 'Descripción',
+    status: 'Estado',
+    priority: 'Prioridad',
+    progressPercent: 'Avance',
+    acceptanceCriteria: 'Criterio de aceptación',
+    startDate: 'Fecha de inicio',
+    estimatedDate: 'Fecha estimada',
+    dueDate: 'Fecha de vencimiento',
+    assigneeActorId: 'Responsable',
+    assignee: 'Responsable',
+    phaseId: 'Fase',
+    epicId: 'Épica',
+    templateId: 'Plantilla',
+    parentTaskId: 'Tarea superior',
+    externalId: 'ID del Roadmap',
+    roadmapTable: 'Tabla del Roadmap',
+    blockedReason: 'Motivo del bloqueo',
+    neededDecision: 'Decisión necesaria',
+    rawOwner: 'Responsable en el documento',
+    trigger: 'Disparador',
+  },
   ledgerState: {
     IN_PROGRESS: 'En curso',
     PAUSE: 'En pausa',
@@ -113,9 +137,13 @@ const DICTIONARIES: Record<LabelKind, Record<string, string>> = {
   },
 };
 
-/** `SOME_CODE` -> `Some code`: readable enough for a code nobody has named. */
+/** `SOME_CODE` or `someField` -> `Some code` / `Some field`: readable enough for a code nobody has named. */
 function humanize(code: string): string {
-  const spaced = code.replace(/_/g, ' ').trim().toLowerCase();
+  const spaced = code
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/_/g, ' ')
+    .trim()
+    .toLowerCase();
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 

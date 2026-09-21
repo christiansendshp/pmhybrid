@@ -45,6 +45,9 @@ export interface TaskCard extends Task {
 }
 
 export interface TaskDetail extends Task {
+  /** Why a BLOCKED task is blocked, and the decision or event it waits for (Roadmap UX-03c1). */
+  blockedReason: string | null;
+  neededDecision: string | null;
   computedProgress: number;
   subtasks: Task[];
   dependencies: {

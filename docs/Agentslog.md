@@ -920,3 +920,30 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: The progress view shows whole-number percentages and a bar for the project, every phase, epic and task, named for assistive technology; 'sin datos' when there is no figure; the a11y suite covers the route
 - Files: apps/web/src/app/shared/progress-bar/progress-bar.ts,apps/web/src/app/core/percent.ts,apps/web/src/app/features/phases-progress/phases-progress.html,apps/web/a11y/app-shell.a11y.spec.ts
 - Verify: web unit 210 pass, eslint and ng build clean, a11y 7 pass, screenshot checked
+
+## [2026-09-21T18:31:46Z] | claude | UX-03c | IN_PROGRESS
+
+- Summary: Task detail, dashboard links and copy
+- Verify: pending
+
+## [2026-09-21T18:32:34Z] | claude | UX-03c1 | IN_PROGRESS
+
+- Summary: Task detail: block reason, breadcrumb, location and readable history
+- Verify: pending
+
+## [2026-09-21T18:39:06Z] | claude | BUG-08 | IN_PROGRESS
+
+- Summary: DECISION statuses PENDING and DECIDED are valid
+- Verify: pending
+
+## [2026-09-21T18:45:01Z] | claude | BUG-08 | DONE
+
+- Summary: PENDING and DECIDED are valid DECISION states with no Kanban column, and an unrecognized-status conflict closes by itself once the row's status is recognized, even when the row did not change; a spec now parses this repository's own Roadmap so an unreadable entry is caught before commit
+- Files: apps/api/src/modules/roadmap/roadmap-yaml-entry.util.ts,apps/api/src/modules/synchronization/synchronization.service.ts,apps/api/src/modules/roadmap/self-roadmap.spec.ts,docs/synchronization.md
+- Verify: api unit 371 and e2e 242 pass; the dev project's two false conflicts closed on sync
+
+## [2026-09-21T18:45:02Z] | claude | UX-03c1 | DONE
+
+- Summary: The task detail has a breadcrumb, the block reason and the decision it needs as visible text, Ubicación instead of Depende de, and history lines that name fields in Spanish; a blocked card shows its reason as text; the a11y suite covers the task detail
+- Files: apps/web/src/app/features/task-detail/task-detail.html,apps/web/src/app/core/labels.ts,apps/web/src/app/features/kanban/kanban.html,apps/web/a11y/app-shell.a11y.spec.ts
+- Verify: web unit 213 pass, eslint and ng build clean, a11y 9 pass, screenshot checked

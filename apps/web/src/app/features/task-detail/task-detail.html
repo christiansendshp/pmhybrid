@@ -6,6 +6,15 @@
 } @else if (loadError()) {
   <p role="alert">{{ loadError() }}</p>
 } @else if (task(); as t) {
+  <nav class="breadcrumb" aria-label="Ruta de navegación">
+    <a routerLink="../kanban">Tablero</a>
+    @if (parentTask(); as parent) {
+      <span aria-hidden="true">›</span>
+      <a [routerLink]="['../', parent.id]">{{ parent.title }}</a>
+    }
+    <span aria-hidden="true">›</span>
+    <span aria-current="page">{{ t.externalId ?? t.title }}</span>
+  </nav>
   <header class="page-header">
     <div>
       <p class="meta-text task-id">{{ t.externalId ?? 'Todavía no está en el Roadmap' }}</p>
@@ -57,7 +66,20 @@
   @if (actionError()) {
     <p role="alert">{{ actionError() }}</p>
   }
-  <p>Estado: {{ statusLabel(t.status) }} — Progreso: {{ t.computedProgress }}%</p>
+  @if (t.roadmapTable === 'BLOCKED') {
+    <div class="callout callout--blocked" role="status">
+      <strong>Tarea bloqueada</strong>
+      @if (t.blockedReason) {
+        <p>{{ t.blockedReason }}</p>
+      }
+      @if (t.neededDecision) {
+        <p>Necesita: {{ t.neededDecision }}</p>
+      }
+    </div>
+  }
+  <p>
+    Estado: {{ statusLabel(t.status) }} — Progreso: {{ t.computedProgress | number: '1.0-0' }} %
+  </p>
 
   @if (editing()) {
     <app-task-form
@@ -89,7 +111,7 @@
             Según el estado
           }
         </dd>
-        <dt>Depende de</dt>
+        <dt>Ubicación</dt>
         <dd>
           @for (entry of placement(); track entry.label; let last = $last) {
             {{ entry.label }}: {{ entry.value }}{{ last ? '' : ' · ' }}
@@ -239,7 +261,7 @@
           {{ event.operation | label: 'operation' }} ({{ event.origin | label: 'origin' }})
           <ul>
             @for (change of describeChanges(event); track change.field) {
-              <li>{{ change.field }}: {{ change.from }} → {{ change.to }}</li>
+              <li>{{ change.field | label: 'taskField' }}: {{ change.from }} → {{ change.to }}</li>
             }
           </ul>
         </li>

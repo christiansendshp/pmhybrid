@@ -66,9 +66,9 @@ describe('AuditLog', () => {
       expect.objectContaining({ limit: 50, cursor: undefined }),
     );
     expect(text()).toContain('Ana García (Humano)');
-    expect(text()).toContain('title: Old title → New title');
+    expect(text()).toContain('Título: Old title → New title');
     expect(text()).toContain('Sincronización');
-    expect(text()).toContain('trigger: — → MANUAL');
+    expect(text()).toContain('Disparador: — → MANUAL');
     expect(text()).not.toContain('Cargar más antiguos');
   });
 

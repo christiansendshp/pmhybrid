@@ -1,7 +1,7 @@
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { LabelPipe } from '../../shared/label.pipe.js';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -42,6 +42,7 @@ const TASK_WRITE = 'task.write';
   imports: [
     LabelPipe,
     DatePipe,
+    DecimalPipe,
     FormsModule,
     RouterLink,
     MatButtonModule,
@@ -89,6 +90,12 @@ export class TaskDetail implements OnInit {
   readonly describeChanges = describeAuditChanges;
   readonly actorKindLabel = actorKindLabel;
   readonly statusLabel = statusLabel;
+
+  /** The task above this one, for the breadcrumb. */
+  readonly parentTask = computed(() => {
+    const parentId = this.task()?.parentTaskId;
+    return parentId ? (this.allTasks().find((other) => other.id === parentId) ?? null) : null;
+  });
 
   readonly otherTasks = computed(() =>
     this.allTasks().filter((task) => task.id !== this.task()?.id),

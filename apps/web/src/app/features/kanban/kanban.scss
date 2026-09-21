@@ -182,6 +182,16 @@
   color: var(--mat-sys-error);
 }
 
+// The reason a card is blocked, as text (a tooltip is unreachable on touch), kept to two lines.
+.card__alert-reason {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  color: var(--mat-sys-on-surface-variant);
+}
+
 .priority {
   padding-inline: var(--space-2);
   border: 1px solid var(--mat-sys-outline-variant);

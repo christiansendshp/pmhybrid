@@ -31,6 +31,8 @@ function taskDetail(overrides: Partial<TaskDetailModel> = {}): TaskDetailModel {
     estimatedDate: null,
     dueDate: null,
     roadmapTable: 'ACTIVE',
+    blockedReason: null,
+    neededDecision: null,
     createdAt: '2026-09-15T09:00:00.000Z',
     updatedAt: '2026-09-15T09:00:00.000Z',
     computedProgress: 0,
@@ -97,6 +99,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
   let remove: ReturnType<typeof vi.fn>;
   let myPermissions: ReturnType<typeof vi.fn>;
   let listAudit: ReturnType<typeof vi.fn>;
+  let listForProject: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     getById = vi.fn();
@@ -106,6 +109,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     remove = vi.fn().mockResolvedValue({});
     myPermissions = vi.fn().mockResolvedValue(['task.delete', 'task.write']);
     listAudit = vi.fn();
+    listForProject = vi.fn().mockResolvedValue([]);
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -125,7 +129,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
             update,
             create,
             remove,
-            listForProject: vi.fn().mockResolvedValue([]),
+            listForProject,
           },
         },
         {
@@ -175,7 +179,53 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     expect(text()).toContain('Codex');
     expect(text()).toContain('En curso — Started the API');
     expect(text()).toContain('Demo Human — Cambio de estado (Aplicación)');
-    expect(text()).toContain('status: PENDIENTE → ASIGNADA');
+    expect(text()).toContain('Estado: PENDIENTE → ASIGNADA');
+  });
+
+  it('shows why a blocked task is blocked, and what it waits for, as visible text (Roadmap UX-03c1)', async () => {
+    getById.mockResolvedValue(
+      taskDetail({
+        roadmapTable: 'BLOCKED',
+        blockedReason: 'BLOQUEO - waiting for the schema review',
+        neededDecision: 'Sign-off from legal',
+      }),
+    );
+    listAudit.mockResolvedValue([]);
+
+    const { harness, text } = await render();
+    const callout = harness.routeNativeElement!.querySelector('.callout--blocked');
+
+    expect(callout?.getAttribute('role')).toBe('status');
+    expect(callout?.textContent).toContain('Tarea bloqueada');
+    expect(callout?.textContent).toContain('waiting for the schema review');
+    expect(callout?.textContent).toContain('Necesita: Sign-off from legal');
+    expect(text()).toContain('Ubicación');
+    expect(text()).not.toContain('Depende de Fase');
+  });
+
+  it('shows no block callout for a task that is not blocked', async () => {
+    getById.mockResolvedValue(taskDetail());
+    listAudit.mockResolvedValue([]);
+
+    const { harness } = await render();
+
+    expect(harness.routeNativeElement!.querySelector('.callout--blocked')).toBeNull();
+  });
+
+  it('has a breadcrumb back to the board and, for a subtask, to its parent', async () => {
+    getById.mockResolvedValue(taskDetail({ parentTaskId: 'parent-1' }));
+    listAudit.mockResolvedValue([]);
+    listForProject.mockResolvedValue([{ ...taskDetail(), id: 'parent-1', title: 'The parent' }]);
+
+    const { harness } = await render();
+    const crumbs = harness.routeNativeElement!.querySelector('nav.breadcrumb')!;
+
+    expect(crumbs.getAttribute('aria-label')).toBe('Ruta de navegación');
+    expect(Array.from(crumbs.querySelectorAll('a')).map((a) => a.textContent?.trim())).toEqual([
+      'Tablero',
+      'The parent',
+    ]);
+    expect(crumbs.querySelector('[aria-current="page"]')?.textContent).toBe('PMH-1');
   });
 
   it('shows empty states before anything has happened', async () => {

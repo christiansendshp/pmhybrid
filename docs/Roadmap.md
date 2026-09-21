@@ -477,9 +477,11 @@ updated_at: 2026-09-21T22:00:00Z
 
 ```yaml
 id: UX-03c
+assigned_agent: 'claude'
+executor: AI
 type: UX
 title: Task detail, dashboard links and copy
-status: BACKLOG
+status: IN_PROGRESS
 priority: P2
 parent: UX-03
 description: >
@@ -496,9 +498,64 @@ expected_behavior: >
 technical_context:
   frontend: apps/web/src/app
 next_action: >
-  Start with the task detail, then the dashboard links, then the copy pass.
+  Umbrella only. Refined on 2026-09-21 into three slices (UX-03c1 task detail,
+  UX-03c2 dashboard links, UX-03c3 copy and Team search); close this entry
+  when all three are done.
 created_at: 2026-09-21T22:00:00Z
-updated_at: 2026-09-21T22:00:00Z
+updated_at: 2026-09-21T18:31:46Z
+```
+
+### UX-03c2 — Dashboard items link to their task and say which one
+
+```yaml
+id: UX-03c2
+type: UX
+title: Dashboard items link to their task and say which one
+status: BACKLOG
+priority: P2
+parent: UX-03c
+depends_on:
+  - UX-03c1
+description: >
+  Second slice of UX-03c. Dashboard items are not links, and the
+  status-change entries say "PENDIENTE -> ASIGNADA" without saying which
+  task or project.
+expected_behavior: >
+  Every task-shaped item on the dashboard is a link to that task, and a
+  status change names its task.
+technical_context:
+  frontend: apps/web/src/app
+next_action: >
+  The activity payload needs each event's task title and project id; enrich
+  it in dashboard.service.ts, then link in the template.
+created_at: 2026-09-21T23:00:00Z
+updated_at: 2026-09-21T23:00:00Z
+```
+
+### UX-03c3 — One register and no internal terms in the copy, and a search on Team
+
+```yaml
+id: UX-03c3
+type: UX
+title: One register and no internal terms in the copy, and a search on Team
+status: BACKLOG
+priority: P2
+parent: UX-03c
+depends_on:
+  - UX-03c2
+description: >
+  Third slice of UX-03c. Voseo ("Asigna") is mixed with tuteo, internal
+  terms leak ("brief section 4", "permiso project.update", "columna
+  Acceptance check") and the Team list has no search.
+expected_behavior: >
+  The copy uses tuteo throughout with no reference to the brief or to
+  permission keys, and Team can be filtered by name.
+technical_context:
+  frontend: apps/web/src/app
+next_action: >
+  Grep the templates for the leaks first, then add the filter.
+created_at: 2026-09-21T23:00:00Z
+updated_at: 2026-09-21T23:00:00Z
 ```
 
 ### GAP-36 — Agent experience and onboarding gaps

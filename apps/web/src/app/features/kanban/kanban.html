@@ -225,7 +225,12 @@
                         </li>
                       }
                       @if (card.roadmapTable === 'BLOCKED') {
-                        <li class="card__alert" [attr.title]="card.blockedReason">Bloqueada</li>
+                        <li class="card__alert" [attr.title]="card.blockedReason">
+                          Bloqueada
+                          @if (card.blockedReason) {
+                            <span class="card__alert-reason"> — {{ card.blockedReason }}</span>
+                          }
+                        </li>
                       }
                     </ul>
                   </article>
