@@ -540,14 +540,18 @@ export class TasksService {
             entityType: 'Task',
             entityId: taskId,
             operation: task.assigneeActorId ? 'REASSIGN' : 'ASSIGN',
-            // Includes `status` too when the PENDIENTE->ASIGNADA side effect
+            // Includes `status` only when the PENDIENTE->ASIGNADA side effect
             // fires — sync's per-field conflict check (docs/synchronization.md
-            // step 5) reads this newValue to know which fields the UI touched.
+            // step 5) reads this newValue to know which fields the UI touched,
+            // and an unchanged status is not one of them.
             previousValue: {
               assigneeActorId: task.assigneeActorId,
-              status: task.status,
+              ...(nextStatus !== task.status ? { status: task.status } : {}),
             },
-            newValue: { assigneeActorId: actorId, status: nextStatus },
+            newValue: {
+              assigneeActorId: actorId,
+              ...(nextStatus !== task.status ? { status: nextStatus } : {}),
+            },
             origin,
           },
           tx,

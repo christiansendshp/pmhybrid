@@ -196,3 +196,25 @@ segments live in `docs/history/`.
 - Summary: The development database is tidy and the Team page stays readable: inactive people and agents are folded away behind Mostrar inactivos (N) (a search still finds them), and pnpm --filter api db:tidy-dev finds the old test fixtures by the millisecond timestamp in their name or email, lists them, and with --apply deactivates them with an audit event each. A dry run by default, never deletes an actor, refuses production and any database that is not on this machine. Run on this development database: 43 of 48 active people and agents were fixtures and are now inactive, reversible from the Team page.
 - Files: apps/api/scripts/tidy-dev-database.ts,apps/api/src/common/fixture-actors.ts,apps/web/src/app/features/team/team.ts,apps/web/src/app/features/team/team.html,README.md
 - Verify: api unit 491 pass and lint clean; web unit 289 and eslint clean; Playwright a11y 62 pass; api and web builds ok; the command dry-run then applied on the development database (43 of 48 active actors were fixtures, 0 after)
+
+## [2026-09-21T22:53:42Z] | claude | IMPROVEMENT-02e | IN_PROGRESS
+
+- Summary: Read docs/synchronization.md and docs/roadmap-parser.md against the parser, the sync and the write-back, and correct what differs
+- Verify: pending
+
+## [2026-09-21T23:15:45Z] | claude | IMPROVEMENT-02e | DONE
+
+- Summary: Docs vs code audit: docs/synchronization.md and docs/roadmap-parser.md now describe what the code does (scheduler backoff from SyncRun history, single-transaction concurrency guard, hash skip scope, per-field check over UI and API origins, blocked-row handling, write-back triggers and step 6 collision, conflict kinds with per-kind resolution and permissions, Agentslog bullet subset, owner cell); an assignment now audits status only when it moves the task, as the doc always claimed
+- Files: docs/synchronization.md, docs/roadmap-parser.md, apps/api/src/modules/tasks/tasks.service.ts, apps/api/test/audit.e2e-spec.ts
+- Verify: pnpm --filter api lint; pnpm --filter api test (491); pnpm --filter api test:e2e:cov (318); pnpm --filter api build
+
+## [2026-09-21T23:15:56Z] | claude | IMPROVEMENT-02 | IN_PROGRESS
+
+- Summary: Closing the umbrella: 02a-02e are done
+- Verify: pending
+
+## [2026-09-21T23:15:57Z] | claude | IMPROVEMENT-02 | DONE
+
+- Summary: Deployment, containerization and documentation gaps closed: ADR files, runtime API URL, container images and compose stack with a bootstrap and liveness, a tidy development dataset, and synchronization docs matching the code
+- Files: docs/decisions/, apps/web/public/config.js, apps/*/Dockerfile, docker-compose.prod.yml, docs/deployment.md, docs/synchronization.md, docs/roadmap-parser.md
+- Verify: See 02a-02e: api lint/unit/e2e:cov, web unit, Playwright a11y, api/web builds, docker image builds

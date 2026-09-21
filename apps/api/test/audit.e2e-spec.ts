@@ -149,6 +149,41 @@ describe('Audit trail (brief §25 — e2e)', () => {
     expect(events[0].operation).toBe('PROGRESS_CHANGE');
   });
 
+  it('audits an assignment with the status only when it moves the task, and never an unchanged one', async () => {
+    const first = await createUser('First assignee');
+    const second = await createUser('Second assignee');
+    for (const user of [first, second]) {
+      await request(server())
+        .post(`/projects/${projectId}/members`)
+        .set('Authorization', auth())
+        .send({ actorId: user.id })
+        .expect(201);
+    }
+    const task = await request(server())
+      .post(`/projects/${projectId}/tasks`)
+      .set('Authorization', auth())
+      .send({ title: 'Assigned task', acceptanceCriteria: 'Verified by e2e' })
+      .expect(201);
+    const taskId = task.body.id as string;
+
+    for (const user of [first, second]) {
+      await request(server())
+        .post(`/projects/${projectId}/tasks/${taskId}/assign`)
+        .set('Authorization', auth())
+        .send({ actorId: user.id })
+        .expect(201);
+    }
+
+    const events = await auditTrail(`entityType=Task&entityId=${taskId}`);
+    const assign = events.find((e) => e.operation === 'ASSIGN')!;
+    expect(assign.previousValue).toEqual({ assigneeActorId: null, status: 'PENDIENTE' });
+    expect(assign.newValue).toEqual({ assigneeActorId: first.id, status: 'ASIGNADA' });
+    // The task is already ASIGNADA: a second assignment touched the assignee, not the status.
+    const reassign = events.find((e) => e.operation === 'REASSIGN')!;
+    expect(reassign.previousValue).toEqual({ assigneeActorId: first.id });
+    expect(reassign.newValue).toEqual({ assigneeActorId: second.id });
+  });
+
   it('audits membership and role changes, and treats repeated grants as no-ops', async () => {
     const user = await createUser('Audited member');
     const roles = await request(server()).get('/roles').set('Authorization', auth()).expect(200);

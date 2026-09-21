@@ -168,48 +168,6 @@ created_at: 2026-09-19T09:40:00Z
 updated_at: 2026-09-20T19:55:00Z
 ```
 
-### IMPROVEMENT-02 — Deployment, containerization and documentation gaps
-
-```yaml
-id: IMPROVEMENT-02
-type: IMPROVEMENT
-title: Deployment, containerization and documentation gaps
-status: BACKLOG
-priority: P3
-description: >
-  From the 2026-09-21 evaluation. There is no Dockerfile for the API or the
-  web app (docker-compose.yml only runs PostgreSQL), no production
-  configuration or health/readiness story beyond `/health`, and the web
-  app hardcodes API_BASE_URL to http://localhost:3000 in source.
-  docs/decisions/ is empty although code and docs reference ADRs, and
-  docs/synchronization.md and docs/roadmap-parser.md describe table
-  formats and rules the code does not implement (conflict on unknown
-  status, Owner resolution). Legacy fixture users from e2e runs before the
-  test database isolation (about 40 "Dev", "Outsider", "Role tester"
-  accounts) still clutter the development Team page.
-expected_behavior: >
-  Reproducible container images and a documented deployment path with
-  runtime-configurable API URL, ADR files present for every ADR cited, sync
-  docs matching the implemented behavior, and a clean development dataset.
-technical_context:
-  backend: docker-compose.yml, apps/web/src/app/core/api-base-url.ts, docs/
-depends_on:
-  - IMPROVEMENT-02a
-  - IMPROVEMENT-02b
-  - IMPROVEMENT-02c
-  - IMPROVEMENT-02d
-  - IMPROVEMENT-02e
-next_action: >
-  Umbrella only. Decided on 2026-09-21: the target runtime is containers (an
-  API image on node, a web image on nginx, Postgres as a service or an outside
-  database), configured by environment variables. Refined into five slices
-  (02a the ADR files, 02b the web's runtime API URL, 02c the images and the
-  health endpoints, 02d the development dataset, 02e the synchronization docs
-  against the code); close this entry when all five are done.
-created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T22:30:00Z
-```
-
 Post-MVP gap backlog derived from a brief-vs-code review on 2026-09-15
 (GAP-12–GAP-19), the 2026-09-16 frontend redesign (GAP-20), and a
 2026-09-16 user-requested docsPath folder picker (GAP-27) are all DONE
@@ -274,26 +232,3 @@ a real sync tick mid-edit. Done once confirmed no dev server was running
 and with the user's explicit sign-off, given the next sync tick will still
 process this change (see `BUG-01` above for a second hazard found and
 deliberately _not_ fixed in this same pass, kept out of scope on purpose).
-
-### IMPROVEMENT-02e — The synchronization docs against what the code does
-
-```yaml
-id: IMPROVEMENT-02e
-type: IMPROVEMENT
-title: The synchronization docs against what the code does
-status: READY
-priority: P3
-parent: IMPROVEMENT-02
-description: >
-  Fifth slice of IMPROVEMENT-02. docs/synchronization.md and
-  docs/roadmap-parser.md were written before conflicts on unknown statuses and
-  Owner resolution were implemented (GAP-35a, GAP-35b).
-expected_behavior: >
-  The two documents describe what the code does, checked claim by claim.
-technical_context:
-  backend: docs/synchronization.md, docs/roadmap-parser.md
-next_action: >
-  Read both against the parser and the sync, and correct what differs.
-created_at: 2026-09-21T22:30:00Z
-updated_at: 2026-09-21T22:30:00Z
-```

@@ -160,8 +160,9 @@ more than one agent concurrently; a plain name is also valid.
   splitting on the last occurrence is the safer choice either way).
 - Left side → name to resolve against `Actor.displayName` (case-insensitive
   match within the project's members).
-- Right side, if present → parsed as an ISO-8601 timestamp into
-  `Task.ownerClaimedAt`.
+- Right side, if present → parsed as a timestamp into `Task.ownerClaimedAt`;
+  one that does not parse is dropped and the name still counts.
+- An empty cell, `—` or `-` names nobody.
 - **Always** store the raw, unparsed cell value in `Task.rawOwner`,
   regardless of whether name resolution succeeds — an unresolved owner name
   (e.g. an agent not yet registered as an `Actor`) must not be lost.
@@ -187,7 +188,9 @@ handling.
 
 ## Agentslog.md — entry parsing
 
-Fixed format (verbatim, `docs/skillProyectDocument-analysis.md` §7):
+The format of the skill's first version (verbatim,
+`docs/skillProyectDocument-analysis.md` §7), which is also what PM Hub writes to
+a document of the older format:
 
 ```markdown
 ## [YYYY-MM-DDTHH:mm:ssZ] | agent | TASK-ID | status-word
@@ -198,10 +201,16 @@ Fixed format (verbatim, `docs/skillProyectDocument-analysis.md` §7):
 - Follow-up: ...
 ```
 
-Regex-anchored on the header line, requiring exactly the four fixed bullets
-in order. Fields are already sanitized at write time by the skill's own
-`clean_field()` (pipe/CR/LF stripped to spaces/slashes), so the parser does
-not need to re-sanitize on read, only split on `|`.
+Regex-anchored on the header line. An entry is accepted once it has a
+`Summary` bullet; `Files`, `Verify`, `Follow-up` and `Pause` are read when
+present, in any subset, each at most once (a bullet name that repeats ends the
+entry, so a malformed neighbour is not swallowed), with one optional blank line
+allowed between the header and the bullets. The latest skill's shape is the
+same with `Files` optional, `Verify` required only on `DONE`, `Pause` only on
+`PAUSE` (`CATEGORY - detail`) and no `Follow-up`. Fields are already sanitized
+at write time by the skill's own `clean_field()` (pipe/CR/LF stripped to
+spaces/slashes), so the parser does not need to re-sanitize on read, only split
+on `|`.
 
 - `timestampFromLog` is parsed but **never trusted** as an ordering signal
   for reconciliation (it's agent-authored and can be wrong or backdated) —
@@ -209,8 +218,8 @@ not need to re-sanitize on read, only split on `|`.
   what `docs/synchronization.md` relies on.
 - `TASK-ID` is the correlation key to `Task.externalId`, matched within the
   same project.
-- Idempotency: compute `rawEntryHash` over the full raw entry text (header +
-  four bullet lines); this is a unique constraint on `AgentLogEvent`, scoped
+- Idempotency: compute `rawEntryHash` over the full raw entry text (the header
+  and the bullet lines it has); this is a unique constraint on `AgentLogEvent`, scoped
   **per project** (`@@unique([projectId, rawEntryHash])`, not a bare global
   unique) — re-parsing the same entry after a ledger rotation or a re-sync of
   an overlapping revision is a no-op rather than a duplicate, and two

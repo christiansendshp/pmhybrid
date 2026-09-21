@@ -9,7 +9,9 @@ and write-back that consume the parser's output.
 ## Trigger
 
 - **Scheduled**: a `@nestjs/schedule` minute tick checks every active
-  `Project` where `now - lastSyncedAt >= syncIntervalMinutes`.
+  `Project` whose latest `SyncRun` started at least `syncIntervalMinutes` ago
+  (a project has no `lastSyncedAt` of its own: the time comes from its runs),
+  lengthened by the backoff after failures (below).
 - **Manual**: `POST /projects/:id/sync` ("Sincronizar ahora", brief §11).
 - **Webhook** (Roadmap GAP-29, brief §27/§29): `POST /webhooks/github`
   verifies GitHub's `X-Hub-Signature-256`, then syncs every `Project` whose
@@ -34,9 +36,11 @@ All three paths call the same `SynchronizationService.runSync(projectId, trigger
 
 The whole run is wrapped in `pg_advisory_xact_lock(hashtext(projectId))`, so
 the write-back path (below) blocks on the same lock instead of racing a
-scheduled sync for the same project. `SyncRun.status = RUNNING` is recorded at
-start with a stale-timeout check: a run still `RUNNING` past a configured
-threshold is treated as crashed and a new run is allowed to proceed.
+scheduled sync for the same project: a second run waits for the first. The `SyncRun`
+is created `RUNNING` inside the run's own transaction, so nothing else sees it
+running, and a crash rolls it back with everything else — there is no stale
+`RUNNING` row to time out. The failed run is written afterwards, outside the
+rolled-back transaction, so the history still says what happened.
 
 ## Per-run algorithm (Documents → Postgres)
 
@@ -61,24 +65,42 @@ threshold is treated as crashed and a new run is allowed to proceed.
 5. **Existing rows still present** — first compare the row's content hash
    with `Task.lastSyncedContentHash` (the last known external version of the
    row, set on creation-from-row, on every reconcile and after every
-   write-back). **Equal → skip the row entirely**: the document did not
-   change, so any difference from the task is a local edit that must stand.
-   Otherwise diff mapped fields against the incoming row:
+   write-back). **Equal → skip the reconciliation of the row's fields**: the
+   document did not change, so any difference from the task is a local edit that
+   must stand. What does not depend on the fields still runs for every row: a
+   task without a table gets it back, conflicts that stopped being true close,
+   the owner is resolved to an assignee, an unrecognized status is checked, the
+   dependencies and (for a YAML document) the hierarchy are reconciled. The
+   fingerprint (`rowContentHash`) covers the id, the table, the outcome, the
+   acceptance check, the raw status text, the raw owner, the raw `Depends on`,
+   the blocker and the needed decision, and — for a YAML entry — its type,
+   priority and progress; not the parent, the pause reason or the parsed owner.
+   Step 2's "unchanged → skip" only skips recording a revision: the Roadmap is
+   parsed and reconciled on every run. Otherwise diff mapped fields against the
+   incoming row:
    - Table membership changed → update `Task.roadmapTable`, write
      `AuditEvent(operation=ROADMAP_TABLE_CHANGE)`. This is the _entire_
      mechanism for tracking "which table a row sits in is itself a status
      signal" (brief's blocked-tasks metric) — no separate table or column is
      needed beyond this audit trail plus the current `roadmapTable` value.
-   - Moving **into** BLOCKED → set `blockedReason`/`neededDecision` from the
-     row. **Do not clear** `status`/`dependencies`/`acceptanceCriteria` —
-     the Blocked table's column set doesn't carry those fields, but Postgres
-     retains the last-known values so they're not lost while blocked.
+   - A row **in** BLOCKED (on the move in, and again whenever it changes) → set
+     `blockedReason`/`neededDecision` from the row (the blocker text, cleared
+     when it goes). **Do not clear** `status`/`dependencies`/`acceptanceCriteria`
+     — the old Blocked table's column set doesn't carry those fields, but
+     Postgres retains the last-known values so they're not lost while blocked.
+     A blocked row that does carry columns reconciles them: a YAML `BLOCKED` entry
+     its title, and a `PAUSE` row of the latest skill's tables (`BLOQUEO` or
+     `ESPERA_RESPUESTA`, which reads as blocked) all of its cells, its `Depends
+on` included. A row first seen in the Blocked table is created `PENDIENTE`,
+     titled with its id when it has no title.
    - Moving **out of** BLOCKED → clear `blockedReason`/`neededDecision`;
      status/dependencies/acceptance are present in the row again, apply
      normally.
    - **Per-field conflict check**: query `AuditEvent` for
-     `entityType=Task AND entityId=task.id AND origin=UI AND occurredAt >
-task.lastSyncedAt`, collecting the field names touched in `newValue`.
+     `entityType=Task AND entityId=task.id AND origin IN (UI, API) AND occurredAt >
+task.lastSyncedAt` (an agent's API-key edit contests a document change exactly
+     like a person's; a task never synced counts from the beginning of time),
+     collecting the field names touched in `newValue`.
      Intersect with the fields the incoming row is about to change.
      - Non-empty intersection → create
        `Conflict(kind=CONCURRENT_FIELD_EDIT, localVersion=<contested fields
@@ -86,7 +108,9 @@ from DB>, externalVersion=<contested fields from row>)`; apply only the
        non-contested fields.
      - Empty intersection → apply everything.
    - UI edits reach this check because every task mutation audits exactly
-     the fields it changed (`PATCH` included), never unchanged ones.
+     the fields it changed (`PATCH` included), never unchanged ones: an
+     assignment audits `status` only when it moves the task from `PENDIENTE`
+     to `ASIGNADA`, not on every assignment.
    - Always store the new `lastSyncedContentHash`, so an already-raised
      conflict is not raised again for the same document. Advance
      `lastSyncedAt` (the start of the UI-edit window) only when nothing was
@@ -101,8 +125,9 @@ from DB>, externalVersion=<contested fields from row>)`; apply only the
    deletion (forbidden by brief §12: "no sobrescribir silenciosamente cambios
    externos" and never silently deleting).
    - Query `AgentLogEvent` for `taskExternalId = task.externalId AND
-statusWord IN terminalSet` (seed `terminalSet = ["DONE"]`, an extensible
-     configured list, not hardcoded to one literal forever).
+statusWord IN terminalSet` (`terminalSet = ["DONE"]`, the exported
+     `TERMINAL_STATUS_WORDS`, a constant kept in one place so another word can be
+     added, not a setting). Only the task's id and the status word are compared.
    - **Never filter on `timestampFromLog`** — it's an untrusted,
      agent-authored clock. A terminal entry is terminal regardless of what
      time it claims to have been written.
@@ -121,10 +146,13 @@ segment` section with an archive path + SHA-256), ingest the referenced
      the `Task` is left **completely untouched**. Never a database delete, in
      either branch.
 7. Finalize the `SyncRun` (`SUCCESS`/`PARTIAL`/`FAILED`) with a `summary`
-   jsonb of counts (created/updated/table-changed/completed-via-removal/
-   conflicts-raised) and `entryErrors`. `PARTIAL` means the run finished but
-   left something for a person: a conflict, or a Roadmap entry it could not
-   read.
+   jsonb of counts (documents changed, tasks created/updated, table changes,
+   completed-via-removal, conflicts raised and closed, assignees updated,
+   dependencies linked and removed, and — for a YAML or headed document — phases and
+   epics synced, tasks placed and structural tasks retired), the `entryErrors` and
+   the `skippedCycles`. `PARTIAL` means the run finished but left something for a
+   person: a conflict, a Roadmap entry it could not read, or a dependency loop it
+   did not link.
 
 ### Unreadable Roadmap entries and failed runs (Roadmap BUG-05)
 
@@ -149,7 +177,9 @@ segment` section with an archive path + SHA-256), ingest the referenced
   message; any other failure keeps its own status (a DB outage stays a 500).
 - **Scheduled retries back off.** Each consecutive `FAILED` run doubles the
   wait before the next scheduled attempt, up to 16 × the project's
-  `syncIntervalMinutes`; a success or a manual run resets it.
+  `syncIntervalMinutes`. The streak is the run of `FAILED` runs at the head of the
+  project's history, a failed manual run included, so any run that does not fail
+  (manual or scheduled) resets it.
 
 ### Owner and assignee (Roadmap GAP-35a)
 
@@ -350,8 +380,12 @@ correlated to `Task.externalId` within the same project to backfill `taskId`.
 
 ## Write-back (Postgres → Documents)
 
-Triggered by a UI-originated task change (creation, status transition,
-locked reassignment):
+Triggered by a UI-originated task change. The four that move a task through its
+life — creation, starting (`EN_DESARROLLO`), completing (`TERMINADA`) and a
+locked reassignment — follow the steps below in full. A field edit, a
+dependency added or removed, a removal and a conflict resolution write the row
+(or take it out) by the same rules, and only a removal writes a ledger entry
+(see the sections after this one).
 
 1. Persist the change in Postgres, inside a transaction.
 2. If the task is new (no `externalId` yet), mint one: `PMH-<n>` via
@@ -362,8 +396,11 @@ locked reassignment):
    the process crashes mid-write-back. Only a curated subset of transitions
    auto-appends an entry: task created, status → `EN_DESARROLLO`, status →
    `TERMINADA`, and locked reassignment — not every field edit, to avoid
-   ledger-rotation churn from fine-grained UI activity. Apply the skill's own
-   field sanitization (strip `|`/CR/LF) to every field.
+   ledger-rotation churn from fine-grained UI activity. In a document of the
+   older format the entries are `CREATED`, `IN_PROGRESS`, `DONE` and
+   `REASSIGNED`; the latest skill's format has its own (see "Documents in the
+   latest skill's format"). Apply the skill's own field sanitization (strip
+   `|`/CR/LF) to every field.
 4. Render the row into the correct table's exact column set — resolved by
    locating the row wherever it already sits in the document (Active, Near
    term or Blocked), not by reading `Task.roadmapTable` directly, so this
@@ -389,17 +426,22 @@ locked reassignment):
    table block, replace only that row's line(s) (or append if new); never
    regenerate other rows from DB state.
 6. Before writing, re-hash the file against `Document.lastKnownHash`. If it
-   drifted, run the read/reconcile path (steps 1-7 above) inline first, then
-   re-check whether the specific row being written is still uncontested —
-   if it collided with what just came in, raise
-   `Conflict(kind=WRITE_BACK_COLLISION)` instead of blind-writing.
+   drifted, the write does not reconcile the document first (the next sync
+   does); it only checks the row being written: if the row's status no longer
+   agrees with the task's (`rowStatusDiffers`), a
+   `Conflict(kind=WRITE_BACK_COLLISION)` is raised (the task's status against
+   the row's) instead of blind-writing, the Roadmap row is left as it is, and
+   only the ledger entry of step 3 stands (audited
+   `WRITE_BACK_AGENTSLOG_ONLY`). A drifted document whose row still agrees is
+   written as usual: the edit replaces only that row's line, in the file as it
+   is now, so the person's other edits stay.
 7. Write, rehash, update `Document`, insert `DocumentRevision(source=UI)`.
    Re-parse the written row and store its hash as the task's
    `lastSyncedContentHash` (and `lastSyncedAt = now`): the row on disk is
    exactly what PM Hub rendered, so the next read must neither mistake it for
    a document-side change nor treat the task's earlier, now-written UI edits
    as still contested.
-8. `AuditEvent(origin=UI)`.
+8. `AuditEvent(origin=UI)`, operation `WRITE_BACK` with the trigger.
 
 ### One unit, or nothing (Roadmap BUG-07a)
 
@@ -596,6 +638,31 @@ vs. external versions and chooses `KEEP_LOCAL`, `KEEP_EXTERNAL`, or
 `MANUAL_EDIT` (or dismisses it). Resolving a conflict writes an `AuditEvent`
 and, if the resolution changes stored data, may trigger a normal write-back.
 
+### Kinds, and what each resolution does
+
+| Kind                                      | Raised when                                                                               | `KEEP_LOCAL`                                               | `KEEP_EXTERNAL`                                                                  | `MANUAL_EDIT`                                          |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `CONCURRENT_FIELD_EDIT`                   | a field was edited in PM Hub (UI or API) and in the document since the last sync (step 5) | the task stays; the document gets the task's value         | the task takes the document's value; nothing is written                          | the task and the document take the person's value      |
+| `WRITE_BACK_COLLISION`                    | a write-back finds the row's status no longer agrees with the task's (step 6)             | as above                                                   | as above                                                                         | as above                                               |
+| `ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG` | a task's row is gone and no `DONE` entry explains it (step 6)                             | the task stays, recorded as having no row; nothing written | the task moves to `TERMINADA` and has no row (needs the permission of that move) | the person picks the status (and table) the task keeps |
+| `UNRECOGNIZED_STATUS`                     | the document's status word is in neither vocabulary ("Unrecognized statuses…")            | the task keeps its status                                  | refused (400): there is no value to keep                                         | the person picks a status                              |
+
+`DISMISSED` settles any of them without choosing a value; for a disappeared row it
+records the missing row the same way `KEEP_LOCAL` does.
+
+- **`MANUAL_EDIT` names only what the conflict contests** (the keys of its two
+  versions) and each value is validated like the same edit elsewhere: `title`
+  not blank, `status` one of the board's, `assigneeActorId` an active member of the
+  project, `priority` `CRITICAL`…`LOW` or null, `progressPercent` a whole number from 0
+  to 100 or null, `acceptanceCriteria`/`rawOwner` text or null, `roadmapTable`
+  `ACTIVE`/`NEAR_TERM`/`BLOCKED` or null. Anything else is a 400.
+- **A resolution is no way around the rules of the change it applies.** The route
+  needs `conflict.resolve`; applying a status needs what the same move would
+  need as a transition (the strongest key a jump crosses), an assignee what an
+  assignment needs, any other field `task.write` (Roadmap SECURITY-02). A status
+  the resolution changes is audited as a `STATUS_CHANGE`, so the per-field check
+  of the next sync sees that this side just touched it.
+
 ### Resolving writes back (Roadmap BUG-06b)
 
 A resolution that chose PM Hub's value writes it to the document — before, only
@@ -607,9 +674,10 @@ later sync repaired the document.
   nothing, and neither does a field that already holds the same value.
 - Fields with a place in the document: `title` (Outcome), `acceptanceCriteria`
   (Acceptance check), `status` (the Status cell verbatim, or the entry's
-  mapped `status`; a BLOCKED entry keeps its own) and `assigneeActorId` (the
-  owner, as in "Owner and assignee"). `rawOwner` is only the owner's raw text and
-  is not written.
+  mapped `status`; a BLOCKED entry keeps its own), `assigneeActorId` (the
+  owner, as in "Owner and assignee") and, in an entry of the YAML format,
+  `priority` and `progressPercent` (as in "Type, priority and progress").
+  `rawOwner` is only the owner's raw text and is not written.
 - **Only over what the conflict showed.** A field is written only if the document
   still holds the value the conflict recorded as its side. If the document moved
   on since, that is an edit the person has not seen: it is left
