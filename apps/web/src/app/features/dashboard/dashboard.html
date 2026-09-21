@@ -60,7 +60,11 @@
             <ul class="activity__list">
               @for (task of a.recentlyModifiedTasks; track task.id) {
                 <li>
-                  <span class="activity__primary">{{ task.title }}</span>
+                  <a
+                    class="activity__primary"
+                    [routerLink]="['/projects', task.projectId, 'tasks', task.id]"
+                    >{{ task.title }}</a
+                  >
                   <span class="meta-text"
                     >{{ statusLabel(task.status) }} ·
                     {{ task.updatedAt | date: 'd MMM y, HH:mm' }}</span
@@ -79,11 +83,16 @@
             <ul class="activity__list">
               @for (change of a.recentStatusChanges; track change.id) {
                 <li>
-                  <span class="activity__primary"
-                    >{{ change.previousValue ? statusLabel(change.previousValue.status) : '—' }} →
-                    {{ change.newValue ? statusLabel(change.newValue.status) : '—' }}</span
+                  <a
+                    class="activity__primary"
+                    [routerLink]="['/projects', change.task.projectId, 'tasks', change.task.id]"
+                    >{{ change.task.title }}</a
                   >
-                  <span class="meta-text">{{ change.occurredAt | date: 'd MMM y, HH:mm' }}</span>
+                  <span class="meta-text"
+                    >{{ change.previousValue ? statusLabel(change.previousValue.status) : '—' }} →
+                    {{ change.newValue ? statusLabel(change.newValue.status) : '—' }} ·
+                    {{ change.occurredAt | date: 'd MMM y, HH:mm' }}</span
+                  >
                 </li>
               }
             </ul>
@@ -99,7 +108,16 @@
               @for (assignment of a.recentAssignments; track assignment.id) {
                 <li>
                   <span class="activity__primary"
-                    >{{ assignment.task.title }} → {{ assignment.actor.displayName }}</span
+                    ><a
+                      [routerLink]="[
+                        '/projects',
+                        assignment.task.projectId,
+                        'tasks',
+                        assignment.task.id,
+                      ]"
+                      >{{ assignment.task.title }}</a
+                    >
+                    → {{ assignment.actor.displayName }}</span
                   >
                   <span class="meta-text">{{
                     assignment.assignedAt | date: 'd MMM y, HH:mm'
@@ -120,7 +138,12 @@
                 <li>
                   <span class="activity__primary"
                     >{{ event.agentName }}
-                    @if (event.taskExternalId) {
+                    @if (event.taskId) {
+                      —
+                      <a [routerLink]="['/projects', event.projectId, 'tasks', event.taskId]">{{
+                        event.taskExternalId
+                      }}</a>
+                    } @else if (event.taskExternalId) {
                       — {{ event.taskExternalId }}
                     }
                     — {{ event.statusWord | label: 'ledgerState' }}</span
@@ -142,9 +165,11 @@
             <ul class="activity__list">
               @for (revision of a.recentDocumentChanges; track revision.id) {
                 <li>
-                  <span class="activity__primary">{{
-                    revision.document.kind | label: 'documentKind'
-                  }}</span>
+                  <a
+                    class="activity__primary"
+                    [routerLink]="['/projects', revision.document.projectId, 'documents']"
+                    >{{ revision.document.kind | label: 'documentKind' }}</a
+                  >
                   <span class="meta-text"
                     >{{ revision.source | label: 'revisionSource' }} ·
                     {{ revision.capturedAt | date: 'd MMM y, HH:mm' }}</span

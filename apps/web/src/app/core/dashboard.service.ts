@@ -15,11 +15,21 @@ export interface DashboardSummary {
   globalProgress: number | null;
 }
 
+/** Enough of a task to name it and open it (Roadmap UX-03c2). */
+export interface DashboardTaskRef {
+  id: string;
+  projectId: string;
+  externalId: string | null;
+  title: string;
+}
+
 export interface DashboardActivity {
-  recentlyModifiedTasks: { id: string; title: string; status: string; updatedAt: string }[];
+  recentlyModifiedTasks: (DashboardTaskRef & { status: string; updatedAt: string })[];
   recentStatusChanges: {
     id: string;
     entityId: string;
+    /** The task the change is about; changes of a removed task are not listed. */
+    task: DashboardTaskRef;
     previousValue: { status: string } | null;
     newValue: { status: string } | null;
     occurredAt: string;
@@ -27,11 +37,14 @@ export interface DashboardActivity {
   recentAssignments: {
     id: string;
     assignedAt: string;
-    task: { id: string; title: string };
+    task: DashboardTaskRef;
     actor: { displayName: string };
   }[];
   recentAgentEvents: {
     id: string;
+    projectId: string;
+    /** The task the entry is about, when it names one PM Hub knows. */
+    taskId: string | null;
     agentName: string;
     taskExternalId: string | null;
     statusWord: string;
@@ -42,7 +55,7 @@ export interface DashboardActivity {
     id: string;
     capturedAt: string;
     source: string;
-    document: { kind: string };
+    document: { kind: string; projectId: string };
   }[];
 }
 

@@ -505,33 +505,6 @@ created_at: 2026-09-21T22:00:00Z
 updated_at: 2026-09-21T18:31:46Z
 ```
 
-### UX-03c2 — Dashboard items link to their task and say which one
-
-```yaml
-id: UX-03c2
-type: UX
-title: Dashboard items link to their task and say which one
-status: BACKLOG
-priority: P2
-parent: UX-03c
-depends_on:
-  - UX-03c1
-description: >
-  Second slice of UX-03c. Dashboard items are not links, and the
-  status-change entries say "PENDIENTE -> ASIGNADA" without saying which
-  task or project.
-expected_behavior: >
-  Every task-shaped item on the dashboard is a link to that task, and a
-  status change names its task.
-technical_context:
-  frontend: apps/web/src/app
-next_action: >
-  The activity payload needs each event's task title and project id; enrich
-  it in dashboard.service.ts, then link in the template.
-created_at: 2026-09-21T23:00:00Z
-updated_at: 2026-09-21T23:00:00Z
-```
-
 ### UX-03c3 — One register and no internal terms in the copy, and a search on Team
 
 ```yaml

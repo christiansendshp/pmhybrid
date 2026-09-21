@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DashboardActivity,
@@ -31,11 +32,30 @@ const EMPTY_ACTIVITY: DashboardActivity = {
 const ACTIVITY: DashboardActivity = {
   ...EMPTY_ACTIVITY,
   recentlyModifiedTasks: [
-    { id: 't1', title: 'Build API', status: 'EN_DESARROLLO', updatedAt: '2026-09-15T10:00:00Z' },
+    {
+      id: 't1',
+      projectId: 'p1',
+      externalId: 'PMH-1',
+      title: 'Build API',
+      status: 'EN_DESARROLLO',
+      updatedAt: '2026-09-15T10:00:00Z',
+    },
+  ],
+  recentStatusChanges: [
+    {
+      id: 'c1',
+      entityId: 't1',
+      task: { id: 't1', projectId: 'p1', externalId: 'PMH-1', title: 'Build API' },
+      previousValue: { status: 'PENDIENTE' },
+      newValue: { status: 'ASIGNADA' },
+      occurredAt: '2026-09-15T10:30:00Z',
+    },
   ],
   recentAgentEvents: [
     {
       id: 'e1',
+      projectId: 'p1',
+      taskId: 't1',
       agentName: 'Codex',
       taskExternalId: 'F01-S01-T01',
       statusWord: 'DONE',
@@ -53,7 +73,10 @@ describe('Dashboard (brief §14)', () => {
     getSummary = vi.fn().mockResolvedValue(SUMMARY);
     getActivity = vi.fn().mockResolvedValue(EMPTY_ACTIVITY);
     TestBed.configureTestingModule({
-      providers: [{ provide: DashboardService, useValue: { getSummary, getActivity } }],
+      providers: [
+        provideRouter([]),
+        { provide: DashboardService, useValue: { getSummary, getActivity } },
+      ],
     });
   });
 
@@ -101,6 +124,46 @@ describe('Dashboard (brief §14)', () => {
     expect(text()).toContain('Codex');
     expect(text()).toContain('F01-S01-T01');
     expect(text()).toContain('Finished the API client');
+  });
+
+  it('links every task-shaped item to its task, and a status change names which task it is about (Roadmap UX-03c2)', async () => {
+    getActivity.mockResolvedValue({
+      ...ACTIVITY,
+      recentAssignments: [
+        {
+          id: 'a1',
+          assignedAt: '2026-09-15T10:45:00Z',
+          task: { id: 't2', projectId: 'p2', externalId: null, title: 'Write docs' },
+          actor: { displayName: 'Ana' },
+        },
+      ],
+      recentDocumentChanges: [
+        {
+          id: 'd1',
+          capturedAt: '2026-09-15T12:00:00Z',
+          source: 'SYNC',
+          document: { kind: 'ROADMAP', projectId: 'p1' },
+        },
+      ],
+    });
+    const { root } = await render();
+    const links = Array.from(root.querySelectorAll('a')).map((a) => [
+      a.textContent?.trim(),
+      a.getAttribute('href'),
+    ]);
+
+    expect(links).toEqual(
+      expect.arrayContaining([
+        ['Build API', '/projects/p1/tasks/t1'],
+        ['Write docs', '/projects/p2/tasks/t2'],
+        ['F01-S01-T01', '/projects/p1/tasks/t1'],
+        ['Roadmap', '/projects/p1/documents'],
+      ]),
+    );
+    // The status change says which task it is, then what changed.
+    const change = root.querySelectorAll('.activity__group')[1];
+    expect(change.textContent).toContain('Build API');
+    expect(change.textContent).toContain('PENDIENTE → ASIGNADA');
   });
 
   it('names an empty activity group instead of leaving it blank', async () => {

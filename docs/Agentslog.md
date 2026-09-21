@@ -947,3 +947,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: The task detail has a breadcrumb, the block reason and the decision it needs as visible text, Ubicación instead of Depende de, and history lines that name fields in Spanish; a blocked card shows its reason as text; the a11y suite covers the task detail
 - Files: apps/web/src/app/features/task-detail/task-detail.html,apps/web/src/app/core/labels.ts,apps/web/src/app/features/kanban/kanban.html,apps/web/a11y/app-shell.a11y.spec.ts
 - Verify: web unit 213 pass, eslint and ng build clean, a11y 9 pass, screenshot checked
+
+## [2026-09-21T18:45:50Z] | claude | UX-03c2 | IN_PROGRESS
+
+- Summary: Dashboard items link to their task and say which one
+- Verify: pending
+
+## [2026-09-21T18:53:48Z] | claude | UX-03c2 | DONE
+
+- Summary: Every task-shaped item on the dashboard links to its task, a status change names its task, an agent event with a task links to it, and a document change links to the documents page; a removed task's changes drop out of the feed
+- Files: apps/api/src/modules/dashboard/dashboard.service.ts,apps/web/src/app/features/dashboard/dashboard.html,apps/web/src/app/core/dashboard.service.ts,docs/api-reference.md
+- Verify: api unit 371 and e2e pass; web unit 214, eslint, ng build and a11y 8 pass; screenshot checked

@@ -1,6 +1,7 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { LabelPipe } from '../../shared/label.pipe.js';
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { describeHttpError } from '../../core/http-error.js';
 import {
   DashboardActivity,
@@ -12,7 +13,7 @@ import { statusLabel } from '../../core/task-status-policy.js';
 /** Brief §14 "DASHBOARD PRINCIPAL" — cross-project summary + activity. */
 @Component({
   selector: 'app-dashboard',
-  imports: [LabelPipe, DatePipe, DecimalPipe],
+  imports: [LabelPipe, DatePipe, DecimalPipe, RouterLink],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })

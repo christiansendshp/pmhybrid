@@ -115,36 +115,35 @@ export class DashboardService {
       take: 10,
     });
 
-    const taskIds = (
-      await this.prisma.task.findMany({
-        where: { projectId: { in: projectIds }, deletedAt: null },
-        select: { id: true },
-      })
-    ).map((t) => t.id);
-
     const [
       recentStatusChanges,
       recentAssignments,
       recentAgentEvents,
       recentDocumentChanges,
     ] = await Promise.all([
-      taskIds.length === 0
-        ? []
-        : this.prisma.auditEvent.findMany({
-            where: {
-              entityType: 'Task',
-              entityId: { in: taskIds },
-              operation: 'STATUS_CHANGE',
-            },
-            orderBy: { occurredAt: 'desc' },
-            take: 10,
-          }),
+      // More than ten, because the ones about a removed task are dropped below.
+      this.prisma.auditEvent.findMany({
+        where: {
+          projectId: { in: projectIds },
+          entityType: 'Task',
+          operation: 'STATUS_CHANGE',
+        },
+        orderBy: { occurredAt: 'desc' },
+        take: 30,
+      }),
       this.prisma.taskAssignment.findMany({
         where: { task: { projectId: { in: projectIds } } },
         orderBy: { assignedAt: 'desc' },
         take: 10,
         include: {
-          task: { select: { id: true, title: true } },
+          task: {
+            select: {
+              id: true,
+              title: true,
+              projectId: true,
+              externalId: true,
+            },
+          },
           actor: { select: { displayName: true } },
         },
       }),
@@ -161,9 +160,23 @@ export class DashboardService {
       }),
     ]);
 
+    // Which task each status change is about, so the feed can say and link to it
+    // (Roadmap UX-03c2); a removed task's changes are not shown.
+    const changedTasks = await this.prisma.task.findMany({
+      where: {
+        id: { in: recentStatusChanges.map((event) => event.entityId) },
+        deletedAt: null,
+      },
+      select: { id: true, title: true, projectId: true, externalId: true },
+    });
+    const taskById = new Map(changedTasks.map((task) => [task.id, task]));
+
     return {
       recentlyModifiedTasks,
-      recentStatusChanges,
+      recentStatusChanges: recentStatusChanges
+        .filter((event) => taskById.has(event.entityId))
+        .slice(0, 10)
+        .map((event) => ({ ...event, task: taskById.get(event.entityId)! })),
       recentAssignments,
       recentAgentEvents,
       recentDocumentChanges,
