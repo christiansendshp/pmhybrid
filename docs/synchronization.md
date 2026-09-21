@@ -381,6 +381,16 @@ entries took 15 s and 500 outlasted the 20 s transaction; a chain of 500 now
 syncs in a few seconds. A dependency added in PM Hub is checked the same way,
 against the edges read once.
 
+**A loop is reported, not swallowed** (Roadmap BUG-06c). A dependency the document
+declares that would close a cycle is left unlinked — in both places sync can
+skip one: a link that is refused when it is first read, and a reference that was
+left dangling until its target appeared — and each is listed in
+`summary.skippedCycles` as `{ from, to }`, the row that declares it and the
+reference it names. The run is `PARTIAL` while any exists, and the project header
+lists them; fixing the document clears the list on the next run. No notification:
+it is a standing fact of the document, like an unreadable entry that has not
+changed.
+
 The flag starts false for dependencies that existed before it did; the next
 sync that sees them listed sets it, so removal applies from then on. A
 document that loses a `depends_on` by accident (a bad merge) does remove the

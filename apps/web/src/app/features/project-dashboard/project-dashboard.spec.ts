@@ -316,6 +316,25 @@ describe('ProjectDashboard — role assignment (brief §4)', () => {
     expect(text).not.toContain('PARTIAL');
   });
 
+  it('lists the dependencies left unlinked because they would close a loop (Roadmap BUG-06c)', async () => {
+    listSyncRuns.mockResolvedValue([
+      {
+        id: 's4',
+        projectId: 'p1',
+        startedAt: '2026-09-21T10:00:00.000Z',
+        finishedAt: '2026-09-21T10:00:01.000Z',
+        trigger: 'SCHEDULED',
+        status: 'PARTIAL',
+        summary: { skippedCycles: [{ from: 'PMH-H', to: 'PMH-G' }] },
+      },
+    ]);
+    const { fixture } = await render();
+
+    const text = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
+    expect(text).toContain('dependencias en círculo');
+    expect(text).toContain('PMH-H depende de PMH-G');
+  });
+
   it('says so when the project has never synced', async () => {
     const { fixture } = await render();
 

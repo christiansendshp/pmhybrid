@@ -66,6 +66,8 @@ export class ProjectDashboard implements OnInit {
     const run = this.lastSyncRun();
     return run ? syncNeedsAttention(run.status) : false;
   });
+  /** Dependencies the last run left unlinked because they would close a loop in the document. */
+  readonly skippedCycles = computed(() => this.lastSyncRun()?.summary?.skippedCycles ?? []);
   /** The project could not be loaded at all. */
   readonly loadError = signal<string | null>(null);
   /** Why "Sincronizar ahora" failed (a 422 carries the readable reason), or null. */

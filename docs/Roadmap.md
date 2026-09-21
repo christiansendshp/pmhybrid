@@ -272,65 +272,6 @@ created_at: 2026-09-21T15:00:00Z
 updated_at: 2026-09-21T15:00:00Z
 ```
 
-### BUG-06 — Conflicts pile up, resolving does not update the document, and an empty file floods them
-
-```yaml
-id: BUG-06
-type: BUG
-title: Conflicts pile up, resolving does not update the document, and an empty file floods them
-status: BACKLOG
-priority: P1
-depends_on:
-  - BUG-06a
-  - BUG-06b
-  - BUG-06c
-description: >
-  Found by the 2026-09-21 evaluation (sync audit, live). KEEP_LOCAL leaves
-  the database with the UI value and the document with the external one and
-  the stored hash has already advanced, so no later sync repairs it
-  (conflicts.service.ts states it does no write-back). Conflicts are not
-  deduplicated (16 -> 19 open across 3 syncs, 7 stacked on one task); they
-  stay open after the row reappears; an empty Roadmap.md produced 11
-  conflicts in one run (an invalid YAML fails safely, an empty file does
-  not); a dependency cycle A<->B leaves a dangling edge silently.
-expected_behavior: >
-  One open conflict per task and field, auto-closed when the sides agree
-  again; resolution writes the chosen value back to the document; an empty
-  or truncated document is rejected instead of treated as mass deletion.
-technical_context:
-  backend: apps/api/src/modules/conflicts, synchronization/synchronization.service.ts
-next_action: >
-  Umbrella only, refined on 2026-09-21 into BUG-06a (conflict hygiene and
-  the empty-document guard), BUG-06b (resolution writes back) and BUG-06c
-  (dependency cycles reported); close it when all three are done.
-created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T17:30:00Z
-```
-
-### BUG-06c — A dependency cycle in the document is dropped silently
-
-```yaml
-id: BUG-06c
-type: BUG
-title: A dependency cycle in the document is dropped silently
-status: BACKLOG
-priority: P3
-parent: BUG-06
-description: >
-  Third slice of BUG-06. When the document declares A depends on B and B
-  depends on A, sync skips the edge that would close the cycle and says
-  nothing, so the document and PM Hub disagree with no trace.
-expected_behavior: >
-  The skipped edge is reported on the run (which row, which reference) so the
-  authoring mistake can be found.
-technical_context:
-  backend: apps/api/src/modules/synchronization/synchronization.service.ts (reconcileDependencies, resolveDanglingDependencies)
-next_action: >
-  Add the skipped references to the run summary next to entryErrors.
-created_at: 2026-09-21T17:30:00Z
-updated_at: 2026-09-21T17:30:00Z
-```
-
 ### BUG-07 — Write-back runs outside the transaction and is not idempotent
 
 ```yaml

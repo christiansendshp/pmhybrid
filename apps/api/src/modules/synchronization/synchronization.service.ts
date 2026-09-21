@@ -49,6 +49,12 @@ export interface SyncEntryError {
   reason: string;
 }
 
+/** A dependency the document declares that sync did not link because it would close a cycle (Roadmap BUG-06c): the row that declares it, and the reference it names. */
+export interface SyncSkippedCycle {
+  from: string;
+  to: string;
+}
+
 /** Bounds the run's Json summary against a document with hundreds of broken entries. */
 const MAX_ENTRY_ERRORS_RECORDED = 50;
 
@@ -67,6 +73,8 @@ type OpenConflict = Prisma.ConflictGetPayload<object>;
 interface SyncSummary {
   /** Entries that could not be read this run; their tasks were left untouched. */
   entryErrors: SyncEntryError[];
+  /** Dependencies left unlinked because they would close a cycle; the document has a loop to fix. */
+  skippedCycles: SyncSkippedCycle[];
   documentsChanged: number;
   tasksCreated: number;
   tasksUpdated: number;
@@ -245,6 +253,7 @@ export class SynchronizationService {
 
     const summary: SyncSummary = {
       entryErrors: [],
+      skippedCycles: [],
       documentsChanged: 0,
       tasksCreated: 0,
       tasksUpdated: 0,
@@ -333,7 +342,9 @@ export class SynchronizationService {
         entryErrorsFingerprint(previousErrors ?? []);
 
     const status =
-      summary.conflictsRaised > 0 || summary.entryErrors.length > 0
+      summary.conflictsRaised > 0 ||
+      summary.entryErrors.length > 0 ||
+      summary.skippedCycles.length > 0
         ? 'PARTIAL'
         : 'SUCCESS';
     await tx.syncRun.update({
@@ -1253,6 +1264,21 @@ export class SynchronizationService {
     return changed;
   }
 
+  /** Records one skipped edge once per run, however many places notice it, bounded like the entry errors. */
+  private noteSkippedCycle(
+    summary: SyncSummary,
+    from: string,
+    to: string,
+  ): void {
+    if (
+      summary.skippedCycles.length < MAX_ENTRY_ERRORS_RECORDED &&
+      !summary.skippedCycles.some(
+        (skip) => skip.from === from && skip.to === to,
+      )
+    ) {
+      summary.skippedCycles.push({ from, to });
+    }
+  }
   /**
    * Step 6 (Roadmap GAP-14/GAP-35e, docs/domain-model.md "Depends on"): makes
    * a task's dependencies match its row's "Depends on" cell. Called on every
@@ -1365,7 +1391,10 @@ export class SynchronizationService {
         continue;
       }
       if (target && wouldCloseCycle(graph, taskId, target.id)) {
-        continue; // a document-authoring mistake — skip rather than corrupt the graph
+        // A document-authoring mistake: skip rather than corrupt the graph, and
+        // say so, so the loop can be found (Roadmap BUG-06c).
+        this.noteSkippedCycle(summary, externalId, referencedId);
+        continue;
       }
       const created = await tx.taskDependency.create({
         data: {
@@ -1421,13 +1450,22 @@ export class SynchronizationService {
         task: { projectId },
       },
     });
+    const externalIdOf = new Map(
+      [...existingByExternalId].map(([external, task]) => [task.id, external]),
+    );
     for (const dep of dangling) {
       const target = existingByExternalId.get(dep.rawExternalRef!);
       if (!target || target.id === dep.taskId) {
         continue; // still unresolved, or would now be a self-reference
       }
       if (wouldCloseCycle(graph, dep.taskId, target.id)) {
-        continue; // leave it dangling rather than close a cycle
+        // Left dangling rather than close a cycle — and reported.
+        this.noteSkippedCycle(
+          summary,
+          externalIdOf.get(dep.taskId) ?? dep.taskId,
+          dep.rawExternalRef!,
+        );
+        continue;
       }
       await tx.taskDependency.update({
         where: { id: dep.id },

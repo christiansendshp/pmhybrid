@@ -10,6 +10,12 @@ export interface SyncEntryError {
   reason: string;
 }
 
+/** A dependency the document declares that sync left unlinked because it would close a loop (Roadmap BUG-06c). */
+export interface SyncSkippedCycle {
+  from: string;
+  to: string;
+}
+
 export interface SyncRunSummary {
   documentsChanged?: number;
   tasksCreated?: number;
@@ -22,6 +28,8 @@ export interface SyncRunSummary {
   dependenciesRemoved?: number;
   /** Absent on runs recorded before entries were isolated. */
   entryErrors?: SyncEntryError[];
+  /** Absent on runs recorded before cycles were reported. */
+  skippedCycles?: SyncSkippedCycle[];
   /** Only on a FAILED run: one readable line. */
   error?: string;
 }

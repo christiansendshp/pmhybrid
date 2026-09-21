@@ -45,6 +45,22 @@
   <p role="alert">La última sincronización falló: {{ failure }}</p>
 }
 
+@if (skippedCycles().length > 0) {
+  <div role="alert" class="sync-entry-errors">
+    <p>
+      El Roadmap tiene dependencias en círculo; la sincronización no enlazó estas para no romper el
+      grafo:
+    </p>
+    <ul>
+      @for (skip of skippedCycles(); track skip.from + '>' + skip.to) {
+        <li>
+          <code>{{ skip.from }}</code> depende de <code>{{ skip.to }}</code>
+        </li>
+      }
+    </ul>
+  </div>
+}
+
 @if (syncErrorMessage()) {
   <p role="alert">No se pudo sincronizar: {{ syncErrorMessage() }}</p>
 }

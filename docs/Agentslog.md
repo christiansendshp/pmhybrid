@@ -788,3 +788,25 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: A local pnpm test:e2e now starts from a clean database. A vitest globalSetup (test/global-setup.ts) runs prisma migrate reset and the seed against the dedicated pmhybrid_test database before the suite, so it no longer grows by thousands of rows across runs: measured 1329 projects before the first run and 153 after it, and 153 again after a second run, at about ten seconds of cost per run. Guards: the reset only ever targets a database whose name is exactly pmhybrid_test (checked by isDedicatedTestDatabase, with a unit spec over lookalikes and unparseable values), does nothing when CI is set because CI's Postgres is a fresh container, and can be skipped with E2E_KEEP_DB=1 to inspect what a run left. The database URL now lives in one constant shared by the e2e config and the setup. Autonomous decisions: reset the whole database rather than delete throwaway rows one by one, because the schema has no cascades and a reset is deterministic; keep the manual test:e2e:db:setup for first-time setup and after a new migration. Left open: TEST-01b (coverage floor), 01c (web core specs) and 01d (a11y on every route, plan for the large services).
 - Files: apps/api/test/global-setup.ts,apps/api/test/test-database.ts,apps/api/test/test-database.spec.ts,apps/api/vitest.config.e2e.ts,docs/testing.md
 - Verify: pnpm --filter api test (314) and pnpm test:e2e (218, twice in a row with the project count staying at 153) green; api lint clean; nest build ok
+
+## [2026-09-21T16:53:29Z] | claude | BUG-06c | IN_PROGRESS
+
+- Summary: Report dependencies skipped for closing a cycle in the run summary and the project header
+- Verify: pending
+
+## [2026-09-21T16:59:35Z] | claude | BUG-06c | DONE
+
+- Summary: A dependency cycle in the document is reported instead of dropped silently. Both places sync can skip a dependency that would close a cycle (a link refused when first read, and a dangling reference whose target appeared later) now record it in summary.skippedCycles as the row that declares it and the reference it names, once per run and bounded like the entry errors, and the run is PARTIAL while any exists; fixing the document clears the list on the next run, and an unfixed one is reported again every run. The project header lists them in Spanish. Autonomous decisions in docs/synchronization.md: no notification, because a loop is a standing fact of the document like an unchanged unreadable entry; the skipped edge is still never linked. This closes BUG-06 (a, b and c). Left open: nothing in this entry.
+- Files: apps/api/src/modules/synchronization/synchronization.service.ts,apps/api/test/roadmap-dependencies.e2e-spec.ts,apps/web/src/app/features/project-dashboard/project-dashboard.ts,apps/web/src/app/core/synchronization.service.ts,docs/synchronization.md
+- Verify: pnpm --filter api test (314) and pnpm test:e2e (218) green; ng test (193) green; api and web lint clean; api and web build ok
+
+## [2026-09-21T16:59:56Z] | claude | BUG-06 | IN_PROGRESS
+
+- Summary: Close the umbrella: BUG-06a, b and c are done
+- Verify: pending
+
+## [2026-09-21T16:59:57Z] | claude | BUG-06 | DONE
+
+- Summary: Umbrella closed: conflicts stay honest (BUG-06a: one open conflict per task and field, closing themselves, an empty Roadmap refused), resolving writes the chosen value back to the document (BUG-06b), and a dependency loop is reported (BUG-06c). See those entries' summaries in the Agentslog for the decisions.
+- Files: docs/synchronization.md
+- Verify: all three slices green: api unit and e2e, web tests, lint and builds

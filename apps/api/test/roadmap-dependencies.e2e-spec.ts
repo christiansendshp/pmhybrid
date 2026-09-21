@@ -53,7 +53,9 @@ describe('Roadmap "Depends on" reconciliation (e2e)', () => {
       imports: [AppModule],
     }).compile();
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     const login = await request(server())
@@ -80,7 +82,10 @@ describe('Roadmap "Depends on" reconciliation (e2e)', () => {
   }
 
   async function sync(projectId: string) {
-    return request(server()).post(`/projects/${projectId}/sync`).set('Authorization', auth()).expect(201);
+    return request(server())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth())
+      .expect(201);
   }
 
   async function getTaskByExternalId(projectId: string, externalId: string) {
@@ -88,7 +93,9 @@ describe('Roadmap "Depends on" reconciliation (e2e)', () => {
       .get(`/projects/${projectId}/tasks`)
       .set('Authorization', auth())
       .expect(200);
-    const summary = tasks.body.find((t: { externalId: string }) => t.externalId === externalId);
+    const summary = tasks.body.find(
+      (t: { externalId: string }) => t.externalId === externalId,
+    );
     const full = await request(server())
       .get(`/projects/${projectId}/tasks/${summary.id}`)
       .set('Authorization', auth())
@@ -140,7 +147,9 @@ describe('Roadmap "Depends on" reconciliation (e2e)', () => {
     const docsPath = createScratchDocsPath();
     writeFileSync(
       path.join(docsPath, 'Roadmap.md'),
-      roadmapWithActiveRows('| PMH-C | Depends on a row not yet written | check | TODO | — | PMH-D |'),
+      roadmapWithActiveRows(
+        '| PMH-C | Depends on a row not yet written | check | TODO | — | PMH-D |',
+      ),
       'utf-8',
     );
     const projectId = await createProjectAt(docsPath);
@@ -195,7 +204,10 @@ describe('Roadmap "Depends on" reconciliation (e2e)', () => {
       .send({ rawExternalRef: 'EXTERNAL-TICKET-9' })
       .expect(201);
 
-    const roadmapAfterAdd = readFileSync(path.join(docsPath, 'Roadmap.md'), 'utf-8');
+    const roadmapAfterAdd = readFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      'utf-8',
+    );
     expect(roadmapAfterAdd).toContain(
       '| PMH-BASE2 | Base | check | TODO | — | EXTERNAL-TICKET-9 |',
     );
@@ -204,7 +216,10 @@ describe('Roadmap "Depends on" reconciliation (e2e)', () => {
 
     const baseAfter = await getTaskByExternalId(projectId, 'PMH-BASE2');
     expect(
-      baseAfter.dependencies.some((d: { rawExternalRef: string | null }) => d.rawExternalRef === 'EXTERNAL-TICKET-9'),
+      baseAfter.dependencies.some(
+        (d: { rawExternalRef: string | null }) =>
+          d.rawExternalRef === 'EXTERNAL-TICKET-9',
+      ),
     ).toBe(true); // sync never removed it
 
     e = await getTaskByExternalId(projectId, 'PMH-E');
@@ -255,7 +270,9 @@ describe('Roadmap "Depends on" reconciliation (e2e)', () => {
     const docsPath = createScratchDocsPath();
     writeFileSync(
       path.join(docsPath, 'Roadmap.md'),
-      roadmapWithActiveRows('| PMH-F | Depends on itself | check | TODO | — | PMH-F |'),
+      roadmapWithActiveRows(
+        '| PMH-F | Depends on itself | check | TODO | — | PMH-F |',
+      ),
       'utf-8',
     );
     const projectId = await createProjectAt(docsPath);
@@ -291,7 +308,11 @@ describe('Roadmap "Depends on" reconciliation (e2e)', () => {
       'utf-8',
     );
     const syncRun = await sync(projectId);
-    expect(syncRun.body.status).not.toBe('FAILED');
+    // The loop is reported, not swallowed (Roadmap BUG-06c): the run is PARTIAL and names the edge.
+    expect(syncRun.body.status).toBe('PARTIAL');
+    expect(syncRun.body.summary.skippedCycles).toEqual([
+      { from: 'PMH-H', to: 'PMH-G' },
+    ]);
 
     const g = await getTaskByExternalId(projectId, 'PMH-G');
     const h = await getTaskByExternalId(projectId, 'PMH-H');
@@ -300,6 +321,23 @@ describe('Roadmap "Depends on" reconciliation (e2e)', () => {
     expect(g.dependencies).toHaveLength(1);
     expect(g.dependencies[0].dependsOnTaskId).toBe(h.id);
     expect(h.dependencies).toHaveLength(0);
+
+    // Still in the document, still reported on the next run; fixing the document clears it.
+    const again = await sync(projectId);
+    expect(again.body.summary.skippedCycles).toEqual([
+      { from: 'PMH-H', to: 'PMH-G' },
+    ]);
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmapWithActiveRows(
+        '| PMH-G | Will depend on H | check | TODO | — | PMH-H |',
+        '| PMH-H | Will depend on G too | check | TODO | — | — |',
+      ),
+      'utf-8',
+    );
+    const fixed = await sync(projectId);
+    expect(fixed.body.summary.skippedCycles).toEqual([]);
+    expect(fixed.body.status).toBe('SUCCESS');
   });
 
   it('renders every dependency into the cell, sorted, regardless of the order they were added (Roadmap GAP-22)', async () => {
@@ -359,7 +397,10 @@ describe('Roadmap "Depends on" reconciliation (e2e)', () => {
       .send({ dependsOnTaskId: n.id })
       .expect(201);
 
-    const me = await request(server()).get('/auth/me').set('Authorization', auth()).expect(200);
+    const me = await request(server())
+      .get('/auth/me')
+      .set('Authorization', auth())
+      .expect(200);
     await request(server())
       .post(`/projects/${projectId}/tasks/${m.id}/assign`)
       .set('Authorization', auth())
