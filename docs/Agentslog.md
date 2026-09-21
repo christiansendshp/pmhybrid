@@ -1046,3 +1046,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: The API unit and e2e runs measure coverage with v8 and fail below a floor just under today's value (unit 42/41/34/42, e2e 84/74/87/84 for statements/branches/functions/lines); CI runs both gated commands
 - Files: apps/api/vitest.config.ts,apps/api/vitest.config.e2e.ts,apps/api/package.json,.github/workflows/ci.yml,docs/testing.md
 - Verify: test:cov and test:e2e:cov pass at the floor (43.8/43.2/36.5/43.5 and 86.2/76.4/89.9/86.1); a floor of 99 fails as intended
+
+## [2026-09-21T19:24:02Z] | claude | TEST-01c | IN_PROGRESS
+
+- Summary: Unit specs for the untested web core pieces
+- Verify: pending
+
+## [2026-09-21T19:25:33Z] | claude | TEST-01c | DONE
+
+- Summary: auth.interceptor (bearer header, one refresh and one retry, no refresh for the auth endpoints, redirect when the refresh fails), the login page (validation before any request, success, wrong credentials, double submit) and projectMemberGuard (member, non-member, no project id) have specs
+- Files: apps/web/src/app/core/auth.interceptor.spec.ts,apps/web/src/app/core/project-member.guard.spec.ts,apps/web/src/app/features/auth/login/login.spec.ts
+- Verify: web unit 236 pass, eslint clean

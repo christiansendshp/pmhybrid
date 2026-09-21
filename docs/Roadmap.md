@@ -449,29 +449,6 @@ created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T19:30:00Z
 ```
 
-### TEST-01c — Unit specs for the untested web core pieces
-
-```yaml
-id: TEST-01c
-type: TEST
-title: Unit specs for the untested web core pieces
-status: BACKLOG
-priority: P2
-parent: TEST-01
-description: >
-  Third slice of TEST-01. auth.interceptor (the 401 refresh), the login page
-  and the project-member guard have no spec.
-expected_behavior: >
-  Each has a spec for its success path and its refusal path, including a
-  refresh that fails and a request retried exactly once.
-technical_context:
-  frontend: apps/web/src/app/core, features/auth, guards
-next_action: >
-  Read each piece and list its branches before writing the specs.
-created_at: 2026-09-21T19:30:00Z
-updated_at: 2026-09-21T19:30:00Z
-```
-
 ### TEST-01d — Accessibility coverage on every route, and a plan for the large services
 
 ```yaml
