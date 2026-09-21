@@ -226,6 +226,20 @@ th {
   }
 }
 
+// The assignee of a task in development cannot be changed without a special permission
+// (brief §7); the mark says so where the assignee is shown (Roadmap UX-01).
+.lock-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding-inline: var(--space-2);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 999px;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+  white-space: nowrap;
+}
+
 // A dense data table wider than its container scrolls instead of squeezing (.projects,
 // .workload, .team-table, ...) — the table element itself sets its own min-width.
 // The border reads as one seamed console panel, consistent with .page-header/.tab-nav.

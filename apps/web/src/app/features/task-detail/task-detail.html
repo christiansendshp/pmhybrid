@@ -1,4 +1,11 @@
-@if (task(); as t) {
+@if (notFound()) {
+  <p role="alert">
+    Esta tarea no existe o se quitó del proyecto.
+    <a routerLink="../kanban">Volver al tablero</a>
+  </p>
+} @else if (loadError()) {
+  <p role="alert">{{ loadError() }}</p>
+} @else if (task(); as t) {
   <header class="page-header">
     <div>
       <p class="meta-text task-id">{{ t.externalId ?? 'Todavía no está en el Roadmap' }}</p>
@@ -46,6 +53,9 @@
   }
   @if (deleteError()) {
     <p role="alert">{{ deleteError() }}</p>
+  }
+  @if (actionError()) {
+    <p role="alert">{{ actionError() }}</p>
   }
   <p>Estado: {{ statusLabel(t.status) }} — Progreso: {{ t.computedProgress }}%</p>
 
@@ -106,7 +116,7 @@
   <section>
     <h3>Transición</h3>
     @for (status of legalNextStatuses(); track status) {
-      <button mat-flat-button type="button" (click)="transition(status)">
+      <button mat-flat-button type="button" [disabled]="acting()" (click)="transition(status)">
         {{ statusLabel(status) }}
       </button>
     }
@@ -121,6 +131,13 @@
           : 'Sin asignar'
       }}
     </p>
+    @if (t.assignee && t.status === 'EN_DESARROLLO') {
+      <p class="meta-text">
+        <span class="lock-badge">Asignación fija</span>
+        La asignación está bloqueada mientras la tarea está en desarrollo; cambiarla requiere un
+        permiso especial.
+      </p>
+    }
     <mat-select
       placeholder="Asignar a…"
       [ngModel]="selectedAssigneeId()"
@@ -130,7 +147,12 @@
         <mat-option [value]="member.actorId">{{ member.actor.displayName }}</mat-option>
       }
     </mat-select>
-    <button mat-flat-button type="button" [disabled]="!selectedAssigneeId()" (click)="assign()">
+    <button
+      mat-flat-button
+      type="button"
+      [disabled]="!selectedAssigneeId() || acting()"
+      (click)="assign()"
+    >
       Asignar
     </button>
   </section>

@@ -116,6 +116,17 @@ describe('Kanban (brief §15)', () => {
     expect(text()).toContain('1 de 1 tareas');
   });
 
+  it('marks the assignee of a task in development as fixed, and only then (Roadmap UX-01)', async () => {
+    const { harness } = await render([
+      card({ id: 't1', status: 'EN_DESARROLLO' }),
+      card({ id: 't2', status: 'ASIGNADA' }),
+    ]);
+    const marks = Array.from(harness.routeNativeElement!.querySelectorAll('.lock-badge'));
+
+    expect(marks).toHaveLength(1);
+    expect(marks[0].textContent).toContain('Asignación fija');
+  });
+
   it('searches by title or Roadmap ID and says when nothing matches', async () => {
     const { component, harness, text } = await render([
       card(),

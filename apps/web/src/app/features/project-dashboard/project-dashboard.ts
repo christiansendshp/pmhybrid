@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -9,12 +10,14 @@ import { describeHttpError } from '../../core/http-error.js';
 import { ProjectContext } from '../../core/project-context.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { Role, RoleAssignment, RolesService } from '../../core/roles.service.js';
+import { syncNeedsAttention, syncStatusLabel } from '../../core/sync-status.js';
 import { SyncRun, SynchronizationService } from '../../core/synchronization.service.js';
 
 /** Project header inside the app shell: identity, sync, members and the section tabs. */
 @Component({
   selector: 'app-project-dashboard',
   imports: [
+    DatePipe,
     RouterOutlet,
     RouterLink,
     RouterLinkActive,
@@ -53,6 +56,18 @@ export class ProjectDashboard implements OnInit {
   readonly selectedNewMemberRoleId = signal<string | null>(null);
   readonly syncing = signal(false);
   readonly lastSyncRun = signal<SyncRun | null>(null);
+  readonly syncStatusLabel = syncStatusLabel;
+  /** The last run failed: why, from the run itself, so it is visible without pressing anything (Roadmap UX-01). */
+  readonly lastSyncFailure = computed(() => {
+    const run = this.lastSyncRun();
+    return run?.status === 'FAILED' ? (run.summary?.error ?? 'Error desconocido') : null;
+  });
+  readonly lastSyncNeedsAttention = computed(() => {
+    const run = this.lastSyncRun();
+    return run ? syncNeedsAttention(run.status) : false;
+  });
+  /** The project could not be loaded at all. */
+  readonly loadError = signal<string | null>(null);
   /** Why "Sincronizar ahora" failed (a 422 carries the readable reason), or null. */
   readonly syncErrorMessage = signal<string | null>(null);
   /** Roadmap entries the last run could not read; their tasks were left as they were. */
@@ -71,7 +86,16 @@ export class ProjectDashboard implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
+    try {
+      await this.load();
+    } catch (error) {
+      this.loadError.set(describeHttpError(error, 'No se pudo cargar el proyecto.'));
+    }
+  }
+
+  private async load(): Promise<void> {
     const projectId = this.projectId;
+    void this.loadLastSyncRun(projectId);
     const [project, members, permissions, users, agents, roles, assignments] = await Promise.all([
       this.projectsService.getById(projectId),
       this.projectsService.listMembers(projectId),
@@ -95,6 +119,18 @@ export class ProjectDashboard implements OnInit {
     this.candidateActors.set(
       [...users, ...agents].filter((a) => a.isActive && !memberActorIds.has(a.id)),
     );
+  }
+
+  /** The header shows the last run from the moment it opens, not only after "Sincronizar ahora" was pressed. */
+  private async loadLastSyncRun(projectId: string): Promise<void> {
+    try {
+      const runs = await this.synchronizationService.listSyncRuns(projectId);
+      if (!this.lastSyncRun()) {
+        this.lastSyncRun.set(runs[0] ?? null);
+      }
+    } catch {
+      // Best effort: the header simply shows no run.
+    }
   }
 
   rolesForMember(actorId: string): RoleAssignment[] {

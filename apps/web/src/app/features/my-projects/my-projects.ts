@@ -7,6 +7,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { syncNeedsAttention, syncStatusLabel } from '../../core/sync-status.js';
 import { actorKindLabel } from '../../core/actor-kind.js';
 import { describeHttpError } from '../../core/http-error.js';
 import {
@@ -55,6 +56,8 @@ export class MyProjects implements OnInit {
   readonly rollupStrategies = PROGRESS_ROLLUP_STRATEGIES;
   readonly rollupStrategyLabels = PROGRESS_ROLLUP_STRATEGY_LABELS;
   readonly kindLabel = actorKindLabel;
+  readonly syncStatusLabel = syncStatusLabel;
+  readonly syncNeedsAttention = syncNeedsAttention;
 
   readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.pattern(/\S/)]],

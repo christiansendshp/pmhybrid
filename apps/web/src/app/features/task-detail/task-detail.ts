@@ -2,6 +2,7 @@ import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
@@ -67,6 +68,12 @@ export class TaskDetail implements OnInit {
   readonly confirmingDelete = signal(false);
   readonly deleting = signal(false);
   readonly deleteError = signal<string | null>(null);
+  /** Why the last move, assignment or dependency did not happen — shown, never swallowed (Roadmap UX-01). */
+  readonly actionError = signal<string | null>(null);
+  readonly acting = signal(false);
+  /** The task does not exist (or was removed): a page of its own, not a blank one. */
+  readonly notFound = signal(false);
+  readonly loadError = signal<string | null>(null);
   readonly describeChanges = describeAuditChanges;
   readonly actorKindLabel = actorKindLabel;
   readonly statusLabel = statusLabel;
@@ -120,12 +127,25 @@ export class TaskDetail implements OnInit {
       this.addingSubtask.set(false);
       this.confirmingDelete.set(false);
       this.deleteError.set(null);
+      this.actionError.set(null);
+      this.notFound.set(false);
+      this.loadError.set(null);
       void this.load();
     });
   }
 
   private async load(): Promise<void> {
-    await this.reload();
+    try {
+      await this.reload();
+    } catch (error) {
+      this.task.set(null);
+      if (error instanceof HttpErrorResponse && error.status === 404) {
+        this.notFound.set(true);
+      } else {
+        this.loadError.set(describeHttpError(error, 'No se pudo cargar la tarea.'));
+      }
+      return;
+    }
     const [members, allTasks, hierarchy, permissions] = await Promise.all([
       this.projectsService.listMembers(this.projectId),
       this.tasksService.listForProject(this.projectId),
@@ -154,8 +174,10 @@ export class TaskDetail implements OnInit {
   }
 
   async transition(status: TaskStatus): Promise<void> {
-    await this.tasksService.transition(this.projectId, this.taskId, status);
-    await this.reload();
+    await this.runAction(
+      () => this.tasksService.transition(this.projectId, this.taskId, status),
+      'No se pudo cambiar el estado.',
+    );
   }
 
   async assign(): Promise<void> {
@@ -163,9 +185,10 @@ export class TaskDetail implements OnInit {
     if (!actorId) {
       return;
     }
-    await this.tasksService.assign(this.projectId, this.taskId, actorId);
-    this.selectedAssigneeId.set(null);
-    await this.reload();
+    await this.runAction(async () => {
+      await this.tasksService.assign(this.projectId, this.taskId, actorId);
+      this.selectedAssigneeId.set(null);
+    }, 'No se pudo asignar la tarea.');
   }
 
   async addDependency(): Promise<void> {
@@ -173,9 +196,37 @@ export class TaskDetail implements OnInit {
     if (!dependsOnTaskId) {
       return;
     }
-    await this.tasksService.addDependency(this.projectId, this.taskId, dependsOnTaskId);
-    this.selectedDependsOnId.set(null);
-    await this.reload();
+    await this.runAction(async () => {
+      await this.tasksService.addDependency(this.projectId, this.taskId, dependsOnTaskId);
+      this.selectedDependsOnId.set(null);
+    }, 'No se pudo añadir la dependencia.');
+  }
+
+  /**
+   * One place for the buttons that change the task in place: a 403 (missing
+   * permission), a 409 (someone else changed it first, including the locked
+   * assignee of brief §7) or a 422 (the document could not be written) is
+   * shown as what it is, and the task is reloaded either way so the screen
+   * shows what is really there rather than what was attempted.
+   */
+  private async runAction(action: () => Promise<unknown>, fallback: string): Promise<void> {
+    if (this.acting()) {
+      return;
+    }
+    this.acting.set(true);
+    this.actionError.set(null);
+    try {
+      await action();
+    } catch (error) {
+      this.actionError.set(describeHttpError(error, fallback));
+    } finally {
+      this.acting.set(false);
+    }
+    try {
+      await this.reload();
+    } catch {
+      // The action's own message is the one that matters.
+    }
   }
 
   startEditing(): void {

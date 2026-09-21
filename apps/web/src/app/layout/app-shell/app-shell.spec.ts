@@ -28,12 +28,14 @@ describe('AppShell', () => {
   let logout: ReturnType<typeof vi.fn>;
   let list: ReturnType<typeof vi.fn>;
   let markRead: ReturnType<typeof vi.fn>;
+  let markAllRead: ReturnType<typeof vi.fn>;
   let notificationsChanged: ReturnType<typeof signal<number>>;
 
   beforeEach(() => {
     logout = vi.fn();
     list = vi.fn().mockResolvedValue([]);
     markRead = vi.fn();
+    markAllRead = vi.fn();
     notificationsChanged = signal(0);
     TestBed.configureTestingModule({
       providers: [
@@ -66,7 +68,7 @@ describe('AppShell', () => {
             logout,
           },
         },
-        { provide: NotificationsService, useValue: { list, markRead } },
+        { provide: NotificationsService, useValue: { list, markRead, markAllRead } },
         { provide: RealtimeService, useValue: { notificationsChanged } },
       ],
     });
@@ -215,5 +217,94 @@ describe('AppShell', () => {
     harness.detectChanges();
 
     expect(list).toHaveBeenCalledTimes(2);
+  });
+
+  describe('the notifications panel (Roadmap UX-01)', () => {
+    const open = async (harness: RouterTestingHarness, root: HTMLElement) => {
+      root.querySelector<HTMLButtonElement>('.notifications__toggle')!.click();
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+    };
+    const panel = (root: HTMLElement) => root.querySelector('.notifications__panel');
+
+    it('shows the same notification once, with how many there are, and marks them all read together', async () => {
+      list.mockResolvedValue([
+        notification({ id: 'n1', createdAt: '2026-09-15T09:00:00.000Z' }),
+        notification({ id: 'n2', createdAt: '2026-09-15T09:05:00.000Z' }),
+        notification({ id: 'n3', createdAt: '2026-09-15T09:10:00.000Z' }),
+      ]);
+      markRead.mockImplementation((id: string) =>
+        Promise.resolve(notification({ id, readAt: '2026-09-15T11:00:00.000Z' })),
+      );
+      const { root, harness } = await renderAt('/dashboard');
+      await open(harness, root);
+
+      expect(root.querySelectorAll('.notifications__item')).toHaveLength(1);
+      expect(root.textContent).toContain('(×3)');
+
+      const button = Array.from(root.querySelectorAll('button')).find(
+        (b) => b.textContent?.trim() === 'Marcar como leída',
+      )!;
+      button.click();
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+
+      expect(markRead).toHaveBeenCalledTimes(3);
+      expect(root.querySelector('.notifications__badge')).toBeNull();
+    });
+
+    it('marks every unread notification read with one action', async () => {
+      list.mockResolvedValue([
+        notification({ id: 'n1' }),
+        notification({ id: 'n2', type: 'SYNC_FAILED', payload: { error: 'boom' } }),
+      ]);
+      markAllRead.mockResolvedValue({ count: 2 });
+      const { root, harness } = await renderAt('/dashboard');
+      await open(harness, root);
+
+      Array.from(root.querySelectorAll('button'))
+        .find((b) => b.textContent?.trim() === 'Marcar todas como leídas')!
+        .click();
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+
+      expect(markAllRead).toHaveBeenCalledTimes(1);
+      expect(root.querySelector('.notifications__badge')).toBeNull();
+      expect(root.textContent).not.toContain('Marcar todas como leídas');
+    });
+
+    it('closes on Escape, on a click outside it, and when the page changes', async () => {
+      list.mockResolvedValue([notification({ id: 'n1' })]);
+      const { root, harness } = await renderAt('/dashboard');
+
+      await open(harness, root);
+      expect(panel(root)).not.toBeNull();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      harness.detectChanges();
+      expect(panel(root)).toBeNull();
+
+      await open(harness, root);
+      // A click inside the panel keeps it open...
+      panel(root)!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      harness.detectChanges();
+      expect(panel(root)).not.toBeNull();
+      // ...one anywhere else closes it.
+      root.querySelector('main')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      harness.detectChanges();
+      expect(panel(root)).toBeNull();
+
+      await open(harness, root);
+      await harness.navigateByUrl('/projects', AppShell);
+      harness.detectChanges();
+      expect(panel(root)).toBeNull();
+    });
+
+    it('says so when the notifications cannot be loaded, instead of looking empty', async () => {
+      list.mockRejectedValue(new Error('offline'));
+      const { root, harness } = await renderAt('/dashboard');
+      await open(harness, root);
+
+      expect(root.textContent).toContain('No se pudieron cargar las notificaciones.');
+    });
   });
 });

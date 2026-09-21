@@ -46,6 +46,14 @@ export class NotificationsService {
     });
   }
 
+  /** Marks every unread notification of the caller as read; nobody else's are touched. Idempotent — a second call marks none. */
+  async markAllRead(actorId: string): Promise<{ count: number }> {
+    return this.prisma.notification.updateMany({
+      where: { actorId, readAt: null },
+      data: { readAt: new Date() },
+    });
+  }
+
   /** Idempotent, and scoped to the caller's own notifications — 404 rather than leaking whether another actor's id exists. */
   async markRead(id: string, actorId: string) {
     const notification = await this.prisma.notification.findUnique({

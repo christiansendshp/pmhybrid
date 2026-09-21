@@ -6,7 +6,10 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './../prisma/demo-credentials.js';
-import { createScratchDocsPath, uniqueDocsPath } from './helpers/scratch-docs.js';
+import {
+  createScratchDocsPath,
+  uniqueDocsPath,
+} from './helpers/scratch-docs.js';
 
 const ACTIVE_HEADER = `| ID | Outcome | Acceptance check | Status | Owner | Depends on |
 | --- | --- | --- | --- | --- | --- |`;
@@ -52,7 +55,9 @@ describe('Internal notifications (e2e)', () => {
       imports: [AppModule],
     }).compile();
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     const login = await request(server())
@@ -68,7 +73,8 @@ describe('Internal notifications (e2e)', () => {
 
   const server = () => app.getHttpServer();
   const auth = (token = ownerToken) => `Bearer ${token}`;
-  const unique = (label: string) => `${label}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const unique = (label: string) =>
+    `${label}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 
   async function createProjectAt(docsPath: string) {
     const res = await request(server())
@@ -90,7 +96,10 @@ describe('Internal notifications (e2e)', () => {
       .post('/auth/login')
       .send({ email, password: 'password123' })
       .expect(200);
-    return { id: res.body.id as string, token: login.body.accessToken as string };
+    return {
+      id: res.body.id as string,
+      token: login.body.accessToken as string,
+    };
   }
 
   async function addMember(projectId: string, actorId: string) {
@@ -109,16 +118,25 @@ describe('Internal notifications (e2e)', () => {
     const docsPath = createScratchDocsPath();
     writeFileSync(
       path.join(docsPath, 'Roadmap.md'),
-      roadmapWithActiveRow('| PMH-N1 | Vanishes silently | check | TODO | — | — |'),
+      roadmapWithActiveRow(
+        '| PMH-N1 | Vanishes silently | check | TODO | — | — |',
+      ),
       'utf-8',
     );
     const projectId = await createProjectAt(docsPath);
     const member = await createUser();
     await addMember(projectId, member.id);
 
-    await request(server()).post(`/projects/${projectId}/sync`).set('Authorization', auth()).expect(201);
+    await request(server())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth())
+      .expect(201);
     // The row disappears with no terminal Agentslog entry — a conflict.
-    writeFileSync(path.join(docsPath, 'Roadmap.md'), roadmapWithActiveRow('| — | — | — | — | — | — |'), 'utf-8');
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmapWithActiveRow('| — | — | — | — | — | — |'),
+      'utf-8',
+    );
     const syncRun = await request(server())
       .post(`/projects/${projectId}/sync`)
       .set('Authorization', auth()) // the owner triggers it
@@ -135,7 +153,10 @@ describe('Internal notifications (e2e)', () => {
       .set('Authorization', auth())
       .expect(200);
     expect(
-      ownerNotifications.body.some((n: { payload: { syncRunId?: string } }) => n.payload?.syncRunId === syncRunId),
+      ownerNotifications.body.some(
+        (n: { payload: { syncRunId?: string } }) =>
+          n.payload?.syncRunId === syncRunId,
+      ),
     ).toBe(false);
 
     // The other active member, who did not trigger it, does get one.
@@ -144,7 +165,8 @@ describe('Internal notifications (e2e)', () => {
       .set('Authorization', auth(member.token))
       .expect(200);
     const raised = memberNotifications.body.find(
-      (n: { payload: { syncRunId?: string } }) => n.payload?.syncRunId === syncRunId,
+      (n: { payload: { syncRunId?: string } }) =>
+        n.payload?.syncRunId === syncRunId,
     );
     expect(raised).toBeDefined();
     expect(raised.type).toBe('CONFLICTS_DETECTED');
@@ -166,7 +188,10 @@ describe('Internal notifications (e2e)', () => {
     const member = await createUser();
     await addMember(projectId, member.id);
 
-    await request(server()).post(`/projects/${projectId}/sync`).set('Authorization', auth()).expect(422);
+    await request(server())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth())
+      .expect(422);
 
     const runs = await request(server())
       .get(`/projects/${projectId}/sync-runs`)
@@ -187,7 +212,10 @@ describe('Internal notifications (e2e)', () => {
       .set('Authorization', auth())
       .expect(200);
     expect(
-      ownerNotifications.body.some((n: { payload: { syncRunId?: string } }) => n.payload?.syncRunId === syncRunId),
+      ownerNotifications.body.some(
+        (n: { payload: { syncRunId?: string } }) =>
+          n.payload?.syncRunId === syncRunId,
+      ),
     ).toBe(false);
 
     const memberNotifications = await request(server())
@@ -195,7 +223,8 @@ describe('Internal notifications (e2e)', () => {
       .set('Authorization', auth(member.token))
       .expect(200);
     const failure = memberNotifications.body.find(
-      (n: { payload: { syncRunId?: string } }) => n.payload?.syncRunId === syncRunId,
+      (n: { payload: { syncRunId?: string } }) =>
+        n.payload?.syncRunId === syncRunId,
     );
     expect(failure).toBeDefined();
     expect(failure.type).toBe('SYNC_FAILED');
@@ -205,7 +234,9 @@ describe('Internal notifications (e2e)', () => {
     const docsPath = createScratchDocsPath();
     writeFileSync(
       path.join(docsPath, 'Roadmap.md'),
-      roadmapWithActiveRow('| PMH-N3 | Vanishes thrice | check | TODO | — | — |'),
+      roadmapWithActiveRow(
+        '| PMH-N3 | Vanishes thrice | check | TODO | — | — |',
+      ),
       'utf-8',
     );
     const projectId = await createProjectAt(docsPath);
@@ -218,17 +249,27 @@ describe('Internal notifications (e2e)', () => {
       .post(`/projects/${projectId}/sync`)
       .set('Authorization', auth(member.token))
       .expect(201);
-    writeFileSync(path.join(docsPath, 'Roadmap.md'), roadmapWithActiveRow('| — | — | — | — | — | — |'), 'utf-8');
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmapWithActiveRow('| — | — | — | — | — | — |'),
+      'utf-8',
+    );
     const syncRun = await request(server())
       .post(`/projects/${projectId}/sync`)
       .set('Authorization', auth(member.token))
       .expect(201);
     const syncRunId = syncRun.body.id as string;
 
-    const before = await request(server()).get('/notifications').set('Authorization', auth()).expect(200);
+    const before = await request(server())
+      .get('/notifications')
+      .set('Authorization', auth())
+      .expect(200);
     // The demo owner is shared/reused across the e2e suite, so find this
     // test's own notification by syncRunId rather than assuming body[0].
-    const own = before.body.find((n: { payload: { syncRunId?: string } }) => n.payload?.syncRunId === syncRunId);
+    const own = before.body.find(
+      (n: { payload: { syncRunId?: string } }) =>
+        n.payload?.syncRunId === syncRunId,
+    );
     expect(own).toBeDefined();
     const notificationId = own.id as string;
 
@@ -250,6 +291,66 @@ describe('Internal notifications (e2e)', () => {
       .patch(`/notifications/${notificationId}/read`)
       .set('Authorization', auth(stranger.token))
       .expect(404);
+  });
+
+  it('marks all of the caller’s own unread notifications read, and only theirs (Roadmap UX-01)', async () => {
+    const docsPath = createScratchDocsPath();
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmapWithActiveRow('| PMH-N4 | Vanishes once | check | TODO | — | — |'),
+      'utf-8',
+    );
+    const projectId = await createProjectAt(docsPath);
+    const member = await createUser();
+    await addMember(projectId, member.id);
+    // The member triggers both runs, so the OWNER is the one who is told.
+    await request(server())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth(member.token))
+      .expect(201);
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmapWithActiveRow('| — | — | — | — | — | — |'),
+      'utf-8',
+    );
+    await request(server())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth(member.token))
+      .expect(201);
+    const unread = async (token: string) =>
+      (
+        await request(server())
+          .get('/notifications')
+          .set('Authorization', auth(token))
+          .expect(200)
+      ).body.filter((n: { readAt: string | null }) => n.readAt === null).length;
+    expect(await unread(ownerToken)).toBeGreaterThan(0);
+    const stranger = await createUser();
+
+    // Someone else's call touches none of the owner's.
+    const others = await request(server())
+      .patch('/notifications/read-all')
+      .set('Authorization', auth(stranger.token))
+      .expect(200);
+    expect(others.body.count).toBe(0);
+    expect(await unread(ownerToken)).toBeGreaterThan(0);
+
+    const marked = await request(server())
+      .patch('/notifications/read-all')
+      .set('Authorization', auth())
+      .expect(200);
+    expect(marked.body.count).toBeGreaterThan(0);
+    expect(await unread(ownerToken)).toBe(0);
+    // Idempotent: nothing left to mark.
+    const again = await request(server())
+      .patch('/notifications/read-all')
+      .set('Authorization', auth())
+      .expect(200);
+    expect(again.body.count).toBe(0);
+  });
+
+  it('refuses read-all without a token', async () => {
+    await request(server()).patch('/notifications/read-all').expect(401);
   });
 
   it('404s marking an unknown notification id read', async () => {

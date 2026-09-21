@@ -280,6 +280,72 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     expect(listAudit).toHaveBeenCalledTimes(2);
   });
 
+  it('shows why a move did not happen, and reloads so the screen shows what is really there (Roadmap UX-01)', async () => {
+    getById.mockResolvedValue(taskDetail());
+    listAudit.mockResolvedValue([]);
+    transition.mockRejectedValueOnce(
+      new HttpErrorResponse({
+        status: 409,
+        error: { message: 'The task changed while you were working on it' },
+      }),
+    );
+    const { component, harness, text } = await render();
+
+    await component.transition('EN_DESARROLLO');
+    harness.detectChanges();
+
+    expect(component.actionError()).toBe('The task changed while you were working on it');
+    expect(text()).toContain('The task changed while you were working on it');
+    expect(getById).toHaveBeenCalledTimes(2);
+    expect(component.acting()).toBe(false);
+  });
+
+  it('falls back to a plain message when the failure carries none', async () => {
+    getById.mockResolvedValue(taskDetail());
+    listAudit.mockResolvedValue([]);
+    transition.mockRejectedValueOnce(new HttpErrorResponse({ status: 0 }));
+    const { component } = await render();
+
+    await component.transition('EN_DESARROLLO');
+
+    expect(component.actionError()).toBe('No se pudo cambiar el estado.');
+  });
+
+  it('says the assignee is fixed while the task is in development (Roadmap UX-01)', async () => {
+    getById.mockResolvedValue(
+      taskDetail({
+        status: 'EN_DESARROLLO',
+        assignee: { id: 'a1', displayName: 'Codex', kind: 'AI_AGENT' },
+      } as Partial<TaskDetailModel>),
+    );
+    listAudit.mockResolvedValue([]);
+    const { text } = await render();
+
+    expect(text()).toContain('Asignación fija');
+    expect(text()).toContain('requiere un');
+  });
+
+  it('says so when the task does not exist, instead of rendering a blank page', async () => {
+    getById.mockRejectedValue(new HttpErrorResponse({ status: 404 }));
+    listAudit.mockResolvedValue([]);
+    const { component, text } = await render();
+
+    expect(component.notFound()).toBe(true);
+    expect(text()).toContain('Esta tarea no existe');
+    expect(text()).toContain('Volver al tablero');
+  });
+
+  it('reports any other failure to load the task', async () => {
+    getById.mockRejectedValue(
+      new HttpErrorResponse({ status: 500, error: { message: 'Something broke' } }),
+    );
+    listAudit.mockResolvedValue([]);
+    const { component, text } = await render();
+
+    expect(component.notFound()).toBe(false);
+    expect(text()).toContain('Something broke');
+  });
+
   it('saves an edit through the task form and reloads the task and its history', async () => {
     getById.mockResolvedValue(taskDetail());
     listAudit.mockResolvedValue([]);

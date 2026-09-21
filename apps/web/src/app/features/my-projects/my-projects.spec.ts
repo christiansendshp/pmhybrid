@@ -71,7 +71,7 @@ describe('MyProjects (brief §19)', () => {
     expect(cells[0]).toContain('Website Relaunch');
     expect(cells[1]).toContain('Sin asignar');
     expect(cells.slice(2, 8)).toEqual(['Activo', '45%', '3', '1', '2', '0']);
-    expect(cells[8]).toContain('SUCCESS');
+    expect(cells[8]).toContain('correcta');
     expect(root.querySelector('a.projects__name')?.getAttribute('href')).toBe('/projects/p1');
     expect(root.querySelectorAll('td.alert')).toHaveLength(1);
   });

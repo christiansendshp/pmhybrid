@@ -61,7 +61,7 @@ transform: true })` — unknown fields are stripped, not rejected; typed
 | `/projects/:projectId/sync`, `/sync-runs` | synchronization       | Manual sync trigger + run history                                                                         |
 | `/dashboard`                              | dashboard             | Cross-project summary + activity feeds                                                                    |
 | `/workload`                               | workload              | Cross-project per-actor task view                                                                         |
-| `/notifications`                          | notifications         | `:id/read`                                                                                                |
+| `/notifications`                          | notifications         | `:id/read`, `read-all`                                                                                    |
 | `/filesystem-browser`                     | git-providers         | `browse` — server-side folder picker for `docsPath` (Roadmap GAP-27)                                      |
 
 Every `/projects/:projectId/...` route (except `/projects` itself) sits

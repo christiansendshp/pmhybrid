@@ -20,11 +20,15 @@
   <div class="page-header__actions">
     <span class="meta-text" role="status">
       @if (lastSyncRun(); as run) {
-        Última ejecución: {{ run.status }}
-        @if (run.summary) {
-          ({{ run.summary.tasksCreated }} creadas, {{ run.summary.tasksUpdated }} actualizadas,
-          {{ run.summary.conflictsRaised }} conflictos)
+        Última sincronización {{ syncStatusLabel(run.status) }},
+        {{ run.finishedAt ?? run.startedAt | date: 'd MMM, HH:mm' }}
+        @if (run.status !== 'FAILED' && run.summary) {
+          ({{ run.summary.tasksCreated ?? 0 }} creadas,
+          {{ run.summary.tasksUpdated ?? 0 }} actualizadas,
+          {{ run.summary.conflictsRaised ?? 0 }} conflictos)
         }
+      } @else {
+        Sin sincronizar todavía
       }
     </span>
     <button mat-flat-button type="button" [disabled]="syncing()" (click)="syncNow()">
@@ -32,6 +36,14 @@
     </button>
   </div>
 </header>
+
+@if (loadError()) {
+  <p role="alert">{{ loadError() }}</p>
+}
+
+@if (lastSyncFailure(); as failure) {
+  <p role="alert">La última sincronización falló: {{ failure }}</p>
+}
 
 @if (syncErrorMessage()) {
   <p role="alert">No se pudo sincronizar: {{ syncErrorMessage() }}</p>

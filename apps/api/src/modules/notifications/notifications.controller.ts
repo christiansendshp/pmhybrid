@@ -14,6 +14,12 @@ export class NotificationsController {
     return this.notificationsService.findAllForActor(actorId);
   }
 
+  /** "Marcar todas como leídas": only the caller's own unread ones (Roadmap UX-01). Declared before `:id/read`, which it must never be read as. */
+  @Patch('read-all')
+  markAllRead(@CurrentActorId() actorId: string) {
+    return this.notificationsService.markAllRead(actorId);
+  }
+
   @Patch(':id/read')
   markRead(@Param('id') id: string, @CurrentActorId() actorId: string) {
     return this.notificationsService.markRead(id, actorId);

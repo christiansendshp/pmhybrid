@@ -64,20 +64,35 @@
 
       @if (notificationsPanelOpen()) {
         <div class="notifications__panel" role="region" aria-label="Notificaciones">
+          @if (notificationsError()) {
+            <p class="notifications__empty" role="alert">{{ notificationsError() }}</p>
+          }
+          @if (unreadCount() > 0) {
+            <div class="notifications__actions">
+              <button mat-button type="button" [disabled]="markingAll()" (click)="markAllRead()">
+                Marcar todas como leídas
+              </button>
+            </div>
+          }
           @if (notifications().length === 0) {
             <p class="notifications__empty">Todavía no hay notificaciones.</p>
           } @else {
             <ul class="notifications__list">
-              @for (notification of notifications(); track notification.id) {
+              @for (group of notificationGroups(); track group.key) {
                 <li
                   class="notifications__item"
-                  [class.notifications__item--unread]="!notification.readAt"
+                  [class.notifications__item--unread]="group.unreadCount > 0"
                 >
-                  <p>{{ describeNotification(notification) }}</p>
+                  <p>
+                    {{ group.message }}
+                    @if (group.count > 1) {
+                      <span class="meta-text">(×{{ group.count }})</span>
+                    }
+                  </p>
                   <div class="notifications__item-meta">
-                    <span class="meta-text">{{ notification.createdAt | date: 'medium' }}</span>
-                    @if (!notification.readAt) {
-                      <button mat-button type="button" (click)="markNotificationRead(notification)">
+                    <span class="meta-text">{{ group.latestAt | date: 'medium' }}</span>
+                    @if (group.unreadCount > 0) {
+                      <button mat-button type="button" (click)="markGroupRead(group)">
                         Marcar como leída
                       </button>
                     }

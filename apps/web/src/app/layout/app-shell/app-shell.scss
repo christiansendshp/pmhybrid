@@ -158,7 +158,7 @@
   top: calc(100% + var(--space-2));
   right: 0;
   z-index: 20;
-  width: min(24rem, 90vw);
+  width: min(24rem, calc(100vw - 2 * var(--space-4)));
   max-height: 70vh;
   overflow-y: auto;
   padding: var(--space-2);
@@ -166,6 +166,12 @@
   border-radius: var(--radius-md);
   background: var(--mat-sys-surface-container);
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.15);
+}
+
+.notifications__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-1);
 }
 
 .notifications__empty {
@@ -239,5 +245,21 @@
   .primary-nav__link,
   .theme-toggle {
     transition: none;
+  }
+}
+
+/* At phone width the header is full, so the panel is placed against the viewport, not the button. */
+@media (max-width: 600px) {
+  .notifications {
+    position: static;
+  }
+
+  .notifications__panel {
+    position: fixed;
+    top: 3.5rem;
+    right: var(--space-4);
+    left: var(--space-4);
+    width: auto;
+    max-height: calc(100dvh - 4.5rem);
   }
 }

@@ -23,6 +23,12 @@ export class NotificationsService {
     return firstValueFrom(this.http.get<Notification[]>(`${API_BASE_URL}/notifications`));
   }
 
+  markAllRead(): Promise<{ count: number }> {
+    return firstValueFrom(
+      this.http.patch<{ count: number }>(`${API_BASE_URL}/notifications/read-all`, {}),
+    );
+  }
+
   markRead(id: string): Promise<Notification> {
     return firstValueFrom(
       this.http.patch<Notification>(`${API_BASE_URL}/notifications/${id}/read`, {}),

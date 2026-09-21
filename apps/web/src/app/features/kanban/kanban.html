@@ -177,6 +177,13 @@
                         <span class="kind-badge" [attr.data-kind]="assignee.kind">{{
                           kindLabel(assignee.kind)
                         }}</span>
+                        @if (card.status === 'EN_DESARROLLO') {
+                          <span
+                            class="lock-badge"
+                            title="La asignación está bloqueada mientras la tarea está en desarrollo"
+                            >Asignación fija</span
+                          >
+                        }
                       } @else {
                         <span class="card__muted">Sin asignar</span>
                       }

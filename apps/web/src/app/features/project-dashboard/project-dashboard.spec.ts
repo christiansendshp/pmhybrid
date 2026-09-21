@@ -96,9 +96,11 @@ describe('ProjectDashboard — role assignment (brief §4)', () => {
   };
   let permissions: string[];
   let triggerSync: ReturnType<typeof vi.fn>;
+  let listSyncRuns: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     triggerSync = vi.fn();
+    listSyncRuns = vi.fn().mockResolvedValue([]);
     permissions = ['project.roles.manage', 'project.members.manage'];
     rolesService = {
       listRoles: vi.fn().mockResolvedValue([devRole, qaRole, adminGlobalRole]),
@@ -130,7 +132,7 @@ describe('ProjectDashboard — role assignment (brief §4)', () => {
           },
         },
         { provide: RolesService, useValue: rolesService },
-        { provide: SynchronizationService, useValue: { triggerSync } },
+        { provide: SynchronizationService, useValue: { triggerSync, listSyncRuns } },
       ],
     });
   });
@@ -292,5 +294,61 @@ describe('ProjectDashboard — role assignment (brief §4)', () => {
     expect(fixture.nativeElement.textContent).toContain(
       'No se pudo sincronizar: Roadmap.md: unterminated yaml block for entry "T-1"',
     );
+  });
+
+  it('shows the last sync from the moment the header opens, in words (Roadmap UX-01)', async () => {
+    listSyncRuns.mockResolvedValue([
+      {
+        id: 's2',
+        projectId: 'p1',
+        startedAt: '2026-09-21T10:00:00.000Z',
+        finishedAt: '2026-09-21T10:00:02.000Z',
+        trigger: 'SCHEDULED',
+        status: 'PARTIAL',
+        summary: { tasksCreated: 1, tasksUpdated: 2, conflictsRaised: 3 },
+      },
+    ]);
+    const { fixture } = await render();
+
+    const text = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
+    expect(text).toContain('Última sincronización con avisos');
+    expect(text).toContain('(1 creadas, 2 actualizadas, 3 conflictos)');
+    expect(text).not.toContain('PARTIAL');
+  });
+
+  it('says so when the project has never synced', async () => {
+    const { fixture } = await render();
+
+    expect(fixture.nativeElement.textContent).toContain('Sin sincronizar todavía');
+  });
+
+  it('shows why the last sync failed without anyone pressing anything', async () => {
+    listSyncRuns.mockResolvedValue([
+      {
+        id: 's3',
+        projectId: 'p1',
+        startedAt: '2026-09-21T10:00:00.000Z',
+        finishedAt: '2026-09-21T10:00:01.000Z',
+        trigger: 'SCHEDULED',
+        status: 'FAILED',
+        summary: { error: 'Roadmap.md: unterminated yaml block for entry "T-1"' },
+      },
+    ]);
+    const { fixture, component } = await render();
+
+    expect(component.lastSyncNeedsAttention()).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain(
+      'La última sincronización falló: Roadmap.md: unterminated yaml block for entry "T-1"',
+    );
+  });
+
+  it('says so when the project cannot be loaded, instead of rendering an empty header', async () => {
+    projectsService.getById.mockRejectedValue(
+      new HttpErrorResponse({ status: 500, error: { message: 'Something broke' } }),
+    );
+    const { fixture, component } = await render();
+
+    expect(component.loadError()).toBe('Something broke');
+    expect(fixture.nativeElement.textContent).toContain('Something broke');
   });
 });

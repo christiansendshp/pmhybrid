@@ -486,38 +486,6 @@ created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T09:00:00Z
 ```
 
-### UX-01 — Errors and sync status are invisible in the UI
-
-```yaml
-id: UX-01
-type: UX
-title: Errors and sync status are invisible in the UI
-status: BACKLOG
-priority: P1
-description: >
-  From the 2026-09-21 frontend audit. `syncNow()` (project-dashboard.ts),
-  `transition()`, `assign()` and `addDependency()` (task-detail.ts) and the
-  dashboard `Promise.all` have no catch, so a 403/409 (including the locked
-  assignment of brief section 7) or a failed sync shows nothing; a missing
-  task renders blank and a missing project redirects silently. Sync
-  failures appear only as gray text in My Projects, the project header does
-  not load the last run, and the bell accumulates duplicate notifications
-  with English text and server paths and has no "mark all read". The
-  panel does not close on Esc, outside click or navigation and overflows
-  the viewport at 390 px. There is no visual mark for a locked assignee.
-expected_behavior: >
-  Every action surfaces success or a readable error; a status banner in the
-  project header shows the last sync and its error; notifications are
-  grouped, localized, path-free, have "mark all read", and the panel is
-  dismissible and fits mobile.
-technical_context:
-  frontend: apps/web/src/app/features/project-dashboard, task-detail, my-projects, layout/app-shell
-next_action: >
-  Introduce one shared error/snackbar helper and apply it to all actions.
-created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T09:00:00Z
-```
-
 ### UX-02 — Mobile layout, Kanban size and Settings overlaps
 
 ```yaml
