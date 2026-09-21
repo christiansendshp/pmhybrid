@@ -3,6 +3,9 @@
  * LocalFsGitProvider; GitHub/GitLab/Bitbucket providers are additive later
  * without touching callers.
  */
+/** The rules file the project-documentation skill keeps at the repository root. */
+export const ROOT_RULES_FILENAME = 'AGENTS.md';
+
 export interface FileRevisionInfo {
   hash: string;
   capturedAt: Date;
@@ -10,6 +13,14 @@ export interface FileRevisionInfo {
 
 export interface ProjectRepositoryProvider {
   readFile(docsPath: string, relativePath: string): Promise<string>;
+  /**
+   * The repository-root `AGENTS.md` of the project whose documents live at
+   * `docsPath` (the project-documentation skill keeps its rules there, not in
+   * the docs folder). It takes no file name on purpose: this is the only file
+   * reachable outside the docs folder, so there is no path to traverse
+   * (Roadmap GAP-37c). Rejects when there is no such file.
+   */
+  readRootRulesFile(docsPath: string): Promise<string>;
   writeFile(
     docsPath: string,
     relativePath: string,

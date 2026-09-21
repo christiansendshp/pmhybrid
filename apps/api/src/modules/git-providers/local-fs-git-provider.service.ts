@@ -12,6 +12,7 @@ import {
 import {
   FileRevisionInfo,
   ProjectRepositoryProvider,
+  ROOT_RULES_FILENAME,
 } from './project-repository-provider.interface.js';
 
 const execFileAsync = promisify(execFile);
@@ -44,6 +45,22 @@ export class LocalFsGitProvider implements ProjectRepositoryProvider {
   async readFile(docsPath: string, relativePath: string): Promise<string> {
     const base = await this.allowedDocsPath(docsPath);
     return fs.readFile(path.join(base, relativePath), 'utf-8');
+  }
+
+  /**
+   * The parent of the docs folder is checked against the allowed roots like
+   * the folder itself, so a docs folder that is a root has no readable parent
+   * and nothing outside the roots becomes reachable (Roadmap GAP-37c).
+   */
+  async readRootRulesFile(docsPath: string): Promise<string> {
+    const base = await this.allowedDocsPath(docsPath);
+    const root = await resolveAllowedLocalDocsPath(
+      path.dirname(base),
+      parseAllowedRoots(
+        this.config.get('PROJECT_DOCS_BROWSE_ROOT', { infer: true }),
+      ),
+    );
+    return fs.readFile(path.join(root, ROOT_RULES_FILENAME), 'utf-8');
   }
 
   async writeFile(

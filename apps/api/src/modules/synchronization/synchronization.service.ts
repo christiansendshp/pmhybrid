@@ -13,6 +13,7 @@ import {
   RoadmapParserService,
   rowCarriesDependsOn,
 } from '../roadmap/roadmap-parser.service.js';
+import { readRulesDocument } from '../git-providers/read-rules-document.js';
 import { rowStatusDiffers } from '../roadmap/status-vocabulary.util.js';
 import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository-provider.interface.js';
 import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
@@ -395,11 +396,18 @@ export class SynchronizationService {
     summary: SyncSummary,
   ): Promise<string | null> {
     let content: string;
+    let filePath = DOCUMENT_FILENAMES[kind];
     try {
-      content = await this.repositoryProvider.readFile(
-        docsPath,
-        DOCUMENT_FILENAMES[kind],
-      );
+      if (kind === 'AGENTS_RULES') {
+        // docs/Agents.md, or the repository-root AGENTS.md the latest skill
+        // uses (Roadmap GAP-37c).
+        ({ content, filePath } = await readRulesDocument(
+          this.repositoryProvider,
+          docsPath,
+        ));
+      } else {
+        content = await this.repositoryProvider.readFile(docsPath, filePath);
+      }
     } catch {
       return null;
     }
@@ -408,7 +416,7 @@ export class SynchronizationService {
     const document = await tx.document.upsert({
       where: { projectId_kind: { projectId, kind } },
       update: {},
-      create: { projectId, kind, filePath: DOCUMENT_FILENAMES[kind] },
+      create: { projectId, kind, filePath },
     });
 
     if (document.lastKnownHash === hash) {

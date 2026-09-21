@@ -170,4 +170,50 @@ describe('GitHubGitProvider (Roadmap GAP-23)', () => {
       /owner\/repo/,
     );
   });
+
+  describe('readRootRulesFile (Roadmap GAP-37c)', () => {
+    const ok = (text: string) =>
+      jsonResponse(200, {
+        content: Buffer.from(text, 'utf-8').toString('base64'),
+        encoding: 'base64',
+        sha: 'abc',
+      });
+    const requested = () => fetchMock.mock.calls.map((call) => String(call[0]));
+
+    it('reads AGENTS.md one level above the docs folder', async () => {
+      const provider = new GitHubGitProvider(config('gh_token'));
+      fetchMock.mockResolvedValueOnce(ok('# Rules'));
+
+      expect(await provider.readRootRulesFile('octocat/hello-world/docs')).toBe(
+        '# Rules',
+      );
+      expect(requested()).toEqual([
+        'https://api.github.com/repos/octocat/hello-world/contents/AGENTS.md',
+      ]);
+    });
+
+    it('keeps the rest of a nested sub-path, and reads the repository root when there is no sub-path', async () => {
+      const provider = new GitHubGitProvider(config('gh_token'));
+      fetchMock.mockResolvedValue(ok('# Rules'));
+
+      await provider.readRootRulesFile('octocat/hello-world/apps/site/docs');
+      await provider.readRootRulesFile('octocat/hello-world');
+
+      expect(requested()).toEqual([
+        'https://api.github.com/repos/octocat/hello-world/contents/apps/site/AGENTS.md',
+        'https://api.github.com/repos/octocat/hello-world/contents/AGENTS.md',
+      ]);
+    });
+
+    it('rejects when the file is not there', async () => {
+      const provider = new GitHubGitProvider(config('gh_token'));
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse(404, { message: 'Not Found' }),
+      );
+
+      await expect(
+        provider.readRootRulesFile('octocat/hello-world/docs'),
+      ).rejects.toThrow(/status 404/);
+    });
+  });
 });

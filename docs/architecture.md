@@ -84,7 +84,11 @@ Three areas are built behind an interface/strategy from day one so they can
 grow without touching call sites:
 
 1. **`ProjectRepositoryProvider`** (`git-providers` module): `readFile`,
-   `writeFile`, `listRevisions`. `LocalFsGitProvider` (local disk) and
+   `writeFile`, `listRevisions`, and `readRootRulesFile` (the repository-root
+   `AGENTS.md` the latest project-documentation skill keeps its rules in; it
+   takes no file name, so no path reaches above the docs folder — the local
+   provider also requires that parent to be inside an allowed root, Roadmap
+   GAP-37c). `LocalFsGitProvider` (local disk) and
    `GitHubGitProvider` (GitHub REST API, Roadmap GAP-23) both implement it
    unchanged; GitLab/Bitbucket providers are additive later. Selected
    process-wide by `GIT_PROVIDER_TYPE` (`local` default, or `github`), not

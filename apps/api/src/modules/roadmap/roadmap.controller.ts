@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { readRulesDocument } from '../git-providers/read-rules-document.js';
 import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository-provider.interface.js';
 import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -141,6 +142,13 @@ export class RoadmapController {
       throw new NotFoundException('Project not found');
     }
     try {
+      if (kind === 'agents-rules') {
+        // docs/Agents.md, or the repository-root AGENTS.md the latest skill
+        // uses (Roadmap GAP-37c).
+        return (
+          await readRulesDocument(this.repositoryProvider, project.docsPath)
+        ).content;
+      }
       return await this.repositoryProvider.readFile(project.docsPath, filename);
     } catch {
       throw new NotFoundException(

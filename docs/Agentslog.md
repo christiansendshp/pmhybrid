@@ -843,3 +843,25 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: Write-back into a latest-skill project: rows edited wherever they are, Status as TODO/IN_PROGRESS/DONE with PAUSE kept, ledger limited to states the skill accepts with a real Verify; the skill's own check passes after every PM Hub write
 - Files: apps/api/src/modules/roadmap/roadmap-row-writer.util.ts,apps/api/src/modules/roadmap/skill-ledger.util.ts,apps/api/src/modules/roadmap/status-vocabulary.util.ts,apps/api/src/modules/synchronization/write-back.service.ts,docs/synchronization.md
 - Verify: api unit 351 and e2e 227 pass; upstream project_docs.sh check OK after init, claim and every PM Hub write (a CREATED entry fails it)
+
+## [2026-09-21T17:52:02Z] | claude | GAP-37c | IN_PROGRESS
+
+- Summary: Read the rules document from the repository root AGENTS.md when docs/Agents.md is absent
+- Verify: pending
+
+## [2026-09-21T17:57:06Z] | claude | GAP-37c | DONE
+
+- Summary: The rules document is read from docs/Agents.md, else from the repository-root AGENTS.md the latest skill uses, through a provider method with no path input
+- Files: apps/api/src/modules/git-providers/project-repository-provider.interface.ts,apps/api/src/modules/git-providers/local-fs-git-provider.service.ts,apps/api/src/modules/git-providers/github-git-provider.service.ts,apps/api/src/modules/git-providers/read-rules-document.ts,docs/synchronization.md
+- Verify: api unit 360 and e2e 230 pass; oxlint clean
+
+## [2026-09-21T17:57:07Z] | claude | GAP-37 | IN_PROGRESS
+
+- Summary: Close the umbrella: GAP-37a, b and c are done
+- Verify: pending
+
+## [2026-09-21T17:57:09Z] | claude | GAP-37 | DONE
+
+- Summary: PM Hub reads and writes projects documented with the latest project-documentation skill: tables, PAUSE, Pause reason, ledger states and the root AGENTS.md; the skill's own check passes after every PM Hub write
+- Files: docs/roadmap-parser.md,docs/synchronization.md,docs/architecture.md
+- Verify: GAP-37a, GAP-37b and GAP-37c verified: api unit 360, e2e 230, upstream check OK after each write

@@ -43,7 +43,11 @@ threshold is treated as crashed and a new run is allowed to proceed.
 1. Insert a `SyncRun` row (`RUNNING`).
 2. For each `DocumentKind`, read via `ProjectRepositoryProvider.readFile`,
    hash the content, compare to `Document.lastKnownHash`. Unchanged → skip.
-   Changed → insert a `DocumentRevision`, update `Document`.
+   Changed → insert a `DocumentRevision`, update `Document`. The rules document
+   (`AGENTS_RULES`) is `docs/Agents.md` when there is one and otherwise the
+   repository-root `AGENTS.md` the latest skill uses (Roadmap GAP-37c); the
+   `documents/agents-rules/raw` view reads the same way, and a project with
+   neither still gets its 404.
 3. Parse `Roadmap.md` into rows per table (ACTIVE/NEAR_TERM/BLOCKED — see
    `docs/roadmap-parser.md` for the discrimination rule) and `Agentslog.md`
    into entries (see below).

@@ -1,4 +1,10 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { BadRequestException } from '@nestjs/common';
@@ -54,5 +60,57 @@ describe('LocalFsGitProvider confinement (Roadmap SECURITY-01)', () => {
 
   it('returns no revisions (instead of running git) for a folder outside every root', async () => {
     expect(await provider.listRevisions(outside, 'Roadmap.md')).toEqual([]);
+  });
+});
+
+describe('LocalFsGitProvider root rules file (Roadmap GAP-37c)', () => {
+  let root: string;
+  let provider: LocalFsGitProvider;
+
+  beforeAll(() => {
+    root = mkdtempSync(path.join(tmpdir(), 'pmh-provider-rules-'));
+    mkdirSync(path.join(root, 'project', 'docs'), { recursive: true });
+    mkdirSync(path.join(root, 'other', 'docs'), { recursive: true });
+    writeFileSync(path.join(root, 'project', 'AGENTS.md'), '# rules', 'utf-8');
+    writeFileSync(path.join(root, 'AGENTS.md'), '# above every root', 'utf-8');
+    const config = {
+      get: (key: keyof EnvConfig) =>
+        key === 'PROJECT_DOCS_BROWSE_ROOT'
+          ? path.join(root, 'project') +
+            path.delimiter +
+            path.join(root, 'other', 'docs')
+          : undefined,
+    } as unknown as ConfigService<EnvConfig, true>;
+    provider = new LocalFsGitProvider(config);
+  });
+
+  afterAll(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('reads AGENTS.md from the parent of the docs folder', async () => {
+    expect(
+      await provider.readRootRulesFile(path.join(root, 'project', 'docs')),
+    ).toBe('# rules');
+  });
+
+  it('does not reach a parent outside the allowed roots, even when the docs folder itself is allowed', async () => {
+    // The allowed root here is other/docs, so its parent (other) is outside.
+    await expect(
+      provider.readRootRulesFile(path.join(root, 'other', 'docs')),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    // A docs folder that is itself an allowed root has no readable parent
+    // either: the AGENTS.md above it is never reached.
+    await expect(
+      provider.readRootRulesFile(path.join(root, 'project')),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects when there is no AGENTS.md', async () => {
+    mkdirSync(path.join(root, 'project', 'empty', 'docs'), { recursive: true });
+
+    await expect(
+      provider.readRootRulesFile(path.join(root, 'project', 'empty', 'docs')),
+    ).rejects.toThrow(/ENOENT/);
   });
 });

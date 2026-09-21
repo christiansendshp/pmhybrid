@@ -4,6 +4,7 @@ import type { EnvConfig } from '../../config/env.validation.js';
 import {
   FileRevisionInfo,
   ProjectRepositoryProvider,
+  ROOT_RULES_FILENAME,
 } from './project-repository-provider.interface.js';
 
 const GITHUB_API_BASE = 'https://api.github.com';
@@ -73,6 +74,27 @@ export class GitHubGitProvider implements ProjectRepositoryProvider {
 
   async readFile(docsPath: string, relativePath: string): Promise<string> {
     const { owner, repo, path } = this.resolvePath(docsPath, relativePath);
+    return this.readContents(owner, repo, path);
+  }
+
+  /** The docs folder is the last segment of the sub-path; the root is its parent (the repository root when there is no sub-path) — Roadmap GAP-37c. */
+  async readRootRulesFile(docsPath: string): Promise<string> {
+    const { owner, repo, path } = this.resolvePath(
+      docsPath,
+      ROOT_RULES_FILENAME,
+    );
+    const segments = path.split('/');
+    if (segments.length > 1) {
+      segments.splice(segments.length - 2, 1);
+    }
+    return this.readContents(owner, repo, segments.join('/'));
+  }
+
+  private async readContents(
+    owner: string,
+    repo: string,
+    path: string,
+  ): Promise<string> {
     const res = await this.request(
       `/repos/${owner}/${repo}/contents/${encodePath(path)}`,
     );

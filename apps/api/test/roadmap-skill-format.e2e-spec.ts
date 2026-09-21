@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -305,6 +306,67 @@ describe('Sync of the latest skill format (e2e, Roadmap GAP-37a)', () => {
         .expect(200);
       expect(read(docsPath, 'Roadmap.md')).not.toMatch(/^\| F01-E01-T05 \|/m);
       expect(read(docsPath, 'Agentslog.md')).toBe(ledgerBefore);
+    });
+  });
+
+  describe('rules document (Roadmap GAP-37c)', () => {
+    /** <tmp>/repo/{AGENTS.md, docs/}: the layout the latest skill creates. */
+    function createRepo(withDocsRules = false) {
+      const repo = mkdtempSync(path.join(tmpdir(), 'pmhybrid-e2e-repo-'));
+      const docs = path.join(repo, 'docs');
+      mkdirSync(docs);
+      writeFileSync(path.join(docs, 'Roadmap.md'), SKILL_ROADMAP, 'utf-8');
+      writeFileSync(path.join(docs, 'Agentslog.md'), SKILL_AGENTSLOG, 'utf-8');
+      writeFileSync(path.join(repo, 'AGENTS.md'), '# Root rules\n', 'utf-8');
+      if (withDocsRules) {
+        writeFileSync(path.join(docs, 'Agents.md'), '# Docs rules\n', 'utf-8');
+      }
+      return docs;
+    }
+
+    async function projectAt(docsPath: string) {
+      const res = await request(server())
+        .post('/projects')
+        .set('Authorization', auth())
+        .send({
+          name: `Rules E2E ${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+          docsPath,
+        })
+        .expect(201);
+      return res.body.id as string;
+    }
+
+    const rules = (projectId: string) =>
+      request(server())
+        .get(`/projects/${projectId}/documents/agents-rules/raw`)
+        .set('Authorization', auth());
+
+    it('shows and syncs the repository-root AGENTS.md when the docs folder has no Agents.md', async () => {
+      const projectId = await projectAt(createRepo());
+
+      const shown = await rules(projectId).expect(200);
+      expect(shown.body.content).toBe('# Root rules\n');
+
+      await sync(projectId).expect(201);
+      const revisions = await request(server())
+        .get(`/projects/${projectId}/documents/agents-rules/revisions`)
+        .set('Authorization', auth())
+        .expect(200);
+      expect(revisions.body).toHaveLength(1);
+    });
+
+    it('keeps showing docs/Agents.md when a project still has one', async () => {
+      const projectId = await projectAt(createRepo(true));
+
+      expect((await rules(projectId).expect(200)).body.content).toBe(
+        '# Docs rules\n',
+      );
+    });
+
+    it('is a 404, as before, when the project has neither', async () => {
+      const projectId = await projectAt(createScratchDocsPath());
+
+      await rules(projectId).expect(404);
     });
   });
 });
