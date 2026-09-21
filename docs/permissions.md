@@ -227,3 +227,26 @@ Now:
   (it only adds); roles edited via `PATCH /roles/:id/permissions` are not
   touched, so grant `task.write`/`conflict.resolve` to any custom-edited role
   that should keep them.
+
+## What leaves with a removed member (Roadmap BUG-08)
+
+`ProjectMember` removal is a soft delete, and `ProjectMemberGuard` already stops
+a removed member acting. What they hold in the project goes with them, in the
+same transaction, so re-adding them starts clean and nothing stays assigned to
+someone who cannot act on it:
+
+- **Project-scoped roles are revoked**, each audited as `ROLE_REVOKE`. Global
+  roles are the actor's own, not the project's, and are untouched. Re-adding the
+  member gives them no role: the roles are granted again on purpose.
+- **Open tasks are unassigned** — everything they are assigned that is not
+  `TERMINADA` or removed — with one `UNASSIGN` audit event each and the
+  assignment history closed. An `ASIGNADA` task goes back to `PENDIENTE` (it
+  means "has an assignee"); one already in progress keeps its status and waits
+  for someone to pick it up. Finished work stays credited to who did it.
+- **Unassign, not refuse.** Refusing the removal until every task is reassigned
+  would make off-boarding impossible while a locked `EN_DESARROLLO` task is open,
+  since only `task.reassign.locked` can move it. The Roadmap document keeps naming
+  the person in its owner field; sync cannot resolve that name to a member any
+  more, so it leaves the assignee empty rather than assigning it back.
+- **A removed project lead stops being the lead** (an audited `UPDATE` of the
+  project); the project has none until one is set.

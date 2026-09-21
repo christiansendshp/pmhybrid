@@ -653,37 +653,6 @@ created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T09:00:00Z
 ```
 
-### BUG-08 — Removing a project member keeps their roles and assignments
-
-```yaml
-id: BUG-08
-type: BUG
-title: Removing a project member keeps their roles and assignments
-status: BACKLOG
-priority: P2
-description: >
-  Split off from SECURITY-02 on 2026-09-21. `ProjectMembersService.removeMember`
-  only sets `isActive: false`. The member's project-scoped ActorRole rows stay,
-  so re-adding them silently restores every role they held, and their
-  assigned tasks keep pointing at an actor who can no longer act on them
-  (a locked EN_DESARROLLO task in particular can only be reassigned by
-  someone holding task.reassign.locked). ProjectMemberGuard already stops a
-  removed member from acting, so this is hygiene and predictability, not an
-  open door.
-expected_behavior: >
-  Removing a member revokes their project-scoped roles in the same
-  transaction and defines what happens to their open assignments (unassign
-  with a visible audit event, or refuse the removal until reassigned), with
-  an e2e test for each outcome.
-technical_context:
-  backend: apps/api/src/modules/project-members/project-members.service.ts, roles
-next_action: >
-  Product decision on assignments (unassign vs block); roles can be revoked
-  unconditionally.
-created_at: 2026-09-21T11:10:00Z
-updated_at: 2026-09-21T11:10:00Z
-```
-
 Post-MVP gap backlog derived from a brief-vs-code review on 2026-09-15
 (GAP-12–GAP-19), the 2026-09-16 frontend redesign (GAP-20), and a
 2026-09-16 user-requested docsPath folder picker (GAP-27) are all DONE

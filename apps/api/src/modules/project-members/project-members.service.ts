@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { AuditOrigin } from '@prisma/client';
+import { TaskStatus, type AuditOrigin } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 
@@ -83,7 +83,21 @@ export class ProjectMembersService {
     });
   }
 
-  /** Soft-delete (isActive=false), matching Project/Task's no-hard-delete convention (docs/domain-model.md). */
+  /**
+   * Soft-delete (isActive=false), matching Project/Task's no-hard-delete
+   * convention (docs/domain-model.md) — and the rest of what a member holds
+   * in this project goes with them, in the same transaction (Roadmap BUG-08):
+   *
+   * - their project-scoped roles are revoked, so re-adding them does not
+   *   silently give back every role they had (global roles are theirs, not
+   *   this project's, and stay);
+   * - their open tasks are unassigned, one audit event each: an ASIGNADA task
+   *   goes back to PENDIENTE (ASIGNADA means "has an assignee"), one already
+   *   in progress keeps its status and is left for someone to pick up. The
+   *   removal is not refused instead, because off-boarding someone who holds
+   *   a locked EN_DESARROLLO task would otherwise be impossible;
+   * - if they were the project's lead, the project has no lead until one is set.
+   */
   async removeMember(
     projectId: string,
     actorId: string,
@@ -122,6 +136,92 @@ export class ProjectMembersService {
         },
         tx,
       );
+
+      const roles = await tx.actorRole.findMany({
+        where: { actorId, projectId },
+        include: { role: { select: { name: true } } },
+      });
+      for (const assignment of roles) {
+        await tx.actorRole.delete({ where: { id: assignment.id } });
+        await this.audit.record(
+          {
+            projectId,
+            actorId: requesterActorId,
+            entityType: 'ActorRole',
+            entityId: assignment.id,
+            operation: 'ROLE_REVOKE',
+            origin,
+            previousValue: {
+              actorId,
+              displayName: existing.actor.displayName,
+              roleId: assignment.roleId,
+              roleName: assignment.role.name,
+            },
+          },
+          tx,
+        );
+      }
+
+      const openTasks = await tx.task.findMany({
+        where: {
+          projectId,
+          assigneeActorId: actorId,
+          deletedAt: null,
+          status: { not: TaskStatus.TERMINADA },
+        },
+        select: { id: true, status: true },
+      });
+      for (const task of openTasks) {
+        const status =
+          task.status === TaskStatus.ASIGNADA
+            ? TaskStatus.PENDIENTE
+            : task.status;
+        await tx.task.update({
+          where: { id: task.id },
+          data: { assigneeActorId: null, status },
+        });
+        await tx.taskAssignment.updateMany({
+          where: { taskId: task.id, unassignedAt: null },
+          data: { unassignedAt: new Date() },
+        });
+        await this.audit.record(
+          {
+            projectId,
+            actorId: requesterActorId,
+            entityType: 'Task',
+            entityId: task.id,
+            operation: 'UNASSIGN',
+            origin,
+            previousValue: { assigneeActorId: actorId, status: task.status },
+            newValue: { assigneeActorId: null, status },
+          },
+          tx,
+        );
+      }
+
+      const project = await tx.project.findUniqueOrThrow({
+        where: { id: projectId },
+        select: { leadActorId: true },
+      });
+      if (project.leadActorId === actorId) {
+        await tx.project.update({
+          where: { id: projectId },
+          data: { leadActorId: null },
+        });
+        await this.audit.record(
+          {
+            projectId,
+            actorId: requesterActorId,
+            entityType: 'Project',
+            entityId: projectId,
+            operation: 'UPDATE',
+            origin,
+            previousValue: { leadActorId: actorId },
+            newValue: { leadActorId: null },
+          },
+          tx,
+        );
+      }
       return member;
     });
   }
