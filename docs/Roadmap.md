@@ -168,6 +168,526 @@ created_at: 2026-09-19T09:40:00Z
 updated_at: 2026-09-20T19:55:00Z
 ```
 
+### SECURITY-01 — Project docsPath is not confined and any authenticated actor can create a project
+
+```yaml
+id: SECURITY-01
+type: SECURITY
+title: Project docsPath is not confined and any authenticated actor can create a project
+status: READY
+priority: P0
+description: >
+  Found by the 2026-09-21 full evaluation (backend audit, reproduced live,
+  code re-checked). `CreateProjectDto.docsPath` is only `@IsString
+  @IsNotEmpty`, `POST /projects` is guarded by JwtAuthGuard alone, and
+  PROJECT_DOCS_BROWSE_ROOT only restricts the folder-picker UI, not the
+  stored path. A user with no roles (403 on SMARTRH) created a project
+  whose docsPath was SMARTRH's docs folder and read its Roadmap.md (22 KB);
+  `C:\Windows\System32\drivers\etc` was accepted too, also for an
+  agent API key. Write-back would let the same actor write into that
+  folder. A Windows UNC path could leak NTLM credentials (not verified).
+expected_behavior: >
+  A project's docsPath resolves (realpath) inside the configured browse
+  root, rejects UNC/device paths, is unique across projects, and cannot be
+  used to reach another project's or a system folder. Negative e2e tests
+  cover each rejection.
+technical_context:
+  backend: apps/api/src/modules/projects/projects.service.ts, dto/create-project.dto.ts, git-providers/local-fs-git-provider.service.ts, filesystem browser
+next_action: >
+  Validate and normalize docsPath on create and update against
+  PROJECT_DOCS_BROWSE_ROOT (require it in non-dev), add a unique index or
+  check, and decide at implementation time whether agent API keys may
+  create projects (recommended no -- humans add agents).
+created_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T09:00:00Z
+```
+
+### SECURITY-02 — Write routes lack a permission and conflict resolution bypasses the transition policy
+
+```yaml
+id: SECURITY-02
+type: SECURITY
+title: Write routes lack a permission and conflict resolution bypasses the transition policy
+status: READY
+priority: P0
+description: >
+  Found by the 2026-09-21 evaluation (backend audit, reproduced live). A
+  project member with an empty permission set can create and edit tasks,
+  comment, resolve conflicts and trigger sync, although permissions.md says
+  VIEWER is read-only. `POST /conflicts/:id/resolve` has no
+  `@RequirePermission`; KEEP_EXTERNAL forces status TERMINADA and
+  MANUAL_EDIT accepts any status, so a user holding only `task.assign` and
+  `task.status.transition` moved a task ASIGNADA -> TERMINADA without
+  `task.qa.approve`. The change is audited only as CONFLICT_RESOLVED, never
+  as STATUS_CHANGE, so sync's per-field conflict check cannot see it. Also:
+  PermissionGuard ignores a class-level `@RequirePermission` (fail-open
+  risk) and `removeMember` neither revokes roles nor unassigns tasks.
+expected_behavior: >
+  Every write route requires an explicit permission (a new task.write or
+  equivalent); conflict resolution applies status changes through the same
+  transition policy and permissions as a normal transition and audits
+  STATUS_CHANGE; a class-level RequirePermission is honored or rejected at
+  startup; removing a member cleans up roles and assignments. Each has a
+  negative e2e test.
+technical_context:
+  backend: apps/api/src/modules/tasks/tasks.controller.ts, conflicts/conflicts.controller.ts and conflicts.service.ts, roles/permission.guard.ts, project-members
+next_action: >
+  Add the permission and guard coverage first, then route resolve()
+  through TasksService.transition(). Update docs/permissions.md.
+created_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T09:00:00Z
+```
+
+### BUG-04 — assign, transition and conflict resolve race on stale task state
+
+```yaml
+id: BUG-04
+type: BUG
+title: assign, transition and conflict resolve race on stale task state
+status: READY
+priority: P0
+description: >
+  Found by the 2026-09-21 evaluation (backend audit, reproduced 11 of 12
+  runs). TasksService.transition() and assign() read the task outside the
+  transaction and then do an unconditional update. A concurrent assign and
+  transition both returned 201 and the final status was ASIGNADA in the
+  database against EN_DESARROLLO in Roadmap.md; the audit shows a late
+  REASSIGN by a user that the assignment lock (brief section 7) should have
+  rejected. Nothing covers concurrency in the test suite.
+expected_behavior: >
+  Reads and writes of a task's status/assignee are atomic (SELECT ... FOR
+  UPDATE, or updateMany guarded by the expected status and a version
+  check); the loser gets a 409 with a clear message; a concurrency e2e
+  test fails on the old code.
+technical_context:
+  backend: apps/api/src/modules/tasks/tasks.service.ts (assign, transition), conflicts.service.ts
+next_action: >
+  Reproduce with a Promise.all e2e first, then fix with a guarded update.
+created_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T09:00:00Z
+```
+
+### SECURITY-03 — multer advisories in production dependencies and no audit in CI
+
+```yaml
+id: SECURITY-03
+type: SECURITY
+title: multer advisories in production dependencies and no audit in CI
+status: READY
+priority: P1
+description: >
+  `pnpm audit --prod` (2026-09-21) reports 3 high and 1 low advisories, all
+  multer <2.3.0 (denial of service via crafted multipart field names,
+  oversized array index, file-descriptor leak on aborted uploads; size
+  limit bypass), pulled in through @nestjs/platform-express. The API has no
+  upload endpoint so exposure is limited, but CI never runs an audit and
+  there is no Dependabot/Renovate config, so this only surfaced by hand.
+expected_behavior: >
+  multer resolves to >=2.3.0 (dependency bump or pnpm override), `pnpm
+  audit --prod` is clean, and CI fails on new high advisories; dependency
+  update PRs are automated.
+technical_context:
+  backend: apps/api/package.json, pnpm-workspace/overrides, .github/workflows/ci.yml
+next_action: >
+  Bump @nestjs/platform-express or add an override, add an audit step and a
+  .github/dependabot.yml.
+created_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T09:00:00Z
+```
+
+### BUG-05 — One invalid Roadmap entry fails the whole sync and the error is unreadable
+
+```yaml
+id: BUG-05
+type: BUG
+title: One invalid Roadmap entry fails the whole sync and the error is unreadable
+status: READY
+priority: P1
+description: >
+  Found by the 2026-09-21 evaluation and visible today on the real SMARTRH
+  project (20 of 20 sync runs FAILED, 43 SYNC_FAILED notifications for one
+  user). The cause is one entry whose title has an unquoted colon (`title:
+  Contradiccion SuperAdmin: codigo vs. spec`); the reviewers also produced
+  failures with an entry lacking `status` and one with `id: 42`. The parser
+  aborts the entire document, `/documents/roadmap/structured` returns 500,
+  `POST /sync` returns a bare 500 (the "invalid YAML in entry X (line N)"
+  detail only lives in the run history), the scheduler retries every 5
+  minutes with no backoff, and notifications repeat with the absolute
+  server path (also a path disclosure). A missing docs directory (GAP-32
+  test project) fails the same way.
+expected_behavior: >
+  Sync isolates errors per entry: valid entries are reconciled, each bad
+  entry is reported with id, line and cause in the UI, the run is marked
+  PARTIAL rather than FAILED, the scheduler backs off on repeated failure,
+  notifications are deduplicated per project and cause without server
+  paths, and `POST /sync` returns the real reason with a 4xx.
+technical_context:
+  backend: apps/api/src/modules/roadmap/roadmap-yaml-entry.util.ts, synchronization/synchronization.service.ts, sync-scheduler, notifications
+next_action: >
+  Add entry-level try/catch in extractRoadmapYamlEntries with an error
+  list, surface it in SyncRun, add backoff and notification dedupe.
+created_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T09:00:00Z
+```
+
+### GAP-35 — Sync ignores the document's hierarchy, owner, priority and progress
+
+```yaml
+id: GAP-35
+type: GAP
+title: Sync ignores the document's hierarchy, owner, priority and progress
+status: BACKLOG
+priority: P1
+description: >
+  Found by the 2026-09-21 evaluation (sync audit, live tests; code
+  re-checked: `parent` appears nowhere in the parser or sync service).
+  In the new YAML format `parent`, `type`, `priority`, `progress`, `owner`
+  and `executor` are not imported, so PHASE/EPIC/DECISION/GAP rows become
+  flat tasks with null parent/phase/epic, `/progress` returns `phases: []`
+  and the global progress is wrong (23 percent on a test project). The
+  document's `owner` is never resolved to `assigneeActorId`, so Kanban and
+  Workload cannot see what an agent claims in the document. In the other
+  direction `assign()` does not write back (brief section 8 says the
+  assignment must reach ROADMAP, not stay in PostgreSQL), hierarchy and
+  progress edits are not written, and a UI progress PATCH leaves the
+  document at its old value. Related: BLOCKED entries lose their title,
+  REVIEW/IDEA silently become PENDIENTE (synchronization.md promises a
+  conflict), duplicate ids silently keep the last, removing `depends_on`
+  is ignored, and CRLF files are rewritten to LF.
+expected_behavior: >
+  Round trip parity for type, parent, priority, progress, owner/executor,
+  dependencies and status between Roadmap.md, PostgreSQL and the UI,
+  matching docs/synchronization.md and brief sections 8, 9 and 12; unknown
+  statuses raise a conflict; write-back preserves line endings.
+technical_context:
+  backend: apps/api/src/modules/roadmap, synchronization, tasks/tasks.service.ts (assign), write-back.service.ts
+next_action: >
+  Split into slices (import fields, owner resolution, write-back of
+  assignment, hierarchy write-back); start with owner -> actor because it
+  drives Workload and the agent experience.
+created_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T09:00:00Z
+```
+
+### BUG-06 — Conflicts pile up, resolving does not update the document, and an empty file floods them
+
+```yaml
+id: BUG-06
+type: BUG
+title: Conflicts pile up, resolving does not update the document, and an empty file floods them
+status: BACKLOG
+priority: P1
+description: >
+  Found by the 2026-09-21 evaluation (sync audit, live). KEEP_LOCAL leaves
+  the database with the UI value and the document with the external one and
+  the stored hash has already advanced, so no later sync repairs it
+  (conflicts.service.ts states it does no write-back). Conflicts are not
+  deduplicated (16 -> 19 open across 3 syncs, 7 stacked on one task); they
+  stay open after the row reappears; an empty Roadmap.md produced 11
+  conflicts in one run (an invalid YAML fails safely, an empty file does
+  not); a dependency cycle A<->B leaves a dangling edge silently.
+expected_behavior: >
+  One open conflict per task and field, auto-closed when the sides agree
+  again; resolution writes the chosen value back to the document; an empty
+  or truncated document is rejected instead of treated as mass deletion.
+technical_context:
+  backend: apps/api/src/modules/conflicts, synchronization/synchronization.service.ts
+next_action: >
+  Depends on the SECURITY-02 change to resolve(); design dedupe key first.
+created_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T09:00:00Z
+```
+
+### BUG-07 — Write-back runs outside the transaction and is not idempotent
+
+```yaml
+id: BUG-07
+type: BUG
+title: Write-back runs outside the transaction and is not idempotent
+status: BACKLOG
+priority: P1
+description: >
+  Found by the 2026-09-21 evaluation and hit by hand on 2026-09-20: a
+  failed write-back after the database commit returns 500 with the row
+  already saved (a project whose docs folder is missing returned 500 on
+  `POST /tasks` and the task still existed). Retrying creates duplicates
+  without `externalId` that sync cannot repair, and there is no idempotency
+  key. Every write also stores a full copy in DocumentRevision with no
+  retention (119 rows after about 100 tasks).
+expected_behavior: >
+  Either the database change and the document write succeed together or
+  the request reports a clean error with nothing persisted (or an outbox
+  retries the write); a client retry key makes creation idempotent;
+  revisions have a retention policy.
+technical_context:
+  backend: apps/api/src/modules/tasks/tasks.service.ts (create), synchronization/write-back.service.ts, DocumentRevision
+next_action: >
+  Prefer an outbox table drained by the sync worker; add an
+  Idempotency-Key header on task creation.
+created_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T09:00:00Z
+```
+
+### IMPROVEMENT-01 — Performance and data limits (cycle check, progress N+1, pagination, indexes, DTO limits)
+
+```yaml
+id: IMPROVEMENT-01
+type: IMPROVEMENT
+title: Performance and data limits (cycle check, progress N+1, pagination, indexes, DTO limits)
+status: BACKLOG
+priority: P2
+description: >
+  Measured by the 2026-09-21 evaluation. `wouldCreateCycle`
+  (synchronization.service.ts) queries once per hop: a 150-entry dependency
+  chain took 15.5 s and 500 exceeds the 20 s timeout (without dependencies
+  500 entries take 1.9 s). computeTaskProgress runs per task in /tasks,
+  /workload and /projects (N+1); lists are not paginated (95 tasks = 89 KB,
+  143-174 ms against 48 ms for 14); /dashboard/activity returns full
+  rawContent. Missing indexes seen in migrations: TaskDependency(taskId,
+  dependsOnTaskId), Task.parentTaskId, Task.assigneeActorId,
+  SyncRun(projectId,startedAt), Conflict(projectId,resolvedAt),
+  Notification(actorId,createdAt). No DTO has MaxLength (a 90,000 char
+  title made Roadmap.md 96 KB), `?status=BOGUS` returns 500, duplicate
+  dependencies are stored and cannot be removed.
+expected_behavior: >
+  Sync of 500 chained entries stays under a few seconds using an in-memory
+  graph per run; rollups are computed in batch; list endpoints paginate;
+  the listed indexes exist; DTOs validate length and enums; a dependency
+  removal endpoint exists.
+technical_context:
+  backend: apps/api/src/modules/synchronization, tasks, workload, projects, dashboard, prisma/schema.prisma
+next_action: >
+  Start with the cycle check (blocks large real projects) and the indexes.
+created_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T09:00:00Z
+```
+
+### SECURITY-04 — Authentication and transport hardening
+
+```yaml
+id: SECURITY-04
+type: SECURITY
+title: Authentication and transport hardening
+status: BACKLOG
+priority: P2
+description: >
+  From the 2026-09-21 backend audit. Login leaks account existence by
+  timing (157-370 ms existing vs 11-14 ms unknown) and checks "inactive"
+  before the password; the seed creates an ADMIN with password demo1234
+  with no environment guard; JWT_SECRET has no minimum length and
+  .env.example ships "change-me"; API keys do not expire, have no scope or
+  lastUsedAt and reach every REST route (one listed 40 users); there is
+  no password change or reset; CORS is fully open and there is no helmet
+  (X-Powered-By exposed); throttling is per IP so several agents behind one
+  host hit 429 after about 100 writes; WebSocket has no maxPayload and its
+  tickets live in process memory (single instance only).
+expected_behavior: >
+  Constant-time login, seed refuses to run against a production-like
+  environment, secrets validated at startup, API keys with expiry, scope
+  and last-used tracking (throttled per key), a CORS allowlist plus
+  helmet, a password change flow, and WS limits.
+technical_context:
+  backend: apps/api/src/modules/auth, main.ts, prisma/seed.ts, agents (API keys), realtime
+next_action: >
+  Group into two slices: login/secrets/seed first, API-key scope and
+  transport second.
+created_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T09:00:00Z
+```
+
+### UX-01 — Errors and sync status are invisible in the UI
+
+```yaml
+id: UX-01
+type: UX
+title: Errors and sync status are invisible in the UI
+status: BACKLOG
+priority: P1
+description: >
+  From the 2026-09-21 frontend audit. `syncNow()` (project-dashboard.ts),
+  `transition()`, `assign()` and `addDependency()` (task-detail.ts) and the
+  dashboard `Promise.all` have no catch, so a 403/409 (including the locked
+  assignment of brief section 7) or a failed sync shows nothing; a missing
+  task renders blank and a missing project redirects silently. Sync
+  failures appear only as gray text in My Projects, the project header does
+  not load the last run, and the bell accumulates duplicate notifications
+  with English text and server paths and has no "mark all read". The
+  panel does not close on Esc, outside click or navigation and overflows
+  the viewport at 390 px. There is no visual mark for a locked assignee.
+expected_behavior: >
+  Every action surfaces success or a readable error; a status banner in the
+  project header shows the last sync and its error; notifications are
+  grouped, localized, path-free, have "mark all read", and the panel is
+  dismissible and fits mobile.
+technical_context:
+  frontend: apps/web/src/app/features/project-dashboard, task-detail, my-projects, layout/app-shell
+next_action: >
+  Introduce one shared error/snackbar helper and apply it to all actions.
+created_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T09:00:00Z
+```
+
+### UX-02 — Mobile layout, Kanban size and Settings overlaps
+
+```yaml
+id: UX-02
+type: UX
+title: Mobile layout, Kanban size and Settings overlaps
+status: BACKLOG
+priority: P2
+description: >
+  From the 2026-09-21 frontend audit (390 px). The sticky header takes 105
+  px; the main nav and the project tabs overflow (Roles, Auditoria and
+  Configuracion are hidden with no scroll cue); a project page overflows
+  the viewport by 194 px (`.members__add`); tables hide columns inside an
+  inner scroll. Kanban columns grow without limit (TERMINADA = 2,900 px
+  with 12 cards), filters reset when coming back from the task detail, the
+  project header uses 290 px before content. Settings hints overlap the
+  next field (missing subscriptSizing dynamic) and read-only mode is
+  nearly illegible; the remove-role button is 20 px (WCAG 2.5.8 asks 24);
+  some selects have no accessible name (audit-log, task-detail) and the
+  nav aria-label is English.
+expected_behavior: >
+  No horizontal page overflow at 390 px, visible scroll cues, a compact
+  mobile header, capped or collapsible Kanban columns, filters preserved in
+  the URL, no overlapping hints, 24 px minimum targets, labeled controls.
+technical_context:
+  frontend: apps/web/src/app/layout/app-shell, features/kanban, project-dashboard, project-settings, audit-log, task-detail, styles.scss
+next_action: >
+  Extend the Playwright a11y suite to the routes that were not covered.
+created_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T09:00:00Z
+```
+
+### UX-03 — Spanish localization, readable labels, progress view and task detail
+
+```yaml
+id: UX-03
+type: UX
+title: Spanish localization, readable labels, progress view and task detail
+status: BACKLOG
+priority: P2
+description: >
+  From the 2026-09-21 frontend audit. `<html lang="en">` with a Spanish UI;
+  no LOCALE_ID so dates render as "Sep 21, 2026" and "9/21/26"; raw enums
+  shown (HIGH, SYNC_RUN, SUCCESS, COMPLETE_VIA_ROADMAP_REMOVAL,
+  KEEP_LOCAL); voseo ("Asigna") mixed with tuteo; internal leaks ("brief
+  section 4", "permiso project.update", "columna Acceptance check").
+  Progress shows "85.71428571428571%" as a flat list of links without bars
+  (phases-progress.html); the task detail is almost unstyled, "Depende de"
+  shows the hierarchy location, history is raw ("externalId: -> DEC-002"),
+  and the blocked reason lives only in a `title` (unreachable on touch).
+  Dashboard items are not links and change entries do not say which task.
+  Team has no search or pagination.
+expected_behavior: >
+  lang="es", es-ES LOCALE_ID and one date pipe, a label dictionary for all
+  enums, rounded percentages with bars, breadcrumbs and a styled task
+  detail with visible block reason, linked dashboard items.
+technical_context:
+  frontend: apps/web/src/app (index.html, features/phases-progress, task-detail, dashboard, audit-log, conflicts, roles, team)
+next_action: >
+  Start with lang/LOCALE_ID and the enum dictionary; both are mechanical.
+created_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T09:00:00Z
+```
+
+### GAP-36 — Agent experience and onboarding gaps
+
+```yaml
+id: GAP-36
+type: GAP
+title: Agent experience and onboarding gaps
+status: BACKLOG
+priority: P2
+description: >
+  From the 2026-09-21 evaluation. The MCP server exposes 6 tools
+  (list_tasks, get_task, update_task, transition_task, list_comments,
+  add_comment); agents cannot list projects, claim or create tasks and
+  subtasks, read documents or conflicts, or get project context. An
+  AI_AGENT cannot move QA -> TERMINADA (403) and nothing tells an agent it
+  was assigned work. Only 2 of the 9 notification events of brief section
+  29 exist (conflict, sync failure). The brief's task completion date
+  (section 6) is missing. Onboarding an empty repository fails
+  (`POST /sync` and `POST /tasks` return 500, a non-existent path is
+  accepted at creation with 201) and no document skeleton is generated.
+  LEAF_EQUAL_WEIGHT is selectable but not implemented. A single rate limit
+  of 100 requests per minute per IP throttles several agents on one host.
+expected_behavior: >
+  MCP covers the agent workflow (list_projects, claim_task, create_task,
+  get_context, list_conflicts), agent-assignment notifications exist for
+  the section 29 events, creating a project on an empty folder scaffolds
+  Roadmap.md and Agentslog.md, and the completion date and
+  LEAF_EQUAL_WEIGHT are implemented or explicitly descoped.
+technical_context:
+  backend: apps/api/src/modules/mcp, notifications, projects, tasks, progress rollup
+next_action: >
+  File separate slices; the MCP tools depend on GAP-35's owner resolution.
+created_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T09:00:00Z
+```
+
+### TEST-01 — Negative RBAC, concurrency and coverage gaps
+
+```yaml
+id: TEST-01
+type: TEST
+title: Negative RBAC, concurrency and coverage gaps
+status: BACKLOG
+priority: P2
+description: >
+  From the 2026-09-21 evaluation. 53 of 60 services, guards and controllers
+  have no unit spec (module-level coverage relies on 25 e2e files); only
+  about 43 assertions check 401/403/404, none check concurrency, and the
+  critical findings SECURITY-01, SECURITY-02 and BUG-04 have no negative
+  test. Coverage is not measured or gated. auth.interceptor (401 refresh),
+  login and project-member.guard have no spec in the web app, and the
+  Playwright a11y suite covers 5 routes only. Very large services:
+  synchronization.service.ts (808 lines), tasks.service.ts (738),
+  write-back.service.ts (719).
+expected_behavior: >
+  Negative RBAC and concurrency tests for the critical routes, a coverage
+  report with a floor in CI, unit specs for the untested web core pieces,
+  a11y coverage of all routes, and a plan to split the three large services.
+technical_context:
+  backend: apps/api/test, apps/api/src
+  frontend: apps/web/src/app/core, apps/web/a11y
+next_action: >
+  Write each negative test together with the fix of its finding.
+created_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T09:00:00Z
+```
+
+### IMPROVEMENT-02 — Deployment, containerization and documentation gaps
+
+```yaml
+id: IMPROVEMENT-02
+type: IMPROVEMENT
+title: Deployment, containerization and documentation gaps
+status: BACKLOG
+priority: P3
+description: >
+  From the 2026-09-21 evaluation. There is no Dockerfile for the API or the
+  web app (docker-compose.yml only runs PostgreSQL), no production
+  configuration or health/readiness story beyond `/health`, and the web
+  app hardcodes API_BASE_URL to http://localhost:3000 in source.
+  docs/decisions/ is empty although code and docs reference ADRs, and
+  docs/synchronization.md and docs/roadmap-parser.md describe table
+  formats and rules the code does not implement (conflict on unknown
+  status, Owner resolution). Legacy fixture users from e2e runs before the
+  test database isolation (about 40 "Dev", "Outsider", "Role tester"
+  accounts) still clutter the development Team page.
+expected_behavior: >
+  Reproducible container images and a documented deployment path with
+  runtime-configurable API URL, ADR files present for every ADR cited, sync
+  docs matching the implemented behavior, and a clean development dataset.
+technical_context:
+  backend: docker-compose.yml, apps/web/src/app/core/api-base-url.ts, docs/
+next_action: >
+  Decide the target runtime before writing images.
+created_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T09:00:00Z
+```
+
 Post-MVP gap backlog derived from a brief-vs-code review on 2026-09-15
 (GAP-12–GAP-19), the 2026-09-16 frontend redesign (GAP-20), and a
 2026-09-16 user-requested docsPath folder picker (GAP-27) are all DONE
