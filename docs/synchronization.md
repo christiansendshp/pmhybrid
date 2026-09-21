@@ -456,6 +456,18 @@ Checked with the upstream skill's own script: a project made by its `init`,
 its `claim`, and PM Hub's create, start, reassign, edit, complete and remove all
 leave `check` passing (a `CREATED` entry, by contrast, fails it).
 
+### Revision retention (Roadmap BUG-07c)
+
+Every changed sync and every write-back stores a full copy of the document as a
+`DocumentRevision`. `RevisionRetentionService` keeps the newest
+`DOCUMENT_REVISION_RETENTION` of each document (default 200; `0` keeps all) and
+deletes the rest, daily at 03:00 and outside the write-back lock. It counts
+revisions rather than age, so a document that rarely changes never loses its
+only history. Nothing holds a foreign key to a revision (the ledger's
+`sourceDocumentRevisionId` is a plain string nothing reads back, and the
+dashboard and the revision list ask only for the newest), so trimming breaks no
+pointer; the one visible effect is a `404` for a deleted revision's id.
+
 ## Conflicts (brief §26)
 
 `Conflict` is a first-class entity with its own endpoints/UI route, not just

@@ -272,66 +272,6 @@ created_at: 2026-09-21T15:00:00Z
 updated_at: 2026-09-21T15:00:00Z
 ```
 
-### BUG-07 — Write-back runs outside the transaction and is not idempotent
-
-```yaml
-id: BUG-07
-type: BUG
-title: Write-back runs outside the transaction and is not idempotent
-status: BACKLOG
-priority: P1
-depends_on:
-  - BUG-07a
-  - BUG-07b
-  - BUG-07c
-description: >
-  Found by the 2026-09-21 evaluation and hit by hand on 2026-09-20: a
-  failed write-back after the database commit returns 500 with the row
-  already saved (a project whose docs folder is missing returned 500 on
-  `POST /tasks` and the task still existed). Retrying creates duplicates
-  without `externalId` that sync cannot repair, and there is no idempotency
-  key. Every write also stores a full copy in DocumentRevision with no
-  retention (119 rows after about 100 tasks).
-expected_behavior: >
-  Either the database change and the document write succeed together or
-  the request reports a clean error with nothing persisted (or an outbox
-  retries the write); a client retry key makes creation idempotent;
-  revisions have a retention policy.
-technical_context:
-  backend: apps/api/src/modules/tasks/tasks.service.ts (create), synchronization/write-back.service.ts, DocumentRevision
-next_action: >
-  Umbrella only, refined on 2026-09-21 into BUG-07a (change and document
-  write in one transaction), BUG-07b (Idempotency-Key on task creation) and
-  BUG-07c (revision retention); close it when all three are done.
-created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T18:00:00Z
-```
-
-### BUG-07c — DocumentRevision grows without a retention policy
-
-```yaml
-id: BUG-07c
-type: BUG
-title: DocumentRevision grows without a retention policy
-status: BACKLOG
-priority: P2
-parent: BUG-07
-description: >
-  Third slice of BUG-07. Every write-back and every changed sync stores a
-  full copy of the document in DocumentRevision, forever (119 rows after
-  about 100 tasks).
-expected_behavior: >
-  A configurable retention keeps the most recent revisions of each document
-  and drops the rest on a schedule, without breaking anything that points at
-  a revision.
-technical_context:
-  backend: apps/api/prisma/schema.prisma (DocumentRevision), synchronization (scheduler)
-next_action: >
-  Find what references a DocumentRevision before choosing what may be deleted.
-created_at: 2026-09-21T18:00:00Z
-updated_at: 2026-09-21T18:00:00Z
-```
-
 ### IMPROVEMENT-01 — Performance and data limits (cycle check, progress N+1, pagination, indexes, DTO limits)
 
 ```yaml

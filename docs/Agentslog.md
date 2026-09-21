@@ -876,3 +876,25 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: POST /projects/:id/tasks accepts an Idempotency-Key: a repeat returns the first task (per project and actor, 24 h, mismatched body is a 422); the web forms send one per form open
 - Files: apps/api/prisma/schema.prisma,apps/api/prisma/migrations/20260921200000_add_idempotency_key/migration.sql,apps/api/src/modules/tasks/tasks.service.ts,apps/api/src/modules/tasks/idempotency.util.ts,apps/web/src/app/core/idempotency-key.ts,docs/domain-model.md,docs/api-reference.md
 - Verify: api unit 366 and e2e 237 pass (incl. a simultaneous-request race); web unit 196 pass, eslint and ng build clean
+
+## [2026-09-21T18:09:10Z] | claude | BUG-07c | IN_PROGRESS
+
+- Summary: DocumentRevision retention
+- Verify: pending
+
+## [2026-09-21T18:18:59Z] | claude | BUG-07c | DONE
+
+- Summary: A daily job keeps the newest DOCUMENT_REVISION_RETENTION revisions of each document (default 200, 0 keeps all) and deletes the rest; nothing points at a revision by foreign key
+- Files: apps/api/src/modules/synchronization/revision-retention.service.ts,apps/api/src/config/env.validation.ts,apps/api/prisma/migrations/20260921210000_add_document_revision_index/migration.sql,docs/synchronization.md
+- Verify: api unit 369 and e2e 241 pass (incl. a 1200-revision backlog); prisma migrate diff shows no drift
+
+## [2026-09-21T18:19:00Z] | claude | BUG-07 | IN_PROGRESS
+
+- Summary: Close the umbrella: BUG-07a, b and c are done
+- Verify: pending
+
+## [2026-09-21T18:19:02Z] | claude | BUG-07 | DONE
+
+- Summary: Write-back is atomic with the change (07a), task creation is idempotent (07b) and document revisions are bounded (07c)
+- Files: docs/synchronization.md,docs/domain-model.md,docs/api-reference.md
+- Verify: BUG-07a, BUG-07b and BUG-07c verified: api e2e 241 pass

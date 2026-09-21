@@ -211,6 +211,8 @@ Document(id, projectId, kind: ROADMAP|AGENTSLOG|PRODUCT_DESCRIPTION|STACK_TECH|
   @@unique([projectId, kind])
 
 DocumentRevision(id, documentId, contentHash, rawContent, capturedAt, source: SYNC|UI)
+  — only the newest `DOCUMENT_REVISION_RETENTION` (default 200) per document are kept;
+  a daily job deletes the rest (Roadmap BUG-07c, `docs/synchronization.md`)
 
 SyncRun(id, projectId, startedAt, finishedAt?, trigger: SCHEDULED|MANUAL,
   status: SUCCESS|PARTIAL|FAILED|RUNNING, summary jsonb?)

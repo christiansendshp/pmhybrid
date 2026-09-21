@@ -10,6 +10,8 @@ export interface EnvConfig {
   SYNC_DEFAULT_INTERVAL_MINUTES: number;
   /** Scheduled sync on or off; manual sync always works. The e2e suite turns it off. */
   SYNC_SCHEDULER_ENABLED: boolean;
+  /** How many revisions of each document to keep (Roadmap BUG-07c); the newest survive, older ones are deleted daily. 0 keeps everything. */
+  DOCUMENT_REVISION_RETENTION: number;
   GIT_PROVIDER_TYPE: string;
   /** Filesystem browser (docsPath picker) is confined to this directory and its descendants. */
   PROJECT_DOCS_BROWSE_ROOT: string;
@@ -17,6 +19,22 @@ export interface EnvConfig {
   GITHUB_TOKEN: string;
   /** HMAC secret for verifying `/webhooks/github` deliveries (Roadmap GAP-29); empty disables the endpoint. */
   GITHUB_WEBHOOK_SECRET: string;
+}
+
+const DEFAULT_REVISION_RETENTION = 200;
+
+/** A whole number of revisions to keep, 0 for "all"; anything else stops the start rather than silently keeping or deleting the wrong amount. */
+function parseRetention(raw: string | undefined): number {
+  if (raw === undefined || raw.trim() === '') {
+    return DEFAULT_REVISION_RETENTION;
+  }
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(
+      'DOCUMENT_REVISION_RETENTION must be a whole number of revisions to keep (0 keeps them all)',
+    );
+  }
+  return value;
 }
 
 const REQUIRED_KEYS: Array<keyof EnvConfig> = ['DATABASE_URL', 'JWT_SECRET'];
@@ -55,6 +73,9 @@ export function validateEnv(
       : 5,
     SYNC_SCHEDULER_ENABLED:
       raw.SYNC_SCHEDULER_ENABLED?.toLowerCase() !== 'false',
+    DOCUMENT_REVISION_RETENTION: parseRetention(
+      raw.DOCUMENT_REVISION_RETENTION,
+    ),
     GIT_PROVIDER_TYPE: raw.GIT_PROVIDER_TYPE ?? 'local',
     PROJECT_DOCS_BROWSE_ROOT: raw.PROJECT_DOCS_BROWSE_ROOT ?? homedir(),
     GITHUB_TOKEN: raw.GITHUB_TOKEN ?? '',

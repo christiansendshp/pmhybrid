@@ -402,6 +402,9 @@ model DocumentRevision {
   rawContent  String
   capturedAt  DateTime       @default(now())
   source      RevisionSource
+
+  // The newest-first walk that trims a document's history (Roadmap BUG-07c).
+  @@index([documentId, capturedAt])
 }
 
 model SyncRun {
