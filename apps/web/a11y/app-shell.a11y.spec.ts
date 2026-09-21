@@ -83,4 +83,23 @@ test.describe('accessibility (Roadmap GAP-25)', () => {
     await expect(page.getByRole('navigation', { name: 'Ruta de navegación' })).toBeVisible();
     await checkA11y(page, 'task-detail');
   });
+
+  // Every other signed-in route (Roadmap TEST-01d). The project routes use this
+  // repository's own project, the seeded one that has tasks and history.
+  const routes: { name: string; url: string; heading: string | RegExp }[] = [
+    { name: 'workload', url: '/workload', heading: 'Carga de trabajo' },
+    { name: 'team', url: '/team', heading: 'Equipo' },
+    { name: 'roles', url: '/roles', heading: 'Roles' },
+    { name: 'conflicts', url: '/projects/pmhybrid-self/conflicts', heading: 'Conflictos' },
+    { name: 'audit', url: '/projects/pmhybrid-self/audit', heading: 'Auditoría' },
+    { name: 'project settings', url: '/projects/pmhybrid-self/settings', heading: 'Configuración' },
+    { name: 'project page (members and roles)', url: '/projects/pmhybrid-self', heading: /PM Hub/ },
+  ];
+  for (const route of routes) {
+    test(`${route.name} (Roadmap TEST-01d)`, async ({ page }) => {
+      await page.goto(route.url);
+      await expect(page.getByRole('heading', { name: route.heading }).first()).toBeVisible();
+      await checkA11y(page, route.name);
+    });
+  }
 });

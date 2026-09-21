@@ -177,6 +177,35 @@ JWT auth, RBAC enforced via `Role`/`Permission`/`ActorRole` and a
 bcrypt) password hashing, secrets only via environment variables — never
 persisted in `AgentProfile.configJson` or anywhere else in the database.
 
+## The three large services, and how they would be split (Roadmap TEST-01d)
+
+Three services carry most of the behaviour and are big enough to be hard to
+change safely (measured 2026-09-21): `SynchronizationService` (about 1,540
+lines), `WriteBackService` (about 1,070) and `TasksService` (about 880). This
+is a plan, not a refactor: nothing here is scheduled, and each split should be
+its own commit with the e2e suite green before and after (the suite drives all
+three through HTTP, so it is the safety net for moving code).
+
+**Rule for any split**: cut along a line the code already draws — a private
+method group that shares a data shape — never by size. Keep the public method
+names each caller uses (`runSync`, `recordTaskEvent`, `create`, …) on the
+original class as a thin facade until every caller has moved, so a split never
+changes a controller, a listener or a spec at the same time.
+
+| Service                  | What is in it today                                                                                                                                                                                                                   | Seam already there                                                                                                                                                      | Split into                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SynchronizationService` | The run (lock, documents, result), the Roadmap reconciliation loop, task creation from a row, owner and assignee resolution, conflict raising and auto-closing, field reconciliation, dependency reconciliation                       | Each of these is a group of `private` methods that takes the transaction and a row, and shares `SyncSummary` and `OpenConflict`                                         | `SyncRunner` (`runSync`, `runLocked`, `syncDocument`, notifications), `RoadmapReconciler` (`reconcileRoadmap`, `reconcileExistingRow`, `createFromRoadmapRow`), `SyncConflictService` (`raise*`, `closeConflictAutomatically`, `closeAgreedFieldConflicts`), `DependencyReconciler` (`reconcileDependencies`, `resolveDanglingDependencies`), `AssigneeReconciler` (`loadOwnerCandidates`, `reconcileAssignee`, `assigneeEditedLocally`) |
+| `WriteBackService`       | One public method per lifecycle event (`recordTaskEvent`, `recordFieldEdit`, `recordConflictResolution`, `recordTaskRemoval`, `recordDependencyAdded`), each with its `*Locked` body, plus the lock wrapper and the revision recorder | The `*Locked` bodies do not call each other; they share only `inTransaction`, `recordDocumentRevision` and the row writers in `roadmap/`                                | Keep `WriteBackService` as the lock wrapper and revision recorder; move each `*Locked` body into its own class (`LifecycleWriteBack`, `FieldEditWriteBack`, `ResolutionWriteBack`, `RemovalWriteBack`, `DependencyWriteBack`) that receives the wrapper                                                                                                                                                                                  |
+| `TasksService`           | Reads (list, detail), create with idempotency, update, assign, transition, dependencies, removal, and the hierarchy and cycle guards                                                                                                  | The guards (`assertHierarchy`, `assertNoParentCycle`, `assertNoDependencyCycle`) and the field helpers at the bottom are already free of instance state except `prisma` | `TaskQueryService` (reads), `TaskHierarchyGuards` (the `assert*` group and the helpers), and `TasksService` keeping the writes; assignment and transition are the next candidates once the guards are out                                                                                                                                                                                                                                |
+
+What makes the order safe: start with the pieces that have no callers outside
+their own class (the guards, the conflict raising, the `*Locked` bodies), since
+moving them changes no signature anyone else uses. The dependency
+reconciliation and the assignee resolution come after, because they read what
+the reconciliation loop has already loaded. The run itself
+(`runSync`/`runLocked`) moves last, since it is the transaction boundary every
+other piece runs inside.
+
 ## What this document intentionally does not cover
 
 Entity fields and relations live in `docs/domain-model.md`. Sync/reconciliation

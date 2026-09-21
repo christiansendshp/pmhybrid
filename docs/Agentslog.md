@@ -1057,3 +1057,25 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: auth.interceptor (bearer header, one refresh and one retry, no refresh for the auth endpoints, redirect when the refresh fails), the login page (validation before any request, success, wrong credentials, double submit) and projectMemberGuard (member, non-member, no project id) have specs
 - Files: apps/web/src/app/core/auth.interceptor.spec.ts,apps/web/src/app/core/project-member.guard.spec.ts,apps/web/src/app/features/auth/login/login.spec.ts
 - Verify: web unit 236 pass, eslint clean
+
+## [2026-09-21T19:25:58Z] | claude | TEST-01d | IN_PROGRESS
+
+- Summary: Accessibility coverage on every route and a split plan for the large services
+- Verify: pending
+
+## [2026-09-21T19:27:28Z] | claude | TEST-01d | DONE
+
+- Summary: The axe suite visits every signed-in route (workload, team, roles, conflicts, audit, project settings and the project page, on top of the seven it had), all with no violation; docs/architecture.md says how the three large services would be split, seam by seam and in what order
+- Files: apps/web/a11y/app-shell.a11y.spec.ts,docs/architecture.md
+- Verify: a11y 15 pass
+
+## [2026-09-21T19:27:29Z] | claude | TEST-01 | IN_PROGRESS
+
+- Summary: Close the umbrella: TEST-01a, b, c and d are done
+- Verify: pending
+
+## [2026-09-21T19:27:31Z] | claude | TEST-01 | DONE
+
+- Summary: The local e2e database resets every run, coverage has a floor in CI, the web core pieces have specs and every signed-in route is checked for accessibility
+- Files: docs/testing.md,docs/architecture.md
+- Verify: TEST-01a, 01b, 01c and 01d verified
