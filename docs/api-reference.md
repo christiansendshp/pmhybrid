@@ -45,13 +45,22 @@ transform: true })` — unknown fields are stripped, not rejected; typed
   no `Origin` header (a script, an agent, `curl`) is never affected. The
   realtime WebSocket closes a connection that sends a frame over 1 KiB
   (clients only listen), and its socket errors are logged, not thrown.
-- No pagination on any list endpoint except `GET /notifications` (`take: 50`,
-  newest first, no cursor) and `GET /projects/:id/audit` (cursor-paginated,
-  the one endpoint brief §25/§31 asked to page). Every other list returns
-  its full result set — acceptable at this project's data scale. A few
-  sub-resources carry their own fixed, non-configurable cap regardless (the
-  Dashboard's five activity feeds at 10 each; a task detail's own
-  `agentLogEvents` at 20) — not pagination, just a display ceiling.
+- **Pagination** (Roadmap IMPROVEMENT-01d3). `GET /projects/:id/tasks`, the one list
+  that grows with a project (95 tasks were 89 KB), takes `limit` (1-500, default
+  and maximum 500) and `cursor`. Its body is still the array it was, so no client had
+  to change; a page that is not the last says where the next starts in the
+  `X-Next-Cursor` response header (exposed to browsers by CORS), to be sent back
+  as `cursor`. The list is in creation order with the id as tie-break, so a page
+  boundary never repeats or skips a task, and the filters (`status`, `phaseId`,
+  `epicId`, `assigneeActorId`) hold across pages. A malformed `limit` or `cursor`
+  is a 400. The web reads every page, so a board is never silently cut; the MCP
+  tool `list_tasks` still returns the whole list. The other lists are bounded
+  another way: `GET /notifications` (`take: 50`, newest first),
+  `GET /projects/:id/audit` (`limit` and a cursor of its own), and everything else
+  is a list of members, roles, projects or conflicts that does not grow with the
+  work. A few sub-resources carry their own fixed cap (the Dashboard's five
+  activity feeds at 10 each; a task detail's own `agentLogEvents` at 20) — a
+  display ceiling.
 
 ## Modules and their route prefixes
 

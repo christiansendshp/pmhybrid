@@ -124,3 +124,36 @@ segments live in `docs/history/`.
 - Summary: A dependency can be removed, and the same one cannot be added twice: DELETE /projects/:id/tasks/:taskId/dependencies/:dependencyId (task.write; a dependency belongs to its task so another task's id is a 404) deletes it, audits DEPENDENCY_REMOVE with what it was and re-renders the Roadmap row's Depends on cell from what is left in the same transaction (the cell reads a dash once none is left), reusing the whole-set write of the addition; adding one the task already has, by task or by outside reference, is a 409 checked under the project lock. The task detail shows a Quitar button per dependency to a member with task.write and the picker no longer offers a task already depended on.
 - Files: apps/api/src/modules/tasks/tasks.service.ts,apps/api/src/modules/tasks/tasks.controller.ts,apps/api/src/modules/synchronization/write-back.service.ts,apps/api/test/task-dependency-removal.e2e-spec.ts,apps/web/src/app/features/task-detail/task-detail.html,apps/web/src/app/core/tasks.service.ts,docs/synchronization.md
 - Verify: api unit 455 and e2e 307 pass (coverage 88.0); web unit 280 and eslint clean; Playwright a11y 60 pass; api lint, nest build and web build ok
+
+## [2026-09-21T21:54:40Z] | claude | IMPROVEMENT-01d3 | IN_PROGRESS
+
+- Summary: Task and notification lists take a limit and a cursor, the cursor in a response header, the body still an array
+- Verify: pending
+
+## [2026-09-21T22:03:56Z] | claude | IMPROVEMENT-01d3 | DONE
+
+- Summary: The task list, the one list that grows with a project, is read a page at a time: GET /projects/:id/tasks takes limit (1-500, default and maximum 500) and cursor, its body stays the array it was, and a page that is not the last names the next in the X-Next-Cursor header (exposed by CORS). Creation order with the id as tie-break, so a boundary never repeats or skips a task, filters hold across pages, a malformed limit or cursor is a 400. The web reads every page so a board is never cut; MCP list_tasks still returns the whole list. Notifications (take 50) and audit (limit and cursor) were already bounded and the other lists do not grow with the work. Autonomous decision: header cursor and array body, so no client had to change.
+- Files: apps/api/src/common/pagination.ts,apps/api/src/modules/tasks/tasks.service.ts,apps/api/src/modules/tasks/tasks.controller.ts,apps/api/src/modules/tasks/dto/list-tasks-query.dto.ts,apps/api/src/security/http-hardening.ts,apps/api/test/task-pagination.e2e-spec.ts,apps/web/src/app/core/tasks.service.ts,docs/api-reference.md
+- Verify: api unit 466 and e2e 316 pass (coverage 88.1); web unit 282 and eslint clean; Playwright a11y 60 pass; api lint, nest build and web build ok
+
+## [2026-09-21T22:03:58Z] | claude | IMPROVEMENT-01d | IN_PROGRESS
+
+- Summary: Closing the slice: 01d1-01d3 are done
+- Verify: pending
+
+## [2026-09-21T22:03:59Z] | claude | IMPROVEMENT-01d | DONE
+
+- Summary: Pagination, the activity payload and dependency removal: the activity feed carries no document content (01d1), a dependency can be removed and not added twice, written back to the document (01d2), and the task list is read a page at a time (01d3).
+- Files: docs/Roadmap.md
+- Verify: All three done and verified: api unit 466 and e2e 316 pass (coverage 88.1); web unit 282 and eslint clean; Playwright a11y 60 pass; api lint, nest build and web build ok
+
+## [2026-09-21T22:04:00Z] | claude | IMPROVEMENT-01 | IN_PROGRESS
+
+- Summary: Closing the umbrella: 01a-01d are done
+- Verify: pending
+
+## [2026-09-21T22:04:02Z] | claude | IMPROVEMENT-01 | DONE
+
+- Summary: Performance and data limits: the dependency cycle check runs in memory and a 500-entry chain syncs in seconds with the missing indexes added (01a), DTOs validate length and enums (01b), progress and the multi-project summary are computed in batch (01c), and the activity payload, dependency removal and the task list pages are done (01d).
+- Files: docs/Roadmap.md
+- Verify: All four slices done and verified: api unit 466 and e2e 316 pass (coverage 88.1); web unit 282 and eslint clean; Playwright a11y 60 pass; api lint, nest build and web build ok

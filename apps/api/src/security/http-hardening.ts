@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import helmet from 'helmet';
+import { NEXT_CURSOR_HEADER } from '../common/pagination.js';
 
 /** The web app's own dev origins: what a laptop needs and nothing more. */
 export const DEV_CORS_ORIGINS = [
@@ -55,5 +56,8 @@ export function applyHttpHardening(
       origin: string | undefined,
       callback: (error: Error | null, allow?: boolean) => void,
     ) => callback(null, isOriginAllowed(origin, options.corsOrigins)),
+    // A browser reads a response header only when it is exposed; a page of a
+    // list says where the next one starts in this one (Roadmap IMPROVEMENT-01d3).
+    exposedHeaders: [NEXT_CURSOR_HEADER],
   });
 }

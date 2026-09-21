@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE_URL } from './api-base-url.js';
@@ -149,8 +149,25 @@ export class TasksService {
     );
   }
 
-  listForProject(projectId: string): Promise<TaskCard[]> {
-    return firstValueFrom(this.http.get<TaskCard[]>(`${API_BASE_URL}/projects/${projectId}/tasks`));
+  /**
+   * Every task of the project, read a page at a time (Roadmap IMPROVEMENT-01d3): the
+   * API returns at most a page and says in `X-Next-Cursor` where the next starts, so a
+   * board of any size is whole here and never silently cut.
+   */
+  async listForProject(projectId: string): Promise<TaskCard[]> {
+    const cards: TaskCard[] = [];
+    let cursor: string | null = null;
+    do {
+      const response: HttpResponse<TaskCard[]> = await firstValueFrom(
+        this.http.get<TaskCard[]>(`${API_BASE_URL}/projects/${projectId}/tasks`, {
+          observe: 'response',
+          ...(cursor ? { params: { cursor } } : {}),
+        }),
+      );
+      cards.push(...(response.body ?? []));
+      cursor = response.headers.get('X-Next-Cursor');
+    } while (cursor);
+    return cards;
   }
 
   getById(projectId: string, taskId: string): Promise<TaskDetail> {

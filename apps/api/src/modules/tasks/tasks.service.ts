@@ -17,6 +17,12 @@ import {
   type RoadmapFieldEdit,
   WriteBackService,
 } from '../synchronization/write-back.service.js';
+import {
+  afterPosition,
+  decodeCursor,
+  DEFAULT_PAGE_SIZE,
+  pageOf,
+} from '../../common/pagination.js';
 import { completedAtFor } from './completion-date.util.js';
 import { buildDependencyGraph, wouldCloseCycle } from './dependency-graph.js';
 import { AddDependencyDto } from './dto/add-dependency.dto.js';
@@ -34,6 +40,12 @@ import {
   STALE_TASK_MESSAGE,
 } from './task-status-policy.js';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
+
+/** One page of the task list (Roadmap IMPROVEMENT-01d3). */
+export interface TaskPage {
+  limit?: number;
+  cursor?: string;
+}
 
 export interface TaskListFilters {
   phaseId?: string;
@@ -60,6 +72,15 @@ const HIERARCHY_FIELDS = [
 ] as const;
 const DATE_FIELDS = ['startDate', 'estimatedDate', 'dueDate'] as const;
 
+/** What a board card needs read with each task. */
+const CARD_INCLUDE = {
+  assignee: { select: { id: true, displayName: true, kind: true } },
+  subtasks: { where: { deletedAt: null }, select: { status: true } },
+  dependencies: { select: { dependsOnTask: { select: { status: true } } } },
+} satisfies Prisma.TaskInclude;
+
+type CardRow = Prisma.TaskGetPayload<{ include: typeof CARD_INCLUDE }>;
+
 @Injectable()
 export class TasksService {
   private readonly logger = new Logger(TasksService.name);
@@ -80,17 +101,42 @@ export class TasksService {
    * to is TERMINADA; an unresolved external reference counts as open.
    */
   async findAllForProject(projectId: string, filters: TaskListFilters) {
-    const tasks = await this.prisma.task.findMany({
-      where: { projectId, deletedAt: null, ...filters },
-      orderBy: { createdAt: 'asc' },
-      include: {
-        assignee: { select: { id: true, displayName: true, kind: true } },
-        subtasks: { where: { deletedAt: null }, select: { status: true } },
-        dependencies: {
-          select: { dependsOnTask: { select: { status: true } } },
-        },
+    return this.cardsOf(
+      await this.prisma.task.findMany({
+        where: { projectId, deletedAt: null, ...filters },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        include: CARD_INCLUDE,
+      }),
+    );
+  }
+
+  /**
+   * The same cards a page at a time (Roadmap IMPROVEMENT-01d3): at most `limit`
+   * (default DEFAULT_PAGE_SIZE) in creation order, and the cursor of the next
+   * page when there is one. An unbounded list of tasks was 89 KB for 95 of them.
+   */
+  async findPageForProject(
+    projectId: string,
+    filters: TaskListFilters,
+    page: TaskPage,
+  ) {
+    const limit = page.limit ?? DEFAULT_PAGE_SIZE;
+    const rows = await this.prisma.task.findMany({
+      where: {
+        projectId,
+        deletedAt: null,
+        ...filters,
+        ...(page.cursor ? afterPosition(decodeCursor(page.cursor)) : {}),
       },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      include: CARD_INCLUDE,
+      take: limit + 1,
     });
+    const { page: kept, nextCursor } = pageOf(rows, limit);
+    return { tasks: await this.cardsOf(kept), nextCursor };
+  }
+
+  private async cardsOf(tasks: CardRow[]) {
     // Progress for the whole list from one batch of reads, not a query per task.
     const progress = await this.progressRollup.computeTasksProgress(tasks);
     return Promise.all(

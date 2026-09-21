@@ -47,6 +47,11 @@ describe('HTTP hardening (e2e, Roadmap SECURITY-04b1)', () => {
     expect(res.headers['access-control-allow-origin']).toBe(
       'https://pm.example.com',
     );
+    // A page of a list says where the next starts in a header, which a browser
+    // only lets a page read when it is exposed (Roadmap IMPROVEMENT-01d3).
+    expect(res.headers['access-control-expose-headers']).toMatch(
+      /X-Next-Cursor/i,
+    );
 
     const preflight = await request(server())
       .options('/projects/p1/tasks')

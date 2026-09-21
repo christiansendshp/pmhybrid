@@ -8,9 +8,12 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
+import { NEXT_CURSOR_HEADER } from '../../common/pagination.js';
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
 import { CurrentAuditOrigin } from '../../common/decorators/current-audit-origin.decorator.js';
 import type { AuditOrigin } from '@prisma/client';
@@ -44,17 +47,31 @@ import { TasksService } from './tasks.service.js';
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
+  /**
+   * The tasks of a project as an array, at most `limit` of them (Roadmap
+   * IMPROVEMENT-01d3): when there are more, the `X-Next-Cursor` header names
+   * where the next page starts and is passed back as `cursor`.
+   */
   @Get()
-  findAll(
+  async findAll(
     @Param('projectId') projectId: string,
     @Query() query: ListTasksQueryDto,
+    @Res({ passthrough: true }) response: Response,
   ) {
-    return this.tasksService.findAllForProject(projectId, {
-      phaseId: query.phaseId,
-      epicId: query.epicId,
-      status: query.status,
-      assigneeActorId: query.assigneeActorId,
-    });
+    const { tasks, nextCursor } = await this.tasksService.findPageForProject(
+      projectId,
+      {
+        phaseId: query.phaseId,
+        epicId: query.epicId,
+        status: query.status,
+        assigneeActorId: query.assigneeActorId,
+      },
+      { limit: query.limit, cursor: query.cursor },
+    );
+    if (nextCursor) {
+      response.setHeader(NEXT_CURSOR_HEADER, nextCursor);
+    }
+    return tasks;
   }
 
   @Get(':taskId')
