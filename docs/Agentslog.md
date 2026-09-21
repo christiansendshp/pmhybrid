@@ -639,3 +639,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: assign(), transition() and conflict resolution read the task outside the write and then updated it unconditionally, so they raced. Reproduced first with a new e2e (a DEVELOPER reassigning while the owner moved the task to EN_DESARROLLO): a transition that answered 201 was undone because assign rewrote the stale status it had read (ASIGNADA), the same hole that let a reassignment past the lock. Fix: each write is now a conditional updateMany on the status (and, for assign, the assignee) that the decision was made from, done first inside the transaction so a lost race writes nothing; the loser gets 409 'The task changed while this action was being processed; reload it and try again'. Conflict resolution applies its fields with the same guard. Left out on purpose: PATCH /tasks/:id, remove and the sync reconciler have their own read-then-write shapes and are not part of this ticket; the UI still shows a 409 as a silent no-op until UX-01 adds error handling to those actions.
 - Files: apps/api/src/modules/tasks/{tasks.service.ts,task-status-policy.ts}, apps/api/src/modules/conflicts/{conflicts.service.ts,conflicts.service.spec.ts}, apps/api/test/task-concurrency.e2e-spec.ts, docs/domain-model.md
 - Verify: pnpm -r test: 127 api (+1) + 172 web; pnpm test:e2e: 174/174 (+2 concurrency specs; the transition-vs-reassign one FAILED on the old code and passes now); lint/build clean
+
+## [2026-09-21T14:16:07Z] | Claude | SECURITY-03 | IN_PROGRESS
+
+- Summary: Update multer via platform-express, add CI audit and Dependabot
+- Verify: pending
+
+## [2026-09-21T14:16:09Z] | Claude | SECURITY-03 | DONE
+
+- Summary: Updated @nestjs/platform-express within its range (12.0.1 -> 12.0.3), which brings multer 2.2.0 -> 2.4.0 and clears the 3 high + 1 low advisories: pnpm audit --prod reports no known vulnerabilities and the local run of the new CI command exits 0. CI now runs pnpm audit --prod --audit-level=high right after install (dev-only tooling is deliberately out of the gate: the full audit still lists 17 dev-tool advisories, 5 high, none in what ships) and .github/dependabot.yml opens weekly PRs for npm and GitHub Actions on develop, grouping the Nest and Angular packages so a framework bump is one PR. No code change was needed; full suite unchanged. Left open: the 5 high advisories in dev-only tooling are not fixed here.
+- Files: .github/workflows/ci.yml, .github/dependabot.yml, apps/api/package.json, pnpm-lock.yaml, docs/testing.md
+- Verify: pnpm audit --prod: no known vulnerabilities (exit 0 with --audit-level=high); pnpm -r test: 127 api + 172 web; pnpm test:e2e: 174/174; lint/build clean; dev servers restarted on the new dependency

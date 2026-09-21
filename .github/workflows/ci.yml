@@ -54,6 +54,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Fails the build on a known high/critical advisory in what actually ships
+      # (Roadmap SECURITY-03: a multer DoS sat unnoticed here for weeks because
+      # nothing ran an audit). Dev-only tooling is left out on purpose; the
+      # weekly Dependabot PRs cover it.
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level=high
+
       # Both apps import from packages/shared-types' built dist/, not its
       # source — must exist before lint (type-aware rules resolve it) or build.
       - name: Build shared-types

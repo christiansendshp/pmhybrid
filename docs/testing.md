@@ -85,3 +85,10 @@ service container (its own `DATABASE_URL`, set at the job's `env:` level —
 `vitest.config.e2e.ts`'s `pmhybrid_test` override only applies outside CI) —
 so the "shared, never reset" caveat above never applies to a CI run, only to
 the long-lived local `pmhybrid_test` database.
+
+Since Roadmap SECURITY-03 the job also runs `pnpm audit --prod --audit-level=high`
+right after installing dependencies, so a known high or critical advisory in
+what ships fails the build (dev-only tooling is left out; it is covered by the
+weekly Dependabot PRs, `.github/dependabot.yml`, which group the Nest and Angular
+packages so a framework bump arrives as one PR). Reproduce it locally with the
+same command.

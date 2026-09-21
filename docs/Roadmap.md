@@ -168,34 +168,6 @@ created_at: 2026-09-19T09:40:00Z
 updated_at: 2026-09-20T19:55:00Z
 ```
 
-### SECURITY-03 — multer advisories in production dependencies and no audit in CI
-
-```yaml
-id: SECURITY-03
-type: SECURITY
-title: multer advisories in production dependencies and no audit in CI
-status: READY
-priority: P1
-description: >
-  `pnpm audit --prod` (2026-09-21) reports 3 high and 1 low advisories, all
-  multer <2.3.0 (denial of service via crafted multipart field names,
-  oversized array index, file-descriptor leak on aborted uploads; size
-  limit bypass), pulled in through @nestjs/platform-express. The API has no
-  upload endpoint so exposure is limited, but CI never runs an audit and
-  there is no Dependabot/Renovate config, so this only surfaced by hand.
-expected_behavior: >
-  multer resolves to >=2.3.0 (dependency bump or pnpm override), `pnpm
-  audit --prod` is clean, and CI fails on new high advisories; dependency
-  update PRs are automated.
-technical_context:
-  backend: apps/api/package.json, pnpm-workspace/overrides, .github/workflows/ci.yml
-next_action: >
-  Bump @nestjs/platform-express or add an override, add an audit step and a
-  .github/dependabot.yml.
-created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T09:00:00Z
-```
-
 ### BUG-05 — One invalid Roadmap entry fails the whole sync and the error is unreadable
 
 ```yaml
