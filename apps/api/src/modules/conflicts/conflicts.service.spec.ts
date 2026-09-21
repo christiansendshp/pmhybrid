@@ -142,7 +142,8 @@ describe('ConflictsService.resolve permissions (Roadmap SECURITY-02)', () => {
 
     expect(taskUpdate).toHaveBeenCalledWith({
       where: { id: 't1', deletedAt: null, status: 'ASIGNADA' },
-      data: { status: 'TERMINADA' },
+      // Finishing it stamps the completion date (Roadmap GAP-36d).
+      data: { status: 'TERMINADA', completedAt: expect.any(Date) },
     });
     const operations = record.mock.calls.map(([event]) => event.operation);
     expect(operations).toEqual(['STATUS_CHANGE', 'CONFLICT_RESOLVED']);

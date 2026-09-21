@@ -29,6 +29,8 @@ export interface Task {
   startDate: string | null;
   estimatedDate: string | null;
   dueDate: string | null;
+  /** When the task became TERMINADA; null while it is not (Roadmap GAP-36d). */
+  completedAt: string | null;
   roadmapTable: 'ACTIVE' | 'NEAR_TERM' | 'BLOCKED' | null;
   createdAt: string;
   updatedAt: string;

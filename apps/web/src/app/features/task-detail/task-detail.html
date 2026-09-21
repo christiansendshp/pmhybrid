@@ -127,6 +127,10 @@
         <dd>{{ (t.dueDate | date: 'd MMM y' : 'UTC') ?? '—' }}</dd>
         <dt>Creada</dt>
         <dd>{{ t.createdAt | date: 'd MMM y, HH:mm' }}</dd>
+        @if (t.completedAt) {
+          <dt>Completada</dt>
+          <dd>{{ t.completedAt | date: 'd MMM y, HH:mm' }}</dd>
+        }
         @if (t.description) {
           <dt>Descripción</dt>
           <dd>{{ t.description }}</dd>

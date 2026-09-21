@@ -28,6 +28,7 @@ function card(overrides: Partial<TaskCard> = {}): TaskCard {
     startDate: null,
     estimatedDate: null,
     dueDate: '2099-10-10T00:00:00.000Z',
+    completedAt: null,
     roadmapTable: 'BLOCKED',
     blockedReason: 'Waiting on credentials',
     createdAt: '2026-09-15T09:00:00.000Z',

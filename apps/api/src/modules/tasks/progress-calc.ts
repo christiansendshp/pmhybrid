@@ -20,6 +20,15 @@ export interface RollupPhase {
 }
 
 /**
+ * How a project rolls its progress up (`Project.progressRollupStrategy`, Roadmap
+ * GAP-36d): each level averages what sits directly under it
+ * (`EQUAL_WEIGHT_AVERAGE`, the default), or every leaf task under it counts
+ * once whatever its depth (`LEAF_EQUAL_WEIGHT`), so a task split into ten
+ * subtasks weighs ten times what an unsplit one does.
+ */
+export type RollupStrategy = 'EQUAL_WEIGHT_AVERAGE' | 'LEAF_EQUAL_WEIGHT';
+
+/**
  * EQUAL_WEIGHT_AVERAGE rollup (docs/domain-model.md, Project.progressRollupStrategy
  * default) over one project's rows, all read up front (Roadmap IMPROVEMENT-01c):
  * the service used to walk the tree with a query per node, so a project list
@@ -40,12 +49,14 @@ export class ProgressCalculator {
   private readonly orphanEpics: RollupEpic[] = [];
   private readonly orphanTasks: RollupTask[] = [];
   private readonly memo = new Map<string, number>();
+  private readonly leafMemo = new Map<string, number[]>();
   private readonly phaseIds: string[];
 
   constructor(
     tasks: readonly RollupTask[],
     epics: readonly RollupEpic[],
     phases: readonly RollupPhase[],
+    private readonly strategy: RollupStrategy = 'EQUAL_WEIGHT_AVERAGE',
   ) {
     this.phaseIds = phases.map((phase) => phase.id);
     for (const task of tasks) {
@@ -84,15 +95,60 @@ export class ProgressCalculator {
     const subtasks = this.children.get(task.id);
     const value =
       !subtasks || subtasks.length === 0
-        ? (task.progressPercent ??
-          statusFallback(task.status as unknown as TaskStatus))
-        : average(subtasks.map((subtask) => this.task(subtask)));
+        ? this.own(task)
+        : this.strategy === 'LEAF_EQUAL_WEIGHT'
+          ? average(this.leaves(task))
+          : average(subtasks.map((subtask) => this.task(subtask)));
     this.memo.set(task.id, value);
     return value;
   }
 
+  /** What a task with no subtask says of itself: its own percent, else what its status implies. */
+  private own(task: RollupTask): number {
+    return (
+      task.progressPercent ??
+      statusFallback(task.status as unknown as TaskStatus)
+    );
+  }
+
+  /** The progress of every leaf task at or under `task` (LEAF_EQUAL_WEIGHT). */
+  private leaves(task: RollupTask): number[] {
+    const known = this.leafMemo.get(task.id);
+    if (known) {
+      return known;
+    }
+    const subtasks = this.children.get(task.id);
+    const values =
+      !subtasks || subtasks.length === 0
+        ? [this.own(task)]
+        : subtasks.flatMap((subtask) => this.leaves(subtask));
+    this.leafMemo.set(task.id, values);
+    return values;
+  }
+
+  private epicLeaves(epicId: string): number[] {
+    return (this.topLevelByEpic.get(epicId) ?? []).flatMap((task) =>
+      this.leaves(task),
+    );
+  }
+
+  private phaseLeaves(phaseId: string): number[] {
+    return [
+      ...(this.epicsByPhase.get(phaseId) ?? []).flatMap((epic) =>
+        this.epicLeaves(epic.id),
+      ),
+      ...(this.directByPhase.get(phaseId) ?? []).flatMap((task) =>
+        this.leaves(task),
+      ),
+    ];
+  }
+
   /** null when the epic has no top-level task. */
   epic(epicId: string): number | null {
+    if (this.strategy === 'LEAF_EQUAL_WEIGHT') {
+      const leaves = this.epicLeaves(epicId);
+      return leaves.length === 0 ? null : average(leaves);
+    }
     const tasks = this.topLevelByEpic.get(epicId) ?? [];
     return tasks.length === 0
       ? null
@@ -101,6 +157,10 @@ export class ProgressCalculator {
 
   /** The epics of the phase plus the tasks sitting directly in it; null when it has neither. */
   phase(phaseId: string): number | null {
+    if (this.strategy === 'LEAF_EQUAL_WEIGHT') {
+      const leaves = this.phaseLeaves(phaseId);
+      return leaves.length === 0 ? null : average(leaves);
+    }
     const epicValues = (this.epicsByPhase.get(phaseId) ?? [])
       .map((epic) => this.epic(epic.id))
       .filter(isNumber);
@@ -113,6 +173,14 @@ export class ProgressCalculator {
 
   /** Phases, then epics and tasks that belong to no phase; null for an empty project. */
   project(): number | null {
+    if (this.strategy === 'LEAF_EQUAL_WEIGHT') {
+      const leaves = [
+        ...this.phaseIds.flatMap((id) => this.phaseLeaves(id)),
+        ...this.orphanEpics.flatMap((epic) => this.epicLeaves(epic.id)),
+        ...this.orphanTasks.flatMap((task) => this.leaves(task)),
+      ];
+      return leaves.length === 0 ? null : average(leaves);
+    }
     const all = [
       ...this.phaseIds.map((id) => this.phase(id)).filter(isNumber),
       ...this.orphanEpics.map((epic) => this.epic(epic.id)).filter(isNumber),

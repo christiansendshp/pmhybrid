@@ -84,3 +84,85 @@ describe('ProgressCalculator (Roadmap IMPROVEMENT-01c)', () => {
     expect(calc.project()).toBe(100);
   });
 });
+
+describe('ProgressCalculator LEAF_EQUAL_WEIGHT (Roadmap GAP-36d)', () => {
+  // A task with ten finished subtasks, next to an unsplit one at 0%.
+  const split = [
+    task({ id: 'big', epicId: 'e1' }),
+    ...Array.from({ length: 10 }, (_, i) =>
+      task({ id: `s${i}`, parentTaskId: 'big', status: 'TERMINADA' }),
+    ),
+    task({ id: 'small', epicId: 'e1', status: 'PENDIENTE' }),
+  ];
+  const epics = [{ id: 'e1', phaseId: 'ph1' }];
+  const phases = [{ id: 'ph1' }];
+
+  it('counts every leaf once, so a task split in ten weighs ten times an unsplit one', () => {
+    const calc = new ProgressCalculator(
+      split,
+      epics,
+      phases,
+      'LEAF_EQUAL_WEIGHT',
+    );
+
+    // 10 leaves at 100 and 1 at 0 -> 10/11 of the epic, phase and project.
+    expect(calc.epic('e1')).toBeCloseTo(90.909, 2);
+    expect(calc.phase('ph1')).toBeCloseTo(90.909, 2);
+    expect(calc.project()).toBeCloseTo(90.909, 2);
+    expect(calc.task(split[0])).toBe(100);
+  });
+
+  it('gives the equal-weight strategy a different answer for the same tree, and keeps it the default', () => {
+    const equal = new ProgressCalculator(split, epics, phases);
+
+    // avg(100, 0) at every level.
+    expect(equal.epic('e1')).toBe(50);
+    expect(equal.project()).toBe(50);
+    expect(
+      new ProgressCalculator(
+        split,
+        epics,
+        phases,
+        'EQUAL_WEIGHT_AVERAGE',
+      ).project(),
+    ).toBe(50);
+  });
+
+  it('is the plain average of leaves for a parent, at any depth', () => {
+    const tasks = [
+      task({ id: 'p' }),
+      task({ id: 'a', parentTaskId: 'p', progressPercent: 100 }),
+      task({ id: 'b', parentTaskId: 'p' }),
+      task({ id: 'b1', parentTaskId: 'b', progressPercent: 0 }),
+      task({ id: 'b2', parentTaskId: 'b', progressPercent: 0 }),
+    ];
+    const leaf = new ProgressCalculator(tasks, [], [], 'LEAF_EQUAL_WEIGHT');
+    const equal = new ProgressCalculator(tasks, [], []);
+
+    // Leaves 100, 0, 0 -> 33.3; average of averages: avg(100, avg(0, 0)) -> 50.
+    expect(leaf.task(tasks[0])).toBeCloseTo(33.333, 2);
+    expect(equal.task(tasks[0])).toBe(50);
+  });
+
+  it('is null where there is nothing to average, and counts phase-less epics and tasks in the project', () => {
+    const calc = new ProgressCalculator(
+      [
+        task({ id: 'loose', progressPercent: 40 }),
+        task({ id: 'inEpic', epicId: 'orphan', progressPercent: 60 }),
+      ],
+      [
+        { id: 'orphan', phaseId: null },
+        { id: 'empty', phaseId: null },
+      ],
+      [{ id: 'emptyPhase' }],
+      'LEAF_EQUAL_WEIGHT',
+    );
+
+    expect(calc.epic('empty')).toBeNull();
+    expect(calc.phase('emptyPhase')).toBeNull();
+    expect(calc.project()).toBe(50);
+    expect(
+      new ProgressCalculator([], [], [], 'LEAF_EQUAL_WEIGHT').project(),
+    ).toBeNull();
+  });
+});

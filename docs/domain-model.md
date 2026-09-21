@@ -155,6 +155,7 @@ Task(
   priority?: LOW|MEDIUM|HIGH|CRITICAL,
   progressPercent?,                      // explicit override; null = derive via rollup
   startDate?, estimatedDate?, dueDate?,
+  completedAt?,                          // when it became TERMINADA; null otherwise (GAP-36d)
   assigneeActorId?, assigneeLockedAt?,   // set when status becomes EN_DESARROLLO
   rawOwner?, ownerClaimedAt?,            // parsed "<agent>@<timestamp>" Owner cell
   acceptanceCriteria?,                   // required for app-created tasks (brief §9)
@@ -211,7 +212,8 @@ Task(
   cleared; every other field is optional and cleared with `null`. Hierarchy
   links stay optional (§5) but must agree — an epic that sits in a phase only
   under that phase, a template only under its own epic. `estimatedDate` and
-  `dueDate` cannot precede `startDate`. An explicit `progressPercent` is
+  `dueDate` cannot precede `startDate`. `completedAt` is not a field a client
+  sets: it follows `status` (see "Completion date" below). An explicit `progressPercent` is
   refused once the task has subtasks (rollup rule 2 below). The web form
   still makes the creator answer "which parent instance?" explicitly, with
   "None" as a valid answer (BR-004).
@@ -386,10 +388,30 @@ parentTaskId IS NULL`) — subtasks are already folded into their parent
    fallback-to-manual case when nothing is computable.
 
 Known, documented pathology: a Phase with one 20-task Epic and one loose Task
-weights that loose task at 50% of the Phase's progress. The documented,
-not-yet-implemented alternative behind the same interface is
-`LEAF_EQUAL_WEIGHT` (weight by total leaf-descendant count instead of
-immediate-child count).
+weights that loose task at 50% of the Phase's progress. That is what a project
+can avoid by choosing the other strategy, below.
+
+**`LEAF_EQUAL_WEIGHT`** (Roadmap GAP-36d). Every leaf task counts once, however
+deep it sits, so a task split into ten subtasks weighs ten times what an unsplit
+one does, and a container's progress is the mean of all the leaves under it. A
+task's own progress (rule 2) becomes the mean of its leaves rather than of its
+immediate children; the leaf rule (1), the "no data" rule (6) and a removed task
+never counting are unchanged. Take a task with two subtasks (one done) and two
+unsplit tasks that are done: `EQUAL_WEIGHT_AVERAGE` gives (50 + 100 + 100) / 3 =
+83.3, `LEAF_EQUAL_WEIGHT` three done leaves out of four = 75. The setting is
+read with the tasks, from `Project.progressRollupStrategy`, so changing it changes
+every number at once with nothing to recompute or migrate.
+
+**Completion date** (Roadmap GAP-36d). `Task.completedAt` is set when a task
+becomes `TERMINADA`, cleared when a finished task is reopened, and untouched by any
+other move, so it is when the task last got done. `completedAtFor` decides it from
+the previous and the next status, and every path that changes a status uses it:
+a transition in the app, a conflict resolution that moves the task, and the
+synchronisation — a row first read as done, a row whose status changed in
+`Roadmap.md`, and a row completed by leaving the document with a terminal log
+entry. Tasks that were already done when the column was added were given the
+time of their last move to `TERMINADA` in the audit trail, else their last
+update. The web's task detail shows it under "Completada".
 
 Computed on read; no persisted rollup columns, to avoid a stale-cache bug
 class at MVP data volumes.

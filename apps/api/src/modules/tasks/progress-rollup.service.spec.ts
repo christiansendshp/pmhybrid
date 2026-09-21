@@ -28,6 +28,7 @@ describe('ProgressRollupService batching (Roadmap IMPROVEMENT-01c)', () => {
       task: { findMany: findTasks },
       epic: { findMany: vi.fn().mockResolvedValue([]) },
       phase: { findMany: vi.fn().mockResolvedValue([]) },
+      project: { findMany: vi.fn().mockResolvedValue([]) },
     };
     return {
       service: new ProgressRollupService(prisma as unknown as PrismaService),

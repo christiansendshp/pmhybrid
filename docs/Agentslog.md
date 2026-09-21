@@ -1117,3 +1117,25 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: Assigning a task tells the new assignee (TASK_ASSIGNED) and the previous one (TASK_REASSIGNED), a comment tells whoever holds the task (TASK_COMMENTED), never the person who did it; events are emitted after the commit and never fail the request; an agent reads and acknowledges its notifications through two MCP tools; the web says each in Spanish; the brief's other events are descoped in the docs
 - Files: apps/api/src/modules/notifications/notifications.service.ts,apps/api/src/modules/tasks/tasks.service.ts,apps/api/src/modules/mcp/mcp-workflow-tools.ts,apps/web/src/app/core/notification-format.ts,docs/domain-model.md
 - Verify: api unit 394 and e2e 271 pass (coverage 86.3); web unit 237 and eslint clean
+
+## [2026-09-21T19:59:19Z] | claude | GAP-36d | IN_PROGRESS
+
+- Summary: Task completion date and the LEAF_EQUAL_WEIGHT rollup
+- Verify: pending
+
+## [2026-09-21T20:13:12Z] | claude | GAP-36d | DONE
+
+- Summary: A task records when it was completed: Task.completedAt is set when it becomes TERMINADA and cleared when it is reopened, decided by completedAtFor at every status write (transition, conflict resolution, Roadmap row read as done or changed, removal completed by a DONE log entry), backfilled from the audit trail, shown in the task detail. LEAF_EQUAL_WEIGHT is implemented in ProgressCalculator (every leaf counts once) instead of being removed from the selector: it is a documented brief option, reversible with no data migration, and the setting is already stored. Autonomous decision, alternatives were removing the option or leaving it inert.
+- Files: apps/api/prisma/schema.prisma,apps/api/prisma/migrations/20260921230000_add_task_completed_at/migration.sql,apps/api/src/modules/tasks/completion-date.util.ts,apps/api/src/modules/tasks/progress-calc.ts,apps/api/src/modules/tasks/progress-rollup.service.ts,apps/api/src/modules/tasks/tasks.service.ts,apps/api/src/modules/conflicts/conflicts.service.ts,apps/api/src/modules/synchronization/synchronization.service.ts,apps/api/test/task-completion-date.e2e-spec.ts,apps/web/src/app/features/task-detail/task-detail.html,docs/domain-model.md
+- Verify: api unit 401 and e2e 276 pass (coverage 86.1); web unit 239 and eslint clean; api lint and nest build ok; web build ok
+
+## [2026-09-21T20:13:18Z] | claude | GAP-36 | IN_PROGRESS
+
+- Summary: Closing the umbrella: 36a-36d are done
+- Verify: pending
+
+## [2026-09-21T20:13:19Z] | claude | GAP-36 | DONE
+
+- Summary: Agent experience and onboarding: a new project scaffolds its docs folder (36a), MCP covers an agent's whole workflow (36b), assignments and comments notify the assignee (36c), a task has a completion date and LEAF_EQUAL_WEIGHT works (36d). The brief's remaining notification events are descoped in docs/domain-model.md.
+- Files: docs/Roadmap.md,docs/Features.md
+- Verify: All four slices done and verified: api unit 401 and e2e 276 pass (coverage 86.1); web unit 239 and eslint clean

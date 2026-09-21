@@ -24,6 +24,7 @@ function card(overrides: Partial<TaskCard> = {}): TaskCard {
     startDate: null,
     estimatedDate: null,
     dueDate: null,
+    completedAt: null,
     roadmapTable: 'ACTIVE',
     blockedReason: null,
     createdAt: `2026-09-${String(sequence).padStart(2, '0')}T09:00:00.000Z`,

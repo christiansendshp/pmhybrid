@@ -250,6 +250,9 @@ model Task {
   startDate     DateTime?
   estimatedDate DateTime?
   dueDate       DateTime?
+  // When the task became TERMINADA (Roadmap GAP-36d); null while it is not. Set
+  // and cleared by `completedAtFor`, never by hand, whichever path moved it.
+  completedAt   DateTime?
 
   assigneeActorId  String?
   assignee         Actor?    @relation("TaskAssignee", fields: [assigneeActorId], references: [id])

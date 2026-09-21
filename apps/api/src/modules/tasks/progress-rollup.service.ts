@@ -5,6 +5,7 @@ import {
   ProgressCalculator,
   type RollupEpic,
   type RollupPhase,
+  type RollupStrategy,
   type RollupTask,
 } from './progress-calc.js';
 
@@ -85,10 +86,11 @@ export class ProgressRollupService {
     const tasks = new Map<string, RollupTask[]>();
     const epics = new Map<string, RollupEpic[]>();
     const phases = new Map<string, RollupPhase[]>();
+    const strategies = new Map<string, RollupStrategy>();
     const unique = [...new Set(projectIds)];
     for (let start = 0; start < unique.length; start += ID_CHUNK) {
       const ids = unique.slice(start, start + ID_CHUNK);
-      const [taskRows, epicRows, phaseRows] = await Promise.all([
+      const [taskRows, epicRows, phaseRows, projectRows] = await Promise.all([
         this.prisma.task.findMany({
           where: { projectId: { in: ids }, deletedAt: null },
           select: TASK_ROLLUP_SELECT,
@@ -101,7 +103,14 @@ export class ProgressRollupService {
           where: { projectId: { in: ids } },
           select: { id: true, projectId: true },
         }),
+        this.prisma.project.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, progressRollupStrategy: true },
+        }),
       ]);
+      for (const row of projectRows) {
+        strategies.set(row.id, row.progressRollupStrategy);
+      }
       for (const row of taskRows) {
         push(tasks, row.projectId, row);
       }
@@ -119,6 +128,7 @@ export class ProgressRollupService {
           tasks.get(id) ?? [],
           epics.get(id) ?? [],
           phases.get(id) ?? [],
+          strategies.get(id),
         ),
       ]),
     );
@@ -172,7 +182,7 @@ export class ProgressRollupService {
   async getProjectProgressTree(
     projectId: string,
   ): Promise<ProjectProgressTree> {
-    const [phases, epics, tasks] = await Promise.all([
+    const [phases, epics, tasks, project] = await Promise.all([
       this.prisma.phase.findMany({
         where: { projectId },
         orderBy: { order: 'asc' },
@@ -185,8 +195,17 @@ export class ProgressRollupService {
         where: { projectId, deletedAt: null },
         orderBy: { createdAt: 'asc' },
       }),
+      this.prisma.project.findUnique({
+        where: { id: projectId },
+        select: { progressRollupStrategy: true },
+      }),
     ]);
-    const calculator = new ProgressCalculator(tasks, epics, phases);
+    const calculator = new ProgressCalculator(
+      tasks,
+      epics,
+      phases,
+      project?.progressRollupStrategy,
+    );
 
     const subtasksOf = new Map<string, typeof tasks>();
     for (const task of tasks) {

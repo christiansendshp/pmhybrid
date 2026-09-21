@@ -30,6 +30,7 @@ function taskDetail(overrides: Partial<TaskDetailModel> = {}): TaskDetailModel {
     startDate: null,
     estimatedDate: null,
     dueDate: null,
+    completedAt: null,
     roadmapTable: 'ACTIVE',
     blockedReason: null,
     neededDecision: null,
@@ -260,6 +261,21 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     expect(text()).toContain('Fase: Build · Épica: Public API');
     expect(text()).toContain('10 Oct 2026');
     expect(text()).toContain('Public endpoints only');
+  });
+
+  it('shows when a task was completed, and nothing for one that is not (Roadmap GAP-36d)', async () => {
+    getById.mockResolvedValue(taskDetail({ completedAt: '2026-09-21T12:00:00.000Z' }));
+    listAudit.mockResolvedValue([]);
+    const done = await render();
+    expect(done.text()).toContain('Completada');
+    expect(done.text()).toContain('21 Sep 2026');
+  });
+
+  it('has no completion date to show while the task is open (Roadmap GAP-36d)', async () => {
+    getById.mockResolvedValue(taskDetail());
+    listAudit.mockResolvedValue([]);
+    const { text } = await render();
+    expect(text()).not.toContain('Completada');
   });
 
   it('removes the task after confirming and returns to the board', async () => {

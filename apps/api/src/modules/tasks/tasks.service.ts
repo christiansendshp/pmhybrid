@@ -17,6 +17,7 @@ import {
   type RoadmapFieldEdit,
   WriteBackService,
 } from '../synchronization/write-back.service.js';
+import { completedAtFor } from './completion-date.util.js';
 import { buildDependencyGraph, wouldCloseCycle } from './dependency-graph.js';
 import { AddDependencyDto } from './dto/add-dependency.dto.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
@@ -568,6 +569,7 @@ export class TasksService {
           data: {
             status: toStatus,
             assigneeLockedAt: isAssigneeLocked(toStatus) ? new Date() : null,
+            completedAt: completedAtFor(task.status, toStatus),
           },
         });
         if (count !== 1) {

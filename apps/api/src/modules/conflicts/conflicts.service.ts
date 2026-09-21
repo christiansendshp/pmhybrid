@@ -20,6 +20,7 @@ import {
   ResolvedTaskFields,
   WriteBackService,
 } from '../synchronization/write-back.service.js';
+import { completedAtFor } from '../tasks/completion-date.util.js';
 import { NOT_BLANK } from '../tasks/dto/create-task.dto.js';
 import {
   permissionForAssigneeChange,
@@ -167,7 +168,17 @@ export class ConflictsService {
               ? { assigneeActorId: task.assigneeActorId }
               : {}),
           },
-          data: fieldsToApply,
+          data: {
+            ...fieldsToApply,
+            ...(typeof fieldsToApply.status === 'string'
+              ? {
+                  completedAt: completedAtFor(
+                    task.status,
+                    fieldsToApply.status,
+                  ),
+                }
+              : {}),
+          },
         });
         if (count !== 1) {
           throw new ConflictException(STALE_TASK_MESSAGE);

@@ -101,9 +101,9 @@ grow without touching call sites:
    comment for the full reasoning). The docsPath filesystem browser (GAP-27)
    only makes sense for `local` and refuses with 409 otherwise.
 2. **`ProgressRollupStrategy`** (`tasks` module): selected per-project via
-   `Project.progressRollupStrategy`. MVP implements `EQUAL_WEIGHT_AVERAGE`
-   only; `LEAF_EQUAL_WEIGHT` is a documented, not-yet-built alternative behind
-   the same interface.
+   `Project.progressRollupStrategy`. `ProgressCalculator` implements both
+   `EQUAL_WEIGHT_AVERAGE` (the default) and `LEAF_EQUAL_WEIGHT` (every leaf task
+   counts once) behind the same interface (`docs/domain-model.md`).
 3. **Kanban transition policy** (`tasks/task-status-policy.ts`): a code-level
    table today, structured so it can move to DB-driven configuration later
    without changing callers.

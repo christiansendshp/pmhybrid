@@ -32,6 +32,7 @@ import {
   wouldCloseCycle,
   type DependencyGraph,
 } from '../tasks/dependency-graph.js';
+import { completedAtFor } from '../tasks/completion-date.util.js';
 import { AgentslogIngestionService } from './agentslog-ingestion.service.js';
 import { rowContentHash } from './row-content-hash.util.js';
 import { describeSyncFailure } from './sync-failure.util.js';
@@ -678,7 +679,11 @@ export class SynchronizationService {
       if (hasTerminal) {
         await tx.task.update({
           where: { id: task.id },
-          data: { status: TaskStatus.TERMINADA, roadmapTable: null },
+          data: {
+            status: TaskStatus.TERMINADA,
+            roadmapTable: null,
+            completedAt: completedAtFor(task.status, TaskStatus.TERMINADA),
+          },
         });
         await this.audit.record(
           {
@@ -730,6 +735,10 @@ export class SynchronizationService {
         roadmapTable: row.table,
         title: row.outcome ?? row.externalId,
         status: row.statusMapped ?? TaskStatus.PENDIENTE,
+        completedAt: completedAtFor(
+          null,
+          row.statusMapped ?? TaskStatus.PENDIENTE,
+        ),
         acceptanceCriteria: row.acceptanceCheck,
         rawOwner: row.rawOwner,
         assigneeActorId,
@@ -1304,6 +1313,9 @@ export class SynchronizationService {
       where: { id: task.id },
       data: {
         ...updates,
+        ...(typeof updates.status === 'string'
+          ? { completedAt: completedAtFor(task.status, updates.status) }
+          : {}),
         lastSyncedContentHash: incomingHash,
         ...(conflictRaised ? {} : { lastSyncedAt: new Date() }),
       },
