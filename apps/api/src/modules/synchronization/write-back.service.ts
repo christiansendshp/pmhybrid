@@ -1,5 +1,9 @@
 import { createHash } from 'node:crypto';
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { DocumentKind, Prisma, TaskStatus } from '@prisma/client';
 import type { Task, TaskDependency } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -18,6 +22,7 @@ import {
   sanitizeField,
   upsertLifecycleRoadmapRow,
 } from '../roadmap/roadmap-row-writer.util.js';
+import { describeNotSaved } from './sync-failure.util.js';
 import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository-provider.interface.js';
 import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
 
@@ -73,24 +78,61 @@ export class WriteBackService {
     private readonly audit: AuditService,
   ) {}
 
+  /**
+   * Runs a change to a task and the write of its document as ONE transaction
+   * under the project's advisory lock (Roadmap BUG-07): either the database
+   * change and the document write both happen or neither does. A document
+   * that cannot be written now fails the request cleanly — nothing saved,
+   * nothing to duplicate on a retry — instead of leaving a saved change
+   * behind a 500. The lock is taken before the change touches any row, so
+   * this cannot deadlock against sync or another write-back, which take it
+   * first as well.
+   */
+  async inTransaction<T>(
+    projectId: string,
+    work: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`;
+          return work(tx);
+        },
+        { timeout: 20000, maxWait: 10000 },
+      );
+    } catch (error) {
+      const notSaved = describeNotSaved(error);
+      if (notSaved) {
+        throw new UnprocessableEntityException(notSaved);
+      }
+      throw error;
+    }
+  }
+
+  /** The caller's transaction when it has one (its change and this write are one unit), else this write's own. */
+  private within<T>(
+    projectId: string,
+    tx: Prisma.TransactionClient | undefined,
+    work: (client: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    return tx ? work(tx) : this.inTransaction(projectId, work);
+  }
+
   async recordTaskEvent(
     projectId: string,
     taskId: string,
     trigger: WriteBackTrigger,
     requesterActorId: string,
+    tx?: Prisma.TransactionClient,
   ) {
-    return this.prisma.$transaction(
-      async (tx) => {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`;
-        return this.writeBackLocked(
-          tx,
-          projectId,
-          taskId,
-          trigger,
-          requesterActorId,
-        );
-      },
-      { timeout: 20000, maxWait: 10000 },
+    return this.within(projectId, tx, (client) =>
+      this.writeBackLocked(
+        client,
+        projectId,
+        taskId,
+        trigger,
+        requesterActorId,
+      ),
     );
   }
 
@@ -106,19 +148,16 @@ export class WriteBackService {
     taskId: string,
     previous: RoadmapFieldEdit,
     requesterActorId: string,
+    tx?: Prisma.TransactionClient,
   ) {
-    return this.prisma.$transaction(
-      async (tx) => {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`;
-        return this.fieldEditLocked(
-          tx,
-          projectId,
-          taskId,
-          previous,
-          requesterActorId,
-        );
-      },
-      { timeout: 20000, maxWait: 10000 },
+    return this.within(projectId, tx, (client) =>
+      this.fieldEditLocked(
+        client,
+        projectId,
+        taskId,
+        previous,
+        requesterActorId,
+      ),
     );
   }
 
@@ -140,20 +179,17 @@ export class WriteBackService {
     chosen: ResolvedTaskFields,
     documentSide: ResolvedTaskFields,
     requesterActorId: string,
+    tx?: Prisma.TransactionClient,
   ) {
-    return this.prisma.$transaction(
-      async (tx) => {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`;
-        return this.resolutionLocked(
-          tx,
-          projectId,
-          taskId,
-          chosen,
-          documentSide,
-          requesterActorId,
-        );
-      },
-      { timeout: 20000, maxWait: 10000 },
+    return this.within(projectId, tx, (client) =>
+      this.resolutionLocked(
+        client,
+        projectId,
+        taskId,
+        chosen,
+        documentSide,
+        requesterActorId,
+      ),
     );
   }
 
@@ -346,13 +382,10 @@ export class WriteBackService {
     projectId: string,
     taskId: string,
     requesterActorId: string,
+    tx?: Prisma.TransactionClient,
   ) {
-    return this.prisma.$transaction(
-      async (tx) => {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`;
-        return this.removalLocked(tx, projectId, taskId, requesterActorId);
-      },
-      { timeout: 20000, maxWait: 10000 },
+    return this.within(projectId, tx, (client) =>
+      this.removalLocked(client, projectId, taskId, requesterActorId),
     );
   }
 
@@ -372,18 +405,10 @@ export class WriteBackService {
     projectId: string,
     taskId: string,
     requesterActorId: string,
+    tx?: Prisma.TransactionClient,
   ) {
-    return this.prisma.$transaction(
-      async (tx) => {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`;
-        return this.dependencyAddedLocked(
-          tx,
-          projectId,
-          taskId,
-          requesterActorId,
-        );
-      },
-      { timeout: 20000, maxWait: 10000 },
+    return this.within(projectId, tx, (client) =>
+      this.dependencyAddedLocked(client, projectId, taskId, requesterActorId),
     );
   }
 

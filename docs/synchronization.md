@@ -300,6 +300,31 @@ locked reassignment):
    as still contested.
 8. `AuditEvent(origin=UI)`.
 
+### One unit, or nothing (Roadmap BUG-07a)
+
+A task change and the write of its document are **one transaction** under the
+project's advisory lock (`WriteBackService.inTransaction`): creating, editing,
+assigning, moving, linking and removing a task each run their database change
+and then the write-back inside it. Before, the change committed first and the
+document was written in a second transaction, so a document that could not be
+written returned a 500 with the change already saved, and retrying a creation
+left a duplicate without an `externalId` that sync could not repair.
+
+- Both happen or neither does. A document that cannot be read or written
+  (`ENOENT`/`EACCES`/`EPERM`/`ENOTDIR`/`EISDIR`, or the target entry being
+  unreadable) answers **422** `Not saved: …` — no server path in it — with
+  nothing persisted, so a retry after fixing the folder creates exactly one task.
+  Any other error keeps its own status.
+- **The lock is taken before the change touches a row.** A write-back that held
+  the lock and then waited for a row the change already held would deadlock;
+  sync and every write-back take the lock first as well, so none can.
+- The failure that remains is the reverse one: the document is written and the
+  commit then fails. The document then holds a row PM Hub does not, which the
+  next sync imports as a task — nothing is lost.
+- Conflict resolution's write-back (BUG-06b) stays outside the resolution's
+  transaction on purpose: a document that cannot be written must not undo a
+  decision a person already made.
+
 ### Field edits
 
 A UI edit that changes a Roadmap-backed field — `title` (Outcome) or

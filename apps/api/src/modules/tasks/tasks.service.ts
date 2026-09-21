@@ -177,7 +177,7 @@ export class TasksService {
     await this.assertHierarchy(projectId, dto);
     assertDateOrder(dto);
     const fields = toTaskFields(dto);
-    const task = await this.prisma.$transaction(async (tx) => {
+    return this.writeBack.inTransaction(projectId, async (tx) => {
       const created = await tx.task.create({
         data: {
           projectId,
@@ -199,14 +199,16 @@ export class TasksService {
         },
         tx,
       );
-      return created;
+      // The document is written in the same transaction: a failure to write it
+      // undoes the task too, so there is nothing to duplicate on a retry.
+      return this.writeBack.recordTaskEvent(
+        projectId,
+        created.id,
+        'CREATED',
+        requesterActorId,
+        tx,
+      );
     });
-    return this.writeBack.recordTaskEvent(
-      projectId,
-      task.id,
-      'CREATED',
-      requesterActorId,
-    );
   }
 
   /**
@@ -267,7 +269,15 @@ export class TasksService {
     const onlyProgress = Object.keys(diff.newValue).every(
       (field) => field === 'progressPercent',
     );
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const previous: RoadmapFieldEdit = {};
+    if ('title' in diff.newValue) {
+      previous.title = diff.previousValue.title as string;
+    }
+    if ('acceptanceCriteria' in diff.newValue) {
+      previous.acceptanceCriteria = diff.previousValue.acceptanceCriteria as
+        string | null;
+    }
+    return this.writeBack.inTransaction(projectId, async (tx) => {
       const result = await tx.task.update({
         where: { id: taskId },
         data: fields,
@@ -284,26 +294,17 @@ export class TasksService {
         },
         tx,
       );
+      if (Object.keys(previous).length > 0 && result.externalId) {
+        return this.writeBack.recordFieldEdit(
+          projectId,
+          taskId,
+          previous,
+          requesterActorId,
+          tx,
+        );
+      }
       return result;
     });
-
-    const previous: RoadmapFieldEdit = {};
-    if ('title' in diff.newValue) {
-      previous.title = diff.previousValue.title as string;
-    }
-    if ('acceptanceCriteria' in diff.newValue) {
-      previous.acceptanceCriteria = diff.previousValue.acceptanceCriteria as
-        string | null;
-    }
-    if (Object.keys(previous).length > 0 && updated.externalId) {
-      return this.writeBack.recordFieldEdit(
-        projectId,
-        taskId,
-        previous,
-        requesterActorId,
-      );
-    }
-    return updated;
   }
 
   /**
@@ -359,74 +360,81 @@ export class TasksService {
         )?.displayName ?? null)
       : null;
 
-    await this.prisma.$transaction(async (tx) => {
-      // Everything above (the lock check, the permission it chose, the next
-      // status) was decided from the task as it was read. The write only
-      // lands if the task is still exactly that: otherwise a concurrent
-      // transition or assignment already changed it, and writing on would
-      // sneak past the EN_DESARROLLO lock or restore a stale status
-      // (Roadmap BUG-04). Done first, so a lost race leaves nothing behind.
-      const { count } = await tx.task.updateMany({
-        where: {
-          id: taskId,
-          deletedAt: null,
-          status: task.status,
-          assigneeActorId: task.assigneeActorId,
-        },
-        data: { assigneeActorId: actorId, status: nextStatus },
-      });
-      if (count !== 1) {
-        throw new ConflictException(STALE_TASK_MESSAGE);
-      }
-      await tx.taskAssignment.updateMany({
-        where: { taskId, unassignedAt: null },
-        data: { unassignedAt: new Date() },
-      });
-      await tx.taskAssignment.create({
-        data: { taskId, actorId, assignedByActorId: requesterActorId },
-      });
-      await this.audit.record(
-        {
-          projectId,
-          actorId: requesterActorId,
-          entityType: 'Task',
-          entityId: taskId,
-          operation: task.assigneeActorId ? 'REASSIGN' : 'ASSIGN',
-          // Includes `status` too when the PENDIENTE->ASIGNADA side effect
-          // fires — sync's per-field conflict check (docs/synchronization.md
-          // step 5) reads this newValue to know which fields the UI touched.
-          previousValue: {
-            assigneeActorId: task.assigneeActorId,
+    const written = await this.writeBack.inTransaction(
+      projectId,
+      async (tx) => {
+        // Everything above (the lock check, the permission it chose, the next
+        // status) was decided from the task as it was read. The write only
+        // lands if the task is still exactly that: otherwise a concurrent
+        // transition or assignment already changed it, and writing on would
+        // sneak past the EN_DESARROLLO lock or restore a stale status
+        // (Roadmap BUG-04). Done first, so a lost race leaves nothing behind.
+        const { count } = await tx.task.updateMany({
+          where: {
+            id: taskId,
+            deletedAt: null,
             status: task.status,
+            assigneeActorId: task.assigneeActorId,
           },
-          newValue: { assigneeActorId: actorId, status: nextStatus },
-          origin,
-        },
-        tx,
-      );
-    });
+          data: { assigneeActorId: actorId, status: nextStatus },
+        });
+        if (count !== 1) {
+          throw new ConflictException(STALE_TASK_MESSAGE);
+        }
+        await tx.taskAssignment.updateMany({
+          where: { taskId, unassignedAt: null },
+          data: { unassignedAt: new Date() },
+        });
+        await tx.taskAssignment.create({
+          data: { taskId, actorId, assignedByActorId: requesterActorId },
+        });
+        await this.audit.record(
+          {
+            projectId,
+            actorId: requesterActorId,
+            entityType: 'Task',
+            entityId: taskId,
+            operation: task.assigneeActorId ? 'REASSIGN' : 'ASSIGN',
+            // Includes `status` too when the PENDIENTE->ASIGNADA side effect
+            // fires — sync's per-field conflict check (docs/synchronization.md
+            // step 5) reads this newValue to know which fields the UI touched.
+            previousValue: {
+              assigneeActorId: task.assigneeActorId,
+              status: task.status,
+            },
+            newValue: { assigneeActorId: actorId, status: nextStatus },
+            origin,
+          },
+          tx,
+        );
 
-    // A locked reassignment is a lifecycle write-back trigger (Agentslog entry
-    // + row). Any other assignment is an in-place edit of who the entry names
-    // (docs/synchronization.md "Field edits", Roadmap GAP-35a): no Agentslog
-    // entry, but the document must not keep naming the previous assignee.
-    if (wasLocked) {
-      return this.writeBack.recordTaskEvent(
-        projectId,
-        taskId,
-        'LOCKED_REASSIGN',
-        requesterActorId,
-      );
-    }
-    if (task.externalId) {
-      await this.writeBack.recordFieldEdit(
-        projectId,
-        taskId,
-        { assignee: previousAssigneeName },
-        requesterActorId,
-      );
-    }
-    return this.getOwned(projectId, taskId);
+        // A locked reassignment is a lifecycle write-back trigger (Agentslog entry
+        // + row). Any other assignment is an in-place edit of who the entry names
+        // (docs/synchronization.md "Field edits", Roadmap GAP-35a): no Agentslog
+        // entry, but the document must not keep naming the previous assignee.
+        // Either way it is written in this same transaction (Roadmap BUG-07).
+        if (wasLocked) {
+          return this.writeBack.recordTaskEvent(
+            projectId,
+            taskId,
+            'LOCKED_REASSIGN',
+            requesterActorId,
+            tx,
+          );
+        }
+        if (task.externalId) {
+          await this.writeBack.recordFieldEdit(
+            projectId,
+            taskId,
+            { assignee: previousAssigneeName },
+            requesterActorId,
+            tx,
+          );
+        }
+        return null;
+      },
+    );
+    return written ?? this.getOwned(projectId, taskId);
   }
 
   /** Kanban transition (docs/domain-model.md, task-status-policy.ts) — the one legal way to change Task.status. */
@@ -456,54 +464,61 @@ export class TasksService {
       );
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      // Only if the task is still in the status the rule and permission
-      // above were checked against (Roadmap BUG-04): two concurrent moves,
-      // or a move racing an assignment, must not both apply on stale state.
-      const { count } = await tx.task.updateMany({
-        where: { id: taskId, deletedAt: null, status: task.status },
-        data: {
-          status: toStatus,
-          assigneeLockedAt: isAssigneeLocked(toStatus) ? new Date() : null,
-        },
-      });
-      if (count !== 1) {
-        throw new ConflictException(STALE_TASK_MESSAGE);
-      }
-      await this.audit.record(
-        {
-          projectId,
-          actorId: requesterActorId,
-          entityType: 'Task',
-          entityId: taskId,
-          operation: 'STATUS_CHANGE',
-          previousValue: { status: task.status },
-          newValue: { status: toStatus },
-          origin,
-        },
-        tx,
-      );
-    });
+    const written = await this.writeBack.inTransaction(
+      projectId,
+      async (tx) => {
+        // Only if the task is still in the status the rule and permission
+        // above were checked against (Roadmap BUG-04): two concurrent moves,
+        // or a move racing an assignment, must not both apply on stale state.
+        const { count } = await tx.task.updateMany({
+          where: { id: taskId, deletedAt: null, status: task.status },
+          data: {
+            status: toStatus,
+            assigneeLockedAt: isAssigneeLocked(toStatus) ? new Date() : null,
+          },
+        });
+        if (count !== 1) {
+          throw new ConflictException(STALE_TASK_MESSAGE);
+        }
+        await this.audit.record(
+          {
+            projectId,
+            actorId: requesterActorId,
+            entityType: 'Task',
+            entityId: taskId,
+            operation: 'STATUS_CHANGE',
+            previousValue: { status: task.status },
+            newValue: { status: toStatus },
+            origin,
+          },
+          tx,
+        );
 
-    // Only these two transitions are write-back triggers
-    // (docs/synchronization.md step 3) — every other status change stays UI-only.
-    if (toStatus === TaskStatus.EN_DESARROLLO) {
-      return this.writeBack.recordTaskEvent(
-        projectId,
-        taskId,
-        'STATUS_EN_DESARROLLO',
-        requesterActorId,
-      );
-    }
-    if (toStatus === TaskStatus.TERMINADA) {
-      return this.writeBack.recordTaskEvent(
-        projectId,
-        taskId,
-        'STATUS_TERMINADA',
-        requesterActorId,
-      );
-    }
-    return this.getOwned(projectId, taskId);
+        // Only these two transitions are write-back triggers
+        // (docs/synchronization.md step 3) — every other status change stays
+        // UI-only. The document is written in the same transaction.
+        if (toStatus === TaskStatus.EN_DESARROLLO) {
+          return this.writeBack.recordTaskEvent(
+            projectId,
+            taskId,
+            'STATUS_EN_DESARROLLO',
+            requesterActorId,
+            tx,
+          );
+        }
+        if (toStatus === TaskStatus.TERMINADA) {
+          return this.writeBack.recordTaskEvent(
+            projectId,
+            taskId,
+            'STATUS_TERMINADA',
+            requesterActorId,
+            tx,
+          );
+        }
+        return null;
+      },
+    );
+    return written ?? this.getOwned(projectId, taskId);
   }
 
   async addDependency(
@@ -524,8 +539,8 @@ export class TasksService {
       await this.assertNoDependencyCycle(taskId, dto.dependsOnTaskId);
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      const dependency = await tx.taskDependency.create({
+    return this.writeBack.inTransaction(projectId, async (tx) => {
+      await tx.taskDependency.create({
         data: {
           taskId,
           dependsOnTaskId: dto.dependsOnTaskId,
@@ -550,13 +565,13 @@ export class TasksService {
         },
         tx,
       );
-      return dependency;
+      return this.writeBack.recordDependencyAdded(
+        projectId,
+        taskId,
+        requesterActorId,
+        tx,
+      );
     });
-    return this.writeBack.recordDependencyAdded(
-      projectId,
-      taskId,
-      requesterActorId,
-    );
   }
 
   /**
@@ -580,7 +595,7 @@ export class TasksService {
       throw new BadRequestException('Remove or move its subtasks first');
     }
 
-    const removed = await this.prisma.$transaction(async (tx) => {
+    return this.writeBack.inTransaction(projectId, async (tx) => {
       const deletedAt = new Date();
       // Dependency links are structure, not history: they go with the task.
       await tx.taskDependency.deleteMany({
@@ -612,17 +627,16 @@ export class TasksService {
         },
         tx,
       );
-      return result;
+      if (!result.externalId) {
+        return result;
+      }
+      return this.writeBack.recordTaskRemoval(
+        projectId,
+        taskId,
+        requesterActorId,
+        tx,
+      );
     });
-
-    if (!removed.externalId) {
-      return removed;
-    }
-    return this.writeBack.recordTaskRemoval(
-      projectId,
-      taskId,
-      requesterActorId,
-    );
   }
 
   /** A task that belongs to this project and has not been removed. */

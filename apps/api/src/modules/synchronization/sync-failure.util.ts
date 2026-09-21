@@ -31,6 +31,23 @@ export function sanitizeSyncMessage(raw: string): string {
 }
 
 /**
+ * Why a change to a task was not saved, when the reason is the project's
+ * documents rather than a fault in this server (Roadmap BUG-07): the write
+ * of the document failed, so the whole change was rolled back. Null for any
+ * other error, which keeps its own status.
+ */
+export function describeNotSaved(error: unknown): string | null {
+  if (error instanceof RoadmapFormatError) {
+    return `Not saved: ${sanitizeSyncMessage(error.message)}`;
+  }
+  const code = (error as { code?: unknown } | null)?.code;
+  if (typeof code === 'string' && FIXABLE_FS_CODES.has(code)) {
+    return `Not saved: the project's docs folder could not be read or written (${code}) — check that it exists and is writable. Nothing was changed`;
+  }
+  return null;
+}
+
+/**
  * Turns whatever a sync run threw into a message worth persisting. The old
  * behaviour stored the raw message — for a YAML problem a multi-line code
  * frame, for a missing folder an absolute path of the server's disk — and

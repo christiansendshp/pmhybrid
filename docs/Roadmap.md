@@ -339,6 +339,10 @@ type: BUG
 title: Write-back runs outside the transaction and is not idempotent
 status: BACKLOG
 priority: P1
+depends_on:
+  - BUG-07a
+  - BUG-07b
+  - BUG-07c
 description: >
   Found by the 2026-09-21 evaluation and hit by hand on 2026-09-20: a
   failed write-back after the database commit returns 500 with the row
@@ -355,10 +359,64 @@ expected_behavior: >
 technical_context:
   backend: apps/api/src/modules/tasks/tasks.service.ts (create), synchronization/write-back.service.ts, DocumentRevision
 next_action: >
-  Prefer an outbox table drained by the sync worker; add an
-  Idempotency-Key header on task creation.
+  Umbrella only, refined on 2026-09-21 into BUG-07a (change and document
+  write in one transaction), BUG-07b (Idempotency-Key on task creation) and
+  BUG-07c (revision retention); close it when all three are done.
 created_at: 2026-09-21T09:00:00Z
-updated_at: 2026-09-21T09:00:00Z
+updated_at: 2026-09-21T18:00:00Z
+```
+
+### BUG-07b — Task creation has no idempotency key
+
+```yaml
+id: BUG-07b
+type: BUG
+title: Task creation has no idempotency key
+status: BACKLOG
+priority: P2
+parent: BUG-07
+depends_on:
+  - BUG-07a
+description: >
+  Second slice of BUG-07. A client that times out after the server created a
+  task cannot tell, and retrying creates a second one. Nothing identifies a
+  retry as the same request.
+expected_behavior: >
+  POST /projects/:id/tasks accepts an Idempotency-Key header; a repeat with
+  the same key from the same actor in the same project returns the task the
+  first request created instead of creating another. Keys expire.
+technical_context:
+  backend: apps/api/src/modules/tasks (controller, service), a new key table with a migration
+next_action: >
+  Store (project, actor, key) -> task id in the creating transaction, unique,
+  with a retention window.
+created_at: 2026-09-21T18:00:00Z
+updated_at: 2026-09-21T18:00:00Z
+```
+
+### BUG-07c — DocumentRevision grows without a retention policy
+
+```yaml
+id: BUG-07c
+type: BUG
+title: DocumentRevision grows without a retention policy
+status: BACKLOG
+priority: P2
+parent: BUG-07
+description: >
+  Third slice of BUG-07. Every write-back and every changed sync stores a
+  full copy of the document in DocumentRevision, forever (119 rows after
+  about 100 tasks).
+expected_behavior: >
+  A configurable retention keeps the most recent revisions of each document
+  and drops the rest on a schedule, without breaking anything that points at
+  a revision.
+technical_context:
+  backend: apps/api/prisma/schema.prisma (DocumentRevision), synchronization (scheduler)
+next_action: >
+  Find what references a DocumentRevision before choosing what may be deleted.
+created_at: 2026-09-21T18:00:00Z
+updated_at: 2026-09-21T18:00:00Z
 ```
 
 ### IMPROVEMENT-01 — Performance and data limits (cycle check, progress N+1, pagination, indexes, DTO limits)
