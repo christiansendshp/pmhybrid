@@ -991,3 +991,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: The interface speaks Spanish with readable labels, the progress view has bars and whole numbers, the task detail and dashboard are linked and readable, and the copy is consistent
 - Files: apps/web/src/app,apps/web/DESIGN.md
 - Verify: UX-03a, UX-03b and UX-03c verified: web unit 220, eslint, ng build, a11y 8
+
+## [2026-09-21T18:58:58Z] | claude | SECURITY-04b1 | IN_PROGRESS
+
+- Summary: HTTP hardening with helmet, a CORS allowlist and WebSocket limits
+- Verify: pending
+
+## [2026-09-21T19:05:17Z] | claude | SECURITY-04b1 | DONE
+
+- Summary: The API sends helmet's security headers and no X-Powered-By, allows only the origins in CORS_ORIGINS (the web dev origins by default outside production, none in production), closes a WebSocket that sends more than 1 KiB, and no longer lets a bad WebSocket frame crash the process
+- Files: apps/api/src/security/http-hardening.ts,apps/api/src/main.ts,apps/api/src/modules/realtime/notifications.gateway.ts,apps/api/package.json,docs/api-reference.md
+- Verify: api unit 377 and e2e 248 pass; a11y 8 pass through the real cross-origin dev servers; headers checked with curl on the running API

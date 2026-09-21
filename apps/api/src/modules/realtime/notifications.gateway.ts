@@ -11,6 +11,9 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { RealtimeTicketService } from './realtime-ticket.service.js';
 
+/** A frame larger than this closes the connection (1009); the server never expects a message at all. */
+export const MAX_CLIENT_MESSAGE_BYTES = 1024;
+
 const CLOSE_INVALID_TICKET = 4001;
 const CLOSE_INACTIVE_ACTOR = 4003;
 
@@ -53,8 +56,23 @@ export class NotificationsGateway
     if (!httpServer) {
       return;
     }
-    this.wss = new WebSocketServer({ server: httpServer, path: '/realtime' });
+    this.wss = new WebSocketServer({
+      server: httpServer,
+      path: '/realtime',
+      // Clients only listen: nothing they send is ever read, so nothing they
+      // send needs to be large (Roadmap SECURITY-04b1).
+      maxPayload: MAX_CLIENT_MESSAGE_BYTES,
+    });
     this.wss.on('connection', (client: WebSocket, request: IncomingMessage) => {
+      // `ws` emits `error` for a frame that is too large or malformed and then
+      // closes the connection. With no listener that event is an uncaught
+      // exception — a client sending one bad frame would stop the whole API
+      // (Roadmap SECURITY-04b1).
+      client.on('error', (error: Error) =>
+        this.logger.warn(
+          `Closing a WS connection after an error: ${error.message}`,
+        ),
+      );
       void this.handleConnection(client, request);
       client.on('close', () => this.handleDisconnect(client));
     });

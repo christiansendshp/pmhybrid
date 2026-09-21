@@ -7,6 +7,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import WebSocket from 'ws';
 import { AppModule } from './../src/app.module.js';
+import { MAX_CLIENT_MESSAGE_BYTES } from './../src/modules/realtime/notifications.gateway.js';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './../prisma/demo-credentials.js';
 import { createScratchDocsPath } from './helpers/scratch-docs.js';
 
@@ -37,7 +38,10 @@ ${row}
 
 function onceMessage(client: WebSocket, timeoutMs = 5000): Promise<unknown> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Timed out waiting for a WS message')), timeoutMs);
+    const timer = setTimeout(
+      () => reject(new Error('Timed out waiting for a WS message')),
+      timeoutMs,
+    );
     client.once('message', (data) => {
       clearTimeout(timer);
       resolve(JSON.parse(data.toString()));
@@ -47,7 +51,10 @@ function onceMessage(client: WebSocket, timeoutMs = 5000): Promise<unknown> {
 
 function onceClose(client: WebSocket, timeoutMs = 5000): Promise<number> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Timed out waiting for a close event')), timeoutMs);
+    const timer = setTimeout(
+      () => reject(new Error('Timed out waiting for a close event')),
+      timeoutMs,
+    );
     client.once('close', (code) => {
       clearTimeout(timer);
       resolve(code);
@@ -57,7 +64,10 @@ function onceClose(client: WebSocket, timeoutMs = 5000): Promise<number> {
 
 function onceOpen(client: WebSocket, timeoutMs = 5000): Promise<void> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Timed out waiting to open')), timeoutMs);
+    const timer = setTimeout(
+      () => reject(new Error('Timed out waiting to open')),
+      timeoutMs,
+    );
     client.once('open', () => {
       clearTimeout(timer);
       resolve();
@@ -87,7 +97,9 @@ describe('Realtime notifications gateway (e2e)', () => {
       imports: [AppModule],
     }).compile();
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
     await app.listen(0);
     const port = (app.getHttpServer().address() as AddressInfo).port;
@@ -110,7 +122,8 @@ describe('Realtime notifications gateway (e2e)', () => {
 
   const server = () => app.getHttpServer();
   const auth = (token = ownerToken) => `Bearer ${token}`;
-  const unique = (label: string) => `${label}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const unique = (label: string) =>
+    `${label}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 
   async function mintTicket(token: string): Promise<string> {
     const res = await request(server())
@@ -136,6 +149,16 @@ describe('Realtime notifications gateway (e2e)', () => {
     await expect(onceClose(socket)).resolves.toBe(4001);
   });
 
+  it('closes a connection that sends a frame larger than the limit (Roadmap SECURITY-04b1)', async () => {
+    const socket = connect(await mintTicket(ownerToken));
+    await onceOpen(socket);
+
+    socket.send('x'.repeat(MAX_CLIENT_MESSAGE_BYTES + 1));
+
+    // 1009: message too big.
+    await expect(onceClose(socket)).resolves.toBe(1009);
+  });
+
   it('rejects a ticket that was already redeemed once', async () => {
     const ticket = await mintTicket(ownerToken);
     const first = connect(ticket);
@@ -155,7 +178,9 @@ describe('Realtime notifications gateway (e2e)', () => {
     const docsPath = createScratchDocsPath();
     writeFileSync(
       path.join(docsPath, 'Roadmap.md'),
-      roadmapWithActiveRow('| PMH-WS1 | Vanishes silently | check | TODO | — | — |'),
+      roadmapWithActiveRow(
+        '| PMH-WS1 | Vanishes silently | check | TODO | — | — |',
+      ),
       'utf-8',
     );
     const project = await request(server())
@@ -169,7 +194,11 @@ describe('Realtime notifications gateway (e2e)', () => {
     const memberRes = await request(server())
       .post('/users')
       .set('Authorization', auth())
-      .send({ displayName: 'WS member', email: memberEmail, password: 'password123' })
+      .send({
+        displayName: 'WS member',
+        email: memberEmail,
+        password: 'password123',
+      })
       .expect(201);
     const memberLogin = await request(server())
       .post('/auth/login')
@@ -188,10 +217,22 @@ describe('Realtime notifications gateway (e2e)', () => {
     const nextMessage = onceMessage(memberSocket);
 
     // Owner triggers both sync runs, so only the member (who did not) gets notified.
-    await request(server()).post(`/projects/${projectId}/sync`).set('Authorization', auth()).expect(201);
-    writeFileSync(path.join(docsPath, 'Roadmap.md'), roadmapWithActiveRow('| — | — | — | — | — | — |'), 'utf-8');
-    await request(server()).post(`/projects/${projectId}/sync`).set('Authorization', auth()).expect(201);
+    await request(server())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth())
+      .expect(201);
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmapWithActiveRow('| — | — | — | — | — | — |'),
+      'utf-8',
+    );
+    await request(server())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth())
+      .expect(201);
 
-    await expect(nextMessage).resolves.toEqual({ type: 'notifications.changed' });
+    await expect(nextMessage).resolves.toEqual({
+      type: 'notifications.changed',
+    });
   });
 });

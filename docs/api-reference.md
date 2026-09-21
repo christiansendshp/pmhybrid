@@ -35,9 +35,15 @@ transform: true })` — unknown fields are stripped, not rejected; typed
   failures. No custom global exception filter changes this shape.
 - Global rate limit: 100 requests / 60s per client (`@nestjs/throttler`,
   `ThrottlerGuard` as `APP_GUARD`) — applies ahead of auth, to every route.
-- CORS is open (`app.enableCors()` with no origin restriction) — acceptable
-  for this MVP's single first-party web client; revisit before a second,
-  less-trusted origin needs to call this API.
+- **HTTP hardening** (Roadmap SECURITY-04b1, `apps/api/src/security/http-hardening.ts`):
+  `helmet` sets the security headers and drops `X-Powered-By`; CORS is an
+  allowlist read from `CORS_ORIGINS` (comma-separated, `*` to allow every
+  origin on purpose). Unset, development allows the web app's own origins
+  (`http://localhost:4200`, `http://127.0.0.1:4200`) and production allows none, so
+  a deployment must name the origin it serves the web app from. A request with
+  no `Origin` header (a script, an agent, `curl`) is never affected. The
+  realtime WebSocket closes a connection that sends a frame over 1 KiB
+  (clients only listen), and its socket errors are logged, not thrown.
 - No pagination on any list endpoint except `GET /notifications` (`take: 50`,
   newest first, no cursor) and `GET /projects/:id/audit` (cursor-paginated,
   the one endpoint brief §25/§31 asked to page). Every other list returns

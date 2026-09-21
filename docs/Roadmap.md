@@ -386,6 +386,9 @@ title: API keys and transport hardening
 status: BACKLOG
 priority: P2
 parent: SECURITY-04
+depends_on:
+  - SECURITY-04b1
+  - SECURITY-04b2
 description: >
   Second slice of SECURITY-04. API keys do not expire, have no scope or
   lastUsedAt and reach every REST route; CORS is fully open and there is no
@@ -398,9 +401,41 @@ expected_behavior: >
 technical_context:
   backend: apps/api/src/modules/agents (API keys), main.ts, realtime
 next_action: >
-  Decide the scope model for API keys before touching the guard.
+  Umbrella only. Refined on 2026-09-21 into SECURITY-04b1 (HTTP hardening) and
+  SECURITY-04b2 (API key expiry, scope and last use); close this entry when
+  both are done.
 created_at: 2026-09-21T20:00:00Z
 updated_at: 2026-09-21T20:00:00Z
+```
+
+### SECURITY-04b2 — API keys with an expiry, a read-only scope and a last-used time
+
+```yaml
+id: SECURITY-04b2
+type: SECURITY
+title: API keys with an expiry, a read-only scope and a last-used time
+status: BACKLOG
+priority: P2
+parent: SECURITY-04b
+depends_on:
+  - SECURITY-04b1
+description: >
+  Second slice of SECURITY-04b. API keys never expire, cannot be limited to
+  reading and record no last-used time, so a leaked key stays valid and
+  fully powerful until someone notices and revokes it.
+expected_behavior: >
+  A key can be given an expiry and a scope (read-only or read-write, the
+  default), a read-only key is refused every write, the last time a key was
+  used is recorded and shown, and an expired key is refused like a revoked
+  one.
+technical_context:
+  backend: apps/api/prisma/schema.prisma (ApiKey), agents (api-keys), the API key guard, apps/web team page
+next_action: >
+  Decision to record first: scope is read-only or read-write, enforced by
+  the HTTP method in the guard, because a scope per permission would need
+  every route annotated.
+created_at: 2026-09-21T23:45:00Z
+updated_at: 2026-09-21T23:45:00Z
 ```
 
 ### UX-02 — Mobile layout, Kanban size and Settings overlaps
