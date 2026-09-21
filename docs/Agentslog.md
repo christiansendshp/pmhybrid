@@ -168,3 +168,9 @@ segments live in `docs/history/`.
 - Summary: docs/decisions has one file per ADR (all 19 the table lists, generated verbatim from its rows with a written title, status, date, decision, reason and where it is detailed) and an index; the Stack table points at them. A unit test fails on a cited ADR with no file, a file the table does not list, a record that drifts from its row, or a file missing from the index.
 - Files: docs/decisions,docs/Stack_Tecnologies.md,apps/api/src/modules/roadmap/self-decisions.spec.ts
 - Verify: api unit 470 pass; api lint clean
+
+## [2026-09-21T22:12:07Z] | claude | IMPROVEMENT-02b | DONE
+
+- Summary: The web reads its API address when it starts: index.html loads config.js (in public/, so it is served next to the app and a deployment replaces it) before the bundle, which sets window.**PMHYBRID**.apiBaseUrl; API_BASE_URL is that value without a trailing slash, else http://localhost:3000, so one build serves any API (the realtime socket derives from it too). Unit-tested, and a Playwright spec proves the address follows config.js and defaults to the development one.
+- Files: apps/web/public/config.js,apps/web/src/index.html,apps/web/src/app/core/api-base-url.ts,apps/web/a11y/runtime-config.a11y.spec.ts
+- Verify: web unit 285 and eslint clean; Playwright 62 pass (the address follows config.js and defaults to localhost:3000); web build ok

@@ -275,30 +275,6 @@ and with the user's explicit sign-off, given the next sync tick will still
 process this change (see `BUG-01` above for a second hazard found and
 deliberately _not_ fixed in this same pass, kept out of scope on purpose).
 
-### IMPROVEMENT-02b — The web reads its API address when it starts
-
-```yaml
-id: IMPROVEMENT-02b
-type: IMPROVEMENT
-title: The web reads its API address when it starts
-status: READY
-priority: P3
-parent: IMPROVEMENT-02
-description: >
-  Second slice of IMPROVEMENT-02. The web app hardcodes API_BASE_URL to
-  http://localhost:3000 in source, so one build cannot serve any other API.
-expected_behavior: >
-  The API address comes from a config.js served next to the app, read before
-  the bundle runs, with http://localhost:3000 as the default, so the same
-  build serves any environment.
-technical_context:
-  backend: apps/web/src/app/core/api-base-url.ts, index.html, public/
-next_action: >
-  Read window.__PMHYBRID__ once, where API_BASE_URL is defined.
-created_at: 2026-09-21T22:30:00Z
-updated_at: 2026-09-21T22:30:00Z
-```
-
 ### IMPROVEMENT-02c — Container images, a compose file for them, and liveness and readiness
 
 ```yaml
