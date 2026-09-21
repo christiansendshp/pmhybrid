@@ -335,7 +335,7 @@ const TASK_STATUS_TO_NEW_STATUS: Record<TaskStatus, string> = {
 /**
  * The document's own status vocabulary (references/roadmap-schema.md §6). A
  * token outside it is a mistake in the document (a typo, a private state),
- * unlike IDEA/REVIEW/CANCELLED/DEFERRED, which are valid states that simply
+ * unlike IDEA/REVIEW/CANCELLED/DEFERRED/PENDING/DECIDED, which are valid states that simply
  * have no Kanban column — those stay unmapped and raise nothing.
  */
 const NEW_FORMAT_STATUSES: ReadonlySet<string> = new Set([
@@ -349,6 +349,9 @@ const NEW_FORMAT_STATUSES: ReadonlySet<string> = new Set([
   'DONE',
   'CANCELLED',
   'DEFERRED',
+  // A DECISION entry's own states (references/roadmap-schema.md §6); CANCELLED is shared.
+  'PENDING',
+  'DECIDED',
 ]);
 
 export function mapNewStatusToTaskStatus(raw: string): TaskStatus | null {

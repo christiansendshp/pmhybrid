@@ -434,7 +434,15 @@ describe('duplicate ids, blocked titles and unrecognized statuses (Roadmap GAP-3
       statusMapped: null,
       statusUnrecognized: true,
     });
-    for (const valid of ['IDEA', 'REVIEW', 'CANCELLED', 'DEFERRED']) {
+    // PENDING and DECIDED are a DECISION entry's own states (Roadmap BUG-08).
+    for (const valid of [
+      'IDEA',
+      'REVIEW',
+      'CANCELLED',
+      'DEFERRED',
+      'PENDING',
+      'DECIDED',
+    ]) {
       const row = rowOf(valid);
       expect(row.statusMapped).toBeNull();
       expect(row.statusUnrecognized).toBeUndefined();

@@ -221,9 +221,14 @@ document does not record, so that status edit must stay unsynced.
   edit of the row does not ask again. Resolving: `MANUAL_EDIT` with a valid
   `status` (held to the permission of that move), `KEEP_LOCAL` or `DISMISSED`.
   `KEEP_EXTERNAL` is a 400: there is no document value to keep.
+  The conflict closes by itself (`conflictsClosed`, recorded as an automatic
+  `DISMISSED`) as soon as the row's status is one the sync knows — the document
+  fixed the token, or the sync learned it — even when the row did not change,
+  which the content-hash short-circuit would otherwise hide (Roadmap BUG-08).
 - **Valid states with no Kanban column are not errors.** The per-entry
   vocabulary is `IDEA BACKLOG READY IN_PROGRESS REVIEW TESTING BLOCKED DONE
-CANCELLED DEFERRED`; `IDEA`, `REVIEW`, `CANCELLED` and `DEFERRED` stay
+CANCELLED DEFERRED`, plus `PENDING` and `DECIDED` for a `DECISION` entry;
+  `IDEA`, `REVIEW`, `CANCELLED`, `DEFERRED`, `PENDING` and `DECIDED` stay
   unmapped and raise nothing (a new task with one is `PENDIENTE`, which is a
   product question — where such tasks belong on the board — not a sync one).
   In the old tables every token outside the mapping table is unrecognized.

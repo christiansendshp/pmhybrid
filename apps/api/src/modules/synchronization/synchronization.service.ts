@@ -487,6 +487,23 @@ export class SynchronizationService {
         conflict,
       ]);
     }
+    // Kept apart from the field conflicts above: raising one is decided by the
+    // token itself (raiseUnrecognizedStatus), closing one by the token no longer
+    // being unrecognized (Roadmap BUG-08).
+    const unrecognizedByTask = new Map<string, OpenConflict[]>();
+    for (const conflict of await tx.conflict.findMany({
+      where: {
+        projectId,
+        resolvedAt: null,
+        entityType: 'Task',
+        kind: 'UNRECOGNIZED_STATUS',
+      },
+    })) {
+      unrecognizedByTask.set(conflict.entityId, [
+        ...(unrecognizedByTask.get(conflict.entityId) ?? []),
+        conflict,
+      ]);
+    }
 
     for (const row of rows) {
       seenExternalIds.add(row.externalId);
@@ -557,6 +574,21 @@ export class SynchronizationService {
             'the row is back in the document',
             summary,
           );
+        }
+        // A status the sync knows closes the "unrecognized status" conflicts the
+        // token had raised — whether the document fixed it or the sync learned
+        // it — even when the row itself did not change (Roadmap BUG-08).
+        const stale = unrecognizedByTask.get(existing.id) ?? [];
+        if (!row.statusUnrecognized) {
+          for (const conflict of stale.slice()) {
+            await this.closeConflictAutomatically(
+              tx,
+              conflict,
+              stale,
+              'the status is one PM Hub recognizes',
+              summary,
+            );
+          }
         }
         await this.reconcileAssignee(
           tx,

@@ -5,6 +5,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
+import { PrismaService } from './../src/prisma/prisma.service.js';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './../prisma/demo-credentials.js';
 import { createScratchDocsPath } from './helpers/scratch-docs.js';
 
@@ -194,6 +195,43 @@ describe('Sync integrity of statuses, duplicate ids and blocked entries (e2e, Ro
     const conflicts = await openConflicts(projectId);
     expect(conflicts.map((c) => c.kind)).toEqual(['UNRECOGNIZED_STATUS']);
     expect(conflicts[0].externalVersion).toEqual({ statusRaw: 'IN_PROGES' });
+  });
+
+  it('closes an unrecognized-status conflict once the row says a status the sync knows, even if the row did not change (Roadmap BUG-08)', async () => {
+    const docsPath = createScratchDocsPath();
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmap(
+        entry('DEC-1', 'A decision', 'DECIDED'),
+        entry('OK-1', 'Fine', 'READY'),
+      ),
+      'utf-8',
+    );
+    const projectId = await createProject(docsPath);
+    // DECIDED is a DECISION entry's own state: read without any conflict.
+    const first = await sync(projectId).expect(201);
+    expect(first.body.summary.conflictsRaised).toBe(0);
+    expect(await openConflicts(projectId)).toEqual([]);
+
+    // A conflict raised while the sync did not know the word (an older build)
+    // is still open; nothing in the document changes to make it stale.
+    const task = (await tasks(projectId)).get('DEC-1')!;
+    await app.get(PrismaService).conflict.create({
+      data: {
+        projectId,
+        kind: 'UNRECOGNIZED_STATUS',
+        entityType: 'Task',
+        entityId: task.id,
+        localVersion: { status: task.status },
+        externalVersion: { statusRaw: 'DECIDED' },
+      },
+    });
+    expect(await openConflicts(projectId)).toHaveLength(1);
+
+    const run = await sync(projectId).expect(201);
+
+    expect(run.body.summary.conflictsClosed).toBe(1);
+    expect(await openConflicts(projectId)).toEqual([]);
   });
 
   it('imports none of the copies of a duplicated id, and protects the task that has it', async () => {
