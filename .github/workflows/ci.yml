@@ -78,8 +78,10 @@ jobs:
       - name: Build
         run: pnpm --filter api --filter web build
 
+      # The API run also measures coverage and fails below the floor in
+      # apps/api/vitest.config.ts (Roadmap TEST-01b); the web run has no floor yet.
       - name: Unit tests
-        run: pnpm --filter api --filter web test
+        run: pnpm --filter api test:cov && pnpm --filter web test
 
       # migrate deploy (not `migrate dev`): applies the already-committed
       # migration files without diffing the schema or prompting — the correct
@@ -90,8 +92,9 @@ jobs:
       - name: Seed database
         run: pnpm --filter api exec prisma db seed
 
+      # Coverage floor in apps/api/vitest.config.e2e.ts (Roadmap TEST-01b).
       - name: E2E tests
-        run: pnpm test:e2e
+        run: pnpm test:e2e:cov
 
       - name: Install Playwright Chromium (Roadmap GAP-25)
         run: pnpm --filter web exec playwright install --with-deps chromium

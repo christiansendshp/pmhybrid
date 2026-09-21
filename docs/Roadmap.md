@@ -449,31 +449,6 @@ created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T19:30:00Z
 ```
 
-### TEST-01b — Coverage is measured and has a floor in CI
-
-```yaml
-id: TEST-01b
-type: TEST
-title: Coverage is measured and has a floor in CI
-status: BACKLOG
-priority: P2
-parent: TEST-01
-depends_on:
-  - TEST-01a
-description: >
-  Second slice of TEST-01. Coverage is not measured or gated, so it can fall
-  without anyone seeing it.
-expected_behavior: >
-  CI reports coverage for the API unit and e2e runs and fails when it drops
-  below a floor set just under today's measured value.
-technical_context:
-  backend: apps/api/package.json (test:cov), vitest configs, .github/workflows/ci.yml
-next_action: >
-  Measure first, then set the floor a little under it.
-created_at: 2026-09-21T19:30:00Z
-updated_at: 2026-09-21T19:30:00Z
-```
-
 ### TEST-01c — Unit specs for the untested web core pieces
 
 ```yaml

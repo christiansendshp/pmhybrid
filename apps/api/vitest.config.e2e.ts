@@ -42,5 +42,16 @@ export default defineConfig({
     // default is too tight for them on a busy machine.
     testTimeout: 20_000,
     hookTimeout: 30_000,
+    // Only when run with --coverage (`pnpm test:e2e:cov`, CI). The floor sits
+    // just under what the e2e suite measured on 2026-09-21 (86.2 statements,
+    // 76.4 branches, 89.9 functions, 86.1 lines): a drop below it means code
+    // was added without a test that runs it (Roadmap TEST-01b).
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.ts'],
+      exclude: ['**/*.spec.ts'],
+      reporter: ['text-summary', 'lcov'],
+      thresholds: { statements: 84, branches: 74, functions: 87, lines: 84 },
+    },
   },
 });

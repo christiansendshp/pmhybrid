@@ -21,6 +21,8 @@ pnpm -r test          # both apps' unit suites
 pnpm --filter api test        # api unit only
 pnpm --filter web test        # web unit only
 pnpm test:e2e          # api e2e only (root script -> pnpm --filter api test:e2e)
+pnpm --filter api test:cov       # api unit with coverage and its floor
+pnpm test:e2e:cov      # api e2e with coverage and its floor
 pnpm test:a11y          # web a11y only (root script -> pnpm --filter web test:a11y); needs Chromium: pnpm --filter web exec playwright install chromium
 pnpm -r lint            # oxlint (api) + eslint (web)
 pnpm -r build            # nest build + ng build (also the closest thing to a typecheck gate)
@@ -83,10 +85,30 @@ Re-run `test:e2e:db:setup` after adding a new Prisma migration.
   race there passed standalone but failed intermittently under the full
   suite's parallel load, and only running it more than once surfaced it.
 
+## Coverage floor (Roadmap TEST-01b)
+
+Coverage of `apps/api/src` is measured with `@vitest/coverage-v8` and gated by a
+floor set just under the value measured on 2026-09-21, so it cannot fall
+without CI saying so. There are two floors because the two suites cover
+different things: the unit specs exercise pure logic and small services, the
+e2e suite runs the whole app through HTTP.
+
+| Suite | Statements | Branches  | Functions | Lines     | Config                          |
+| ----- | ---------- | --------- | --------- | --------- | ------------------------------- |
+| unit  | 42 (43.8)  | 41 (43.2) | 34 (36.5) | 42 (43.5) | `apps/api/vitest.config.ts`     |
+| e2e   | 84 (86.2)  | 74 (76.4) | 87 (89.9) | 84 (86.1) | `apps/api/vitest.config.e2e.ts` |
+
+(The number in brackets is what was measured.) A run that drops below a floor
+exits non-zero with `Coverage for statements (x%) does not meet global threshold
+(y%)`. New code should raise the measured value, not lower it: when it goes up
+a few points, raise the floor in the same commit so the gain is kept. The
+report is a text summary in the log plus `apps/api/coverage/lcov.info` (ignored
+by git). The web unit run has no floor yet.
+
 ## CI
 
 `.github/workflows/ci.yml` (Roadmap GAP-17) runs `lint` → `build` → unit
-tests → `prisma migrate deploy` + `prisma db seed` → `test:e2e`, on every
+tests (the API with its coverage floor) → `prisma migrate deploy` + `prisma db seed` → `test:e2e:cov` (its own floor), on every
 push and PR against `main`/`develop`, against a fresh `postgres:17-alpine`
 service container (its own `DATABASE_URL`, set at the job's `env:` level —
 `vitest.config.e2e.ts`'s `pmhybrid_test` override only applies outside CI) —

@@ -1035,3 +1035,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: Authentication and transport hardening: uniform login, production guards, a password change, helmet, a CORS allowlist, WebSocket limits and API keys with expiry, scope, last use and a budget of their own
 - Files: docs/api-reference.md,docs/domain-model.md,docs/permissions.md
 - Verify: SECURITY-04a, 04b1 and 04b2 verified: api e2e 253 pass
+
+## [2026-09-21T19:18:19Z] | claude | TEST-01b | IN_PROGRESS
+
+- Summary: Coverage is measured and has a floor in CI
+- Verify: pending
+
+## [2026-09-21T19:23:30Z] | claude | TEST-01b | DONE
+
+- Summary: The API unit and e2e runs measure coverage with v8 and fail below a floor just under today's value (unit 42/41/34/42, e2e 84/74/87/84 for statements/branches/functions/lines); CI runs both gated commands
+- Files: apps/api/vitest.config.ts,apps/api/vitest.config.e2e.ts,apps/api/package.json,.github/workflows/ci.yml,docs/testing.md
+- Verify: test:cov and test:e2e:cov pass at the floor (43.8/43.2/36.5/43.5 and 86.2/76.4/89.9/86.1); a floor of 99 fails as intended
