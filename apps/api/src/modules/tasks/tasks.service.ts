@@ -3,11 +3,13 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { TaskStatus } from '@pmhybrid/shared-types';
 import type { AuditOrigin, Prisma } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PermissionsResolverService } from '../../common/permissions-resolver.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
@@ -59,12 +61,15 @@ const DATE_FIELDS = ['startDate', 'estimatedDate', 'dueDate'] as const;
 
 @Injectable()
 export class TasksService {
+  private readonly logger = new Logger(TasksService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly progressRollup: ProgressRollupService,
     private readonly permissionsResolver: PermissionsResolverService,
     private readonly writeBack: WriteBackService,
     private readonly audit: AuditService,
+    private readonly events: EventEmitter2,
   ) {}
 
   /**
@@ -506,7 +511,23 @@ export class TasksService {
         return null;
       },
     );
-    return written ?? this.getOwned(projectId, taskId);
+    const result = written ?? (await this.getOwned(projectId, taskId));
+    // After the commit, so a notification never describes an assignment that
+    // rolled back; a listener that fails must not fail the assignment.
+    try {
+      await this.events.emitAsync('task.assigned', {
+        projectId,
+        taskId,
+        title: task.title,
+        externalId: task.externalId,
+        assigneeActorId: actorId,
+        previousAssigneeActorId: task.assigneeActorId,
+        byActorId: requesterActorId,
+      });
+    } catch (error) {
+      this.logger.warn(`task.assigned listeners failed: ${String(error)}`);
+    }
+    return result;
   }
 
   /** Kanban transition (docs/domain-model.md, task-status-policy.ts) — the one legal way to change Task.status. */

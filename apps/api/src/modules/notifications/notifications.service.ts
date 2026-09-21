@@ -22,6 +22,25 @@ interface SyncFailedPayload {
   requesterActorId?: string;
 }
 
+interface TaskAssignedPayload {
+  projectId: string;
+  taskId: string;
+  title: string;
+  externalId: string | null;
+  assigneeActorId: string;
+  previousAssigneeActorId: string | null;
+  byActorId: string;
+}
+
+interface TaskCommentedPayload {
+  projectId: string;
+  taskId: string;
+  title: string;
+  assigneeActorId: string | null;
+  authorActorId: string;
+  commentId: string;
+}
+
 /**
  * Subscribes to domain events (docs/architecture.md "side effects that may
  * lag... hang off event-emitter events, without touching business logic").
@@ -117,6 +136,83 @@ export class NotificationsService {
     );
   }
 
+  /**
+   * Tells the new assignee a task was given to them, and the previous one it was
+   * taken from them — an agent finds out what it was assigned, a person finds
+   * out what moved (Roadmap GAP-36c). Nobody is told about their own action.
+   */
+  @OnEvent('task.assigned')
+  async handleTaskAssigned(payload: TaskAssignedPayload): Promise<void> {
+    const details = {
+      taskId: payload.taskId,
+      title: payload.title,
+      externalId: payload.externalId,
+      byActorId: payload.byActorId,
+    };
+    if (payload.assigneeActorId !== payload.byActorId) {
+      await this.notifyActors(
+        [payload.assigneeActorId],
+        payload.projectId,
+        'TASK_ASSIGNED',
+        details,
+      );
+    }
+    const previous = payload.previousAssigneeActorId;
+    if (
+      previous &&
+      previous !== payload.assigneeActorId &&
+      previous !== payload.byActorId
+    ) {
+      await this.notifyActors(
+        [previous],
+        payload.projectId,
+        'TASK_REASSIGNED',
+        details,
+      );
+    }
+  }
+
+  /** A comment on a task tells whoever holds it, unless they wrote it. */
+  @OnEvent('task.commented')
+  async handleTaskCommented(payload: TaskCommentedPayload): Promise<void> {
+    if (
+      !payload.assigneeActorId ||
+      payload.assigneeActorId === payload.authorActorId
+    ) {
+      return;
+    }
+    await this.notifyActors(
+      [payload.assigneeActorId],
+      payload.projectId,
+      'TASK_COMMENTED',
+      {
+        taskId: payload.taskId,
+        title: payload.title,
+        commentId: payload.commentId,
+        authorActorId: payload.authorActorId,
+      },
+    );
+  }
+
+  /** The named actors, only if they are still active members of the project. */
+  private async notifyActors(
+    actorIds: string[],
+    projectId: string,
+    type: string,
+    payload: Prisma.InputJsonValue,
+  ): Promise<void> {
+    const members = await this.prisma.projectMember.findMany({
+      where: {
+        projectId,
+        isActive: true,
+        actorId: { in: actorIds },
+        actor: { isActive: true },
+      },
+      select: { actorId: true },
+    });
+    await this.deliver(members, projectId, type, payload);
+  }
+
   /** Never notifies whoever directly triggered this run — a manual "Sync now" already returned its own result in the response. */
   private async notifyProjectMembers(
     projectId: string,
@@ -135,9 +231,26 @@ export class NotificationsService {
         },
         select: { actorId: true },
       });
-      if (members.length === 0) {
-        return;
-      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to find the members to notify for project ${projectId}: ${String(error)}`,
+      );
+      return;
+    }
+    await this.deliver(members, projectId, type, payload);
+  }
+
+  /** Saves one notification per recipient, then pushes the live signal to each. */
+  private async deliver(
+    members: { actorId: string }[],
+    projectId: string,
+    type: string,
+    payload: Prisma.InputJsonValue,
+  ): Promise<void> {
+    if (members.length === 0) {
+      return;
+    }
+    try {
       await this.prisma.notification.createMany({
         data: members.map((m) => ({
           actorId: m.actorId,

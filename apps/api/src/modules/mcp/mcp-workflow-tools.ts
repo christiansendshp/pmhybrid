@@ -32,6 +32,10 @@ export interface McpWorkflowContext extends McpToolContext {
       resolved?: boolean,
     ): Promise<unknown[]>;
   };
+  notificationsService: {
+    findAllForActor(actorId: string): Promise<{ readAt: Date | null }[]>;
+    markAllRead(actorId: string): Promise<{ count: number }>;
+  };
   repositoryProvider: ProjectRepositoryProvider;
   /** Where each project's documents live, so a document can be read by project id. */
   docsPathOf(projectId: string): Promise<string>;
@@ -150,6 +154,43 @@ export function registerWorkflowTools(
             status: project.status,
             summary: project.summary,
           })),
+        );
+      } catch (error) {
+        return fail(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'list_notifications',
+    {
+      description:
+        "The caller's notifications, newest first: a task assigned to it or taken from it, a comment on its task, a conflict or a failed sync in its projects. With unreadOnly, only those not yet acknowledged.",
+      inputSchema: { unreadOnly: z.boolean().optional() },
+    },
+    async ({ unreadOnly }) => {
+      try {
+        const all = await ctx.notificationsService.findAllForActor(ctx.actorId);
+        return textResult(
+          unreadOnly ? all.filter((n) => n.readAt === null) : all,
+        );
+      } catch (error) {
+        return fail(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'mark_notifications_read',
+    {
+      description:
+        "Acknowledge every unread notification of the caller (nobody else's). Idempotent.",
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        return textResult(
+          await ctx.notificationsService.markAllRead(ctx.actorId),
         );
       } catch (error) {
         return fail(error);

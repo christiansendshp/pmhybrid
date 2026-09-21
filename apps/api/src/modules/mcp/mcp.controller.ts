@@ -17,6 +17,7 @@ import { ApiKeyGuard } from '../auth/guards/api-key.guard.js';
 import { JwtPayload } from '../auth/jwt-payload.interface.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { ConflictsService } from '../conflicts/conflicts.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository-provider.interface.js';
 import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
 import { ProjectsService } from '../projects/projects.service.js';
@@ -67,6 +68,7 @@ export class McpController {
     private readonly taskCommentsService: TaskCommentsService,
     private readonly projectsService: ProjectsService,
     private readonly conflictsService: ConflictsService,
+    private readonly notificationsService: NotificationsService,
     @Inject(PROJECT_REPOSITORY_PROVIDER)
     private readonly repositoryProvider: ProjectRepositoryProvider,
   ) {}
@@ -86,6 +88,7 @@ export class McpController {
       ...context,
       projectsService: this.projectsService,
       conflictsService: this.conflictsService,
+      notificationsService: this.notificationsService,
       repositoryProvider: this.repositoryProvider,
       docsPathOf: async (projectId) =>
         (

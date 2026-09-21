@@ -127,8 +127,10 @@ describe('MCP server for agent task operations (e2e)', () => {
       'get_task',
       'list_comments',
       'list_conflicts',
+      'list_notifications',
       'list_projects',
       'list_tasks',
+      'mark_notifications_read',
       'read_document',
       'transition_task',
       'update_task',
@@ -274,6 +276,39 @@ describe('MCP server for agent task operations (e2e)', () => {
       ]);
       expect(body[0]).toMatchObject({ status: 'ACTIVE' });
       expect(body[0].summary).toBeDefined();
+    });
+
+    it('tells an agent it was assigned work, and lets it acknowledge (Roadmap GAP-36c)', async () => {
+      const { agentId, apiKey } = await createAgentWithKey();
+      const projectId = await createProjectWithMember(agentId);
+      const taskId = await createTask(projectId, 'Work for the agent');
+      await request(server())
+        .post(`/projects/${projectId}/tasks/${taskId}/assign`)
+        .set('Authorization', auth())
+        .send({ actorId: agentId })
+        .expect(201);
+      const client = await connectedClient(apiKey);
+
+      const unread = await callJson(client, 'list_notifications', {
+        unreadOnly: true,
+      });
+      expect(unread.body).toHaveLength(1);
+      expect(unread.body[0]).toMatchObject({
+        type: 'TASK_ASSIGNED',
+        projectId,
+        payload: { taskId, title: 'Work for the agent' },
+      });
+
+      const marked = await callJson(client, 'mark_notifications_read', {});
+      expect(marked.body).toEqual({ count: 1 });
+      expect(
+        (await callJson(client, 'list_notifications', { unreadOnly: true }))
+          .body,
+      ).toEqual([]);
+      // Still there once read, for whoever wants the history.
+      expect(
+        (await callJson(client, 'list_notifications', {})).body,
+      ).toHaveLength(1);
     });
 
     it("gives the state of a project in one call: figures, the agent's own open tasks and what is blocked", async () => {

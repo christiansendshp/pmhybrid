@@ -1106,3 +1106,14 @@ lines or roughly 700 characters. Older segments live in `docs/history/`.
 - Summary: An MCP agent can list its projects, get the context of one, claim a task (optionally starting it), create tasks and subtasks with an idempotency key, list conflicts and read a document; every tool goes through the same membership check and service call as REST, so the permissions are unchanged
 - Files: apps/api/src/modules/mcp/mcp-workflow-tools.ts,apps/api/src/modules/mcp/mcp.controller.ts,apps/api/src/modules/mcp/mcp.module.ts,docs/permissions.md
 - Verify: api unit 394 and e2e 265 pass (mcp e2e 19, coverage 86.3 statements)
+
+## [2026-09-21T19:48:13Z] | claude | GAP-36c | IN_PROGRESS
+
+- Summary: Tell an agent it was assigned work
+- Verify: pending
+
+## [2026-09-21T19:58:43Z] | claude | GAP-36c | DONE
+
+- Summary: Assigning a task tells the new assignee (TASK_ASSIGNED) and the previous one (TASK_REASSIGNED), a comment tells whoever holds the task (TASK_COMMENTED), never the person who did it; events are emitted after the commit and never fail the request; an agent reads and acknowledges its notifications through two MCP tools; the web says each in Spanish; the brief's other events are descoped in the docs
+- Files: apps/api/src/modules/notifications/notifications.service.ts,apps/api/src/modules/tasks/tasks.service.ts,apps/api/src/modules/mcp/mcp-workflow-tools.ts,apps/web/src/app/core/notification-format.ts,docs/domain-model.md
+- Verify: api unit 394 and e2e 271 pass (coverage 86.3); web unit 237 and eslint clean

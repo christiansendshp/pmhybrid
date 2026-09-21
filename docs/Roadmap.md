@@ -416,32 +416,6 @@ created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T19:28:31Z
 ```
 
-### GAP-36c — Tell an agent it was assigned work
-
-```yaml
-id: GAP-36c
-type: GAP
-title: Tell an agent it was assigned work
-status: BACKLOG
-priority: P2
-parent: GAP-36
-description: >
-  Third slice of GAP-36. Nothing tells an agent it was assigned a task, and
-  only 2 of the 9 notification events the brief lists exist (conflict, sync
-  failure).
-expected_behavior: >
-  An assignment notifies the assignee, an agent reads its notifications
-  through MCP, and the other events the brief lists that make sense for this
-  app are either added or explicitly descoped.
-technical_context:
-  backend: apps/api/src/modules/notifications, tasks, mcp
-next_action: >
-  List the nine events of the brief and decide which ones are real for this
-  app before adding any.
-created_at: 2026-09-21T23:55:00Z
-updated_at: 2026-09-21T23:55:00Z
-```
-
 ### GAP-36d — Task completion date and the LEAF_EQUAL_WEIGHT rollup
 
 ```yaml

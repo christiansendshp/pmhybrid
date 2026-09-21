@@ -65,6 +65,19 @@ describe('describeNotification (brief §29)', () => {
     ).toBe('Falló la sincronización: ENOENT: no such file');
   });
 
+  it('says what happened to a task the person holds (Roadmap GAP-36c)', () => {
+    const about = (type: string, title?: string) =>
+      describeNotification(notification({ type, payload: title ? { title } : {} }));
+
+    expect(about('TASK_ASSIGNED', 'Write docs')).toBe('Te asignaron la tarea «Write docs»');
+    expect(about('TASK_REASSIGNED', 'Write docs')).toBe(
+      'La tarea «Write docs» pasó a otra persona',
+    );
+    expect(about('TASK_COMMENTED', 'Write docs')).toBe('Nuevo comentario en tu tarea «Write docs»');
+    // A payload with no title never renders a hole.
+    expect(about('TASK_ASSIGNED')).toBe('Te asignaron la tarea «sin título»');
+  });
+
   it('falls back to the raw type for an unknown notification type, instead of rendering empty', () => {
     expect(describeNotification(notification({ type: 'SOMETHING_NEW', payload: {} }))).toBe(
       'SOMETHING_NEW',

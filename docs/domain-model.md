@@ -257,7 +257,23 @@ AuditEvent(id, projectId?, actorId?, entityType, entityId, operation,
 
 Notification(id, actorId, projectId, type, payload? jsonb, readAt?, createdAt)
   // type: CONFLICTS_DETECTED | SYNC_FAILED | ROADMAP_ENTRIES_INVALID
+  //       | TASK_ASSIGNED | TASK_REASSIGNED | TASK_COMMENTED   (Roadmap GAP-36c)
 ```
+
+**Who is told what** (Roadmap GAP-36c). The first three go to every active member
+of the project except whoever triggered the run. The task events go to one person
+and never to whoever caused them: `TASK_ASSIGNED` to the new assignee,
+`TASK_REASSIGNED` to the previous one (the task moved to somebody else),
+`TASK_COMMENTED` to whoever holds the task when somebody else comments on it. They
+are emitted after the change has committed (`task.assigned`, `task.commented` on
+the event emitter), so a notification never describes something that rolled back,
+and a failing listener never fails the request. An agent reads its own through the
+MCP tools `list_notifications` and `mark_notifications_read`
+(`docs/permissions.md`). The brief's full list of events is not in this
+repository, so the rest are descoped rather than guessed: nothing is sent for a
+status change of a task you hold, a due date, or a mention, and adding one is a
+new `OnEvent` handler in `NotificationsService` plus a sentence in the web's
+`notification-format.ts`.
 
 `Conflict` is a first-class entity (brief §26), not just an audit log line —
 it needs its own list/detail/resolve endpoints and UI route.

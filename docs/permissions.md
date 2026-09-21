@@ -188,14 +188,17 @@ transport onto existing authorization, not a second one.
 
 ## The workflow tools (Roadmap GAP-36b)
 
-Six more MCP tools let an agent run its whole loop without the REST API:
+Eight more MCP tools let an agent run its whole loop without the REST API:
 `list_projects` (the projects it belongs to, with a summary each — the place to
 start), `get_context` (one call for a project: figures by status, the agent's own
 open tasks, what is blocked, how many conflicts are open), `claim_task` (assign the
 task to the caller, and with `start` also move it to `EN_DESARROLLO`),
 `create_task` (a task or a subtask, with an optional `idempotencyKey` so a retry
-cannot create two), `list_conflicts` (open by default) and `read_document` (the
-Roadmap, the Agentslog, the rules, the other three documents). They follow the
+cannot create two), `list_conflicts` (open by default), `read_document` (the
+Roadmap, the Agentslog, the rules, the other three documents), `list_notifications`
+(its own, newest first, optionally only the unread — a task assigned to it or taken
+from it, a comment on its task, a conflict or a failed sync in its projects) and
+`mark_notifications_read` (acknowledge its own, idempotent; Roadmap GAP-36c). They follow the
 same rule as the first six and add no way in: `guarded()` checks membership
 (`isError: Not a member of this project` otherwise, except `list_projects`, which
 has no project to check), and every write goes through `TasksService`'s own
