@@ -107,3 +107,45 @@ describe('RoadmapParserService tolerant read (Roadmap BUG-05)', () => {
     expect(errors).toEqual([]);
   });
 });
+
+describe('RoadmapParserService old-format duplicates and statuses (Roadmap GAP-35b)', () => {
+  const parser = new RoadmapParserService();
+  const doc = [
+    '# Roadmap',
+    '',
+    '## Active work',
+    '',
+    '| ID | Outcome | Acceptance check | Status | Owner | Depends on |',
+    '|---|---|---|---|---|---|',
+    '| A-1 | First | c | TODO | — | — |',
+    '| A-2 | Twice | c | TODO | — | — |',
+    '| A-3 | Odd status | c | WIP | — | — |',
+    '',
+    '## Near term',
+    '',
+    '| ID | Outcome | Acceptance check | Status | Depends on |',
+    '|---|---|---|---|---|',
+    '| A-2 | Twice, again | c | TODO | — |',
+    '',
+  ].join('\n');
+
+  it('imports none of the rows of a duplicated id, across tables too, and names their lines', () => {
+    const { rows, errors } = parser.parseTolerant(doc);
+
+    expect(rows.map((row) => row.externalId)).toEqual(['A-1', 'A-3']);
+    expect(errors.map((error) => [error.id, error.line])).toEqual([
+      ['A-2', 8],
+      ['A-2', 15],
+    ]);
+    expect(errors[0].reason).toBe('duplicate id, also defined at line 15');
+    expect(() => parser.parse(doc)).toThrow(/defined more than once/);
+  });
+
+  it('flags a token that maps to no status', () => {
+    const odd = parser
+      .parseTolerant(doc)
+      .rows.find((row) => row.externalId === 'A-3')!;
+
+    expect(odd).toMatchObject({ statusMapped: null, statusUnrecognized: true });
+  });
+});

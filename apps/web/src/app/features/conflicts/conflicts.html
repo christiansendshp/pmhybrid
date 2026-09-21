@@ -147,7 +147,8 @@
             Conservar versión de la app
           </button>
           @if (
-            conflict.externalVersion || conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG'
+            (conflict.externalVersion && conflict.kind !== 'UNRECOGNIZED_STATUS') ||
+            conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG'
           ) {
             <button
               mat-stroked-button

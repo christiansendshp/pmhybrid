@@ -210,7 +210,7 @@ reconciliation logic relies on — see `docs/synchronization.md`.
 
 ```
 Conflict(id, projectId, kind: ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG|
-  CONCURRENT_FIELD_EDIT|WRITE_BACK_COLLISION, entityType, entityId,
+  CONCURRENT_FIELD_EDIT|WRITE_BACK_COLLISION|UNRECOGNIZED_STATUS, entityType, entityId,
   localVersion jsonb, externalVersion? jsonb, detectedAt, resolvedAt?,
   resolvedByActorId?, resolutionStrategy?: KEEP_LOCAL|KEEP_EXTERNAL|MANUAL_EDIT|DISMISSED)
 

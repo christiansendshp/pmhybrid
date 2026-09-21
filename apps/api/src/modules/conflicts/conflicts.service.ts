@@ -310,6 +310,12 @@ export class ConflictsService {
       case ConflictResolutionKind.MANUAL_EDIT:
         return this.validateManualValue(conflict, dto.manualValue!);
       case ConflictResolutionKind.KEEP_EXTERNAL:
+        if (conflict.kind === 'UNRECOGNIZED_STATUS') {
+          // There is no document value to keep: the token is not a status.
+          throw new BadRequestException(
+            "The document's status is not one PM Hub knows; choose a status (MANUAL_EDIT) or dismiss the conflict",
+          );
+        }
         if (conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG') {
           // Trusting the external side here means "yes, it's really gone".
           return { status: 'TERMINADA', roadmapTable: null };

@@ -95,6 +95,23 @@ describe('Conflicts (brief §26 — resolution UI)', () => {
     expect(labels).toContain('Conservar versión del documento');
   });
 
+  it('explains an unrecognized status and offers a status choice, never "keep the document version" (Roadmap GAP-35b)', async () => {
+    const unrecognized = conflict({
+      id: 'c3',
+      kind: 'UNRECOGNIZED_STATUS',
+      localVersion: { status: 'PENDIENTE' },
+      externalVersion: { statusRaw: 'WIP' },
+    });
+    const { text, buttons } = await render([unrecognized]);
+
+    expect(text()).toContain('no reconoce');
+    expect(text()).toContain('WIP');
+    const labels = buttons();
+    expect(labels).not.toContain('Conservar versión del documento');
+    expect(labels).toContain('Editar manualmente');
+    expect(labels).toContain('Descartar');
+  });
+
   it('resolves KEEP_LOCAL and reloads the list', async () => {
     const { component } = await render([conflict()]);
 

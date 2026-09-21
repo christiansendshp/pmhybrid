@@ -357,3 +357,88 @@ describe('roadmapYamlEntryToRow owner kind (Roadmap GAP-35a)', () => {
     expect(untyped.ownerKind).toBeUndefined();
   });
 });
+
+describe('duplicate ids, blocked titles and unrecognized statuses (Roadmap GAP-35b)', () => {
+  const entry = (
+    id: string,
+    title: string,
+    status = 'READY',
+    extra: string[] = [],
+  ) =>
+    [
+      `### ${id} — X`,
+      '',
+      '```yaml',
+      `id: ${id}`,
+      'type: TASK',
+      `title: ${title}`,
+      `status: ${status}`,
+      ...extra,
+      '```',
+      '',
+    ].join('\n');
+
+  it('imports none of the copies of a duplicated id, and reports each one naming the others', () => {
+    const md = [
+      '## Plan',
+      '',
+      entry('T-1', 'First'),
+      entry('T-2', 'Only'),
+      entry('T-1', 'Second copy'),
+    ].join('\n');
+
+    const { entries, errors } = extractRoadmapYamlEntriesTolerant(md);
+
+    expect(entries.map((e) => e.id)).toEqual(['T-2']);
+    const lines = md.split('\n');
+    const first = lines.indexOf('### T-1 — X') + 1;
+    const second = lines.lastIndexOf('### T-1 — X') + 1;
+    expect(errors.map((e) => [e.id, e.line])).toEqual([
+      ['T-1', first],
+      ['T-1', second],
+    ]);
+    expect(errors[0].reason).toBe(
+      `duplicate id, also defined at line ${second}`,
+    );
+    expect(errors[1].reason).toBe(
+      `duplicate id, also defined at line ${first}`,
+    );
+    // Strict readers refuse it, and a write to that id is refused too.
+    expect(() => extractRoadmapYamlEntries(md)).toThrow(
+      /defined more than once/,
+    );
+    expect(() => extractRoadmapYamlEntriesForWrite(md, 'T-1')).toThrow(
+      RoadmapFormatError,
+    );
+    expect(extractRoadmapYamlEntriesForWrite(md, 'T-2')).toHaveLength(1);
+  });
+
+  it('keeps the title of a BLOCKED entry', () => {
+    const [blocked] = extractRoadmapYamlEntries(
+      entry('T-1', 'Waiting on legal', 'BLOCKED', ['blocked_by:', '  - DEC-7']),
+    );
+    const row = roadmapYamlEntryToRow(blocked);
+
+    expect(row.table).toBe(RoadmapTable.BLOCKED);
+    expect(row.outcome).toBe('Waiting on legal');
+    expect(row.blocker).toBe('DEC-7');
+  });
+
+  it('flags a status outside the document vocabulary, but not a valid state with no Kanban column', () => {
+    const rowOf = (status: string) =>
+      roadmapYamlEntryToRow(
+        extractRoadmapYamlEntries(entry('T-1', 'X', status))[0],
+      );
+
+    expect(rowOf('WIP')).toMatchObject({
+      statusMapped: null,
+      statusUnrecognized: true,
+    });
+    for (const valid of ['IDEA', 'REVIEW', 'CANCELLED', 'DEFERRED']) {
+      const row = rowOf(valid);
+      expect(row.statusMapped).toBeNull();
+      expect(row.statusUnrecognized).toBeUndefined();
+    }
+    expect(rowOf('in_progress').statusUnrecognized).toBeUndefined();
+  });
+});

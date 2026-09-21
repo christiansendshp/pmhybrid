@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "ConflictKind" ADD VALUE 'UNRECOGNIZED_STATUS';

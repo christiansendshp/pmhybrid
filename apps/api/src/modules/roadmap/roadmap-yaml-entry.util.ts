@@ -242,7 +242,35 @@ export function extractRoadmapYamlEntriesTolerant(markdown: string): {
     i = fenceCloseLine;
   }
 
-  return { entries, errors };
+  // The same id twice is ambiguous — which copy is the task? — so neither is
+  // imported: every copy is reported, naming the others, and the task is
+  // protected like any other unreadable entry (Roadmap GAP-35b).
+  const byId = new Map<string, RoadmapYamlEntry[]>();
+  for (const entry of entries) {
+    byId.set(entry.id, [...(byId.get(entry.id) ?? []), entry]);
+  }
+  const duplicated = [...byId.values()].filter((group) => group.length > 1);
+  if (duplicated.length === 0) {
+    return { entries, errors };
+  }
+  const dropped = new Set(duplicated.flat());
+  for (const group of duplicated) {
+    const lines = group.map((entry) => entry.headingLine + 1);
+    for (const entry of group) {
+      const line = entry.headingLine + 1;
+      errors.push({
+        id: entry.id,
+        line,
+        reason: `duplicate id, also defined at line ${lines.filter((other) => other !== line).join(', ')}`,
+        message: `Roadmap.md: entry "${entry.id}" is defined more than once (lines ${lines.join(', ')})`,
+      });
+    }
+  }
+  errors.sort((a, b) => a.line - b.line);
+  return {
+    entries: entries.filter((entry) => !dropped.has(entry)),
+    errors,
+  };
 }
 
 /**
@@ -302,6 +330,25 @@ const TASK_STATUS_TO_NEW_STATUS: Record<TaskStatus, string> = {
   [TaskStatus.QA]: 'TESTING',
   [TaskStatus.TERMINADA]: 'DONE',
 };
+
+/**
+ * The document's own status vocabulary (references/roadmap-schema.md §6). A
+ * token outside it is a mistake in the document (a typo, a private state),
+ * unlike IDEA/REVIEW/CANCELLED/DEFERRED, which are valid states that simply
+ * have no Kanban column — those stay unmapped and raise nothing.
+ */
+const NEW_FORMAT_STATUSES: ReadonlySet<string> = new Set([
+  'IDEA',
+  'BACKLOG',
+  'READY',
+  'IN_PROGRESS',
+  'REVIEW',
+  'TESTING',
+  'BLOCKED',
+  'DONE',
+  'CANCELLED',
+  'DEFERRED',
+]);
 
 export function mapNewStatusToTaskStatus(raw: string): TaskStatus | null {
   return NEW_STATUS_TO_TASK_STATUS[raw.trim().toUpperCase()] ?? null;
@@ -458,6 +505,9 @@ export function roadmapYamlEntryToRow(
     return {
       externalId: entry.id,
       table: RoadmapTable.BLOCKED,
+      // A blocked entry still has its title (Roadmap GAP-35b); only the old
+      // format's Blocked table lacks the column.
+      outcome: typeof data.title === 'string' ? data.title : undefined,
       blocker: flattenIdList(data.blocked_by),
       ...owner,
     };
@@ -481,6 +531,9 @@ export function roadmapYamlEntryToRow(
   if (statusRaw) {
     row.statusRaw = statusRaw;
     row.statusMapped = mapNewStatusToTaskStatus(statusRaw);
+    if (!NEW_FORMAT_STATUSES.has(statusRaw.trim().toUpperCase())) {
+      row.statusUnrecognized = true;
+    }
   }
   return row;
 }

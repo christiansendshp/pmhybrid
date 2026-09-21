@@ -454,6 +454,11 @@ export class SynchronizationService {
         taskId = existing.id;
       }
 
+      const current = existingByExternalId.get(row.externalId);
+      if (current && row.statusUnrecognized && row.statusRaw !== undefined) {
+        await this.raiseUnrecognizedStatus(tx, current, row.statusRaw, summary);
+      }
+
       // Additive only (docs/synchronization.md "Dependencies" — Roadmap
       // GAP-14/GAP-22): write-back renders a task's dependency set into its
       // row on add (GAP-22), but there's no removal write-back yet, so a
@@ -769,6 +774,55 @@ export class SynchronizationService {
     });
   }
 
+  /**
+   * A status in none of the document's vocabularies is a mistake in the
+   * document, not a state to guess at (Roadmap GAP-35b): the task keeps the
+   * status it has (a task first seen with one is PENDIENTE) and one
+   * UNRECOGNIZED_STATUS conflict asks a person to pick a status or dismiss
+   * it. Checked on every row, not only a changed one, so a row synced before
+   * this existed is still flagged; and once per distinct token per task —
+   * open or already answered — so an unrelated edit of the row does not ask
+   * again.
+   */
+  private async raiseUnrecognizedStatus(
+    tx: Prisma.TransactionClient,
+    task: Prisma.TaskGetPayload<object>,
+    statusRaw: string,
+    summary: SyncSummary,
+  ): Promise<void> {
+    const token = statusRaw.trim();
+    const earlier = await tx.conflict.findMany({
+      where: {
+        projectId: task.projectId,
+        kind: 'UNRECOGNIZED_STATUS',
+        entityType: 'Task',
+        entityId: task.id,
+      },
+      select: { externalVersion: true },
+    });
+    if (
+      earlier.some(
+        (conflict) =>
+          (conflict.externalVersion as { statusRaw?: unknown } | null)
+            ?.statusRaw === token,
+      )
+    ) {
+      return;
+    }
+    const conflict = await tx.conflict.create({
+      data: {
+        projectId: task.projectId,
+        kind: 'UNRECOGNIZED_STATUS',
+        entityType: 'Task',
+        entityId: task.id,
+        localVersion: { status: task.status },
+        externalVersion: { statusRaw: token },
+      },
+    });
+    await this.audit.recordConflictDetected(conflict, 'SYNC', tx);
+    summary.conflictsRaised += 1;
+  }
+
   /** Step 5. Returns whether anything was actually written. */
   private async reconcileExistingRow(
     tx: Prisma.TransactionClient,
@@ -813,89 +867,91 @@ export class SynchronizationService {
       // leave them exactly as last known (docs/synchronization.md).
       updates.blockedReason = row.blocker ?? null;
       updates.neededDecision = row.neededDecision ?? null;
-    } else {
-      if (movingOutOfBlocked) {
-        updates.blockedReason = null;
-        updates.neededDecision = null;
+    } else if (movingOutOfBlocked) {
+      updates.blockedReason = null;
+      updates.neededDecision = null;
+    }
+
+    // Every row, blocked or not, reconciles the fields it carries: a blocked
+    // entry still has a title and an owner (Roadmap GAP-35b). The columns it
+    // lacks (status, acceptance check) are undefined on the row and so never
+    // become candidates, which is what keeps them as last known.
+    const candidates: Partial<Record<ReconcilableField, unknown>> = {};
+    if (row.statusMapped && row.statusMapped !== task.status) {
+      candidates.status = row.statusMapped;
+    }
+    if (row.outcome !== undefined && row.outcome !== task.title) {
+      candidates.title = row.outcome;
+    }
+    if (
+      row.acceptanceCheck !== undefined &&
+      row.acceptanceCheck !== task.acceptanceCriteria
+    ) {
+      candidates.acceptanceCriteria = row.acceptanceCheck;
+    }
+    if (row.rawOwner !== undefined && row.rawOwner !== task.rawOwner) {
+      candidates.rawOwner = row.rawOwner;
+    }
+
+    const incomingFields = Object.keys(candidates) as ReconcilableField[];
+    if (incomingFields.length > 0) {
+      // A null lastSyncedAt (a UI-origin task never synced before) means
+      // every prior local edit is in play, not none of them — comparing
+      // against epoch rather than skipping the check on null. Both UI and
+      // API (Roadmap GAP-24) count as "local" here — an agent's API-key
+      // edit must contest a document change exactly like a person's.
+      const since = task.lastSyncedAt ?? new Date(0);
+      const uiEdits = await tx.auditEvent.findMany({
+        where: {
+          entityType: 'Task',
+          entityId: task.id,
+          origin: { in: ['UI', 'API'] },
+          occurredAt: { gt: since },
+        },
+      });
+      const contestedFields = new Set<string>();
+      for (const event of uiEdits) {
+        if (event.newValue && typeof event.newValue === 'object') {
+          for (const key of Object.keys(
+            event.newValue as Record<string, unknown>,
+          )) {
+            contestedFields.add(key);
+          }
+        }
       }
 
-      const candidates: Partial<Record<ReconcilableField, unknown>> = {};
-      if (row.statusMapped && row.statusMapped !== task.status) {
-        candidates.status = row.statusMapped;
-      }
-      if (row.outcome !== undefined && row.outcome !== task.title) {
-        candidates.title = row.outcome;
-      }
-      if (
-        row.acceptanceCheck !== undefined &&
-        row.acceptanceCheck !== task.acceptanceCriteria
-      ) {
-        candidates.acceptanceCriteria = row.acceptanceCheck;
-      }
-      if (row.rawOwner !== undefined && row.rawOwner !== task.rawOwner) {
-        candidates.rawOwner = row.rawOwner;
-      }
+      const contested = incomingFields.filter((field) =>
+        contestedFields.has(field),
+      );
+      const clean = incomingFields.filter(
+        (field) => !contestedFields.has(field),
+      );
 
-      const incomingFields = Object.keys(candidates) as ReconcilableField[];
-      if (incomingFields.length > 0) {
-        // A null lastSyncedAt (a UI-origin task never synced before) means
-        // every prior local edit is in play, not none of them — comparing
-        // against epoch rather than skipping the check on null. Both UI and
-        // API (Roadmap GAP-24) count as "local" here — an agent's API-key
-        // edit must contest a document change exactly like a person's.
-        const since = task.lastSyncedAt ?? new Date(0);
-        const uiEdits = await tx.auditEvent.findMany({
-          where: {
+      if (contested.length > 0) {
+        const localVersion: Record<string, unknown> = {};
+        const externalVersion: Record<string, unknown> = {};
+        for (const field of contested) {
+          localVersion[field] = (task as unknown as Record<string, unknown>)[
+            field
+          ];
+          externalVersion[field] = candidates[field];
+        }
+        const conflict = await tx.conflict.create({
+          data: {
+            projectId: task.projectId,
+            kind: 'CONCURRENT_FIELD_EDIT',
             entityType: 'Task',
             entityId: task.id,
-            origin: { in: ['UI', 'API'] },
-            occurredAt: { gt: since },
+            localVersion: localVersion as Prisma.InputJsonValue,
+            externalVersion: externalVersion as Prisma.InputJsonValue,
           },
         });
-        const contestedFields = new Set<string>();
-        for (const event of uiEdits) {
-          if (event.newValue && typeof event.newValue === 'object') {
-            for (const key of Object.keys(
-              event.newValue as Record<string, unknown>,
-            )) {
-              contestedFields.add(key);
-            }
-          }
-        }
-
-        const contested = incomingFields.filter((field) =>
-          contestedFields.has(field),
-        );
-        const clean = incomingFields.filter(
-          (field) => !contestedFields.has(field),
-        );
-
-        if (contested.length > 0) {
-          const localVersion: Record<string, unknown> = {};
-          const externalVersion: Record<string, unknown> = {};
-          for (const field of contested) {
-            localVersion[field] = (task as unknown as Record<string, unknown>)[
-              field
-            ];
-            externalVersion[field] = candidates[field];
-          }
-          const conflict = await tx.conflict.create({
-            data: {
-              projectId: task.projectId,
-              kind: 'CONCURRENT_FIELD_EDIT',
-              entityType: 'Task',
-              entityId: task.id,
-              localVersion: localVersion as Prisma.InputJsonValue,
-              externalVersion: externalVersion as Prisma.InputJsonValue,
-            },
-          });
-          await this.audit.recordConflictDetected(conflict, 'SYNC', tx);
-          conflictRaised = true;
-          summary.conflictsRaised += 1;
-        }
-        for (const field of clean) {
-          updates[field] = candidates[field];
-        }
+        await this.audit.recordConflictDetected(conflict, 'SYNC', tx);
+        conflictRaised = true;
+        summary.conflictsRaised += 1;
+      }
+      for (const field of clean) {
+        updates[field] = candidates[field];
       }
     }
 

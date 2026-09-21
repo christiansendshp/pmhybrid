@@ -308,3 +308,81 @@ describe('ConflictsService.resolve assignee (Roadmap GAP-35a)', () => {
     }
   });
 });
+
+describe('ConflictsService.resolve unrecognized status (Roadmap GAP-35b)', () => {
+  const unrecognized = {
+    kind: 'UNRECOGNIZED_STATUS',
+    localVersion: { status: 'ASIGNADA' },
+    externalVersion: { statusRaw: 'WIP' },
+  };
+
+  it('has no document value to keep: KEEP_EXTERNAL is a 400 and changes nothing', async () => {
+    const { service, taskUpdate, conflictUpdate } = setup({
+      held: ['task.qa.approve', 'task.write', 'task.status.transition'],
+      taskStatus: 'ASIGNADA',
+      ...unrecognized,
+    });
+
+    await expect(
+      service.resolve(
+        'p1',
+        'c1',
+        { strategy: 'KEEP_EXTERNAL' } as never,
+        'actor-1',
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(taskUpdate).not.toHaveBeenCalled();
+    expect(conflictUpdate).not.toHaveBeenCalled();
+  });
+
+  it('lets a person choose a valid status, held to the permission of that move', async () => {
+    const allowed = setup({
+      held: ['task.status.transition'],
+      taskStatus: 'ASIGNADA',
+      ...unrecognized,
+    });
+    await allowed.service.resolve(
+      'p1',
+      'c1',
+      {
+        strategy: 'MANUAL_EDIT',
+        manualValue: { status: 'EN_DESARROLLO' },
+      } as never,
+      'actor-1',
+    );
+    expect(allowed.taskUpdate).toHaveBeenCalledWith({
+      where: { id: 't1', deletedAt: null, status: 'ASIGNADA' },
+      data: { status: 'EN_DESARROLLO' },
+    });
+
+    const denied = setup({ held: [], taskStatus: 'ASIGNADA', ...unrecognized });
+    await expect(
+      denied.service.resolve(
+        'p1',
+        'c1',
+        {
+          strategy: 'MANUAL_EDIT',
+          manualValue: { status: 'EN_DESARROLLO' },
+        } as never,
+        'actor-1',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('cannot be used to set the raw token: only contested, editable fields are accepted', async () => {
+    const { service, taskUpdate } = setup({
+      held: ['task.write'],
+      taskStatus: 'ASIGNADA',
+      ...unrecognized,
+    });
+    await expect(
+      service.resolve(
+        'p1',
+        'c1',
+        { strategy: 'MANUAL_EDIT', manualValue: { statusRaw: 'QA' } } as never,
+        'actor-1',
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(taskUpdate).not.toHaveBeenCalled();
+  });
+});

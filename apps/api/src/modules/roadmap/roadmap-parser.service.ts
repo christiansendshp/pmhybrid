@@ -21,6 +21,8 @@ export interface ParsedRoadmapRow {
   statusRaw?: string;
   /** null = present but not a recognized token — docs/roadmap-parser.md: never default to PENDIENTE. */
   statusMapped?: TaskStatus | null;
+  /** The status token is in none of the document's vocabularies — a mistake to report, as opposed to a valid state with no Kanban equivalent (Roadmap GAP-35b). */
+  statusUnrecognized?: boolean;
   rawOwner?: string;
   ownerName?: string;
   /** Person or agent, when the document says (`executor: AI`, `owner.type`); absent in the old tables. */
@@ -126,12 +128,12 @@ export class RoadmapParserService {
         extractRoadmapYamlEntriesTolerant(rawMarkdown);
       return { rows: entries.map(roadmapYamlEntryToRow), errors };
     }
-    return { rows: this.parseTables(rawMarkdown), errors: [] };
+    return this.parseTables(rawMarkdown);
   }
 
-  private parseTables(rawMarkdown: string): ParsedRoadmapRow[] {
+  private parseTables(rawMarkdown: string): ParsedRoadmap {
     const tables = extractMarkdownTables(rawMarkdown);
-    const results: ParsedRoadmapRow[] = [];
+    const results: { row: ParsedRoadmapRow; line: number }[] = [];
 
     for (const table of tables) {
       const kind = discriminateRoadmapTable(table.headers);
@@ -144,7 +146,7 @@ export class RoadmapParserService {
         continue;
       }
 
-      for (const cells of table.rows) {
+      for (const [rowIndex, cells] of table.rows.entries()) {
         const externalId = cells[idIndex];
         if (isPlaceholder(externalId)) {
           continue;
@@ -176,6 +178,9 @@ export class RoadmapParserService {
           if (statusCell) {
             row.statusRaw = statusCell;
             row.statusMapped = mapStatus(statusCell);
+            if (row.statusMapped === null) {
+              row.statusUnrecognized = true;
+            }
           }
           row.dependsOnRaw = get('Depends on');
           const ownerCell = get('Owner');
@@ -185,10 +190,48 @@ export class RoadmapParserService {
           }
         }
 
-        results.push(row);
+        results.push({ row, line: table.rowLines[rowIndex] });
       }
     }
 
-    return results;
+    return this.withoutDuplicates(results);
+  }
+
+  /**
+   * The same id in two rows (in one table or across tables) is ambiguous, so
+   * neither is imported: each is reported, naming the others, and the task is
+   * protected like any unreadable entry (Roadmap GAP-35b).
+   */
+  private withoutDuplicates(
+    results: { row: ParsedRoadmapRow; line: number }[],
+  ): ParsedRoadmap {
+    const linesById = new Map<string, number[]>();
+    for (const { row, line } of results) {
+      linesById.set(row.externalId, [
+        ...(linesById.get(row.externalId) ?? []),
+        line,
+      ]);
+    }
+    const errors: RoadmapEntryError[] = [];
+    for (const [id, lines] of linesById) {
+      if (lines.length < 2) {
+        continue;
+      }
+      for (const line of lines) {
+        errors.push({
+          id,
+          line,
+          reason: `duplicate id, also defined at line ${lines.filter((other) => other !== line).join(', ')}`,
+          message: `Roadmap.md: row "${id}" is defined more than once (lines ${lines.join(', ')})`,
+        });
+      }
+    }
+    errors.sort((a, b) => a.line - b.line);
+    return {
+      rows: results
+        .filter(({ row }) => (linesById.get(row.externalId)?.length ?? 0) < 2)
+        .map(({ row }) => row),
+      errors,
+    };
   }
 }

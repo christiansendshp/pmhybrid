@@ -358,6 +358,8 @@ enum ConflictKind {
   ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG
   CONCURRENT_FIELD_EDIT
   WRITE_BACK_COLLISION
+  // The document gives a status that is in neither vocabulary (Roadmap GAP-35b).
+  UNRECOGNIZED_STATUS
 }
 
 enum ConflictResolutionKind {

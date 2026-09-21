@@ -3,6 +3,8 @@ import { RoadmapTable } from '@pmhybrid/shared-types';
 export interface RawMarkdownTable {
   headers: string[];
   rows: string[][];
+  /** 1-based line of each data row in the document, parallel to `rows`. */
+  rowLines: number[];
 }
 
 /**
@@ -26,11 +28,13 @@ export function extractMarkdownTables(markdown: string): RawMarkdownTable[] {
       const headers = splitRow(line);
       i += 2;
       const rows: string[][] = [];
+      const rowLines: number[] = [];
       while (i < lines.length && isTableRow(lines[i])) {
         rows.push(splitRow(lines[i]));
+        rowLines.push(i + 1);
         i += 1;
       }
-      tables.push({ headers, rows });
+      tables.push({ headers, rows, rowLines });
     } else {
       i += 1;
     }

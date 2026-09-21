@@ -28,6 +28,8 @@ const FIELD_LABELS: Record<string, string> = {
   acceptanceCriteria: 'Criterio de aceptación',
   status: 'Estado',
   rawOwner: 'Propietario',
+  statusRaw: 'Estado en el documento',
+  assigneeActorId: 'Responsable',
   roadmapTable: 'Tabla del Roadmap',
   externalId: 'ID del Roadmap',
 };
@@ -37,6 +39,8 @@ const KIND_EXPLANATIONS: Record<ConflictKind, string> = {
     'La app y el documento cambiaron el mismo campo (o campos) desde la última sincronización.',
   WRITE_BACK_COLLISION:
     'Guardar este cambio coincidió con una edición del documento sobre el mismo campo, así que no se escribió de vuelta.',
+  UNRECOGNIZED_STATUS:
+    'El documento da un estado que la app no reconoce, así que la tarea conserva el suyo. Elige un estado válido o descarta el aviso.',
   ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG:
     'La fila de esta tarea ya no está en el Roadmap, y no se encontró una entrada DONE para ella en el Agentslog — puede haberse quitado de otra forma, o puede ser un error.',
 };

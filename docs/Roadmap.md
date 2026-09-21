@@ -204,43 +204,45 @@ depends_on:
   - GAP-35b
   - GAP-35c
   - GAP-35d
+  - GAP-35e
 next_action: >
   Umbrella only. Refined on 2026-09-21 into four slices (GAP-35a owner
-  round trip, GAP-35b sync integrity, GAP-35c type/priority/progress,
-  GAP-35d hierarchy); close this entry when all four are done.
+  round trip, GAP-35b statuses/duplicates/blocked, GAP-35c
+  type/priority/progress, GAP-35d hierarchy, GAP-35e dependency removal and
+  line endings); close this entry when all four are done.
 created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T15:00:00Z
 ```
 
-### GAP-35b — Sync integrity of statuses, duplicate ids, blocked titles, dependency removal and line endings
+### GAP-35e — Dependency removal and line endings in write-back
 
 ```yaml
-id: GAP-35b
+id: GAP-35e
 type: GAP
-title: Sync integrity of statuses, duplicate ids, blocked titles, dependency removal and line endings
+title: Dependency removal and line endings in write-back
 status: BACKLOG
-priority: P1
+priority: P2
 parent: GAP-35
+depends_on:
+  - GAP-35b
 description: >
-  Second slice of GAP-35. In the new format an unrecognized status
-  (REVIEW, IDEA and similar) silently becomes PENDIENTE although
-  docs/synchronization.md promises a conflict; two entries with the same id
-  silently keep the last; a BLOCKED entry loses its title; removing a
-  `depends_on` in the document is ignored; and every write-back rewrites a
-  CRLF file as LF, touching every line.
+  Fifth slice of GAP-35, split from the second. Removing a `depends_on` in
+  the document is ignored (imports are additive only, because nothing
+  proved a missing reference was an intentional removal), and every
+  write-back rewrites a CRLF file as LF, touching every line and hiding the
+  real change in a diff.
 expected_behavior: >
-  An unknown status raises a conflict and leaves the task as it was; a
-  duplicate id is reported as an entry error naming both lines; a BLOCKED
-  entry keeps its title; a `depends_on` removed from the document is removed
-  in PM Hub when it was imported from the document; write-back preserves the
-  file's line endings.
+  A dependency that was imported from the document and is no longer listed
+  in a readable, non-blocked row is removed in PM Hub, audited; one added
+  only in PM Hub is never removed by sync. Write-back preserves the file's
+  line ending in Roadmap.md and Agentslog.md.
 technical_context:
-  backend: apps/api/src/modules/roadmap, synchronization/synchronization.service.ts, write-back.service.ts
+  backend: apps/api/src/modules/synchronization/synchronization.service.ts (reconcileDependencies), roadmap-row-writer.util.ts, roadmap-yaml-entry.util.ts, agentslog-writer.util.ts
 next_action: >
-  Start with the unknown-status conflict and the duplicate-id report, which
-  reuse the entry-error path added by BUG-05.
-created_at: 2026-09-21T15:00:00Z
-updated_at: 2026-09-21T15:00:00Z
+  Read how a UI-added dependency is written back and whether it keeps a
+  rawExternalRef, since that decides which dependencies sync may remove.
+created_at: 2026-09-21T16:00:00Z
+updated_at: 2026-09-21T16:00:00Z
 ```
 
 ### GAP-35c — Import type, priority and progress, and write progress back

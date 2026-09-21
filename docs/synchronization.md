@@ -205,6 +205,36 @@ its owner is no longer the pre-edit assignee, the write is deferred
 task's `lastSyncedAt`: assigning also moves `PENDIENTE` to `ASIGNADA`, which the
 document does not record, so that status edit must stay unsynced.
 
+### Unrecognized statuses, duplicate ids and blocked entries (Roadmap GAP-35b)
+
+- **A status in none of the document's vocabularies** (a typo such as
+  `IN_PROGES`, a private state such as `WIP`) is a mistake in the document, not
+  a state to guess at. The task keeps the status it has, a task first seen
+  with one is created `PENDIENTE`, and one `UNRECOGNIZED_STATUS` conflict
+  (`localVersion {status}`, `externalVersion {statusRaw}`) asks a person to
+  choose. It is checked on every row, not only a changed one, and raised once
+  per distinct token per task — open or already answered — so an unrelated
+  edit of the row does not ask again. Resolving: `MANUAL_EDIT` with a valid
+  `status` (held to the permission of that move), `KEEP_LOCAL` or `DISMISSED`.
+  `KEEP_EXTERNAL` is a 400: there is no document value to keep.
+- **Valid states with no Kanban column are not errors.** The per-entry
+  vocabulary is `IDEA BACKLOG READY IN_PROGRESS REVIEW TESTING BLOCKED DONE
+CANCELLED DEFERRED`; `IDEA`, `REVIEW`, `CANCELLED` and `DEFERRED` stay
+  unmapped and raise nothing (a new task with one is `PENDIENTE`, which is a
+  product question — where such tasks belong on the board — not a sync one).
+  In the old tables every token outside the mapping table is unrecognized.
+- **A duplicated id imports none of its copies.** Two entries or rows with the
+  same id (in either format, across tables too) are ambiguous — which one is
+  the task? — so each copy is an entry error (`duplicate id, also defined at
+line N`), the task is protected like any unreadable entry, and a write-back
+  to that id is refused. Keeping "the last one" silently was the defect.
+- **A blocked entry keeps its title**, and a Blocked row reconciles the
+  fields it carries — title and owner — instead of only the blocker. The
+  columns a blocked row lacks (status, acceptance check) are undefined on it,
+  so they stay as last known, as before. Recording the owner matters: the
+  assignee comparison of "Owner and assignee" needs it to advance, or the same
+  contested assignee would be raised again on every sync.
+
 ## Agentslog ingestion
 
 Entries matched on `## [ISO8601] | agent | TASK-ID | status-word` followed by

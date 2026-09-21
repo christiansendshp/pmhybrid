@@ -89,7 +89,11 @@ verbatim into this same cell (ADR-002); without them, reading back a
 previously-written `QA` or `EN DESARROLLO` would have no mapping and would be
 mishandled.
 
-**Any other token → leave `Task.status` unchanged, raise a `Conflict`.**
+**Any other token → leave `Task.status` unchanged, raise a `Conflict`** (kind
+`UNRECOGNIZED_STATUS`, Roadmap GAP-35b; the parser marks the row
+`statusUnrecognized`). In the per-entry format only a token outside the
+document's own vocabulary counts; `IDEA`, `REVIEW`, `CANCELLED` and `DEFERRED`
+are valid states with no Kanban column and stay unmapped without a conflict.
 Never default an unrecognized token to `PENDIENTE` — that would silently
 overwrite a known-good local status, which brief §12 explicitly forbids
 ("no sobrescribir silenciosamente cambios externos").
