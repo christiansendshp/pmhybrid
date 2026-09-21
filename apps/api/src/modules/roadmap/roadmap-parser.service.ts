@@ -29,8 +29,17 @@ export interface ParsedRoadmapRow {
   ownerKind?: RoadmapOwnerKind;
   ownerClaimedAt?: string;
   dependsOnRaw?: string;
+  /** True when the row's table has a Depends on column, so an empty cell means "none" rather than "not carried". Absent means: true unless the row is in a Blocked table. */
+  carriesDependsOn?: boolean;
+  /** The Pause reason cell of a PAUSE row (project-documentation skill: "CATEGORY - detail"). */
+  pauseReason?: string;
   blocker?: string;
   neededDecision?: string;
+}
+
+/** Whether an empty `dependsOnRaw` on this row says "no dependencies" (true) or says nothing (false). */
+export function rowCarriesDependsOn(row: ParsedRoadmapRow): boolean {
+  return row.carriesDependsOn ?? row.table !== RoadmapTable.BLOCKED;
 }
 
 /** What a tolerant read yields: every entry that could be read, and — separately — the ones that could not (Roadmap BUG-05). */
@@ -52,8 +61,32 @@ const STATUS_MAP: Record<string, TaskStatus> = {
   TERMINADA: TaskStatus.TERMINADA,
 };
 
+/**
+ * Valid workflow states with no Kanban column: PAUSE (project-documentation
+ * skill) is work that was started and stopped, which none of the five columns
+ * says. The task keeps the column it has, and no conflict is raised — the
+ * same treatment the YAML format gives IDEA/REVIEW/CANCELLED/DEFERRED.
+ */
+const STATES_WITHOUT_COLUMN: ReadonlySet<string> = new Set(['PAUSE']);
+
+/**
+ * The skill's pause categories that mean somebody else has to act before the
+ * work can go on (references/workflow.md): a blocker, or an answer awaited.
+ * LIMITE (usage limit) and OTRO are only a stop, so they are not "blocked".
+ */
+const BLOCKING_PAUSE_CATEGORIES: ReadonlySet<string> = new Set([
+  'BLOQUEO',
+  'ESPERA_RESPUESTA',
+]);
+
 function normalizeStatusToken(raw: string): string {
   return raw.trim().toUpperCase().replace(/_/g, ' ').replace(/\s+/g, ' ');
+}
+
+/** The category of a skill Pause reason ("CATEGORY - detail"), upper-cased. */
+export function pauseCategory(reason: string): string {
+  const dash = reason.indexOf(' - ');
+  return (dash === -1 ? reason : reason.slice(0, dash)).trim().toUpperCase();
 }
 
 function mapStatus(raw: string): TaskStatus | null {
@@ -172,17 +205,22 @@ export class RoadmapParserService {
             Object.assign(row, parseOwnerCell(ownerCell));
           }
         } else {
-          row.outcome = get('Outcome');
+          // The skill's Gaps table names the row's text `Description`.
+          row.outcome = get('Outcome') ?? get('Description');
           row.acceptanceCheck = get('Acceptance check');
           const statusCell = get('Status');
           if (statusCell) {
             row.statusRaw = statusCell;
             row.statusMapped = mapStatus(statusCell);
-            if (row.statusMapped === null) {
+            if (
+              row.statusMapped === null &&
+              !STATES_WITHOUT_COLUMN.has(normalizeStatusToken(statusCell))
+            ) {
               row.statusUnrecognized = true;
             }
           }
           row.dependsOnRaw = get('Depends on');
+          this.readPause(row, statusCell, get('Pause reason'));
           const ownerCell = get('Owner');
           if (ownerCell) {
             row.rawOwner = ownerCell;
@@ -195,6 +233,32 @@ export class RoadmapParserService {
     }
 
     return this.withoutDuplicates(results);
+  }
+
+  /**
+   * A PAUSE row's reason is only meaningful while it is paused (the skill
+   * clears it on claim). A blocking one turns the row into a blocked one — the
+   * skill has no Blocked table, it writes PAUSE with a BLOQUEO reason — while
+   * its Depends on cell stays a real column.
+   */
+  private readPause(
+    row: ParsedRoadmapRow,
+    statusCell: string | undefined,
+    reason: string | undefined,
+  ): void {
+    if (
+      !reason ||
+      !statusCell ||
+      normalizeStatusToken(statusCell) !== 'PAUSE'
+    ) {
+      return;
+    }
+    row.pauseReason = reason;
+    if (BLOCKING_PAUSE_CATEGORIES.has(pauseCategory(reason))) {
+      row.table = RoadmapTable.BLOCKED;
+      row.blocker = reason;
+      row.carriesDependsOn = true;
+    }
   }
 
   /**

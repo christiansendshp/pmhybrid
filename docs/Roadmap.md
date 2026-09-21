@@ -555,6 +555,105 @@ created_at: 2026-09-21T09:00:00Z
 updated_at: 2026-09-21T09:00:00Z
 ```
 
+### GAP-37 — PM Hub does not speak the latest project-documentation skill format
+
+```yaml
+id: GAP-37
+type: GAP
+title: PM Hub does not speak the latest project-documentation skill format
+status: BACKLOG
+priority: P1
+description: >
+  Requested by the user on 2026-09-21: check that the system reads the files
+  in the format of the latest published skill (christiansendshp/
+  skillProyectDocument, commit eb60d9c). That version reverted the
+  per-entry YAML Roadmap to Markdown tables only (`Status` is exactly TODO /
+  IN_PROGRESS / PAUSE / DONE, a `Pause reason` column, Plan tables under
+  phase and epic headings, a `Gaps, Bugs & Technical Debt` table with a
+  `Description` instead of `Outcome`), keeps the ledger to IN_PROGRESS /
+  PAUSE / DONE with a `- Pause: CATEGORY - detail` bullet, and moved the
+  rules file to the repository root `AGENTS.md`. Checked against the
+  upstream documents: rows are read, but a PAUSE status raises a false
+  UNRECOGNIZED_STATUS conflict, the Gaps description and the pause reason
+  are dropped, and PM Hub writes what the skill's own `check` rejects
+  (statuses PENDIENTE/EN DESARROLLO in the table, ledger words
+  CREATED/REASSIGNED/REMOVED, `Verify: -` on a DONE entry). A row in a Plan
+  or Gaps table is also invisible to the write-back, which only searches the
+  first table of each shape and would append a duplicate row to Active work.
+expected_behavior: >
+  A project documented with the latest skill can be synced, edited from the
+  UI and written back without PM Hub producing a file the skill's `check`
+  rejects, and without losing anything the format carries.
+technical_context:
+  backend: apps/api/src/modules/roadmap (parser, markdown-table.util, row writer, agentslog writer), synchronization (write-back, ingestion)
+depends_on:
+  - GAP-37a
+  - GAP-37b
+  - GAP-37c
+next_action: >
+  Umbrella only. Slices: GAP-37a reads the new tables, GAP-37b writes them
+  the way the skill validates, GAP-37c finds the rules file at the root.
+created_at: 2026-09-21T20:00:00Z
+updated_at: 2026-09-21T20:00:00Z
+```
+
+### GAP-37b — Write the latest skill's tables and ledger the way its check validates them
+
+```yaml
+id: GAP-37b
+type: GAP
+title: Write the latest skill's tables and ledger the way its check validates them
+status: BACKLOG
+priority: P1
+parent: GAP-37
+depends_on:
+  - GAP-37a
+description: >
+  Second slice of GAP-37. Write-back must find a row in any table that holds
+  it (Plan and Gaps included), write the workflow Status vocabulary in a
+  skill table, and append only ledger entries the skill accepts.
+expected_behavior: >
+  A row anywhere in the document is edited in place, never duplicated; a
+  skill table gets TODO / IN_PROGRESS / PAUSE / DONE, a ledger entry is
+  IN_PROGRESS / PAUSE / DONE with a real Verify on DONE.
+technical_context:
+  backend: apps/api/src/modules/roadmap/roadmap-row-writer.util.ts, agentslog-writer.util.ts, synchronization/write-back.service.ts
+next_action: >
+  Decide how a PM Hub event with no skill state (created, reassigned,
+  removed) is recorded, then implement and run the skill's own check against
+  a written file.
+created_at: 2026-09-21T20:00:00Z
+updated_at: 2026-09-21T20:00:00Z
+```
+
+### GAP-37c — Find the rules file at the repository root
+
+```yaml
+id: GAP-37c
+type: GAP
+title: Find the rules file at the repository root
+status: BACKLOG
+priority: P2
+parent: GAP-37
+depends_on:
+  - GAP-37b
+description: >
+  Third slice of GAP-37. The latest skill has no docs/Agents.md: the rules
+  are the repository root AGENTS.md. PM Hub only reads a document under the
+  project's docs path, so the rules document of such a project is missing.
+expected_behavior: >
+  The rules document is read from the root AGENTS.md when docs/Agents.md
+  does not exist, through the provider, without widening what a project may
+  read.
+technical_context:
+  backend: apps/api/src/modules/git-providers, synchronization.service.ts (document kinds)
+next_action: >
+  Design how a provider reaches the parent of the docs path without opening a
+  path traversal (the GitHub provider has a different layout).
+created_at: 2026-09-21T20:00:00Z
+updated_at: 2026-09-21T20:00:00Z
+```
+
 ### GAP-36 — Agent experience and onboarding gaps
 
 ```yaml

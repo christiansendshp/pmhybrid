@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AgentslogParserService } from './agentslog-parser.service.js';
+import { SKILL_AGENTSLOG } from './skill-format.fixtures.js';
 
 const SAMPLE = `# Agents log
 
@@ -161,5 +162,33 @@ describe('AgentslogParserService — skill v2 format (Pause bullet, no Follow-up
 `;
     const { entries } = parser.parse(log);
     expect(entries[0].summary).toBe('first value');
+  });
+});
+
+describe('AgentslogParserService latest skill ledger (Roadmap GAP-37a)', () => {
+  const { entries } = new AgentslogParserService().parse(SKILL_AGENTSLOG);
+
+  it('reads the three entry states and skips the format example in its fence', () => {
+    expect(
+      entries.map((entry) => [entry.taskExternalId, entry.statusWord]),
+    ).toEqual([
+      ['F01-E01-T01', 'IN_PROGRESS'],
+      ['F01-E01-T02', 'PAUSE'],
+      ['F01-E01-T00', 'DONE'],
+    ]);
+  });
+
+  it('reads the Pause bullet of a PAUSE entry, and the bullets a skill entry leaves out as empty', () => {
+    expect(entries[1]).toMatchObject({
+      pause: 'BLOQUEO - waiting for the schema review',
+      files: '',
+      verify: '',
+      followUp: '',
+    });
+    expect(entries[0].verify).toBe('pending');
+    expect(entries[2]).toMatchObject({
+      files: 'package.json',
+      verify: 'pnpm test passes',
+    });
   });
 });

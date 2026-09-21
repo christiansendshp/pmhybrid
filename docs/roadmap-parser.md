@@ -31,6 +31,38 @@ BLOCKED. The three `## Active work`/`## Near term`/`## Blocked` headings
 where each table block starts — the column signature is the authoritative
 discriminator, so a parser is not broken by heading-text drift.
 
+### The latest skill's tables (Roadmap GAP-37a)
+
+The current project-documentation skill went back to Markdown tables only
+(no YAML), with a fixed set of shapes the same column-signature rule reads:
+
+| Section                          | Columns                                                                                   |
+| -------------------------------- | ----------------------------------------------------------------------------------------- |
+| `## Active work`                 | `ID \| Outcome \| Acceptance check \| Status \| Owner \| Depends on \| Pause reason`      |
+| `## Near term`                   | `ID \| Outcome \| Acceptance check \| Status \| Depends on`                               |
+| `## Plan` (one per epic)         | the Active work columns, under `### F01 —` / `#### F01-E01 —` headings                    |
+| `## Gaps, Bugs & Technical Debt` | `ID \| Severity \| Phase \| Description \| Status \| Owner \| Depends on \| Pause reason` |
+
+- **Every table with `Status` + `Owner` + `Depends on` is read the same way**,
+  wherever it is, so a Plan or Gaps row is a row like an Active work one.
+  `roadmapTable` keeps only the shapes that change behaviour (blocked, near
+  term, anything else); a `PLAN` or `GAPS` value would cost a migration and
+  every consumer with no behavioural difference.
+- `Description` is the row's text when there is no `Outcome` column. `Severity`
+  and `Phase` are not imported (the task model has no field they map to).
+- `Status` is `TODO`, `IN_PROGRESS`, `PAUSE` or `DONE`. `PAUSE` is a valid
+  state with no Kanban column: the task keeps the column it has and no
+  `UNRECOGNIZED_STATUS` conflict is raised.
+- `Pause reason` is `CATEGORY - detail` (`LIMITE`, `ESPERA_RESPUESTA`,
+  `BLOQUEO`, `OTRO`) and only counts on a `PAUSE` row. `BLOQUEO` and
+  `ESPERA_RESPUESTA` (somebody else has to act) read the row as **blocked**:
+  `table` is `BLOCKED` and the reason is the `blocker`, because the skill has
+  no Blocked table — it writes a paused row instead. `LIMITE` and `OTRO` are a
+  plain stop. The row still has a `Depends on` cell (`carriesDependsOn`), so
+  emptying it removes the dependencies the document listed.
+- Phase and epic headings, the `Vision` line and `<!-- context:end -->` are
+  prose: the hierarchy is not imported (Roadmap GAP-35d).
+
 ## Unreadable entries (new per-entry YAML format)
 
 An entry whose block cannot be read — invalid YAML, a block that is not a
@@ -93,7 +125,8 @@ mishandled.
 `UNRECOGNIZED_STATUS`, Roadmap GAP-35b; the parser marks the row
 `statusUnrecognized`). In the per-entry format only a token outside the
 document's own vocabulary counts; `IDEA`, `REVIEW`, `CANCELLED` and `DEFERRED`
-are valid states with no Kanban column and stay unmapped without a conflict.
+(and `PAUSE` in the skill's tables) are valid states with no Kanban column and
+stay unmapped without a conflict.
 Never default an unrecognized token to `PENDIENTE` — that would silently
 overwrite a known-good local status, which brief §12 explicitly forbids
 ("no sobrescribir silenciosamente cambios externos").

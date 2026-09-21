@@ -11,6 +11,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import {
   ParsedRoadmapRow,
   RoadmapParserService,
+  rowCarriesDependsOn,
 } from '../roadmap/roadmap-parser.service.js';
 import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository-provider.interface.js';
 import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
@@ -575,14 +576,15 @@ export class SynchronizationService {
       }
 
       // docs/synchronization.md "Dependencies" (Roadmap GAP-14/22/35e). A
-      // Blocked row has no Depends on cell, so its absence removes nothing.
+      // Blocked row has no Depends on cell, so its absence removes nothing
+      // (a paused row of the skill's tables is "blocked" but does have one).
       await this.reconcileDependencies(
         tx,
         projectId,
         taskId,
         row.externalId,
         row.dependsOnRaw,
-        row.table !== 'BLOCKED',
+        rowCarriesDependsOn(row),
         existingByExternalId,
         dependencyGraph,
         summary,
