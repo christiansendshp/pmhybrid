@@ -61,6 +61,43 @@ describe('FilesystemBrowserService', () => {
     ).rejects.toThrow(/not found/);
   });
 
+  it('reports every configured root, not just the current one (Roadmap BUG-11)', async () => {
+    const result = await service.browse(undefined);
+
+    expect(result.root).toBe(root);
+    expect(result.roots).toEqual([root]);
+  });
+
+  it('serves a second `path.delimiter`-separated root, and lists both in `roots`', async () => {
+    const secondRoot = mkdtempSync(path.join(tmpdir(), 'pmhybrid-browse-2-'));
+    mkdirSync(path.join(secondRoot, 'other-project'));
+    try {
+      const config = {
+        get: (key: string) =>
+          key === 'GIT_PROVIDER_TYPE'
+            ? 'local'
+            : `${root}${path.delimiter}${secondRoot}`,
+      };
+      const multiRootService = new FilesystemBrowserService(
+        config as unknown as ConfigService<EnvConfig, true>,
+      );
+
+      const atFirstRoot = await multiRootService.browse(undefined);
+      expect(atFirstRoot.root).toBe(root);
+      expect(atFirstRoot.roots).toEqual([root, secondRoot]);
+
+      const atSecondRoot = await multiRootService.browse(secondRoot);
+      expect(atSecondRoot.root).toBe(secondRoot);
+      expect(atSecondRoot.parentPath).toBeNull();
+      expect(atSecondRoot.directories.map((d) => d.name)).toEqual([
+        'other-project',
+      ]);
+      expect(atSecondRoot.roots).toEqual([root, secondRoot]);
+    } finally {
+      rmSync(secondRoot, { recursive: true, force: true });
+    }
+  });
+
   it('refuses to browse when GIT_PROVIDER_TYPE is not local (Roadmap GAP-23)', async () => {
     const githubConfig = {
       get: (key: string) => (key === 'GIT_PROVIDER_TYPE' ? 'github' : root),

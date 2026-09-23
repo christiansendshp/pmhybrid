@@ -60,6 +60,9 @@ describe('Filesystem browser (e2e)', () => {
 
     expect(res.body.path).toBe(path.join(scratchDir, 'a-project'));
     expect(res.body.parentPath).toBe(scratchDir);
+    // Only the default (homedir) root is configured for this suite -- roots always
+    // lists every configured one, `root` included (Roadmap BUG-11).
+    expect(res.body.roots).toContain(res.body.root);
     const roadmap = res.body.documents.find((d: { kind: string }) => d.kind === 'roadmap');
     const agentslog = res.body.documents.find((d: { kind: string }) => d.kind === 'agentslog');
     expect(roadmap).toMatchObject({ filename: 'Roadmap.md', found: true });

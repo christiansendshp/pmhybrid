@@ -6,6 +6,22 @@
   } @else if (errorMessage()) {
     <p role="alert">{{ errorMessage() }}</p>
   } @else if (current(); as result) {
+    @if (result.roots.length > 1) {
+      <div class="folder-browser__roots" aria-label="Raíces disponibles">
+        @for (r of result.roots; track r) {
+          <button
+            mat-button
+            type="button"
+            class="folder-browser__root"
+            [disabled]="r === result.root"
+            (click)="open(r)"
+          >
+            {{ r }}
+          </button>
+        }
+      </div>
+    }
+
     <div class="folder-browser__path">
       <button
         mat-button

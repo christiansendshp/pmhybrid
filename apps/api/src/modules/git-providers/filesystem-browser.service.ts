@@ -32,6 +32,8 @@ export interface BrowseDirectoryResult {
   path: string;
   parentPath: string | null;
   root: string;
+  /** Every configured root (Roadmap BUG-11), not just `root` — lets the picker offer a way to jump to any of them, not only the one the viewed path is under. */
+  roots: string[];
   directories: FilesystemEntry[];
   documents: DocumentPresence[];
 }
@@ -117,6 +119,7 @@ export class FilesystemBrowserService {
       path: target,
       parentPath: target === root ? null : path.dirname(target),
       root,
+      roots,
       directories,
       documents,
     };

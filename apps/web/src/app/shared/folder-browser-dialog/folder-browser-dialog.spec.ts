@@ -12,6 +12,7 @@ function result(overrides: Partial<BrowseDirectoryResult> = {}): BrowseDirectory
     path: 'C:\\Users\\me',
     parentPath: null,
     root: 'C:\\Users\\me',
+    roots: ['C:\\Users\\me'],
     directories: [{ name: 'my-project-docs', path: 'C:\\Users\\me\\my-project-docs' }],
     documents: [
       { kind: 'roadmap', filename: 'Roadmap.md', found: false },
@@ -104,6 +105,43 @@ describe('FolderBrowserDialog (Roadmap GAP-27)', () => {
     component.select();
 
     expect(close).toHaveBeenCalledWith('C:\\Users\\me\\chosen');
+  });
+
+  it('offers no root switcher with a single configured root', async () => {
+    browse.mockResolvedValue(result());
+    const { fixture } = render();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.folder-browser__roots'),
+    ).toBeNull();
+  });
+
+  it('offers every configured root, and jumps to one on click (Roadmap BUG-11)', async () => {
+    browse.mockResolvedValueOnce(result({ roots: ['C:\\Users\\me', 'C:\\Users\\other'] }));
+    const { fixture, text } = render();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(text()).toContain('C:\\Users\\me');
+    expect(text()).toContain('C:\\Users\\other');
+
+    browse.mockResolvedValueOnce(
+      result({
+        path: 'C:\\Users\\other',
+        root: 'C:\\Users\\other',
+        roots: ['C:\\Users\\me', 'C:\\Users\\other'],
+        directories: [],
+      }),
+    );
+    const buttons = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.folder-browser__root'),
+    ) as HTMLButtonElement[];
+    buttons.find((b) => b.textContent?.includes('other'))!.click();
+    await fixture.whenStable();
+
+    expect(browse).toHaveBeenLastCalledWith('C:\\Users\\other');
   });
 
   it('shows an error message when the browse call fails', async () => {

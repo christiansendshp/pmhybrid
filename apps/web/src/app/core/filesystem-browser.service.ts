@@ -18,6 +18,8 @@ export interface BrowseDirectoryResult {
   path: string;
   parentPath: string | null;
   root: string;
+  /** Every configured root (Roadmap BUG-11), not just `root` — the picker offers a way to jump to any of them. */
+  roots: string[];
   directories: FilesystemEntry[];
   documents: DocumentPresence[];
 }

@@ -55,12 +55,19 @@ services:
       GIT_PROVIDER_TYPE: ${GIT_PROVIDER_TYPE:-local}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
-      # Where the projects' docs folders are, inside the container (see volumes).
-      PROJECT_DOCS_BROWSE_ROOT: /data/projects
+      # Where the projects' docs folders are, inside the container (see volumes). `:`
+      # (the container's own, Linux, path.delimiter) separates multiple roots -- the
+      # folder picker starts at the first and can browse either.
+      PROJECT_DOCS_BROWSE_ROOT: /data/projects:/data/extra-docs
     volumes:
       # The folders of the projects PM Hub manages when GIT_PROVIDER_TYPE is local. The API
       # runs as the container's node user (uid 1000): it must be able to write here.
       - ${PROJECTS_DIR:-./deploy/projects}:/data/projects
+      # A second, independent root for a docs folder that already lives elsewhere on this
+      # machine (outside this repo) -- e.g. another project's own docs/, so PM Hub can
+      # track it in place instead of it being copied or moved under PROJECTS_DIR. Left
+      # unset, EXTRA_DOCS_DIR defaults to an empty local folder, same as PROJECTS_DIR.
+      - ${EXTRA_DOCS_DIR:-./deploy/extra-docs}:/data/extra-docs
     ports:
       - '${API_PORT:-3000}:3000'
 

@@ -6,6 +6,23 @@
   max-width: 100%;
 }
 
+.folder-browser__roots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.folder-browser__root {
+  font-size: 0.8125rem;
+
+  &:disabled {
+    font-weight: 600;
+    color: var(--mat-sys-on-surface);
+  }
+}
+
 .folder-browser__path {
   display: flex;
   align-items: center;

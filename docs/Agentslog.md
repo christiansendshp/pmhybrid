@@ -229,3 +229,14 @@ segments live in `docs/history/`.
 - Summary: PM Hub now runs as Docker containers (restart: unless-stopped) instead of as children of an editor's preview tool; api/main.ts also logs unhandled errors instead of dying silently. Found and fixed a real collision along the way: the dev and prod compose files shared a default project name and one's postgres service could replace the other's live container -- each now names its own project, with the dev volume pinned to its pre-existing name
 - Files: apps/api/src/main.ts, docker-compose.yml, docker-compose.prod.yml, docs/deployment.md, docs/Roadmap.md
 - Verify: api lint clean; unit 491 pass; e2e:cov 318 pass (threshold holds); build ok; docker compose -p pmhybrid-prod -f docker-compose.prod.yml up -d --build: postgres/api/web healthy, restart=unless-stopped, logged in as the bootstrap admin at localhost:4200; dev postgres verified intact throughout (52 actors, 3 projects) after the collision and its fix
+
+## [2026-09-23T16:48:56Z] | claude | BUG-11 | IN_PROGRESS
+
+- Summary: Add a way to reach a second configured docsPath browse root
+- Verify: pending
+
+## [2026-09-23T16:56:31Z] | claude | BUG-11 | DONE
+
+- Summary: BrowseDirectoryResult now carries roots (every configured PROJECT_DOCS_BROWSE_ROOT entry, not just the current one); the folder picker renders them as an always-visible switcher above the up/path row, so a second (or further) root is one click away instead of a raw path typed by hand. docker-compose.prod.yml also gained a second, generic bind-mount slot (EXTRA_DOCS_DIR) so a docs folder living elsewhere on the host can be mounted without editing the compose file
+- Files: apps/api/src/modules/git-providers/filesystem-browser.service.ts, apps/api/src/modules/git-providers/filesystem-browser.service.spec.ts, apps/api/test/filesystem-browser.e2e-spec.ts, apps/web/src/app/core/filesystem-browser.service.ts, apps/web/src/app/shared/folder-browser-dialog/*, docker-compose.prod.yml
+- Verify: api lint clean; unit 493 pass; e2e:cov 318 pass; web unit 291 pass; api/web builds ok; verified live end-to-end after a docker rebuild: mounted C:/Users/Administrador/Documents/PROYECTO/SMARTHR/docs as a second root, the picker's switcher jumped to it, selected it, and created project SMARTHR pointing at its real docs
