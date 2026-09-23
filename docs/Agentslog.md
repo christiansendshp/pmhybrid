@@ -218,3 +218,14 @@ segments live in `docs/history/`.
 - Summary: Deployment, containerization and documentation gaps closed: ADR files, runtime API URL, container images and compose stack with a bootstrap and liveness, a tidy development dataset, and synchronization docs matching the code
 - Files: docs/decisions/, apps/web/public/config.js, apps/*/Dockerfile, docker-compose.prod.yml, docs/deployment.md, docs/synchronization.md, docs/roadmap-parser.md
 - Verify: See 02a-02e: api lint/unit/e2e:cov, web unit, Playwright a11y, api/web builds, docker image builds
+
+## [2026-09-23T16:16:22Z] | claude | BUG-10 | IN_PROGRESS
+
+- Summary: Investigate frequent local downtime and make PM Hub run persistently
+- Verify: pending
+
+## [2026-09-23T16:27:38Z] | claude | BUG-10 | DONE
+
+- Summary: PM Hub now runs as Docker containers (restart: unless-stopped) instead of as children of an editor's preview tool; api/main.ts also logs unhandled errors instead of dying silently. Found and fixed a real collision along the way: the dev and prod compose files shared a default project name and one's postgres service could replace the other's live container -- each now names its own project, with the dev volume pinned to its pre-existing name
+- Files: apps/api/src/main.ts, docker-compose.yml, docker-compose.prod.yml, docs/deployment.md, docs/Roadmap.md
+- Verify: api lint clean; unit 491 pass; e2e:cov 318 pass (threshold holds); build ok; docker compose -p pmhybrid-prod -f docker-compose.prod.yml up -d --build: postgres/api/web healthy, restart=unless-stopped, logged in as the bootstrap admin at localhost:4200; dev postgres verified intact throughout (52 actors, 3 projects) after the collision and its fix

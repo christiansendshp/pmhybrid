@@ -1,3 +1,10 @@
+# The database a laptop develops against (`pnpm dev`); docker-compose.prod.yml, next
+# to this file, is the full containerized stack. `name` is set explicitly so this file's
+# project can never collide with that one's, whichever resolves its own name from the
+# folder (Roadmap BUG-10 -- the two used to share a project name and a `postgres`
+# service name, and starting the other file replaced this one's live container).
+name: pmhybrid-dev
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -18,4 +25,9 @@ services:
       retries: 10
 
 volumes:
+  # Pinned to its actual pre-existing name (`pmhybrid_<key>`, from when this file had no
+  # `name` of its own and resolved to project "pmhybrid") so the `name` change above keeps
+  # mounting the same data instead of starting a same-shaped but empty volume under the
+  # new project prefix.
   pmhybrid_postgres_data:
+    name: pmhybrid_pmhybrid_postgres_data

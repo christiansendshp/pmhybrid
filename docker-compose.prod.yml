@@ -6,7 +6,16 @@
 #
 # The values that must be set are marked below with :?, so a missing one stops the
 # start with its name instead of starting a stack that cannot work. See docs/deployment.md.
-name: pmhybrid
+#
+# `name` below is deliberately not "pmhybrid": that's the default Compose project name
+# docker-compose.yml (next to this file) resolves to as well, since it has no `name` of
+# its own — running both from the same checkout, as a laptop that develops against the
+# database while also trying this file would, made Compose read this file's `postgres`
+# service as an update to *that* one's container and silently replace it, on this file's
+# own fresh volume, losing nothing (the old volume survives an untagged container) but
+# losing the running connection (Roadmap BUG-10). A name of its own for each file rules
+# that out regardless of which one runs first or what either happens to be called.
+name: pmhybrid-prod
 
 services:
   postgres:

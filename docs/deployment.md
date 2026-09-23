@@ -11,7 +11,9 @@ variables; nothing in an image is specific to one environment.
 | `web`      | `apps/web/Dockerfile` (the build on nginx) | 8080    | Static files with the single-page fallback; writes `config.js` from `API_BASE_URL`. |
 
 `docker-compose.yml` is only the database a laptop develops against; the stack
-below is `docker-compose.prod.yml`.
+below is `docker-compose.prod.yml`. Each names its own Compose project
+(`pmhybrid-dev`/`pmhybrid-prod`), so the two coexist on one machine without
+either recreating the other's containers (Roadmap BUG-10).
 
 ## First deployment
 
