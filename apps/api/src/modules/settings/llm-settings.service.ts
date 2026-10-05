@@ -16,22 +16,13 @@ import {
 import type { EnvConfig } from '../../config/env.validation.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
+import type { LlmRuntimeConfig } from '../llm/llm.types.js';
 import type { UpdateLlmSettingsDto } from './dto/update-llm-settings.dto.js';
 
 /** The row's id: the configuration is one per instance. */
 export const LLM_SETTINGS_ID = 'instance';
 const SECRET_PURPOSE = 'llm-api-key';
 const ENTITY_TYPE = 'LlmSettings';
-
-/** What the normalizer needs to call the provider. It holds the key in clear: it is for the server's own use and never leaves it. */
-export interface LlmRuntimeConfig {
-  provider: LlmProviderKey;
-  model: string;
-  apiKey: string;
-  temperature: number | null;
-  timeoutMs: number;
-  maxTokens: number;
-}
 
 const isProvider = (value: string): value is LlmProviderKey =>
   (LLM_PROVIDERS as readonly string[]).includes(value);
@@ -167,11 +158,19 @@ export class LlmSettingsService {
 
   /**
    * The configuration for a call to the provider, or null unless it is READY.
-   * Server-side only: the key is in clear here, and no controller returns it.
+   * `requireEnabled: false` is for the connection test alone: an administrator
+   * checks a key before switching the integration on. Server-side only: the key
+   * is in clear here, and no controller returns it.
    */
-  async getRuntimeConfig(): Promise<LlmRuntimeConfig | null> {
+  async getRuntimeConfig(
+    options: { requireEnabled: boolean } = { requireEnabled: true },
+  ): Promise<LlmRuntimeConfig | null> {
     const row = await this.load();
-    if (!row?.apiKeyEncrypted || !row.enabled || !isProvider(row.provider)) {
+    if (
+      !row?.apiKeyEncrypted ||
+      (options.requireEnabled && !row.enabled) ||
+      !isProvider(row.provider)
+    ) {
       return null;
     }
     const apiKey = this.decrypt(row.apiKeyEncrypted);

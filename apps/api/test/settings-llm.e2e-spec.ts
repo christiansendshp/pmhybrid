@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { vi } from 'vitest';
 import { AppModule } from './../src/app.module.js';
+import { LLM_FETCH } from './../src/modules/llm/llm.types.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './../prisma/demo-credentials.js';
 
@@ -13,11 +14,17 @@ describe('LLM settings (Roadmap GAP-39a — e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
   let adminToken: string;
+  // What the provider answers, set per test: the suite never reaches the network.
+  let providerAnswer: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
+    providerAnswer = vi.fn();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(LLM_FETCH)
+      .useValue((...args: unknown[]) => providerAnswer(...args))
+      .compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
@@ -165,6 +172,63 @@ describe('LLM settings (Roadmap GAP-39a — e2e)', () => {
     const after = (await prisma.llmSettings.findUnique({ where: { id: 'instance' } }))?.apiKeyEncrypted;
     expect(after).toBeTruthy();
     expect(after).not.toBe(before);
+  });
+
+  describe('POST /settings/llm/test', () => {
+    it('is refused without settings.manage', async () => {
+      const token = await memberToken();
+
+      await request(server()).post('/settings/llm/test').set('Authorization', auth(token)).expect(403);
+      expect(providerAnswer).not.toHaveBeenCalled();
+    });
+
+    it('says there is nothing to test without a key, and calls no one', async () => {
+      const res = await request(server()).post('/settings/llm/test').set('Authorization', auth()).expect(200);
+
+      expect(res.body).toEqual({ ok: false, error: 'No readable API key is stored' });
+      expect(providerAnswer).not.toHaveBeenCalled();
+    });
+
+    it('tests a stored key even while the integration is switched off', async () => {
+      providerAnswer.mockResolvedValue(
+        new Response(JSON.stringify({ content: [{ type: 'text', text: 'OK' }] }), { status: 200 }),
+      );
+      await request(server())
+        .put('/settings/llm')
+        .set('Authorization', auth())
+        .send({ apiKey: KEY, model: 'claude-test' })
+        .expect(200);
+
+      const res = await request(server()).post('/settings/llm/test').set('Authorization', auth()).expect(200);
+
+      expect(res.body).toEqual({ ok: true });
+      const [url, init] = providerAnswer.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('https://api.anthropic.com/v1/messages');
+      expect((init.headers as Record<string, string>)['x-api-key']).toBe(KEY);
+      expect(JSON.parse(init.body as string).model).toBe('claude-test');
+    });
+
+    it("reports the provider's refusal without ever returning the key", async () => {
+      providerAnswer.mockResolvedValue(
+        new Response(JSON.stringify({ error: { message: `invalid x-api-key ${KEY}` } }), { status: 401 }),
+      );
+      await request(server()).put('/settings/llm').set('Authorization', auth()).send({ apiKey: KEY }).expect(200);
+
+      const res = await request(server()).post('/settings/llm/test').set('Authorization', auth()).expect(200);
+
+      expect(res.body.ok).toBe(false);
+      expect(res.body.error).toContain('Anthropic answered 401');
+      expect(JSON.stringify(res.body)).not.toContain(KEY);
+    });
+
+    it('reports a network failure', async () => {
+      providerAnswer.mockRejectedValue(new Error('ENOTFOUND'));
+      await request(server()).put('/settings/llm').set('Authorization', auth()).send({ apiKey: KEY }).expect(200);
+
+      const res = await request(server()).post('/settings/llm/test').set('Authorization', auth()).expect(200);
+
+      expect(res.body).toEqual({ ok: false, error: 'Anthropic could not be reached' });
+    });
   });
 
   it('forgets the key and switches the integration off', async () => {

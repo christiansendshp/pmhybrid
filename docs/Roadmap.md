@@ -112,44 +112,13 @@ technical_context:
   frontend: apps/web/src/app/features/settings, apps/web/src/app/layout/app-shell, apps/web/src/app/app.routes.ts
 depends_on:
   - GAP-39a
+  - GAP-39c
 affects:
   - GAP-39
 next_action: >
   Settings service + page + route guard, unit specs, Playwright/axe coverage
-  like every other signed-in route.
-created_at: 2026-10-05T00:00:00Z
-updated_at: 2026-10-05T00:00:00Z
-```
-
-### GAP-39c — Title normalizer: providers, validation, retry and fallback
-
-```yaml
-id: GAP-39c
-type: GAP
-title: Title normalizer -- providers, validation, retry and fallback
-status: READY
-priority: P1
-description: >
-  The pure core: word counting, the LlmProvider interface with Anthropic and
-  OpenAI adapters over fetch (timeout, sanitized errors that can never carry
-  the key), the prompt, structured-JSON parsing and validation (title present
-  and at most 10 words, description present, nothing invented), one corrective
-  retry and a local fallback.
-expected_behavior: >
-  A valid result always has a title of at most 10 words and a description
-  faithful to the source; any provider or parsing failure ends as a typed
-  failure, never as an exception that escapes or a silently wrong title.
-technical_context:
-  backend: apps/api/src/modules/title-normalization
-depends_on:
-  - GAP-39a
-affects:
-  - GAP-39
-next_action: >
-  Unit specs with a faked fetch for every path: short title, long title, JSON
-  invalid, >10 words then corrected, >10 words after the retry (local
-  truncation), invented identifier/number, timeout, provider error, key not
-  present in any error text.
+  like every other signed-in route. Built after GAP-39c, whose slice also adds
+  the POST /settings/llm/test endpoint the page's test button calls.
 created_at: 2026-10-05T00:00:00Z
 updated_at: 2026-10-05T00:00:00Z
 ```

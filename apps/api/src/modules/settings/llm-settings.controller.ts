@@ -4,16 +4,21 @@ import {
   Delete,
   Get,
   HttpCode,
+  Post,
   Put,
   UseGuards,
 } from '@nestjs/common';
-import { PERMISSIONS } from '@pmhybrid/shared-types';
+import {
+  PERMISSIONS,
+  type LlmConnectionTestResult,
+} from '@pmhybrid/shared-types';
 import type { AuditOrigin } from '@prisma/client';
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
 import { CurrentAuditOrigin } from '../../common/decorators/current-audit-origin.decorator.js';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator.js';
 import { PermissionGuard } from '../../common/guards/permission.guard.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { LlmClient } from '../llm/llm-client.service.js';
 import { UpdateLlmSettingsDto } from './dto/update-llm-settings.dto.js';
 import { LlmSettingsService } from './llm-settings.service.js';
 
@@ -27,7 +32,10 @@ import { LlmSettingsService } from './llm-settings.service.js';
 @RequirePermission(PERMISSIONS.SETTINGS_MANAGE)
 @Controller('settings/llm')
 export class LlmSettingsController {
-  constructor(private readonly settings: LlmSettingsService) {}
+  constructor(
+    private readonly settings: LlmSettingsService,
+    private readonly llm: LlmClient,
+  ) {}
 
   @Get()
   get() {
@@ -41,6 +49,23 @@ export class LlmSettingsController {
     @CurrentAuditOrigin() origin: AuditOrigin,
   ) {
     return this.settings.update(dto, actorId, origin);
+  }
+
+  /**
+   * A real, minimal call with the stored configuration, so a key, a model and the
+   * network are known to work before the integration is relied on. It answers
+   * 200 either way — the body says — and an error in it is already free of the key.
+   */
+  @Post('test')
+  @HttpCode(200)
+  async test(): Promise<LlmConnectionTestResult> {
+    const config = await this.settings.getRuntimeConfig({
+      requireEnabled: false,
+    });
+    if (!config) {
+      return { ok: false, error: 'No readable API key is stored' };
+    }
+    return this.llm.testConnection(config);
   }
 
   @Delete('api-key')
