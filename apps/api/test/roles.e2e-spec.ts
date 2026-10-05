@@ -143,6 +143,12 @@ describe('Role catalog and configurable permissions (e2e)', () => {
 
   it('refuses a permission edit that would leave nobody holding roles.manage instance-wide', async () => {
     const admin = await findRole('ADMIN', 'GLOBAL');
+    // What ADMIN holds now, to put back exactly: this role is shared by every spec
+    // running in parallel, and a hard-coded list left out the keys added since
+    // (Roadmap GAP-39a's settings.manage).
+    const original = (
+      admin as unknown as { rolePermissions: { permission: { key: string } }[] }
+    ).rolePermissions.map((rp) => rp.permission.key);
 
     const attempt = await request(server())
       .patch(`/roles/${admin.id}/permissions`)
@@ -160,11 +166,12 @@ describe('Role catalog and configurable permissions (e2e)', () => {
     const stillWorks = await request(server())
       .patch(`/roles/${admin.id}/permissions`)
       .set('Authorization', auth())
-      .send({ permissionKeys: ['actors.manage', 'roles.manage'] })
+      .send({ permissionKeys: original })
       .expect(200);
     expect(
-      stillWorks.body.rolePermissions.map((rp: { permission: { key: string } }) => rp.permission.key),
-    ).toContain('roles.manage');
+      stillWorks.body.rolePermissions.map((rp: { permission: { key: string } }) => rp.permission.key).sort(),
+    ).toEqual([...original].sort());
+    expect(original).toContain('roles.manage');
   });
 
   it('404s a permission edit on a role id that does not exist', async () => {

@@ -28,6 +28,7 @@ import {
   upsertLifecycleRoadmapRow,
 } from '../roadmap/roadmap-row-writer.util.js';
 import { describeNotSaved } from './sync-failure.util.js';
+import { sourceTitleOf } from '../title-normalization/title-state.util.js';
 import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository-provider.interface.js';
 import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
 
@@ -1088,7 +1089,10 @@ export class WriteBackService {
       roadmapContent,
       externalId,
       {
-        outcome: task.title,
+        // The title the document holds: a normalized one is PM Hub's display
+        // title, and the document is never written by normalization (Roadmap
+        // GAP-39d) — a status change must not turn its long title into it.
+        outcome: sourceTitleOf(task),
         acceptanceCheck: task.acceptanceCriteria ?? '',
         status: task.status, // verbatim Kanban state (ADR-002) — never mapped back to TODO/DONE
         owner,

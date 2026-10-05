@@ -261,6 +261,22 @@ model Task {
   priority    String?
   progressPercent Int?
 
+  // Normalization of a long Roadmap title by the LLM (Roadmap GAP-39d). A title
+  // read from the document with more than 10 words is queued (PENDING) and,
+  // once normalized, `title` holds the short one while `originalTitle` keeps
+  // what the document says: Roadmap.md is never written by normalization, and
+  // sync compares the document's title against `originalTitle ?? title`, so a
+  // normalized title is not reverted by an unrelated change to the row. A title
+  // a person edits, or the document changes, resets all of this.
+  originalTitle           String?
+  titleNormalization      TitleNormalizationStatus?
+  // Why it failed, already free of any secret (shown, so a retry can be decided).
+  titleNormalizationError String?
+  titleNormalizedAt       DateTime?
+  // The description normalization wrote: while `description` still equals it the
+  // text is the system's to replace; once a person edits it, it is theirs.
+  generatedDescription    String?
+
   startDate     DateTime?
   estimatedDate DateTime?
   dueDate       DateTime?
@@ -302,8 +318,15 @@ model Task {
 
   @@unique([projectId, externalId])
   @@index([projectId, status])
+  @@index([projectId, titleNormalization])
   @@index([parentTaskId])
   @@index([assigneeActorId])
+}
+
+enum TitleNormalizationStatus {
+  PENDING
+  DONE
+  FAILED
 }
 
 model TaskDependency {

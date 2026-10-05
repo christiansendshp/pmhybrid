@@ -123,40 +123,6 @@ created_at: 2026-10-05T00:00:00Z
 updated_at: 2026-10-05T00:00:00Z
 ```
 
-### GAP-39d — Task persistence and sync integration
-
-```yaml
-id: GAP-39d
-type: GAP
-title: Task persistence and sync integration
-status: READY
-priority: P1
-description: >
-  Task gains originalTitle and the normalization state; sync marks a task
-  PENDING when it reads or re-reads a title of more than 10 words and compares
-  the document's title against originalTitle ?? title; a single-flight runner
-  drains the queue after the sync commits; write-back uses the document's own
-  title as the pre-edit baseline; a project endpoint retries failures and
-  queues the long titles already there.
-expected_behavior: >
-  Roadmap.md is never written by normalization; an LLM failure keeps the title
-  and the rest of the Roadmap is processed; a normalized title survives an
-  unrelated row change and is replaced when the document's own title changes.
-technical_context:
-  backend: apps/api/src/modules/synchronization, apps/api/src/modules/tasks, apps/api/src/modules/title-normalization
-depends_on:
-  - GAP-39a
-  - GAP-39c
-affects:
-  - GAP-39
-next_action: >
-  Migration, sync marking, runner with an optimistic update guard, baseline
-  fixes in reconcile/closeAgreedFieldConflicts/write-back, endpoint, e2e with
-  a faked provider.
-created_at: 2026-10-05T00:00:00Z
-updated_at: 2026-10-05T00:00:00Z
-```
-
 ### GAP-39e — Show it in the app, document it, ship it
 
 ```yaml

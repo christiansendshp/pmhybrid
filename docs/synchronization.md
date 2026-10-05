@@ -366,6 +366,44 @@ line N`), the task is protected like any unreadable entry, and a write-back
   assignee comparison of "Owner and assignee" needs it to advance, or the same
   contested assignee would be raised again on every sync.
 
+### Long titles (Roadmap GAP-39d)
+
+A task read from the Roadmap whose title has more than 10 words (a word is a
+whitespace-separated token with a letter or a digit in it) is normalized by the
+instance's configured LLM into a title of at most 10 words and an extended
+description; `docs/title-normalization.md` describes the feature. What sync does
+and does not do about it:
+
+- **Sync only marks it.** A task created from a row with a long title, or whose
+  title the document changes to a long one, is stored with
+  `titleNormalization = PENDING`. No network call is made inside the run, which
+  holds the project's advisory lock for its whole transaction. After the run has
+  committed (`sync.completed`), `TitleNormalizationService` works the project's
+  queue in the background, one run per project at a time; the run's response and
+  its result never depend on it, and the database is the queue, so a restart
+  loses nothing.
+- **The document is never written by normalization.** The title the document holds
+  is kept in `Task.originalTitle` while `Task.title` shows the short one. Every
+  comparison and every write that concerns the document uses
+  `originalTitle ?? title`: step 5's title comparison and the closing of agreed
+  field conflicts, a field edit's pre-edit baseline, and the Outcome cell (or
+  `title:` field) a lifecycle write-back renders. So a row that changes for another
+  reason does not put the long title back, and a status change made in PM Hub does
+  not turn the document's long title into the short one.
+- **A different title resets it.** When the document's title differs from
+  `originalTitle ?? title` the document wins as before, subject to the per-field
+  conflict check: `title` takes it, `originalTitle` and the state are cleared, a long
+  one is queued again, and a description the normalization generated for the old
+  title goes with it (`generatedDescription` records the text the system wrote; one
+  a person wrote or edited stays). A person's own title edit, and a conflict
+  settled with `MANUAL_EDIT`, stand as written and end the normalization;
+  `KEEP_EXTERNAL` on a title is the document's side again.
+- **The audit says SYSTEM.** `TITLE_NORMALIZE` events carry origin `SYSTEM`, never
+  `UI` or `API`, because step 5's per-field check counts those as a person's edit.
+- **Failure is local.** A failed normalization leaves the task with its title, state
+  `FAILED` and a message free of the API key, and touches nothing else: the sync
+  that queued it has long since succeeded.
+
 ## Agentslog ingestion
 
 Entries matched on `## [ISO8601] | agent | TASK-ID | status-word` followed by

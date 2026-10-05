@@ -40,6 +40,10 @@ import {
   STALE_TASK_MESSAGE,
 } from './task-status-policy.js';
 import { PERMISSIONS } from '@pmhybrid/shared-types';
+import {
+  personTitleData,
+  sourceTitleOf,
+} from '../title-normalization/title-state.util.js';
 
 /** One page of the task list (Roadmap IMPROVEMENT-01d3). */
 export interface TaskPage {
@@ -395,7 +399,9 @@ export class TasksService {
     );
     const previous: RoadmapFieldEdit = {};
     if ('title' in diff.newValue) {
-      previous.title = diff.previousValue.title as string;
+      // What the document holds, which is not the normalized title a task may
+      // show (Roadmap GAP-39d): the write-back checks the cell against this.
+      previous.title = sourceTitleOf(task);
     }
     if ('acceptanceCriteria' in diff.newValue) {
       previous.acceptanceCriteria = diff.previousValue.acceptanceCriteria as
@@ -425,7 +431,14 @@ export class TasksService {
     return this.writeBack.inTransaction(projectId, async (tx) => {
       const result = await tx.task.update({
         where: { id: taskId },
-        data: fields,
+        data: {
+          ...fields,
+          // A title a person writes stands as written: any normalization of the
+          // old one is over (Roadmap GAP-39d). Not part of the audited diff.
+          ...('title' in diff.newValue && typeof fields.title === 'string'
+            ? personTitleData(fields.title)
+            : {}),
+        },
       });
       await this.audit.record(
         {

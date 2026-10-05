@@ -34,6 +34,11 @@ import {
   type DependencyGraph,
 } from '../tasks/dependency-graph.js';
 import { completedAtFor } from '../tasks/completion-date.util.js';
+import {
+  documentTitleData,
+  sourceTitleOf,
+} from '../title-normalization/title-state.util.js';
+import { needsNormalization } from '../title-normalization/word-count.util.js';
 import { isStructuralEntry } from '../roadmap/roadmap-hierarchy.util.js';
 import { AgentslogIngestionService } from './agentslog-ingestion.service.js';
 import {
@@ -765,13 +770,18 @@ export class SynchronizationService {
     row: ParsedRoadmapRow,
     assigneeActorId?: string,
   ) {
+    const title = row.outcome ?? row.externalId;
     const task = await tx.task.create({
       data: {
         projectId,
         externalId: row.externalId,
         sourceOrigin: 'ROADMAP',
         roadmapTable: row.table,
-        title: row.outcome ?? row.externalId,
+        title,
+        // A long title is only queued here: the LLM is called after this
+        // transaction (which holds the project's lock) has committed (Roadmap
+        // GAP-39d).
+        titleNormalization: needsNormalization(title) ? 'PENDING' : undefined,
         status: row.statusMapped ?? TaskStatus.PENDIENTE,
         completedAt: completedAtFor(
           null,
@@ -1158,7 +1168,12 @@ export class SynchronizationService {
       status: row.statusMapped
         ? !rowStatusDiffers(row, task.status)
         : undefined,
-      title: row.outcome !== undefined ? row.outcome === task.title : undefined,
+      // Against what the document held when the title was normalized, not the
+      // normalized title (Roadmap GAP-39d).
+      title:
+        row.outcome !== undefined
+          ? row.outcome === sourceTitleOf(task)
+          : undefined,
       acceptanceCriteria:
         row.acceptanceCheck !== undefined
           ? row.acceptanceCheck === task.acceptanceCriteria
@@ -1257,7 +1272,10 @@ export class SynchronizationService {
     if (row.statusMapped && rowStatusDiffers(row, task.status)) {
       candidates.status = row.statusMapped;
     }
-    if (row.outcome !== undefined && row.outcome !== task.title) {
+    // The document's title is compared with the one it held when the task was
+    // normalized (Roadmap GAP-39d): a row that changed for another reason must
+    // not put the long title back over the short one.
+    if (row.outcome !== undefined && row.outcome !== sourceTitleOf(task)) {
       candidates.title = row.outcome;
     }
     if (
@@ -1381,6 +1399,11 @@ export class SynchronizationService {
       where: { id: task.id },
       data: {
         ...updates,
+        // The document gave the task a new title: the old normalization no
+        // longer applies and a long one is queued (Roadmap GAP-39d).
+        ...(typeof updates.title === 'string'
+          ? documentTitleData(task, updates.title)
+          : {}),
         ...(typeof updates.status === 'string'
           ? { completedAt: completedAtFor(task.status, updates.status) }
           : {}),

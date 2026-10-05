@@ -201,7 +201,15 @@ describe('ConflictsService.resolve permissions (Roadmap SECURITY-02)', () => {
     );
     expect(allowed.taskUpdate).toHaveBeenCalledWith({
       where: { id: 't1', deletedAt: null, status: 'ASIGNADA' },
-      data: { title: 'Theirs' },
+      // The document's title is the document's again: whatever normalization the
+      // old one had no longer applies (Roadmap GAP-39d).
+      data: {
+        title: 'Theirs',
+        originalTitle: null,
+        titleNormalization: null,
+        titleNormalizationError: null,
+        titleNormalizedAt: null,
+      },
     });
     // No status change, so no STATUS_CHANGE event.
     expect(allowed.record.mock.calls.map(([event]) => event.operation)).toEqual(

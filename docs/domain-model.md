@@ -158,6 +158,8 @@ Task(
                                           // never parsed for a prefix grammar
   projectId, phaseId?, epicId?, templateId?, parentTaskId?,  // self-ref = subtask
   title, description?,
+  originalTitle?, titleNormalization?: PENDING|DONE|FAILED,   // a long Roadmap title normalized by the LLM (GAP-39d): `title` is the short one, `originalTitle` what the document holds
+  titleNormalizationError?, titleNormalizedAt?, generatedDescription?,   // why it failed; when it was done; the description the system wrote (still its own while `description` equals it)
   status: PENDIENTE|ASIGNADA|EN_DESARROLLO|QA|TERMINADA,
   entryType?,                            // the Roadmap entry's `type` (GAP, BUG...); null for a table row (GAP-35c)
   priority?: LOW|MEDIUM|HIGH|CRITICAL,

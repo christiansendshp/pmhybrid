@@ -21,6 +21,10 @@ import {
   WriteBackService,
 } from '../synchronization/write-back.service.js';
 import { completedAtFor } from '../tasks/completion-date.util.js';
+import {
+  documentTitleData,
+  personTitleData,
+} from '../title-normalization/title-state.util.js';
 import { NOT_BLANK } from '../tasks/dto/create-task.dto.js';
 import {
   permissionForAssigneeChange,
@@ -158,7 +162,12 @@ export class ConflictsService {
       if (fieldsToApply && conflict.entityType === 'Task') {
         const task = await tx.task.findUniqueOrThrow({
           where: { id: conflict.entityId },
-          select: { status: true, assigneeActorId: true },
+          select: {
+            status: true,
+            assigneeActorId: true,
+            description: true,
+            generatedDescription: true,
+          },
         });
         const nextAssignee = fieldsToApply.assigneeActorId;
         if (typeof nextAssignee === 'string') {
@@ -185,6 +194,14 @@ export class ConflictsService {
           },
           data: {
             ...fieldsToApply,
+            // A title settled for the document's side is the document's again
+            // (queued for normalization if long); one a person typed stands
+            // as written (Roadmap GAP-39d).
+            ...(typeof fieldsToApply.title === 'string'
+              ? dto.strategy === ConflictResolutionKind.KEEP_EXTERNAL
+                ? documentTitleData(task, fieldsToApply.title)
+                : personTitleData(fieldsToApply.title)
+              : {}),
             ...(typeof fieldsToApply.status === 'string'
               ? {
                   completedAt: completedAtFor(

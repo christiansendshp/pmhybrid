@@ -33,6 +33,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { WorkloadModule } from './modules/workload/workload.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { SettingsModule } from './modules/settings/settings.module.js';
+import { TitleNormalizationModule } from './modules/title-normalization/title-normalization.module.js';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { SettingsModule } from './modules/settings/settings.module.js';
     WorkloadModule,
     HealthModule,
     SettingsModule,
+    TitleNormalizationModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ApiKeyThrottlerGuard }],
 })
