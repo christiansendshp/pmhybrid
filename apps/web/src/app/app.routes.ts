@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth.guard';
+import { globalPermissionGuard } from './core/global-permission.guard';
 import { projectMemberGuard } from './core/project-member.guard';
 import { AppShell } from './layout/app-shell/app-shell';
 
@@ -35,6 +36,14 @@ export const routes: Routes = [
       {
         path: 'roles',
         loadComponent: () => import('./features/roles/roles').then((m) => m.RolesPage),
+      },
+      {
+        // The application's own settings (Roadmap GAP-39b): for a holder of the global
+        // settings.manage permission, which the API enforces as well.
+        path: 'settings',
+        canActivate: [globalPermissionGuard],
+        data: { globalPermission: 'settings.manage' },
+        loadComponent: () => import('./features/settings/settings').then((m) => m.SettingsPage),
       },
       {
         path: 'projects/:projectId',

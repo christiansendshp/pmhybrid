@@ -44,6 +44,7 @@ const DICTIONARIES: Record<LabelKind, Record<string, string>> = {
     WRITE_BACK_AGENTSLOG_ONLY: 'Escritura solo en el registro',
     WRITE_BACK_DEFERRED: 'Escritura aplazada',
     ROADMAP_FIELD_UPDATE: 'Campo actualizado desde el Roadmap',
+    TITLE_NORMALIZE: 'Título normalizado',
     ROADMAP_TABLE_CHANGE: 'Cambio de tabla del Roadmap',
     COMPLETE_VIA_ROADMAP_REMOVAL: 'Completada al salir del Roadmap',
     CONFLICT_DETECTED: 'Conflicto detectado',

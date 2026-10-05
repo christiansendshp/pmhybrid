@@ -68,13 +68,19 @@ export class AppShell implements OnInit {
     }
   });
 
-  readonly navItems: readonly NavItem[] = [
+  private readonly baseNav: readonly NavItem[] = [
     { label: 'Panel', path: '/dashboard' },
     { label: 'Mis proyectos', path: '/projects' },
     { label: 'Carga de trabajo', path: '/workload' },
     { label: 'Equipo', path: '/team' },
     { label: 'Roles', path: '/roles' },
   ];
+  /** The application's own settings are for whoever may change them (Roadmap GAP-39b); the server decides all the same. */
+  readonly navItems = computed<readonly NavItem[]>(() =>
+    this.authService.hasGlobalPermission('settings.manage')
+      ? [...this.baseNav, { label: 'Configuración', path: '/settings' }]
+      : this.baseNav,
+  );
 
   readonly currentActor = this.authService.currentActor;
   readonly actorKindLabel = computed(() => actorKindLabel(this.currentActor()?.kind ?? ''));

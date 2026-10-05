@@ -30,8 +30,26 @@ describe('AppShell', () => {
   let markRead: ReturnType<typeof vi.fn>;
   let markAllRead: ReturnType<typeof vi.fn>;
   let notificationsChanged: ReturnType<typeof signal<number>>;
+  let actor: ReturnType<
+    typeof signal<{
+      id: string;
+      displayName: string;
+      email: string;
+      kind: string;
+      avatarUrl: null;
+      permissions: string[];
+    }>
+  >;
 
   beforeEach(() => {
+    actor = signal({
+      id: 'u1',
+      displayName: 'Ana García',
+      email: 'ana@pmhybrid.local',
+      kind: 'HUMAN',
+      avatarUrl: null,
+      permissions: [] as string[],
+    });
     logout = vi.fn();
     list = vi.fn().mockResolvedValue([]);
     markRead = vi.fn();
@@ -51,20 +69,15 @@ describe('AppShell', () => {
               { path: 'workload', component: StubPage },
               { path: 'team', component: StubPage },
               { path: 'roles', component: StubPage },
+              { path: 'settings', component: StubPage },
             ],
           },
         ]),
         {
           provide: AuthService,
           useValue: {
-            currentActor: signal({
-              id: 'u1',
-              displayName: 'Ana García',
-              email: 'ana@pmhybrid.local',
-              kind: 'HUMAN',
-              avatarUrl: null,
-              permissions: [],
-            }),
+            currentActor: actor,
+            hasGlobalPermission: (key: string) => actor().permissions.includes(key),
             logout,
           },
         },
@@ -100,6 +113,25 @@ describe('AppShell', () => {
       'Roles',
     ]);
     expect(root.querySelector('main')?.textContent).toContain('page body');
+  });
+
+  it("offers the application's settings only to whoever holds settings.manage (Roadmap GAP-39b)", async () => {
+    const { harness, primaryLinks } = await renderAt('/dashboard');
+    expect(primaryLinks().map((link) => link.textContent?.trim())).not.toContain('Configuración');
+
+    actor.update((current) => ({ ...current, permissions: ['settings.manage'] }));
+    harness.detectChanges();
+
+    const links = primaryLinks();
+    expect(links.map((link) => link.textContent?.trim())).toEqual([
+      'Panel',
+      'Mis proyectos',
+      'Carga de trabajo',
+      'Equipo',
+      'Roles',
+      'Configuración',
+    ]);
+    expect(links.at(-1)?.getAttribute('href')).toBe('/settings');
   });
 
   it('brings the link of the page the person is on into view, for a navigation that scrolls sideways (Roadmap UX-02a)', async () => {

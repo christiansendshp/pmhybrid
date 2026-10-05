@@ -92,39 +92,6 @@ created_at: 2026-10-05T00:00:00Z
 updated_at: 2026-10-05T00:00:00Z
 ```
 
-### GAP-39b — Configuration page for the LLM
-
-```yaml
-id: GAP-39b
-assigned_agent: 'claude'
-executor: AI
-type: GAP
-title: Configuration page for the LLM
-status: IN_PROGRESS
-priority: P1
-description: >
-  A Configuration entry in the shell (only for an actor with settings.manage)
-  and its page: provider, model, enabled, optional parameters, the API key
-  field (write-only, shown masked once stored, replaceable and removable) and
-  a connection test.
-expected_behavior: >
-  The key is never shown after saving, only that one is configured; replacing
-  it is a deliberate action; the page is unreachable without the permission.
-technical_context:
-  frontend: apps/web/src/app/features/settings, apps/web/src/app/layout/app-shell, apps/web/src/app/app.routes.ts
-depends_on:
-  - GAP-39a
-  - GAP-39c
-affects:
-  - GAP-39
-next_action: >
-  Settings service + page + route guard, unit specs, Playwright/axe coverage
-  like every other signed-in route. Built after GAP-39c, whose slice also adds
-  the POST /settings/llm/test endpoint the page's test button calls.
-created_at: 2026-10-05T00:00:00Z
-updated_at: 2026-10-05T16:33:11Z
-```
-
 ### GAP-39e — Show it in the app, document it, ship it
 
 ```yaml

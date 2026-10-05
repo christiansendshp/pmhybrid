@@ -12,6 +12,7 @@ const routes: { name: string; url: string }[] = [
   { name: 'workload', url: '/workload' },
   { name: 'team', url: '/team' },
   { name: 'roles', url: '/roles' },
+  { name: 'application settings', url: '/settings' },
   { name: 'project (kanban)', url: '/projects/pmhybrid-self/kanban' },
   { name: 'progress', url: '/projects/pmhybrid-self/progress' },
   { name: 'documents', url: '/projects/pmhybrid-self/documents' },

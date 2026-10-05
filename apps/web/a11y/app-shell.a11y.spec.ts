@@ -90,6 +90,7 @@ test.describe('accessibility (Roadmap GAP-25)', () => {
     { name: 'workload', url: '/workload', heading: 'Carga de trabajo' },
     { name: 'team', url: '/team', heading: 'Equipo' },
     { name: 'roles', url: '/roles', heading: 'Roles' },
+    { name: 'application settings (Roadmap GAP-39b)', url: '/settings', heading: 'Configuración' },
     { name: 'conflicts', url: '/projects/pmhybrid-self/conflicts', heading: 'Conflictos' },
     { name: 'audit', url: '/projects/pmhybrid-self/audit', heading: 'Auditoría' },
     { name: 'project settings', url: '/projects/pmhybrid-self/settings', heading: 'Configuración' },

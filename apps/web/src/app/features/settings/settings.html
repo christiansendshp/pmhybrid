@@ -1,0 +1,176 @@
+<header class="page-header">
+  <div>
+    <h1>Configuración</h1>
+    <p class="page-header__description">
+      Ajustes de la aplicación. Se guardan en la base de datos y se administran solo desde aquí.
+    </p>
+  </div>
+</header>
+
+@if (loading()) {
+  <p class="meta-text">Cargando…</p>
+} @else if (!view()) {
+  @if (errorMessage()) {
+    <p role="alert">{{ errorMessage() }}</p>
+  }
+} @else {
+  <section class="llm" aria-labelledby="llm-heading">
+    <div class="llm__head">
+      <h2 id="llm-heading">Normalización de títulos con IA</h2>
+      <span class="kind-badge" [attr.data-status]="status()">{{ statusLabels[status()] }}</span>
+    </div>
+    <p class="meta-text llm__intro">
+      Una tarea del Roadmap con un título de más de 10 palabras se resume con el modelo que
+      configures aquí: un título de hasta 10 palabras y una descripción ampliada. El título original
+      se conserva y el Roadmap.md no se modifica. Hasta que esté lista, esas tareas esperan sin
+      afectar a la sincronización.
+    </p>
+    @if (status() === 'KEY_UNREADABLE') {
+      <p role="alert">
+        La clave guardada ya no se puede leer (cambió el secreto del servidor). Vuelve a ingresarla.
+      </p>
+    }
+
+    <form class="llm__form" [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Proveedor</mat-label>
+        <mat-select formControlName="provider">
+          @for (provider of providers; track provider) {
+            <mat-option [value]="provider">{{ providerLabels[provider] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Modelo</mat-label>
+        <input matInput formControlName="model" autocomplete="off" spellcheck="false" />
+        <mat-hint>El nombre del modelo tal como lo llama el proveedor.</mat-hint>
+        <mat-error>Indica el modelo (hasta {{ limits.MODEL_MAX_LENGTH }} caracteres).</mat-error>
+      </mat-form-field>
+
+      <div class="llm__wide llm__key">
+        @if (showKeyField()) {
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Clave de API</mat-label>
+            <!-- new-password: a browser must not offer to fill in the person's own login password here. -->
+            <input
+              matInput
+              type="password"
+              formControlName="apiKey"
+              autocomplete="new-password"
+              spellcheck="false"
+            />
+            <mat-hint>
+              {{
+                view()!.hasApiKey
+                  ? 'Reemplaza la clave guardada. Nunca se vuelve a mostrar.'
+                  : 'Se guarda cifrada y nunca se vuelve a mostrar.'
+              }}
+            </mat-hint>
+            <mat-error>
+              La clave tiene entre {{ limits.API_KEY.min }} y {{ limits.API_KEY.max }} caracteres,
+              sin espacios.
+            </mat-error>
+          </mat-form-field>
+          @if (replacingKey()) {
+            <button mat-button type="button" (click)="cancelReplaceKey()">
+              Mantener la clave guardada
+            </button>
+          }
+        } @else {
+          <p class="llm__stored" id="stored-key">
+            <span class="llm__stored-label">Clave de API</span>
+            <span class="llm__mask" aria-hidden="true">••••••••••••••••</span>
+            <span>guardada (no se muestra)</span>
+          </p>
+          @if (confirmingRemoval()) {
+            <div class="llm__confirm" role="group" aria-label="Confirmar quitar la clave">
+              <span>¿Quitar la clave guardada? También se desactiva la normalización.</span>
+              <button mat-flat-button type="button" [disabled]="removing()" (click)="removeKey()">
+                {{ removing() ? 'Quitando…' : 'Quitar clave' }}
+              </button>
+              <button mat-button type="button" (click)="cancelRemoveKey()">Cancelar</button>
+            </div>
+          } @else {
+            <div class="llm__key-actions">
+              <button mat-button type="button" (click)="replaceKey()">Reemplazar clave</button>
+              <button mat-button type="button" (click)="askRemoveKey()">Quitar clave</button>
+            </div>
+          }
+        }
+      </div>
+
+      <mat-checkbox class="llm__wide" formControlName="enabled">
+        Normalizar los títulos largos con IA
+      </mat-checkbox>
+      @if (!canEnable()) {
+        <p class="llm__wide meta-text">Para activarla primero ingresa una clave de API.</p>
+      }
+
+      <fieldset class="llm__wide llm__advanced">
+        <legend>Parámetros</legend>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Temperatura</mat-label>
+          <input
+            matInput
+            type="number"
+            step="0.1"
+            [min]="limits.TEMPERATURE.min"
+            [max]="limits.TEMPERATURE.max"
+            formControlName="temperature"
+          />
+          <mat-hint>Opcional, de 0 a 1. Vacía: la del proveedor.</mat-hint>
+          <mat-error>Un número entre 0 y 1.</mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Tiempo máximo (segundos)</mat-label>
+          <input matInput type="number" step="1" formControlName="timeoutSeconds" />
+          <mat-error>
+            Un entero entre {{ limits.TIMEOUT_MS.min / 1000 }} y {{ limits.TIMEOUT_MS.max / 1000 }}.
+          </mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Tokens de salida</mat-label>
+          <input matInput type="number" step="1" formControlName="maxTokens" />
+          <mat-error>
+            Un entero entre {{ limits.MAX_TOKENS.min }} y {{ limits.MAX_TOKENS.max }}.
+          </mat-error>
+        </mat-form-field>
+      </fieldset>
+
+      @if (errorMessage()) {
+        <p class="llm__wide" role="alert">{{ errorMessage() }}</p>
+      }
+      @if (saved()) {
+        <p class="llm__wide meta-text" role="status">Configuración guardada.</p>
+      }
+
+      <div class="llm__wide llm__actions">
+        <button mat-flat-button type="submit" [disabled]="saving() || form.pristine">
+          {{ saving() ? 'Guardando…' : 'Guardar configuración' }}
+        </button>
+        <button mat-button type="button" [disabled]="form.pristine" (click)="discard()">
+          Descartar cambios
+        </button>
+        <button
+          mat-button
+          type="button"
+          [disabled]="!view()!.hasApiKey || !form.pristine || testing()"
+          (click)="testConnection()"
+        >
+          {{ testing() ? 'Probando…' : 'Probar conexión' }}
+        </button>
+      </div>
+      @if (view()!.hasApiKey && !form.pristine) {
+        <p class="llm__wide meta-text">Guarda los cambios para probar la conexión con ellos.</p>
+      }
+      @if (testResult(); as result) {
+        @if (result.ok) {
+          <p class="llm__wide" role="status">La conexión funciona: el proveedor respondió.</p>
+        } @else {
+          <p class="llm__wide" role="alert">No se pudo conectar: {{ result.error }}</p>
+        }
+      }
+    </form>
+  </section>
+}

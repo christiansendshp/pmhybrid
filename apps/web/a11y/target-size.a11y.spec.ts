@@ -11,6 +11,7 @@ const routes = [
   '/workload',
   '/team',
   '/roles',
+  '/settings',
   '/projects/pmhybrid-self/kanban',
   '/projects/pmhybrid-self/progress',
   '/projects/pmhybrid-self/documents',

@@ -7,7 +7,7 @@
   </a>
 
   <nav class="primary-nav" aria-label="Navegación principal" appScrollCue>
-    @for (item of navItems; track item.path) {
+    @for (item of navItems(); track item.path) {
       <a
         #link
         class="primary-nav__link"
