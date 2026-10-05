@@ -19,6 +19,7 @@ import {
   ProjectStatus,
   ProjectsService,
 } from '../../core/projects.service.js';
+import { TasksService } from '../../core/tasks.service.js';
 import { FolderBrowserDialog } from '../../shared/folder-browser-dialog/folder-browser-dialog.js';
 
 const PROJECT_UPDATE = 'project.update';
@@ -53,6 +54,7 @@ export class ProjectSettings {
   private readonly projectsService = inject(ProjectsService);
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
+  private readonly tasksService = inject(TasksService);
 
   readonly statuses = PROJECT_STATUSES;
   readonly statusLabels = STATUS_LABELS;
@@ -62,6 +64,14 @@ export class ProjectSettings {
   readonly canEdit = computed(() => this.context.permissions().includes(PROJECT_UPDATE));
   readonly saving = signal(false);
   readonly saved = signal(false);
+  /** Roadmap GAP-39: asking for the long titles to be normalized (again). */
+  readonly normalizing = signal(false);
+  readonly normalizeResult = signal<{
+    retried: number;
+    queued: number;
+    processing: boolean;
+  } | null>(null);
+  readonly normalizeError = signal<string | null>(null);
   readonly errorMessage = signal<string | null>(null);
   /** Roadmap GAP-32: candidates for "Responsable" — this project's own members, human or AI agent. */
   readonly members = signal<ProjectMember[]>([]);
@@ -130,6 +140,26 @@ export class ProjectSettings {
       this.errorMessage.set(describeHttpError(error, 'No se pudo guardar la configuración.'));
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  /** Queues the failed ones and the long titles never queued; the LLM works them in the background. */
+  async normalizeTitles(): Promise<void> {
+    const project = this.project();
+    if (!project || !this.canEdit() || this.normalizing()) {
+      return;
+    }
+    this.normalizing.set(true);
+    this.normalizeResult.set(null);
+    this.normalizeError.set(null);
+    try {
+      this.normalizeResult.set(await this.tasksService.normalizeProjectTitles(project.id));
+    } catch (error) {
+      this.normalizeError.set(
+        describeHttpError(error, 'No se pudo pedir la normalización de los títulos.'),
+      );
+    } finally {
+      this.normalizing.set(false);
     }
   }
 

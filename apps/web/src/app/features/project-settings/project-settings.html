@@ -103,4 +103,39 @@
       </div>
     }
   </form>
+
+  @if (canEdit()) {
+    <section class="titles" aria-labelledby="titles-heading">
+      <h3 id="titles-heading">Títulos largos</h3>
+      <p class="meta-text">
+        Resume con IA las tareas del Roadmap cuyo título supera las 10 palabras y que todavía no se
+        resumieron, y reintenta las que fallaron. Necesita que la IA esté configurada y activada en
+        Configuración; el Roadmap.md no se modifica.
+      </p>
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="normalizing()"
+        (click)="normalizeTitles()"
+      >
+        {{ normalizing() ? 'Pidiendo…' : 'Normalizar títulos largos' }}
+      </button>
+      @if (normalizeError()) {
+        <p role="alert">{{ normalizeError() }}</p>
+      }
+      @if (normalizeResult(); as result) {
+        <p role="status">
+          @if (result.queued + result.retried === 0) {
+            No hay títulos largos pendientes.
+          } @else if (result.processing) {
+            En cola: {{ result.queued }} nuevas y {{ result.retried }} para reintentar. Se procesan
+            en segundo plano.
+          } @else {
+            Quedaron en espera {{ result.queued + result.retried }} tareas: la IA no está lista
+            (configúrala y actívala en Configuración).
+          }
+        </p>
+      }
+    </section>
+  }
 </section>

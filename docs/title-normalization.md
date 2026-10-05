@@ -91,6 +91,24 @@ the failed ones and the long titles never queued back in the queue;
 `POST /projects/:projectId/tasks/:taskId/normalize-title` (`task.write`) does it for
 one task. Nothing is retried in a loop.
 
+## In the app
+
+- **Configuración** (`/settings`, shown in the navigation only to a holder of
+  `settings.manage`): provider, model, the key field, the switch, the optional
+  parameters, the status and the connection test. The key field is write-only: once
+  a key is stored the page shows only that one exists, with "Reemplazar clave" and
+  "Quitar clave" (which asks first and also switches the integration off), and the
+  field starts empty after every save, so the key is never in the page again. The
+  field asks the browser not to offer the person's own login password
+  (`autocomplete="new-password"`).
+- **Task detail**: for a normalized task, the title the Roadmap holds and when it
+  was summarized; while it is queued, a note; when it failed, the reason and a
+  "Reintentar" button for whoever has `task.write` (the page looks again for a few
+  seconds, since the work is done in the background).
+- **Project settings, "Títulos largos"** (`project.update`): queues the failed ones
+  and the long titles read before the feature existed, and says how many, or that
+  they wait because the LLM is not ready.
+
 ## Where it lives
 
 | Column on `Task`          | Meaning                                                                                        |

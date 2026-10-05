@@ -50,3 +50,19 @@
   display: flex;
   gap: var(--space-2);
 }
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  max-width: 48rem;
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--mat-sys-outline-variant);
+
+  h3,
+  p {
+    margin: 0;
+  }
+}

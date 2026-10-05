@@ -17,6 +17,17 @@ export interface Task {
   externalId: string | null;
   title: string;
   description: string | null;
+  /**
+   * When `title` is the short one the LLM wrote for a long Roadmap title, what the
+   * document holds (Roadmap GAP-39); null otherwise. Optional only so a fixture need
+   * not spell the four fields out: the API always sends them.
+   */
+  originalTitle?: string | null;
+  /** Queued, done or failed; null when the title was never long. */
+  titleNormalization?: 'PENDING' | 'DONE' | 'FAILED' | null;
+  /** Why it failed, already free of any secret. */
+  titleNormalizationError?: string | null;
+  titleNormalizedAt?: string | null;
   status: TaskStatus;
   phaseId: string | null;
   epicId: string | null;
@@ -213,6 +224,31 @@ export class TasksService {
       this.http.post<Task>(`${API_BASE_URL}/projects/${projectId}/tasks/${taskId}/transition`, {
         status,
       }),
+    );
+  }
+
+  /** Asks for one task's title to be normalized again; the work runs in the background and `processing` says whether the LLM is ready to do it now (Roadmap GAP-39). */
+  normalizeTitle(
+    projectId: string,
+    taskId: string,
+  ): Promise<{ queued: boolean; processing: boolean }> {
+    return firstValueFrom(
+      this.http.post<{ queued: boolean; processing: boolean }>(
+        `${API_BASE_URL}/projects/${projectId}/tasks/${taskId}/normalize-title`,
+        {},
+      ),
+    );
+  }
+
+  /** Queues the project's failed normalizations and the long titles never queued (Roadmap GAP-39). */
+  normalizeProjectTitles(
+    projectId: string,
+  ): Promise<{ retried: number; queued: number; processing: boolean }> {
+    return firstValueFrom(
+      this.http.post<{ retried: number; queued: number; processing: boolean }>(
+        `${API_BASE_URL}/projects/${projectId}/titles/normalize`,
+        {},
+      ),
     );
   }
 

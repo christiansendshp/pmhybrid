@@ -101,6 +101,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
   let create: ReturnType<typeof vi.fn>;
   let remove: ReturnType<typeof vi.fn>;
   let removeDependency: ReturnType<typeof vi.fn>;
+  let normalizeTitle: ReturnType<typeof vi.fn>;
   let myPermissions: ReturnType<typeof vi.fn>;
   let listAudit: ReturnType<typeof vi.fn>;
   let listForProject: ReturnType<typeof vi.fn>;
@@ -112,6 +113,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     create = vi.fn().mockResolvedValue({});
     remove = vi.fn().mockResolvedValue({});
     removeDependency = vi.fn().mockResolvedValue({});
+    normalizeTitle = vi.fn().mockResolvedValue({ queued: true, processing: true });
     myPermissions = vi.fn().mockResolvedValue(['task.delete', 'task.write']);
     listAudit = vi.fn();
     listForProject = vi.fn().mockResolvedValue([]);
@@ -135,6 +137,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
             create,
             remove,
             removeDependency,
+            normalizeTitle,
             listForProject,
           },
         },
@@ -609,6 +612,114 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
       const { component } = await render();
 
       expect(component.otherTasks().map((task) => task.title)).toEqual(['Free to pick']);
+    });
+  });
+
+  describe('title normalization (Roadmap GAP-39e)', () => {
+    const LONG =
+      'Implementar sistema automático de validación y conciliación de novedades de asistencia';
+
+    it('shows nothing about it for a title that was never long', async () => {
+      getById.mockResolvedValue(taskDetail());
+      listAudit.mockResolvedValue([]);
+
+      const { text } = await render();
+
+      expect(text()).not.toContain('Título original');
+      expect(text()).not.toContain('resumir el título');
+      expect(text()).not.toContain('en cola');
+    });
+
+    it('shows the title the Roadmap holds, and when it was summarized', async () => {
+      getById.mockResolvedValue(
+        taskDetail({
+          title: 'Validar y conciliar novedades de asistencia',
+          originalTitle: LONG,
+          titleNormalization: 'DONE',
+          titleNormalizedAt: '2026-10-05T12:00:00.000Z',
+          description: 'Implementar un sistema automático que permita validar y conciliar.',
+        }),
+      );
+      listAudit.mockResolvedValue([]);
+
+      const { text } = await render();
+
+      expect(text()).toContain('Título original');
+      expect(text()).toContain(LONG);
+      expect(text()).toContain('el del Roadmap.md, resumido el 5 Oct 2026');
+      expect(text()).toContain('Implementar un sistema automático');
+    });
+
+    it('says the title is queued, without offering a retry', async () => {
+      getById.mockResolvedValue(taskDetail({ title: LONG, titleNormalization: 'PENDING' }));
+      listAudit.mockResolvedValue([]);
+
+      const { text } = await render();
+
+      expect(text()).toContain('en cola para resumirse con IA');
+      expect(text()).not.toContain('Reintentar');
+    });
+
+    it('says why it failed and offers a retry to whoever may write the task', async () => {
+      getById.mockResolvedValue(
+        taskDetail({
+          title: LONG,
+          titleNormalization: 'FAILED',
+          titleNormalizationError: 'Anthropic answered 401: invalid x-api-key',
+        }),
+      );
+      listAudit.mockResolvedValue([]);
+
+      const { text } = await render();
+
+      expect(text()).toContain('No se pudo resumir el título con IA.');
+      expect(text()).toContain('Anthropic answered 401: invalid x-api-key');
+      expect(text()).toContain('La tarea conserva su título original.');
+      expect(text()).toContain('Reintentar');
+    });
+
+    it('offers no retry without task.write', async () => {
+      myPermissions.mockResolvedValue(['task.delete']);
+      getById.mockResolvedValue(taskDetail({ title: LONG, titleNormalization: 'FAILED' }));
+      listAudit.mockResolvedValue([]);
+
+      const { text } = await render();
+
+      expect(text()).toContain('No se pudo resumir el título con IA.');
+      expect(text()).not.toContain('Reintentar');
+    });
+
+    it('asks again, then looks until the title is no longer queued', async () => {
+      getById.mockResolvedValue(
+        taskDetail({ title: LONG, titleNormalization: 'FAILED', titleNormalizationError: 'x' }),
+      );
+      listAudit.mockResolvedValue([]);
+      const { component, harness, text } = await render();
+      vi.useFakeTimers();
+      try {
+        getById.mockResolvedValue(taskDetail({ title: LONG, titleNormalization: 'PENDING' }));
+
+        await component.retryTitleNormalization();
+        harness.detectChanges();
+
+        expect(normalizeTitle).toHaveBeenCalledWith('p1', 't1');
+        expect(text()).toContain('en cola para resumirse con IA');
+
+        getById.mockResolvedValue(
+          taskDetail({
+            title: 'Validar y conciliar novedades',
+            originalTitle: LONG,
+            titleNormalization: 'DONE',
+          }),
+        );
+        await vi.advanceTimersByTimeAsync(2000);
+        harness.detectChanges();
+
+        expect(text()).toContain('Título original');
+        expect(text()).not.toContain('en cola');
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

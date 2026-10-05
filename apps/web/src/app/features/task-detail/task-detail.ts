@@ -36,6 +36,9 @@ import {
 const HISTORY_LIMIT = 50;
 const TASK_DELETE = 'task.delete';
 const TASK_WRITE = 'task.write';
+/** A normalization asked for again is worked in the background: look again every few seconds, a bounded number of times. */
+const NORMALIZATION_WATCH_INTERVAL_MS = 2000;
+const NORMALIZATION_WATCH_ATTEMPTS = 8;
 
 /** Brief §6, §17: every task field, its hierarchy, subtasks, dependencies, agent activity and history. */
 @Component({
@@ -62,6 +65,8 @@ export class TaskDetail implements OnInit {
   private readonly projectsService = inject(ProjectsService);
   private readonly auditService = inject(AuditService);
   private readonly hierarchyService = inject(HierarchyService);
+
+  private destroyed = false;
 
   readonly task = signal<TaskDetailModel | null>(null);
   readonly history = signal<AuditEvent[]>([]);
@@ -150,6 +155,9 @@ export class TaskDetail implements OnInit {
   }
 
   ngOnInit(): void {
+    this.destroyRef.onDestroy(() => {
+      this.destroyed = true;
+    });
     // The router reuses this component when moving between a task and its
     // subtasks or parent, so every change of task id reloads the view.
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
@@ -201,6 +209,32 @@ export class TaskDetail implements OnInit {
     ]);
     this.task.set(task);
     this.history.set(history);
+  }
+
+  /** Asks for the title to be normalized again, then watches: it is worked in the background. */
+  async retryTitleNormalization(): Promise<void> {
+    await this.runAction(async () => {
+      await this.tasksService.normalizeTitle(this.projectId, this.taskId);
+      void this.watchNormalization();
+    }, 'No se pudo pedir la normalización del título.');
+  }
+
+  /** Looks again, a few times, until the title is no longer queued; stops when the page goes. */
+  private async watchNormalization(): Promise<void> {
+    for (let attempt = 0; attempt < NORMALIZATION_WATCH_ATTEMPTS; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, NORMALIZATION_WATCH_INTERVAL_MS));
+      if (this.destroyed) {
+        return;
+      }
+      try {
+        await this.reload();
+      } catch {
+        return;
+      }
+      if (this.task()?.titleNormalization !== 'PENDING') {
+        return;
+      }
+    }
   }
 
   async transition(status: TaskStatus): Promise<void> {

@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProjectContext } from '../../core/project-context.js';
 import { Project, ProjectsService } from '../../core/projects.service.js';
+import { TasksService } from '../../core/tasks.service.js';
 import { ProjectSettings } from './project-settings.js';
 
 const PROJECT: Project = {
@@ -24,15 +25,18 @@ describe('ProjectSettings', () => {
   let update: ReturnType<typeof vi.fn>;
   let listMembers: ReturnType<typeof vi.fn>;
   let dialogOpen: ReturnType<typeof vi.fn>;
+  let normalizeProjectTitles: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     update = vi.fn();
     listMembers = vi.fn().mockResolvedValue([]);
     dialogOpen = vi.fn();
+    normalizeProjectTitles = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         ProjectContext,
         { provide: ProjectsService, useValue: { update, listMembers } },
+        { provide: TasksService, useValue: { normalizeProjectTitles } },
         { provide: MatDialog, useValue: { open: dialogOpen } },
       ],
     });
@@ -180,5 +184,60 @@ describe('ProjectSettings', () => {
     const { text } = render([]);
 
     expect(text()).not.toContain('Explorar…');
+  });
+
+  describe('long titles (Roadmap GAP-39e)', () => {
+    it('offers the action only with project.update', () => {
+      expect(render([]).text()).not.toContain('Normalizar títulos largos');
+      expect(render(['project.update']).text()).toContain('Normalizar títulos largos');
+    });
+
+    it('queues them and says so, in the background', async () => {
+      normalizeProjectTitles.mockResolvedValue({ retried: 1, queued: 4, processing: true });
+      const { fixture, component, text } = render(['project.update']);
+
+      await component.normalizeTitles();
+      fixture.detectChanges();
+
+      expect(normalizeProjectTitles).toHaveBeenCalledWith('p1');
+      expect(text()).toContain(
+        'En cola: 4 nuevas y 1 para reintentar. Se procesan en segundo plano.',
+      );
+    });
+
+    it('says they wait when the LLM is not ready', async () => {
+      normalizeProjectTitles.mockResolvedValue({ retried: 0, queued: 3, processing: false });
+      const { fixture, component, text } = render(['project.update']);
+
+      await component.normalizeTitles();
+      fixture.detectChanges();
+
+      expect(text()).toContain('Quedaron en espera 3 tareas: la IA no está lista');
+    });
+
+    it('says when there is nothing to do', async () => {
+      normalizeProjectTitles.mockResolvedValue({ retried: 0, queued: 0, processing: true });
+      const { fixture, component, text } = render(['project.update']);
+
+      await component.normalizeTitles();
+      fixture.detectChanges();
+
+      expect(text()).toContain('No hay títulos largos pendientes.');
+    });
+
+    it('shows why it could not ask', async () => {
+      normalizeProjectTitles.mockRejectedValue(
+        new HttpErrorResponse({
+          status: 403,
+          error: { message: 'Missing permission: project.update' },
+        }),
+      );
+      const { fixture, component, text } = render(['project.update']);
+
+      await component.normalizeTitles();
+      fixture.detectChanges();
+
+      expect(text()).toContain('Missing permission: project.update');
+    });
   });
 });
