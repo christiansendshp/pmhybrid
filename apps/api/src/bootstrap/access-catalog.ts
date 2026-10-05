@@ -68,6 +68,11 @@ export const GLOBAL_PERMISSION_DEFS = [
     key: PERMISSIONS.ROLES_MANAGE,
     description: "Edit any role's permission set",
   },
+  {
+    key: PERMISSIONS.SETTINGS_MANAGE,
+    description:
+      "Configure the instance's settings (LLM provider, model and API key)",
+  },
 ];
 export const PERMISSION_DEFS = [
   ...PROJECT_PERMISSION_DEFS,

@@ -592,3 +592,25 @@ model IdempotencyKey {
   @@unique([projectId, actorId, key])
   @@index([projectId, createdAt])
 }
+
+/// The instance's LLM configuration (Roadmap GAP-39a): one row, id "instance".
+/// PM Hub has no organization model -- the instance is the unit, with global
+/// roles and permissions -- so the configuration is per instance, managed with
+/// the global `settings.manage` permission. The database is the only source:
+/// nothing here is read from the environment. `apiKeyEncrypted` is AES-256-GCM
+/// ciphertext (`secret-crypto.util.ts`); it is never selected into a response,
+/// a log line or an audit event. `provider` is validated against the shared
+/// LLM_PROVIDERS list rather than being an enum, so a provider can be added
+/// without a migration.
+model LlmSettings {
+  id              String   @id @default("instance")
+  provider        String   @default("ANTHROPIC")
+  model           String
+  enabled         Boolean  @default(false)
+  apiKeyEncrypted String?
+  temperature     Float?
+  timeoutMs       Int      @default(30000)
+  maxTokens       Int      @default(1024)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}

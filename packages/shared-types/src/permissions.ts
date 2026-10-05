@@ -23,6 +23,8 @@ export const PERMISSIONS = {
   ACTORS_MANAGE: 'actors.manage',
   /** Global-scope only: edit any role's permission set (the catalog itself, not a project's assignments). */
   ROLES_MANAGE: 'roles.manage',
+  /** Global-scope only: configure the instance's own settings (today the LLM provider, model and API key; Roadmap GAP-39a). */
+  SETTINGS_MANAGE: 'settings.manage',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -39,4 +41,5 @@ export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 export const GLOBAL_PERMISSION_KEYS: readonly PermissionKey[] = [
   PERMISSIONS.ACTORS_MANAGE,
   PERMISSIONS.ROLES_MANAGE,
+  PERMISSIONS.SETTINGS_MANAGE,
 ];

@@ -32,6 +32,7 @@ import { ConflictsModule } from './modules/conflicts/conflicts.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { WorkloadModule } from './modules/workload/workload.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { SettingsModule } from './modules/settings/settings.module.js';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { HealthModule } from './modules/health/health.module.js';
     DashboardModule,
     WorkloadModule,
     HealthModule,
+    SettingsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ApiKeyThrottlerGuard }],
 })

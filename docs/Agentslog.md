@@ -240,3 +240,14 @@ segments live in `docs/history/`.
 - Summary: BrowseDirectoryResult now carries roots (every configured PROJECT_DOCS_BROWSE_ROOT entry, not just the current one); the folder picker renders them as an always-visible switcher above the up/path row, so a second (or further) root is one click away instead of a raw path typed by hand. docker-compose.prod.yml also gained a second, generic bind-mount slot (EXTRA_DOCS_DIR) so a docs folder living elsewhere on the host can be mounted without editing the compose file
 - Files: apps/api/src/modules/git-providers/filesystem-browser.service.ts, apps/api/src/modules/git-providers/filesystem-browser.service.spec.ts, apps/api/test/filesystem-browser.e2e-spec.ts, apps/web/src/app/core/filesystem-browser.service.ts, apps/web/src/app/shared/folder-browser-dialog/*, docker-compose.prod.yml
 - Verify: api lint clean; unit 493 pass; e2e:cov 318 pass; web unit 291 pass; api/web builds ok; verified live end-to-end after a docker rebuild: mounted C:/Users/Administrador/Documents/PROYECTO/SMARTHR/docs as a second root, the picker's switcher jumped to it, selected it, and created project SMARTHR pointing at its real docs
+
+## [2026-10-05T15:50:44Z] | claude | GAP-39a | IN_PROGRESS
+
+- Summary: LLM settings: typed table, AES-256-GCM key at rest, settings.manage permission, /settings/llm API
+- Verify: pending
+
+## [2026-10-05T16:00:45Z] | claude | GAP-39a | DONE
+
+- Summary: The instance's LLM configuration lives in the database: a typed LlmSettings row (provider, model, enabled, optional temperature/timeout/max tokens) and the API key encrypted with AES-256-GCM under a key derived from JWT_SECRET (no variable, no .env). GET/PUT/DELETE api-key under /settings/llm need the new global settings.manage permission (granted to ADMIN); a response says only hasApiKey and a status (NOT_CONFIGURED, DISABLED, KEY_UNREADABLE, READY), the key is never returned, logged or audited (only apiKeyChanged), a malformed key is refused without echoing it, and enabling without a usable key is a 400. ADR-020 records the decisions of the whole feature
+- Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261005130000_add_llm_settings, apps/api/src/common/secret-crypto.util.ts, apps/api/src/modules/settings/, packages/shared-types/src/llm.ts, packages/shared-types/src/permissions.ts, apps/api/src/bootstrap/access-catalog.ts, docs/decisions/ADR-020-llm-normalization-of-long-roadmap-titles.md
+- Verify: api lint clean; unit 509 pass (crypto 6, service 10); e2e:cov 326 pass (settings-llm 8: 401, 403 without settings.manage, key encrypted and never echoed, key absent from audit rows and stdout, malformed key refused, replace/keep/remove); build ok; prisma migrate diff against the migrated test db: no difference

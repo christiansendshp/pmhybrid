@@ -33,6 +33,192 @@ THEME/EPIC/FEATURE/TASK/SUBTASK-level planning entry is ever needed.
 
 ## Cross-cutting
 
+### GAP-39 — Normalize long Roadmap titles with an LLM, configured from the app
+
+```yaml
+id: GAP-39
+type: GAP
+title: Normalize long Roadmap titles with an LLM, configured from the app
+status: BACKLOG
+priority: P1
+description: >
+  User request 2026-10-05. A task read from Roadmap.md whose title has more
+  than 10 words is normalized by the configured LLM into a title of at most
+  10 words plus an extended description; a title of 10 words or fewer is kept
+  untouched and the LLM is never called for it. The original information is
+  never lost, an LLM failure never blocks the Roadmap's processing, and the
+  provider, model and API key are administered from the app's Configuration
+  area and stored (encrypted) in the database -- never in .env or any
+  environment variable.
+expected_behavior: >
+  See the acceptance list of the request: short titles untouched; long titles
+  normalized to at most 10 words with a faithful extended description; key
+  configurable from the UI, stored encrypted, never returned, logged or shown
+  again; permissions respected; any LLM error leaves the task as it was and
+  the rest of the Roadmap processed; tests; documented.
+technical_context:
+  backend: apps/api/src/modules/{settings,title-normalization,synchronization}, apps/api/prisma/schema.prisma
+  frontend: apps/web/src/app/features/settings, apps/web/src/app/features/task-detail
+depends_on:
+  - GAP-39a
+  - GAP-39b
+  - GAP-39c
+  - GAP-39d
+  - GAP-39e
+next_action: >
+  Umbrella only. Architecture review (done 2026-10-05) and the decisions it
+  led to, all reversible implementation choices self-decided per AGENTS.md:
+  (1) Scope: PM Hub has no organization model -- the instance is the unit,
+  with a global ADMIN role and global permissions (actors.manage,
+  roles.manage) -- so the LLM configuration is one row per instance guarded by
+  a new global permission settings.manage (granted to ADMIN); the existing
+  persistent configuration is typed Prisma columns (Project), so a typed
+  LlmSettings table, not a parallel generic store. (2) At rest: AES-256-GCM
+  with a key derived (HKDF-SHA256, fixed context label) from JWT_SECRET, which
+  every installation already has -- no new variable and no .env edit; the cost
+  is that rotating JWT_SECRET makes the stored key unreadable (reported as
+  "not ready", the administrator enters it again). (3) Providers: Anthropic
+  and OpenAI through the global fetch (no SDK, as GitHubGitProvider does)
+  behind one LlmProvider interface. (4) Nothing is lost: the title the
+  document held is kept in Task.originalTitle and Roadmap.md is never written
+  by normalization; sync compares the document's title against
+  originalTitle ?? title, so a normalized title is not reverted by an
+  unrelated row change. (5) No network inside the sync transaction (it holds
+  the project's advisory lock): sync only marks the task PENDING; after the
+  commit a single-flight runner per project drains the queue, the database
+  being the queue. (6) Word count: whitespace-separated tokens containing a
+  letter or digit, so a lone dash or ampersand is not a word. Slices 39a-39e.
+created_at: 2026-10-05T00:00:00Z
+updated_at: 2026-10-05T00:00:00Z
+```
+
+### GAP-39b — Configuration page for the LLM
+
+```yaml
+id: GAP-39b
+type: GAP
+title: Configuration page for the LLM
+status: READY
+priority: P1
+description: >
+  A Configuration entry in the shell (only for an actor with settings.manage)
+  and its page: provider, model, enabled, optional parameters, the API key
+  field (write-only, shown masked once stored, replaceable and removable) and
+  a connection test.
+expected_behavior: >
+  The key is never shown after saving, only that one is configured; replacing
+  it is a deliberate action; the page is unreachable without the permission.
+technical_context:
+  frontend: apps/web/src/app/features/settings, apps/web/src/app/layout/app-shell, apps/web/src/app/app.routes.ts
+depends_on:
+  - GAP-39a
+affects:
+  - GAP-39
+next_action: >
+  Settings service + page + route guard, unit specs, Playwright/axe coverage
+  like every other signed-in route.
+created_at: 2026-10-05T00:00:00Z
+updated_at: 2026-10-05T00:00:00Z
+```
+
+### GAP-39c — Title normalizer: providers, validation, retry and fallback
+
+```yaml
+id: GAP-39c
+type: GAP
+title: Title normalizer -- providers, validation, retry and fallback
+status: READY
+priority: P1
+description: >
+  The pure core: word counting, the LlmProvider interface with Anthropic and
+  OpenAI adapters over fetch (timeout, sanitized errors that can never carry
+  the key), the prompt, structured-JSON parsing and validation (title present
+  and at most 10 words, description present, nothing invented), one corrective
+  retry and a local fallback.
+expected_behavior: >
+  A valid result always has a title of at most 10 words and a description
+  faithful to the source; any provider or parsing failure ends as a typed
+  failure, never as an exception that escapes or a silently wrong title.
+technical_context:
+  backend: apps/api/src/modules/title-normalization
+depends_on:
+  - GAP-39a
+affects:
+  - GAP-39
+next_action: >
+  Unit specs with a faked fetch for every path: short title, long title, JSON
+  invalid, >10 words then corrected, >10 words after the retry (local
+  truncation), invented identifier/number, timeout, provider error, key not
+  present in any error text.
+created_at: 2026-10-05T00:00:00Z
+updated_at: 2026-10-05T00:00:00Z
+```
+
+### GAP-39d — Task persistence and sync integration
+
+```yaml
+id: GAP-39d
+type: GAP
+title: Task persistence and sync integration
+status: READY
+priority: P1
+description: >
+  Task gains originalTitle and the normalization state; sync marks a task
+  PENDING when it reads or re-reads a title of more than 10 words and compares
+  the document's title against originalTitle ?? title; a single-flight runner
+  drains the queue after the sync commits; write-back uses the document's own
+  title as the pre-edit baseline; a project endpoint retries failures and
+  queues the long titles already there.
+expected_behavior: >
+  Roadmap.md is never written by normalization; an LLM failure keeps the title
+  and the rest of the Roadmap is processed; a normalized title survives an
+  unrelated row change and is replaced when the document's own title changes.
+technical_context:
+  backend: apps/api/src/modules/synchronization, apps/api/src/modules/tasks, apps/api/src/modules/title-normalization
+depends_on:
+  - GAP-39a
+  - GAP-39c
+affects:
+  - GAP-39
+next_action: >
+  Migration, sync marking, runner with an optimistic update guard, baseline
+  fixes in reconcile/closeAgreedFieldConflicts/write-back, endpoint, e2e with
+  a faked provider.
+created_at: 2026-10-05T00:00:00Z
+updated_at: 2026-10-05T00:00:00Z
+```
+
+### GAP-39e — Show it in the app, document it, ship it
+
+```yaml
+id: GAP-39e
+type: GAP
+title: Show it in the app, document it, ship it
+status: READY
+priority: P1
+description: >
+  The task detail shows the original title and the normalization state (with a
+  retry when it failed), the project settings get the action that queues the
+  long titles already there, and the documentation, ADR and deployment notes
+  are written.
+expected_behavior: >
+  A person can see what was normalized, from what, and retry a failure;
+  docs/Stack_Tecnologies.md, an ADR, docs/api-reference.md and
+  docs/synchronization.md describe it.
+technical_context:
+  frontend: apps/web/src/app/features/task-detail, apps/web/src/app/features/project-settings
+depends_on:
+  - GAP-39b
+  - GAP-39d
+affects:
+  - GAP-39
+next_action: >
+  Task-detail block, project action, docs, ADR-020, rebuild the persistent
+  stack so the new permission is granted by the bootstrap.
+created_at: 2026-10-05T00:00:00Z
+updated_at: 2026-10-05T00:00:00Z
+```
+
 ### DEC-002 — Frontend redesign: refine the existing GAP-20 system, or replace it with a new visual direction?
 
 ```yaml

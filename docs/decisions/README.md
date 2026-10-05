@@ -25,3 +25,4 @@ and documents cite them by id (`ADR-002`).
 | [ADR-017](ADR-017-an-mcp-server-for-agent-task-operations.md)            | 2026-09-18 | CONFIRMED | An MCP server for agent task operations                                                 |
 | [ADR-018](ADR-018-investigation-before-rewriting-the-parsers.md)         | 2026-09-18 | CONFIRMED | Investigation before rewriting the parsers for the skill's v2 schema                    |
 | [ADR-019](ADR-019-task-comments.md)                                      | 2026-09-18 | CONFIRMED | Task comments                                                                           |
+| [ADR-020](ADR-020-llm-normalization-of-long-roadmap-titles.md)           | 2026-10-05 | CONFIRMED | LLM normalization of long Roadmap titles                                                |
