@@ -1,19 +1,17 @@
-<li class="progress-task">
-  <div class="progress-task__row">
-    <a [routerLink]="['../tasks', task().id]">{{ task().name }}</a>
-    <span class="meta-text">{{ statusLabel(task().status) }}</span>
-    <app-progress-bar [value]="task().progress" [label]="'Progreso de ' + task().name" />
-  </div>
-  @if (task().subtasks.length > 0) {
-    <ul class="status-counts">
-      @for (entry of countsFor(task().statusCounts); track entry.status) {
-        <li>{{ entry.count }} {{ statusLabel(entry.status) }}</li>
-      }
-    </ul>
-    <ul>
-      @for (subtask of task().subtasks; track subtask.id) {
-        <app-progress-task-node [task]="subtask" />
-      }
-    </ul>
-  }
-</li>
+<div class="progress-task__row">
+  <a [routerLink]="['../tasks', task().id]">{{ task().name }}</a>
+  <span class="meta-text">{{ statusLabel(task().status) }}</span>
+  <app-progress-bar [value]="task().progress" [label]="'Progreso de ' + task().name" />
+</div>
+@if (task().subtasks.length > 0) {
+  <ul class="status-counts">
+    @for (entry of countsFor(task().statusCounts); track entry.status) {
+      <li>{{ entry.count }} {{ statusLabel(entry.status) }}</li>
+    }
+  </ul>
+  <ul>
+    @for (subtask of task().subtasks; track subtask.id) {
+      <li appProgressTaskNode [task]="subtask"></li>
+    }
+  </ul>
+}

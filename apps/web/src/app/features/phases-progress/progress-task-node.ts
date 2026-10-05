@@ -12,7 +12,12 @@ import { ProgressBar } from '../../shared/progress-bar/progress-bar.js';
  * display the tree, not recompute anything.
  */
 @Component({
-  selector: 'app-progress-task-node',
+  // An attribute on an <li>, not an element of its own: the <li> must be a direct
+  // child of its <ul> (Roadmap BUG-12), which the project's element-only selector rule
+  // does not allow for in general and Angular Material's own components do.
+  // eslint-disable-next-line @angular-eslint/component-selector
+  selector: 'li[appProgressTaskNode]',
+  host: { class: 'progress-task' },
   imports: [RouterLink, ProgressBar, ProgressTaskNodeItem],
   templateUrl: './progress-task-node.html',
   styleUrl: './progress-task-node.scss',

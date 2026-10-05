@@ -38,7 +38,7 @@
           </ul>
           <ul>
             @for (task of epic.tasks; track task.id) {
-              <app-progress-task-node [task]="task" />
+              <li appProgressTaskNode [task]="task"></li>
             }
           </ul>
         </div>
@@ -46,7 +46,7 @@
 
       <ul>
         @for (task of phase.tasks; track task.id) {
-          <app-progress-task-node [task]="task" />
+          <li appProgressTaskNode [task]="task"></li>
         }
       </ul>
     </section>
@@ -63,7 +63,7 @@
       </ul>
       <ul>
         @for (task of epic.tasks; track task.id) {
-          <app-progress-task-node [task]="task" />
+          <li appProgressTaskNode [task]="task"></li>
         }
       </ul>
     </section>
@@ -71,7 +71,7 @@
 
   <ul>
     @for (task of t.tasks; track task.id) {
-      <app-progress-task-node [task]="task" />
+      <li appProgressTaskNode [task]="task"></li>
     }
   </ul>
 }

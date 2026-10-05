@@ -96,9 +96,11 @@ updated_at: 2026-10-05T00:00:00Z
 
 ```yaml
 id: GAP-39b
+assigned_agent: 'claude'
+executor: AI
 type: GAP
 title: Configuration page for the LLM
-status: READY
+status: IN_PROGRESS
 priority: P1
 description: >
   A Configuration entry in the shell (only for an actor with settings.manage)
@@ -120,16 +122,18 @@ next_action: >
   like every other signed-in route. Built after GAP-39c, whose slice also adds
   the POST /settings/llm/test endpoint the page's test button calls.
 created_at: 2026-10-05T00:00:00Z
-updated_at: 2026-10-05T00:00:00Z
+updated_at: 2026-10-05T16:33:11Z
 ```
 
 ### GAP-39e — Show it in the app, document it, ship it
 
 ```yaml
 id: GAP-39e
+assigned_agent: 'claude'
+executor: AI
 type: GAP
 title: Show it in the app, document it, ship it
-status: READY
+status: IN_PROGRESS
 priority: P1
 description: >
   The task detail shows the original title and the normalization state (with a
@@ -151,7 +155,7 @@ next_action: >
   Task-detail block, project action, docs, ADR-020, rebuild the persistent
   stack so the new permission is granted by the bootstrap.
 created_at: 2026-10-05T00:00:00Z
-updated_at: 2026-10-05T00:00:00Z
+updated_at: 2026-10-05T16:41:04Z
 ```
 
 ### DEC-002 — Frontend redesign: refine the existing GAP-20 system, or replace it with a new visual direction?

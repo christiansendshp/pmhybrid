@@ -273,3 +273,24 @@ segments live in `docs/history/`.
 - Summary: A long Roadmap title is normalized without the sync waiting for it: sync only marks the task PENDING inside its transaction, and after the commit a single-flight runner per project (the database is the queue) calls the configured LLM and stores the short title with the original kept in Task.originalTitle, the generated description (never over one a person wrote) and a SYSTEM audit event. Roadmap.md is never written by normalization: reconciliation, field-edit baselines, conflict closing and the lifecycle write-back all use originalTitle ?? title, so an unrelated row change or a status change from PM Hub does not revert it or turn the document's long title into the short one, a title changed in the document resets and requeues it, and a person's own edit stands. A failure keeps the title, records a message free of the key and the rest of the Roadmap goes on; POST titles/normalize and tasks/:id/normalize-title retry. Under a test runner no real provider is ever called
 - Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261005140000_add_task_title_normalization, apps/api/src/modules/title-normalization/, apps/api/src/modules/synchronization/synchronization.service.ts, apps/api/src/modules/synchronization/write-back.service.ts, apps/api/src/modules/tasks/tasks.service.ts, apps/api/src/modules/conflicts/conflicts.service.ts, apps/api/src/modules/llm/llm.module.ts, apps/api/test/llm.e2e-spec.ts, apps/api/test/roles.e2e-spec.ts, docs/title-normalization.md, docs/synchronization.md
 - Verify: api lint clean; unit 569 pass; e2e:cov 343 pass with the coverage floor met (llm.e2e-spec 25: short title never calls the LLM, long title normalized with the document byte-identical, unrelated row change keeps it, a changed document title replaces it and drops the generated description, LLM failure keeps the title and the rest is processed, retry per task and per project, unusable answer after the corrective retry, waiting while not configured, backfill, a person's description kept, a status change from PM Hub keeps the document's long title, a person's title edit reaches the document without a conflict, permissions); build ok; prisma migrate diff against the dev database: no difference. Found and fixed a stale restore in roles.e2e-spec that stripped settings.manage from the shared ADMIN role
+
+## [2026-10-05T16:33:11Z] | claude | GAP-39b | IN_PROGRESS
+
+- Summary: Configuration page for the LLM in the web app
+- Verify: pending
+
+## [2026-10-05T16:41:04Z] | claude | GAP-39e | IN_PROGRESS
+
+- Summary: Show the normalization in the app, document and ship it
+- Verify: pending
+
+## [2026-10-05T16:48:22Z] | claude | BUG-12 | IN_PROGRESS
+
+- Summary: Make the progress tree's task row the li itself
+- Verify: pending
+
+## [2026-10-05T17:00:46Z] | claude | BUG-12 | DONE
+
+- Summary: The progress tree's task rows are list items of their own list: the component is now an attribute on the <li> (li[appProgressTaskNode]) instead of a custom element between the <ul> and the <li>, so axe's list and listitem rules pass whenever a project has tasks in its hierarchy (a latent defect that only showed once this repository's own project had tasks in its tree). Looks and reads the same
+- Files: apps/web/src/app/features/phases-progress/progress-task-node.ts, progress-task-node.html, progress-task-node.scss, progress-task-node.spec.ts, phases-progress.html
+- Verify: web unit 320 pass and eslint clean; web build ok; Playwright a11y 66 pass (the progress page failed list/listitem before the change, with this project's tasks in the tree)

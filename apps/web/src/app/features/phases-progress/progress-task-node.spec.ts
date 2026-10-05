@@ -65,8 +65,12 @@ describe('ProgressTaskNodeItem (brief §16 "subtareas en el árbol")', () => {
     expect(text).toContain('Parent');
     expect(text).toContain('Child');
     expect(text).toContain('Grandchild');
-    // Three nested <li class="progress-task">: parent, child, grandchild.
-    expect(fixture.nativeElement.querySelectorAll('li.progress-task')).toHaveLength(3);
+    // The parent is the host the test mounts; the child and the grandchild are nested <li class="progress-task">.
+    expect(fixture.nativeElement.querySelectorAll('li.progress-task')).toHaveLength(2);
+    // Every <li> sits directly in a <ul> (Roadmap BUG-12): no element between them.
+    for (const item of fixture.nativeElement.querySelectorAll('li.progress-task')) {
+      expect(item.parentElement?.tagName).toBe('UL');
+    }
   });
 
   it("shows a task's own statusCounts pill row only when it has subtasks", () => {
