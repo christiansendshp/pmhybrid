@@ -23,7 +23,8 @@
       Una tarea del Roadmap con un título de más de 10 palabras se resume con el modelo que
       configures aquí: un título de hasta 10 palabras y una descripción ampliada. El título original
       se conserva y el Roadmap.md no se modifica. Hasta que esté lista, esas tareas esperan sin
-      afectar a la sincronización.
+      afectar a la sincronización; al activarla se procesan también las que ya esperaban, de todos
+      los proyectos, sin volver a sincronizar.
     </p>
     @if (status() === 'KEY_UNREADABLE') {
       <p role="alert">
@@ -44,7 +45,7 @@
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Modelo</mat-label>
         <input matInput formControlName="model" autocomplete="off" spellcheck="false" />
-        <mat-hint>El nombre del modelo tal como lo llama el proveedor.</mat-hint>
+        <mat-hint>{{ modelHint() }}</mat-hint>
         <mat-error>Indica el modelo (hasta {{ limits.MODEL_MAX_LENGTH }} caracteres).</mat-error>
       </mat-form-field>
 

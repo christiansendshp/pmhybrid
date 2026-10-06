@@ -154,3 +154,247 @@ describe('TitleNormalizationService (Roadmap GAP-39d)', () => {
     await expect(service.drain('p1')).resolves.toBeUndefined();
   });
 });
+
+describe('working every project once the configuration is ready (Roadmap BUG-13)', () => {
+  const LONG = 'uno dos tres cuatro cinco seis siete ocho nueve diez once doce';
+
+  interface Row {
+    id: string;
+    projectId: string;
+    title: string;
+    state: 'PENDING' | 'FAILED' | null;
+  }
+
+  /** A database of two projects, enough of Prisma to queue and work them. */
+  function world(
+    rows: Row[],
+    config: LlmRuntimeConfig | null = CONFIG,
+    outcomeFor: (title: string) => NormalizationOutcome = () => ({
+      status: 'SKIPPED',
+    }),
+  ) {
+    const normalized: string[] = [];
+    const prisma = {
+      project: {
+        findMany: vi.fn(async () => [{ id: 'p1' }, { id: 'p2' }]),
+      },
+      task: {
+        updateMany: vi.fn(
+          async ({
+            where,
+            data,
+          }: {
+            where: {
+              projectId?: string;
+              id?: string | { in: string[] };
+              titleNormalization?: string | null;
+            };
+            data: { titleNormalization?: 'PENDING' | 'FAILED' | null };
+          }) => {
+            let count = 0;
+            for (const row of rows) {
+              const byProject =
+                where.projectId === undefined ||
+                where.projectId === row.projectId;
+              const byId =
+                where.id === undefined ||
+                (typeof where.id === 'string'
+                  ? where.id === row.id
+                  : where.id.in.includes(row.id));
+              const byState =
+                where.titleNormalization === undefined ||
+                where.titleNormalization === row.state;
+              if (
+                byProject &&
+                byId &&
+                byState &&
+                'titleNormalization' in data
+              ) {
+                row.state = data.titleNormalization ?? null;
+                count += 1;
+              }
+            }
+            return { count };
+          },
+        ),
+        findMany: vi.fn(
+          async ({
+            where,
+          }: {
+            where: { projectId: string; titleNormalization: string | null };
+          }) =>
+            rows
+              .filter(
+                (row) =>
+                  row.projectId === where.projectId &&
+                  row.state === where.titleNormalization,
+              )
+              .map((row) => ({
+                ...task(row.id),
+                projectId: row.projectId,
+                title: row.title,
+              })),
+        ),
+      },
+    };
+    const normalize = vi.fn(
+      async (_config: LlmRuntimeConfig, source: { title: string }) => {
+        normalized.push(source.title);
+        return outcomeFor(source.title);
+      },
+    );
+    const service = new TitleNormalizationService(
+      prisma as unknown as PrismaService,
+      {
+        getRuntimeConfig: vi.fn(async () => config),
+      } as unknown as LlmSettingsService,
+      { normalize } as unknown as TitleNormalizer,
+      { record: vi.fn() } as unknown as AuditService,
+    );
+    return { service, rows, normalized, prisma };
+  }
+
+  it('queues the failed ones and the long titles never queued, in every project, and works them', async () => {
+    const rows: Row[] = [
+      { id: 'a', projectId: 'p1', title: LONG, state: null },
+      { id: 'b', projectId: 'p1', title: 'corto', state: null },
+      { id: 'c', projectId: 'p2', title: LONG, state: 'FAILED' },
+      { id: 'd', projectId: 'p2', title: `${LONG} otra`, state: 'PENDING' },
+    ];
+    const { service, normalized } = world(rows);
+
+    await service.queueEveryProject();
+
+    expect(normalized.sort()).toEqual([LONG, LONG, `${LONG} otra`].sort());
+    // A short title is never queued, and nothing is left waiting.
+    expect(rows.find((row) => row.id === 'b')?.state).toBeNull();
+    expect(
+      rows.filter((row) => row.state === 'PENDING' || row.state === 'FAILED'),
+    ).toEqual([]);
+  });
+
+  it('is what the ready signal does, and returns at once', () => {
+    const { service } = world([]);
+    const queueEveryProject = vi
+      .spyOn(service, 'queueEveryProject')
+      .mockResolvedValue(undefined);
+
+    expect(service.onSettingsReady()).toBeUndefined();
+
+    expect(queueEveryProject).toHaveBeenCalledTimes(1);
+  });
+
+  it('goes round once more when a second signal arrives during a run, and never runs two at once', async () => {
+    const rows: Row[] = [
+      { id: 'a', projectId: 'p1', title: LONG, state: null },
+    ];
+    const { service, prisma } = world(rows);
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    prisma.project.findMany.mockImplementationOnce(async () => {
+      await gate;
+      return [{ id: 'p1' }];
+    });
+
+    const first = service.queueEveryProject();
+    const second = service.queueEveryProject();
+    expect(second).toBe(first);
+    release();
+    await first;
+
+    expect(prisma.project.findMany).toHaveBeenCalledTimes(2);
+  });
+
+  it('only queues, and calls no one, while the configuration is not ready', async () => {
+    const rows: Row[] = [
+      { id: 'a', projectId: 'p1', title: LONG, state: null },
+    ];
+    const { service, normalized } = world(rows, null);
+
+    await service.queueEveryProject();
+
+    expect(normalized).toEqual([]);
+    expect(rows[0].state).toBe('PENDING');
+  });
+
+  it('goes one project after another, never all at once', async () => {
+    const rows: Row[] = [
+      { id: 'a', projectId: 'p1', title: LONG, state: null },
+      { id: 'b', projectId: 'p2', title: `${LONG} dos`, state: null },
+    ];
+    const { service, normalized } = world(rows);
+
+    await service.queueEveryProject();
+
+    expect(normalized).toEqual([LONG, `${LONG} dos`]);
+  });
+
+  describe('a provider that refuses the key or the quota', () => {
+    const refused =
+      (kind: 'AUTH' | 'RATE_LIMIT' | 'PROVIDER') =>
+      (): NormalizationOutcome => ({
+        status: 'FAILED',
+        kind,
+        message: 'The provider refused',
+      });
+    const three = (projectId: string): Row[] =>
+      ['uno', 'dos', 'tres'].map((word, index) => ({
+        id: `${projectId}-${index}`,
+        projectId,
+        title: `${LONG} ${word}`,
+        state: 'PENDING' as const,
+      }));
+
+    it.each(['AUTH', 'RATE_LIMIT'] as const)(
+      'stops a pass at the first %s failure and leaves the rest of the queue waiting, not failed',
+      async (kind) => {
+        const rows = three('p1');
+        const { service, normalized } = world(rows, CONFIG, refused(kind));
+
+        await service.drain('p1');
+
+        expect(normalized).toHaveLength(1);
+        expect(rows.map((row) => row.state)).toEqual([
+          'FAILED',
+          'PENDING',
+          'PENDING',
+        ]);
+      },
+    );
+
+    it('goes on after a failure that is about the task, not about the key or the quota', async () => {
+      const rows = three('p1');
+      const { service, normalized } = world(rows, CONFIG, refused('PROVIDER'));
+
+      await service.drain('p1');
+
+      expect(normalized).toHaveLength(3);
+      expect(rows.map((row) => row.state)).toEqual([
+        'FAILED',
+        'FAILED',
+        'FAILED',
+      ]);
+    });
+
+    it('costs one call per project, not one per task, when the key is refused everywhere', async () => {
+      const rows = [...three('p1'), ...three('p2')];
+      const { service, normalized } = world(rows, CONFIG, refused('AUTH'));
+
+      await service.queueEveryProject();
+
+      expect(normalized).toHaveLength(2);
+      expect(rows.filter((row) => row.state === 'PENDING')).toHaveLength(4);
+    });
+  });
+
+  it('never rejects when the database fails', async () => {
+    const { service, prisma } = world([]);
+    prisma.project.findMany.mockRejectedValueOnce(
+      new Error('database said no'),
+    );
+
+    await expect(service.queueEveryProject()).resolves.toBeUndefined();
+  });
+});

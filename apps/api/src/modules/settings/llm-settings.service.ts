@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   LLM_DEFAULT_MODELS,
   LLM_LIMITS,
@@ -18,6 +19,9 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
 import type { LlmRuntimeConfig } from '../llm/llm.types.js';
 import type { UpdateLlmSettingsDto } from './dto/update-llm-settings.dto.js';
+
+/** Emitted when a saved configuration is ready to be used (enabled, with a readable key); the title normalizer listens (Roadmap BUG-13). */
+export const LLM_SETTINGS_READY_EVENT = 'llm.settings.ready';
 
 /** The row's id: the configuration is one per instance. */
 export const LLM_SETTINGS_ID = 'instance';
@@ -42,6 +46,7 @@ export class LlmSettingsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly config: ConfigService<EnvConfig, true>,
+    private readonly events: EventEmitter2,
   ) {}
 
   async getView(): Promise<LlmSettingsView> {
@@ -127,7 +132,14 @@ export class LlmSettingsService {
         },
       });
     }
-    return this.toView(saved);
+    const view = this.toView(saved);
+    // The moment the configuration is ready, whatever was waiting for it is worked
+    // on without anyone asking again (Roadmap BUG-13). Not on a save that changed
+    // nothing, and never for a configuration that is not ready.
+    if (view.status === 'READY' && (diff || dto.apiKey !== undefined)) {
+      this.events.emit(LLM_SETTINGS_READY_EVENT);
+    }
+    return view;
   }
 
   /** Forgets the stored key, which also switches the integration off: without a key there is nothing to call. */

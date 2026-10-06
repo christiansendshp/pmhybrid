@@ -4,13 +4,24 @@ import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import type { LlmRuntimeConfig } from '../llm/llm.types.js';
-import { LlmSettingsService } from '../settings/llm-settings.service.js';
+import {
+  LLM_SETTINGS_READY_EVENT,
+  LlmSettingsService,
+} from '../settings/llm-settings.service.js';
 import { TitleNormalizer } from './title-normalizer.service.js';
 import { needsNormalization } from './word-count.util.js';
 
 /** Tasks read per round, and rounds per run: a run is bounded, the rest waits for the next one. */
 const BATCH_SIZE = 20;
 const MAX_ROUNDS = 10;
+
+/**
+ * Failures that say something about the key or the quota, not about the task
+ * (Roadmap BUG-13): the rest of the queue would fail the same way, so a pass stops
+ * at the first one and what is left waits, rather than spending a request and a
+ * `FAILED` mark on every task.
+ */
+const STOPS_THE_PASS: ReadonlySet<string> = new Set(['AUTH', 'RATE_LIMIT']);
 
 export interface QueueResult {
   /** Failed ones put back in the queue. */
@@ -37,6 +48,8 @@ export class TitleNormalizationService {
   private readonly logger = new Logger(TitleNormalizationService.name);
   private readonly inFlight = new Map<string, Promise<void>>();
   private readonly requeued = new Set<string>();
+  private everyProject: Promise<void> | null = null;
+  private everyProjectAgain = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -81,8 +94,62 @@ export class TitleNormalizationService {
     return run;
   }
 
+  /**
+   * The configuration has just become ready (Roadmap BUG-13): every project's
+   * failed ones and long titles never queued — the ones read before this was
+   * switched on included — are queued and worked, with nobody asking again. One
+   * project after another, so a long list does not become a burst of calls; a
+   * second signal during a run makes it go round once more.
+   */
+  @OnEvent(LLM_SETTINGS_READY_EVENT)
+  onSettingsReady(): void {
+    void this.queueEveryProject();
+  }
+
+  queueEveryProject(): Promise<void> {
+    if (this.everyProject) {
+      this.everyProjectAgain = true;
+      return this.everyProject;
+    }
+    const run = (async () => {
+      try {
+        do {
+          this.everyProjectAgain = false;
+          const projects = await this.prisma.project.findMany({
+            where: { status: { not: 'ARCHIVED' } },
+            select: { id: true },
+          });
+          for (const project of projects) {
+            await this.queueTasks(project.id);
+            await this.drain(project.id);
+          }
+        } while (this.everyProjectAgain);
+      } catch (error) {
+        this.logger.error(
+          `Queueing the long titles stopped: ${error instanceof Error ? error.name : 'unknown error'}`,
+        );
+      } finally {
+        this.everyProject = null;
+      }
+    })();
+    this.everyProject = run;
+    return run;
+  }
+
   /** Puts the failed ones and the long titles never queued back in the queue, and works it if the LLM is ready. */
   async queueProject(projectId: string): Promise<QueueResult> {
+    const queued = await this.queueTasks(projectId);
+    const processing = (await this.settings.getRuntimeConfig()) !== null;
+    if (processing) {
+      void this.drain(projectId);
+    }
+    return { ...queued, processing };
+  }
+
+  /** What `queueProject` does to the tasks, without working the queue. */
+  private async queueTasks(
+    projectId: string,
+  ): Promise<{ retried: number; queued: number }> {
     const retried = (
       await this.prisma.task.updateMany({
         where: { projectId, deletedAt: null, titleNormalization: 'FAILED' },
@@ -110,11 +177,7 @@ export class TitleNormalizationService {
       });
     }
 
-    const processing = (await this.settings.getRuntimeConfig()) !== null;
-    if (processing) {
-      void this.drain(projectId);
-    }
-    return { retried, queued: ids.length, processing };
+    return { retried, queued: ids.length };
   }
 
   /** Asks for one task's normalization again (a failed one, or a long title never queued). A normalized task is left as it is. */
@@ -183,7 +246,12 @@ export class TitleNormalizationService {
       }
       for (const task of tasks) {
         seen.add(task.id);
-        await this.normalizeOne(config, task);
+        if (await this.normalizeOne(config, task)) {
+          this.logger.warn(
+            `Title normalization of project ${projectId} paused: the provider refused the key or the quota; the rest of the queue waits`,
+          );
+          return;
+        }
       }
     }
   }
@@ -196,7 +264,7 @@ export class TitleNormalizationService {
         epic: { select: { name: true } };
       };
     }>,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const sourceTitle = task.title;
     const outcome = await this.normalizer.normalize(config, {
       externalId: task.externalId,
@@ -223,7 +291,7 @@ export class TitleNormalizationService {
         where: stillThis,
         data: { titleNormalization: null },
       });
-      return;
+      return false;
     }
     if (outcome.status === 'FAILED') {
       await this.prisma.task.updateMany({
@@ -236,7 +304,7 @@ export class TitleNormalizationService {
       this.logger.warn(
         `Could not normalize the title of ${task.externalId ?? task.id} (${outcome.kind})`,
       );
-      return;
+      return STOPS_THE_PASS.has(outcome.kind);
     }
 
     // A description a person wrote is never replaced; the system's own is.
@@ -274,5 +342,6 @@ export class TitleNormalizationService {
         },
       });
     }
+    return false;
   }
 }

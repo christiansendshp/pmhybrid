@@ -14,7 +14,7 @@ untouched and the LLM is never called for it.
 - **Which tasks.** Those read from the document: a new row with a long title, or a
   row whose title the document changes to a long one. A title a person types in PM
   Hub is theirs and is never normalized. Tasks read before the feature existed are
-  queued by an explicit action (below).
+  queued the moment the configuration is ready, or by an explicit action (below).
 - **Nothing is lost.** The title the document holds is kept in `Task.originalTitle`
   and `Roadmap.md` is never written by normalization. `docs/synchronization.md`
   ("Long titles") says how sync treats the pair.
@@ -26,14 +26,14 @@ The connection to the LLM is configured in the app, by an actor holding the glob
 `.env` or an environment variable (`LlmSettings`, one row per instance: PM Hub has no
 organization model, the instance is the unit).
 
-| Field                        | Meaning                                                                                                                                                                   |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Provider                     | `ANTHROPIC` or `OPENAI`. Changing it without naming a model moves to that provider's default model                                                                        |
-| Model                        | The provider's model name. Defaults: `claude-haiku-4-5-20251001`, `gpt-4o-mini`                                                                                           |
-| API key                      | Write-only. Stored encrypted; never returned, logged, audited or shown again. Replacing it is deliberate; leaving it out keeps the stored one                             |
-| Enabled                      | Switches the integration on. Refused without a readable key                                                                                                               |
-| Temperature, timeout, tokens | Optional. Temperature unset sends nothing (the provider's default applies); timeout 1–120 s (default 30); output tokens 64–8192 (default 1024)                            |
-| Status                       | `NOT_CONFIGURED` (no key), `DISABLED` (key stored, switched off), `KEY_UNREADABLE` (the key cannot be decrypted), `READY` (the only state in which the app calls the LLM) |
+| Field                        | Meaning                                                                                                                                                                                              |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Provider                     | `ANTHROPIC`, `OPENAI` or `OPENROUTER`. Changing it without naming a model moves to that provider's default model                                                                                     |
+| Model                        | The provider's model name. Defaults: `claude-haiku-4-5-20251001`, `gpt-4o-mini`, `anthropic/claude-haiku-4.5` (OpenRouter names a model with its maker's prefix, e.g. `google/gemini-2.0-flash-001`) |
+| API key                      | Write-only. Stored encrypted; never returned, logged, audited or shown again. Replacing it is deliberate; leaving it out keeps the stored one                                                        |
+| Enabled                      | Switches the integration on. Refused without a readable key                                                                                                                                          |
+| Temperature, timeout, tokens | Optional. Temperature unset sends nothing (the provider's default applies); timeout 1–120 s (default 30); output tokens 64–8192 (default 1024)                                                       |
+| Status                       | `NOT_CONFIGURED` (no key), `DISABLED` (key stored, switched off), `KEY_UNREADABLE` (the key cannot be decrypted), `READY` (the only state in which the app calls the LLM)                            |
 
 `POST /settings/llm/test` makes a minimal real call with the stored configuration,
 also while the integration is off, so a key, a model and the network are known to
@@ -86,8 +86,26 @@ and cut), the error is logged without detail, and the rest of the queue goes on.
 While the LLM is not ready the queue simply waits: sync marks tasks `PENDING` and
 works them once it is.
 
+**Nothing needs asking once it is ready.** Saving a configuration that is ready
+(enabled, with a readable key) — the first time, or a corrected key, model or
+provider — makes the API queue the failed ones and the long titles never queued of
+every project that is not archived, the ones read before the feature existed
+included, and work them one project after another, with no sync and no request. A
+save that changes nothing, or that leaves the integration off, does nothing. It runs
+in the background after the save has answered, one pass at a time (a save during a
+pass makes it go round once more), and its failures are outcomes on the tasks, never
+an error of the save.
+
+A refused key or quota is different: an HTTP 401 or 403 (the key is wrong or the provider
+does not know it — OpenRouter keys are `sk-or-v1-…` and only work with the `OPENROUTER`
+provider) or a 429 (a rate limit or a spent quota, common with free models) says nothing
+about the task, so the pass ends at the first such answer: that task is `FAILED` with the
+reason and the rest of the queue stays `PENDING`, waiting, instead of every task being
+sent and marked failed. The next pass — a sync, saving the configuration again — goes on.
+
 To try again: `POST /projects/:projectId/titles/normalize` (`project.update`) puts
-the failed ones and the long titles never queued back in the queue;
+the failed ones and the long titles never queued back in the queue (the same thing
+the save above does for every project);
 `POST /projects/:projectId/tasks/:taskId/normalize-title` (`task.write`) does it for
 one task. Nothing is retried in a loop.
 

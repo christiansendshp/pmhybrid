@@ -52,6 +52,14 @@ const apiKeyValidator: ValidatorFn = (control: AbstractControl): ValidationError
 const PROVIDER_LABELS: Record<LlmProviderKey, string> = {
   ANTHROPIC: 'Anthropic (Claude)',
   OPENAI: 'OpenAI',
+  OPENROUTER: 'OpenRouter',
+};
+
+const MODEL_HINTS: Record<LlmProviderKey, string> = {
+  ANTHROPIC: 'El nombre del modelo tal como lo llama el proveedor.',
+  OPENAI: 'El nombre del modelo tal como lo llama el proveedor.',
+  OPENROUTER:
+    'En OpenRouter el modelo lleva el prefijo del fabricante, por ejemplo anthropic/claude-haiku-4.5.',
 };
 
 const STATUS_LABELS: Record<LlmSettingsStatus, string> = {
@@ -141,6 +149,10 @@ export class SettingsPage implements OnInit {
   private readonly typedKey = toSignal(this.form.controls.apiKey.valueChanges, {
     initialValue: '',
   });
+  private readonly typedProvider = toSignal(this.form.controls.provider.valueChanges, {
+    initialValue: this.form.controls.provider.value,
+  });
+  readonly modelHint = computed(() => MODEL_HINTS[this.typedProvider()]);
   /** The key field is shown when there is no stored key, or when it is being replaced. */
   readonly showKeyField = computed(() => !this.view()?.hasApiKey || this.replacingKey());
   /** Switching it on needs a key to call with: the stored one, or the one typed now. */

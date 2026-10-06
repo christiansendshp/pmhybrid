@@ -3,13 +3,15 @@
  * API that validates it and the web page that edits it name the same
  * providers, defaults and limits.
  */
-export const LLM_PROVIDERS = ['ANTHROPIC', 'OPENAI'] as const;
+export const LLM_PROVIDERS = ['ANTHROPIC', 'OPENAI', 'OPENROUTER'] as const;
 export type LlmProviderKey = (typeof LLM_PROVIDERS)[number];
 
 /** A sensible, cheap model for the short structured task the app gives the LLM; the administrator can name any other. */
 export const LLM_DEFAULT_MODELS: Record<LlmProviderKey, string> = {
   ANTHROPIC: 'claude-haiku-4-5-20251001',
   OPENAI: 'gpt-4o-mini',
+  /** OpenRouter names a model `maker/name`; this one is Anthropic's, through it. */
+  OPENROUTER: 'anthropic/claude-haiku-4.5',
 };
 
 export const LLM_LIMITS = {

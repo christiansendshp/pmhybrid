@@ -10,7 +10,11 @@ import {
   type LlmRequest,
   type LlmRuntimeConfig,
 } from './llm.types.js';
-import { OpenAiProvider } from './openai.provider.js';
+import {
+  OPENAI_OPTIONS,
+  OPENROUTER_OPTIONS,
+  OpenAiCompatibleProvider,
+} from './openai-compatible.provider.js';
 
 /**
  * The one door to a provider (Roadmap GAP-39c): picks the adapter the
@@ -23,7 +27,8 @@ export class LlmClient {
   constructor(@Inject(LLM_FETCH) fetchImpl: FetchLike) {
     this.providers = {
       ANTHROPIC: new AnthropicProvider(fetchImpl),
-      OPENAI: new OpenAiProvider(fetchImpl),
+      OPENAI: new OpenAiCompatibleProvider(fetchImpl, OPENAI_OPTIONS),
+      OPENROUTER: new OpenAiCompatibleProvider(fetchImpl, OPENROUTER_OPTIONS),
     };
   }
 

@@ -1,9 +1,13 @@
 import { BadRequestException } from '@nestjs/common';
+import type { EventEmitter2 } from '@nestjs/event-emitter';
 import { LLM_DEFAULT_MODELS } from '@pmhybrid/shared-types';
 import { describe, expect, it, vi } from 'vitest';
 import type { PrismaService } from '../../prisma/prisma.service.js';
 import type { AuditService } from '../audit/audit.service.js';
-import { LlmSettingsService } from './llm-settings.service.js';
+import {
+  LLM_SETTINGS_READY_EVENT,
+  LlmSettingsService,
+} from './llm-settings.service.js';
 
 const SECRET = 'a-long-enough-jwt-secret-for-the-tests-0123456789';
 const KEY = 'sk-ant-api03-TEST-KEY-should-never-be-shown';
@@ -52,14 +56,17 @@ function setup(secret = SECRET) {
     },
   };
   const record = vi.fn(async (_entry: unknown) => ({}));
+  const emit = vi.fn((_event: string) => true);
   const service = new LlmSettingsService(
     prisma as unknown as PrismaService,
     { record } as unknown as AuditService,
     { get: () => jwtSecret } as never,
+    { emit } as unknown as EventEmitter2,
   );
   return {
     service,
     record,
+    emit,
     stored: () => row,
     rotateSecret: (next: string) => {
       jwtSecret = next;
@@ -184,6 +191,67 @@ describe('LlmSettingsService (Roadmap GAP-39a)', () => {
     record.mockClear();
     await service.update({ model: 'claude-test' }, 'actor-1');
     expect(record).not.toHaveBeenCalled();
+  });
+
+  describe('telling the title normalizer the configuration is ready (Roadmap BUG-13)', () => {
+    it('signals it once a save leaves the configuration ready, so what waited is worked on', async () => {
+      const { service, emit } = setup();
+
+      await service.update({ apiKey: KEY, enabled: true }, 'actor-1');
+
+      expect(emit).toHaveBeenCalledTimes(1);
+      expect(emit).toHaveBeenCalledWith(LLM_SETTINGS_READY_EVENT);
+    });
+
+    it('signals again when a ready configuration changes, for a corrected key or model', async () => {
+      const { service, emit } = setup();
+      await service.update({ apiKey: KEY, enabled: true }, 'actor-1');
+      emit.mockClear();
+
+      await service.update({ model: 'another-model' }, 'actor-1');
+      expect(emit).toHaveBeenCalledTimes(1);
+
+      emit.mockClear();
+      await service.update({ apiKey: `${KEY}-replacement` }, 'actor-1');
+      expect(emit).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not signal for a save that changes nothing', async () => {
+      const { service, emit } = setup();
+      await service.update(
+        { apiKey: KEY, enabled: true, model: 'm' },
+        'actor-1',
+      );
+      emit.mockClear();
+
+      await service.update({ model: 'm', enabled: true }, 'actor-1');
+
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it('does not signal while the configuration is not ready, nor when the key is removed', async () => {
+      const { service, emit } = setup();
+
+      await service.update({ apiKey: KEY }, 'actor-1'); // stored, switched off
+      await service.update({ model: 'm' }, 'actor-1');
+      await service.update({ enabled: true }, 'actor-1'); // now ready: this one signals
+      emit.mockClear();
+      await service.removeApiKey('actor-1');
+
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it('is not ready for a provider that has no model of its own yet: the default is used', async () => {
+      const { service } = setup();
+
+      const view = await service.update({ provider: 'OPENROUTER' }, 'actor-1');
+
+      expect(view).toMatchObject({
+        provider: 'OPENROUTER',
+        model: LLM_DEFAULT_MODELS.OPENROUTER,
+      });
+      expect(LLM_DEFAULT_MODELS.OPENROUTER).toBe('anthropic/claude-haiku-4.5');
+    });
   });
 
   it('removes the key, which switches the integration off, and is idempotent', async () => {

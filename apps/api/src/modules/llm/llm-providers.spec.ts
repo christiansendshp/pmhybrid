@@ -152,6 +152,86 @@ describe('LLM providers over fetch (Roadmap GAP-39c)', () => {
     });
   });
 
+  describe('OpenRouter (Roadmap BUG-13)', () => {
+    const openRouter = (overrides: Partial<LlmRuntimeConfig> = {}) =>
+      config({
+        provider: 'OPENROUTER',
+        model: 'anthropic/claude-haiku-4.5',
+        apiKey: 'sk-or-v1-0123456789abcdef0123456789abcdef',
+        ...overrides,
+      });
+
+    it('speaks the chat-completions dialect at its own URL, with max_tokens as the limit', async () => {
+      const fetchImpl = vi.fn(
+        async (_url: string | URL | Request, _init?: RequestInit) =>
+          reply({ choices: [{ message: { content: '{"title":"x"}' } }] }),
+      );
+
+      const text = await client(fetchImpl).complete(
+        openRouter({ temperature: 0.2 }),
+        request,
+      );
+
+      expect(text).toBe('{"title":"x"}');
+      const [url, init] = fetchImpl.mock.calls[0];
+      expect(url).toBe('https://openrouter.ai/api/v1/chat/completions');
+      expect(init?.headers).toMatchObject({
+        authorization: 'Bearer sk-or-v1-0123456789abcdef0123456789abcdef',
+        'x-title': 'PM Hub',
+        'content-type': 'application/json',
+      });
+      const body = JSON.parse(init?.body as string);
+      expect(body).toEqual({
+        model: 'anthropic/claude-haiku-4.5',
+        max_tokens: 512,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: 'Be brief.' },
+          ...request.messages,
+        ],
+        temperature: 0.2,
+      });
+      expect(body).not.toHaveProperty('max_completion_tokens');
+    });
+
+    it('names itself in its errors and never lets the key into them', async () => {
+      const key = 'sk-or-v1-SECRET0123456789abcdef0123456789';
+      const fetchImpl = vi.fn(async () =>
+        reply(
+          {
+            error: {
+              code: 401,
+              message: `No auth credentials found for ${key}`,
+            },
+          },
+          401,
+        ),
+      );
+
+      const error = await failure(
+        client(fetchImpl).complete(openRouter({ apiKey: key }), request),
+      );
+
+      expect(error.kind).toBe('AUTH');
+      expect(error.message).toContain('OpenRouter answered 401');
+      expect(error.message).not.toContain(key);
+      expect(error.message).not.toContain('SECRET');
+    });
+
+    it('treats an empty message (a model that answered only with reasoning) as a failure', async () => {
+      const fetchImpl = vi.fn(async () =>
+        reply({ choices: [{ message: { content: null } }] }),
+      );
+
+      const error = await failure(
+        client(fetchImpl).complete(openRouter(), request),
+      );
+
+      expect(error.kind).toBe('PROVIDER');
+      expect(error.message).toBe('OpenRouter answered with no text');
+    });
+  });
+
   describe('failures', () => {
     it.each([
       [401, 'AUTH'],

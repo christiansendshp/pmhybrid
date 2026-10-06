@@ -7,6 +7,7 @@ import path from 'node:path';
 import { vi } from 'vitest';
 import { AppModule } from './../src/app.module.js';
 import { LLM_FETCH } from './../src/modules/llm/llm.types.js';
+import { TitleNormalizationService } from './../src/modules/title-normalization/title-normalization.service.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './../prisma/demo-credentials.js';
 import { assignProjectRole } from './helpers/roles.js';
@@ -306,30 +307,48 @@ describe('Title normalization of long Roadmap titles (Roadmap GAP-39d — e2e)',
   let token: string;
   // What the faked provider has been asked about, and how it answers each title.
   let asked: string[];
-  let behavior: Map<string, 'http500' | 'badjson'>;
+  let requests: { url: string; headers: Record<string, string>; body: Record<string, unknown>; title: string }[];
+  let behavior: Map<string, 'http500' | 'http401' | 'badjson'>;
 
-  const reply = (text: string) =>
-    new Response(JSON.stringify({ content: [{ type: 'text', text }] }), { status: 200 });
+  /** The text in the dialect of whoever was called: Anthropic's content blocks, or chat completions (OpenAI, OpenRouter). */
+  const replyFor = (url: string, text: string) =>
+    new Response(
+      JSON.stringify(
+        url.includes('anthropic.com')
+          ? { content: [{ type: 'text', text }] }
+          : { choices: [{ message: { content: text } }] },
+      ),
+      { status: 200 },
+    );
 
-  const fakeProvider = async (_url: unknown, init?: RequestInit) => {
-    const prompt = JSON.parse(init?.body as string).messages[0].content as string;
+  const fakeProvider = async (url: unknown, init?: RequestInit) => {
+    const target = String(url);
+    const body = JSON.parse(init?.body as string);
+    const prompt = (body.messages as { role: string; content: string }[]).find((m) => m.role === 'user')?.content ?? '';
     const title = /^title: (.*)$/m.exec(prompt)?.[1] ?? '';
     asked.push(title);
+    requests.push({ url: target, headers: { ...(init?.headers as Record<string, string>) }, body, title });
     const mode = behavior.get(title);
     if (mode === 'http500') {
       return new Response(JSON.stringify({ error: { message: `overloaded for ${KEY}` } }), {
         status: 500,
       });
     }
+    if (mode === 'http401') {
+      return new Response(JSON.stringify({ error: { message: `Incorrect API key provided: ${KEY}` } }), {
+        status: 401,
+      });
+    }
     if (mode === 'badjson') {
-      return reply('Claro, aquí tienes el resultado.');
+      return replyFor(target, 'Claro, aquí tienes el resultado.');
     }
     const answer = ANSWERS[title];
-    return answer ? reply(JSON.stringify(answer)) : new Response('{}', { status: 500 });
+    return answer ? replyFor(target, JSON.stringify(answer)) : new Response('{}', { status: 500 });
   };
 
   beforeEach(async () => {
     asked = [];
+    requests = [];
     behavior = new Map();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -352,19 +371,31 @@ describe('Title normalization of long Roadmap titles (Roadmap GAP-39d — e2e)',
 
   afterEach(async () => {
     await request(server()).delete('/settings/llm/api-key').set('Authorization', auth());
+    // A spec may have chosen another provider: the next one starts from the default.
+    await prisma.llmSettings.updateMany({ where: { id: 'instance' }, data: { provider: 'ANTHROPIC', model: 'claude-test' } });
     await app.close();
   });
 
   const server = () => app.getHttpServer();
   const auth = () => `Bearer ${token}`;
 
-  /** The one row every spec shares: with a key and on, or off. */
+  /**
+   * The one row every spec shares: with a key and on, or off. Switching it on
+   * works every project's queue on its own (Roadmap BUG-13), and the projects of
+   * the other spec files share this database, so it waits for that pass to end
+   * and forgets what it asked: what a spec asserts starts after it.
+   */
   async function configure(enabled: boolean) {
     await request(server())
       .put('/settings/llm')
       .set('Authorization', auth())
-      .send({ apiKey: KEY, model: 'claude-test', enabled })
+      .send({ provider: 'ANTHROPIC', apiKey: KEY, model: 'claude-test', enabled })
       .expect(200);
+    if (enabled) {
+      await app.get(TitleNormalizationService).queueEveryProject();
+      asked.length = 0;
+      requests.length = 0;
+    }
   }
 
   async function createProject(docs: string) {
@@ -552,7 +583,30 @@ describe('Title normalization of long Roadmap titles (Roadmap GAP-39d — e2e)',
     expect(asked).toEqual([LONG_1, LONG_1]);
   });
 
-  it('waits, without calling anyone, while the LLM is not configured, and works the queue once it is', async () => {
+  it('stops at a refused key and leaves the rest of the queue waiting, so a wrong key does not fail every task (Roadmap BUG-13)', async () => {
+    await configure(true);
+    behavior.set(LONG_1, 'http401');
+    behavior.set(LONG_2, 'http401');
+    const { projectId } = await project(entry('N-1', LONG_1), entry('N-3', LONG_2));
+
+    await sync(projectId).expect(201);
+    await until(async () => (await prisma.task.count({ where: { projectId, titleNormalization: 'FAILED' } })) === 1);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    const states = (await prisma.task.findMany({ where: { projectId } })).map((task) => task.titleNormalization);
+    expect(states.sort()).toEqual(['FAILED', 'PENDING']);
+    expect(requests.filter((call) => call.title === LONG_1 || call.title === LONG_2)).toHaveLength(1);
+    const failed = await prisma.task.findFirstOrThrow({ where: { projectId, titleNormalization: 'FAILED' } });
+    expect(failed.titleNormalizationError).toContain('401');
+    expect(failed.titleNormalizationError).not.toContain(KEY);
+
+    // Once the key works, saving the configuration again works what was left, and the failed one too.
+    behavior.clear();
+    await configure(true);
+    await until(async () => (await prisma.task.count({ where: { projectId, titleNormalization: 'DONE' } })) === 2);
+  });
+
+  it('waits, without calling anyone, while the LLM is not configured, and works the queue the moment it is switched on, with nobody asking', async () => {
     const { projectId } = await project(entry('N-1', LONG_1), entry('N-2', SHORT));
 
     const run = await sync(projectId).expect(201);
@@ -561,32 +615,97 @@ describe('Title normalization of long Roadmap titles (Roadmap GAP-39d — e2e)',
     expect(await taskRow(projectId, 'N-1')).toMatchObject({ title: LONG_1, titleNormalization: 'PENDING' });
     expect(asked).toEqual([]);
 
+    // Saving it while it stays off is no reason to call anyone either.
+    await configure(false);
+    expect(asked).toEqual([]);
+    expect(await taskRow(projectId, 'N-1')).toMatchObject({ titleNormalization: 'PENDING' });
+
+    // No sync, no request to normalize: enabling is the only thing that happens.
     await configure(true);
-    const queued = await request(server())
-      .post(`/projects/${projectId}/titles/normalize`)
-      .set('Authorization', auth())
-      .expect(200);
-    expect(queued.body).toEqual({ retried: 0, queued: 0, processing: true });
+
     await until(noPending(projectId));
     expect(await taskRow(projectId, 'N-1')).toMatchObject({ titleNormalization: 'DONE', originalTitle: LONG_1 });
+    expect(await taskRow(projectId, 'N-2')).toMatchObject({ titleNormalization: null });
   });
 
-  it('queues the long titles read before the feature existed', async () => {
+  it('queues the long titles read before the feature existed, on request while off and by itself once on (Roadmap BUG-13)', async () => {
     const { projectId } = await project(entry('N-1', LONG_1), entry('N-2', SHORT));
     await sync(projectId).expect(201);
     // As a task read before the feature: long, and never queued.
     await prisma.task.updateMany({ where: { projectId, externalId: 'N-1' }, data: { titleNormalization: null } });
 
-    await configure(true);
     const res = await request(server())
       .post(`/projects/${projectId}/titles/normalize`)
       .set('Authorization', auth())
       .expect(200);
+    expect(res.body).toEqual({ retried: 0, queued: 1, processing: false });
+    expect(await taskRow(projectId, 'N-1')).toMatchObject({ titleNormalization: 'PENDING' });
 
-    expect(res.body).toEqual({ retried: 0, queued: 1, processing: true });
+    await configure(true);
+
     await until(noPending(projectId));
     expect(await taskRow(projectId, 'N-1')).toMatchObject({ titleNormalization: 'DONE' });
     expect(await taskRow(projectId, 'N-2')).toMatchObject({ titleNormalization: null });
+  });
+
+  it('on its own, enabling reaches the failed ones and the titles never queued, in a project it was never asked about', async () => {
+    const { projectId } = await project(entry('N-1', LONG_1), entry('N-3', LONG_2), entry('N-2', SHORT));
+    await sync(projectId).expect(201);
+    // One that failed before, one read before the feature, one that is short.
+    await prisma.task.updateMany({
+      where: { projectId, externalId: 'N-1' },
+      data: { titleNormalization: 'FAILED', titleNormalizationError: 'The provider answered 401' },
+    });
+    await prisma.task.updateMany({ where: { projectId, externalId: 'N-3' }, data: { titleNormalization: null } });
+
+    await configure(true);
+
+    await until(async () => (await taskRow(projectId, 'N-1')).titleNormalization === 'DONE');
+    await until(async () => (await taskRow(projectId, 'N-3')).titleNormalization === 'DONE');
+    expect(await taskRow(projectId, 'N-1')).toMatchObject({ title: ANSWERS[LONG_1].title, titleNormalizationError: null });
+    expect(await taskRow(projectId, 'N-3')).toMatchObject({ title: ANSWERS[LONG_2].title, originalTitle: LONG_2 });
+    expect(await taskRow(projectId, 'N-2')).toMatchObject({ title: SHORT, titleNormalization: null });
+  });
+
+  it('works through OpenRouter: its URL, the key as a bearer and nowhere else, and the model it was configured with (Roadmap BUG-13)', async () => {
+    const OPENROUTER_KEY = 'sk-or-v1-E2E-OPENROUTER-KEY-must-never-leave-the-server-0123456789';
+    const { projectId } = await project(entry('N-1', LONG_1), entry('N-2', SHORT));
+    await sync(projectId).expect(201);
+
+    const saved = await request(server())
+      .put('/settings/llm')
+      .set('Authorization', auth())
+      .send({ provider: 'OPENROUTER', apiKey: OPENROUTER_KEY, enabled: true })
+      .expect(200);
+    expect(saved.body).toMatchObject({
+      provider: 'OPENROUTER',
+      model: 'anthropic/claude-haiku-4.5',
+      enabled: true,
+      hasApiKey: true,
+      status: 'READY',
+    });
+    expect(JSON.stringify(saved.body)).not.toContain(OPENROUTER_KEY);
+
+    await until(noPending(projectId));
+
+    expect(await taskRow(projectId, 'N-1')).toMatchObject({
+      title: ANSWERS[LONG_1].title,
+      originalTitle: LONG_1,
+      titleNormalization: 'DONE',
+    });
+    const calls = requests.filter((call) => call.title === LONG_1);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe('https://openrouter.ai/api/v1/chat/completions');
+    expect(calls[0].headers).toMatchObject({ authorization: `Bearer ${OPENROUTER_KEY}` });
+    expect(calls[0].body).toMatchObject({ model: 'anthropic/claude-haiku-4.5', max_tokens: 1024 });
+    expect(calls[0].body).not.toHaveProperty('max_completion_tokens');
+    // A short title never reaches the provider.
+    expect(requests.filter((call) => call.title === SHORT)).toEqual([]);
+
+    // The key is in no row but the settings one, and there only as ciphertext.
+    expect(JSON.stringify(await prisma.task.findMany({ where: { projectId } }))).not.toContain(OPENROUTER_KEY);
+    expect(JSON.stringify(await prisma.auditEvent.findMany({ where: { projectId } }))).not.toContain(OPENROUTER_KEY);
+    expect((await prisma.llmSettings.findUnique({ where: { id: 'instance' } }))?.apiKeyEncrypted).not.toContain(OPENROUTER_KEY);
   });
 
   it('never replaces a description a person wrote', async () => {
@@ -600,7 +719,6 @@ describe('Title normalization of long Roadmap titles (Roadmap GAP-39d — e2e)',
       .expect(200);
 
     await configure(true);
-    await request(server()).post(`/projects/${projectId}/titles/normalize`).set('Authorization', auth()).expect(200);
     await until(noPending(projectId));
 
     expect(await taskRow(projectId, 'N-1')).toMatchObject({

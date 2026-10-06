@@ -170,6 +170,61 @@ describe('SettingsPage (Roadmap GAP-39b — LLM configuration)', () => {
     expect(component.form.controls.model.value).toBe('mi-modelo-propio');
   });
 
+  it('offers OpenRouter, with its own default model and a hint on how its models are named (Roadmap BUG-13)', async () => {
+    const { component, root, text, settle } = await render();
+    expect(component.providers).toContain('OPENROUTER');
+    expect(component.providerLabels.OPENROUTER).toBe('OpenRouter');
+    expect(text()).not.toContain('prefijo del fabricante');
+
+    component.form.controls.provider.setValue('OPENROUTER');
+    await settle();
+
+    expect(component.form.controls.model.value).toBe(LLM_DEFAULT_MODELS.OPENROUTER);
+    expect(text()).toContain('prefijo del fabricante');
+    expect(root.querySelector('input[formcontrolname="model"]')).not.toBeNull();
+  });
+
+  it('says that enabling also works what was already waiting, in every project', async () => {
+    const { text } = await render();
+
+    expect(text()).toContain(
+      'al activarla se procesan también las que ya esperaban, de todos los proyectos',
+    );
+  });
+
+  it('saves OpenRouter with its key like any other provider, and the key is never shown again', async () => {
+    const OPENROUTER_KEY = 'sk-or-v1-WEB-TEST-KEY-never-shown-again-0123456789';
+    service.update.mockResolvedValue(
+      view({
+        provider: 'OPENROUTER',
+        model: LLM_DEFAULT_MODELS.OPENROUTER,
+        hasApiKey: true,
+        enabled: true,
+        status: 'READY',
+      }),
+    );
+    const { component, root, text, settle } = await render();
+    component.form.controls.provider.setValue('OPENROUTER');
+    component.form.controls.apiKey.setValue(OPENROUTER_KEY);
+    component.form.controls.enabled.setValue(true);
+    component.form.markAsDirty();
+    await settle();
+
+    await component.save();
+    await settle();
+
+    expect(service.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'OPENROUTER',
+        model: LLM_DEFAULT_MODELS.OPENROUTER,
+        enabled: true,
+        apiKey: OPENROUTER_KEY,
+      }),
+    );
+    expect(text()).toContain('Lista');
+    expect(root.innerHTML).not.toContain(OPENROUTER_KEY);
+  });
+
   it('replaces a stored key only on purpose, and can go back without changing it', async () => {
     service.get.mockResolvedValue(view({ hasApiKey: true, status: 'DISABLED' }));
     const { component, root, settle } = await render();

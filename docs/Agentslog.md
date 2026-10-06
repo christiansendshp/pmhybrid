@@ -312,3 +312,14 @@ segments live in `docs/history/`.
 - Summary: Long Roadmap titles are normalized by a configured LLM, with nothing lost: a title of 10 words or fewer is kept and never sent, a longer one becomes a title of at most 10 words plus an extended description by Anthropic or OpenAI, the title the document holds is kept and Roadmap.md is never written by it, an LLM failure keeps the task as it was and never stops the Roadmap, and a Configuración page administers provider, model and the write-only encrypted API key from the app, never from .env. Sync only queues; a runner works the queue after the commit. ADR-020, docs/title-normalization.md
 - Files: apps/api/src/modules/settings/, apps/api/src/modules/llm/, apps/api/src/modules/title-normalization/, apps/api/src/common/secret-crypto.util.ts, apps/web/src/app/features/settings/, docs/title-normalization.md, docs/decisions/ADR-020-llm-normalization-of-long-roadmap-titles.md
 - Verify: slices GAP-39a, 39b, 39c, 39d and 39e verified: api unit 569, api e2e 343 with the coverage floor met, web unit 320, Playwright a11y 66, builds ok, and checked live on the rebuilt persistent stack
+
+## [2026-10-06T15:10:23Z] | claude | BUG-13 | IN_PROGRESS
+
+- Summary: Add OpenRouter as a provider and work the queue as soon as the LLM is enabled
+- Verify: pending
+
+## [2026-10-06T15:34:34Z] | claude | BUG-13 | DONE
+
+- Summary: OpenRouter is a provider (one OpenAI-compatible adapter serves OpenAI and OpenRouter: URL, token-limit parameter and x-title header differ; default model anthropic/claude-haiku-4.5) and the LLM works by itself the moment a ready configuration is saved: every non-archived project's failed and never-queued long titles are queued and worked one project after another, with no sync or request; a refused key or quota (401/403/429) ends the pass at the first answer and leaves the rest PENDING instead of failing every task; the Configuración page offers OpenRouter, hints how its models are named and says enabling processes what already waited
+- Files: apps/api/src/modules/llm/, apps/api/src/modules/settings/llm-settings.service.ts, apps/api/src/modules/title-normalization/title-normalization.service.ts, packages/shared-types/src/llm.ts, apps/web/src/app/features/settings/, apps/api/test/llm.e2e-spec.ts, docs/title-normalization.md, docs/decisions/ADR-020-llm-normalization-of-long-roadmap-titles.md, docs/Stack_Tecnologies.md, docs/api-reference.md, docs/ProductDescription.md
+- Verify: api unit 587 and lint ok, api e2e 345 with the coverage floor met (llm.e2e-spec 28 incl. OpenRouter URL/bearer/max_tokens and enable-without-sync), web unit 323 and eslint ok, builds ok; found live: the user's OpenRouter key was saved under OpenAI and failed with 401 against api.openai.com
