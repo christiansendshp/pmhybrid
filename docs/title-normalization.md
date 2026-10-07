@@ -110,7 +110,11 @@ about the key. A refusal of that kind reaching a call that was in flight with ot
 does not fail its task: the pass goes one call at a time from then on and the task
 takes its turn again. Only a refusal reaching a call that was alone pauses the pass.
 The balance itself is the account's: with too few credits even one call can be refused,
-and the fix is to add credits or to choose a model that costs nothing.
+and the fix is to add credits or to choose a model that costs nothing. OpenRouter says it
+plainly ("Insufficient credits. This account never purchased credits"). A refusal of any
+of these kinds is recorded on the task with its reason but does not count as one of its
+three automatic attempts: while the account stays refused every sync costs one call, and
+once it is fixed the next sync goes on with the whole queue.
 
 **A sync adapts what failed too.** When a sync finishes, the tasks of that project that
 failed, and have failed fewer than three times in a row (`Task.titleNormalizationAttempts`),

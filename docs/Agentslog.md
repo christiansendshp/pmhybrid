@@ -345,3 +345,14 @@ segments live in `docs/history/`.
 - Summary: A quota or balance refusal is handled as the account's, not the task's: 402 (OpenRouter, not enough credits given the requests in flight) is a RATE_LIMIT, and when such a refusal reaches a call that was in flight with others the pass goes one call at a time from then on and the task takes its turn again without being marked failed; only a refusal reaching a call that was alone pauses the pass, leaving the rest waiting
 - Files: apps/api/src/modules/llm/http-json.util.ts, apps/api/src/modules/llm/llm.types.ts, apps/api/src/modules/title-normalization/title-normalization.service.ts, docs/title-normalization.md, docs/decisions/ADR-020-llm-normalization-of-long-roadmap-titles.md, docs/Stack_Tecnologies.md
 - Verify: api unit 605 and lint ok, api e2e 350 with the coverage floor met, build ok; found live: four calls at a time made OpenRouter answer 402 for the credits reserved for requests in flight and 42 tasks were marked failed in seconds
+
+## [2026-10-07T13:59:03Z] | claude | BUG-16 | IN_PROGRESS
+
+- Summary: Refusals about the account do not count as a task's automatic attempts
+- Verify: pending
+
+## [2026-10-07T14:02:44Z] | claude | BUG-16 | DONE
+
+- Summary: A failure about the key, the quota or the balance (401, 403, 429, 402) is recorded on the task with its reason but no longer counts as one of its three automatic attempts: while an account is refused (OpenRouter: Insufficient credits) every sync costs one call and no task is given up on, and once it is fixed the next sync goes on with the whole queue
+- Files: apps/api/src/modules/title-normalization/title-normalization.service.ts, docs/title-normalization.md, docs/decisions/ADR-020-llm-normalization-of-long-roadmap-titles.md, docs/Stack_Tecnologies.md
+- Verify: api unit 607 and lint ok, build ok, llm e2e 32 pass; found live: OpenRouter answered 402 Insufficient credits, the pass paused after one call as designed but that task was charged an attempt

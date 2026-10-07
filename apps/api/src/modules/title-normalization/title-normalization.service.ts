@@ -443,7 +443,11 @@ export class TitleNormalizationService {
         data: {
           titleNormalization: 'FAILED',
           titleNormalizationError: outcome.message,
-          titleNormalizationAttempts: { increment: 1 },
+          // A refusal about the key, the quota or the balance is not about this
+          // task: it does not spend one of its automatic attempts (Roadmap BUG-16).
+          titleNormalizationAttempts: {
+            increment: STOPS_THE_PASS.has(outcome.kind) ? 0 : 1,
+          },
         },
       });
       this.logger.warn(

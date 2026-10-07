@@ -477,6 +477,30 @@ describe('working every project once the configuration is ready (Roadmap BUG-13)
       expect(rows[0]).toMatchObject({ state: 'FAILED', attempts: 3 });
     });
 
+    it.each(['AUTH', 'RATE_LIMIT'] as const)(
+      "does not count a %s refusal as one of the task's attempts: every sync probes again, at the cost of one call",
+      async (kind) => {
+        const rows: Row[] = [
+          { id: 'a', projectId: 'p1', title: LONG, state: 'PENDING' },
+          { id: 'b', projectId: 'p1', title: `${LONG} dos`, state: 'PENDING' },
+        ];
+        const { service, normalized } = world(rows, CONFIG, () => ({
+          status: 'FAILED',
+          kind,
+          message: 'OpenRouter answered 402: Insufficient credits',
+        }));
+
+        for (let sync = 0; sync < 5; sync += 1) {
+          await service.afterSync('p1');
+        }
+
+        // One call per sync, however many syncs: the task is never given up on.
+        expect(normalized).toHaveLength(5);
+        expect(rows.every((row) => (row.attempts ?? 0) === 0)).toBe(true);
+        expect(rows.map((row) => row.state)).toContain('PENDING');
+      },
+    );
+
     it('starts the count again when a person asks, or the configuration is saved', async () => {
       const rows: Row[] = [
         { id: 'a', projectId: 'p1', title: LONG, state: 'FAILED', attempts: 3 },
