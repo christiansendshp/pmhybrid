@@ -16,6 +16,21 @@ const BATCH_SIZE = 20;
 const MAX_ROUNDS = 10;
 
 /**
+ * Calls in flight at once within a project (Roadmap BUG-14). A free model takes
+ * 10 to 50 seconds per answer, so one at a time left a Roadmap unadapted for
+ * hours after a sync; a few at a time stay far from any provider's rate limit.
+ */
+export const NORMALIZATION_CONCURRENCY = 4;
+
+/**
+ * How many failures in a row a task may have for the syncs that follow to try it
+ * again by themselves (Roadmap BUG-14): a failure is rarely about the task, and
+ * a bound keeps one that always fails from being paid for at every sync. A
+ * person's retry and a new configuration start the count again.
+ */
+export const MAX_AUTOMATIC_ATTEMPTS = 3;
+
+/**
  * Failures that say something about the key or the quota, not about the task
  * (Roadmap BUG-13): the rest of the queue would fail the same way, so a pass stops
  * at the first one and what is left waits, rather than spending a request and a
@@ -61,7 +76,36 @@ export class TitleNormalizationService {
   /** Returns at once: the sync that emitted this never waits for the LLM. */
   @OnEvent('sync.completed')
   onSyncCompleted(payload: { projectId: string }): void {
-    void this.drain(payload.projectId);
+    void this.afterSync(payload.projectId);
+  }
+
+  /**
+   * What a finished sync does (Roadmap BUG-14): the tasks that failed, and have
+   * not failed too many times, are tried again with the ones the sync queued, so
+   * a Roadmap ends adapted without anyone asking. Never rejects.
+   */
+  async afterSync(projectId: string): Promise<void> {
+    try {
+      if ((await this.settings.getRuntimeConfig()) !== null) {
+        await this.prisma.task.updateMany({
+          where: {
+            projectId,
+            deletedAt: null,
+            titleNormalization: 'FAILED',
+            titleNormalizationAttempts: { lt: MAX_AUTOMATIC_ATTEMPTS },
+          },
+          data: {
+            titleNormalization: 'PENDING',
+            titleNormalizationError: null,
+          },
+        });
+      }
+    } catch (error) {
+      this.logger.error(
+        `Requeueing the failed titles of project ${projectId} stopped: ${error instanceof Error ? error.name : 'unknown error'}`,
+      );
+    }
+    await this.drain(projectId);
   }
 
   /**
@@ -153,7 +197,11 @@ export class TitleNormalizationService {
     const retried = (
       await this.prisma.task.updateMany({
         where: { projectId, deletedAt: null, titleNormalization: 'FAILED' },
-        data: { titleNormalization: 'PENDING', titleNormalizationError: null },
+        data: {
+          titleNormalization: 'PENDING',
+          titleNormalizationError: null,
+          titleNormalizationAttempts: 0,
+        },
       })
     ).count;
 
@@ -210,7 +258,11 @@ export class TitleNormalizationService {
     }
     await this.prisma.task.updateMany({
       where: { id: task.id, originalTitle: null },
-      data: { titleNormalization: 'PENDING', titleNormalizationError: null },
+      data: {
+        titleNormalization: 'PENDING',
+        titleNormalizationError: null,
+        titleNormalizationAttempts: 0,
+      },
     });
     const processing = (await this.settings.getRuntimeConfig()) !== null;
     if (processing) {
@@ -244,14 +296,40 @@ export class TitleNormalizationService {
       if (tasks.length === 0) {
         return;
       }
-      for (const task of tasks) {
+      // The first call of a pass goes alone (Roadmap BUG-14): a wrong key or a
+      // spent quota costs one call, not one per task in flight. The rest of the
+      // batch goes a few at a time, and stops being started once one is refused.
+      const state = { paused: false };
+      const queue = [...tasks];
+      const work = async (task: (typeof tasks)[number]): Promise<void> => {
         seen.add(task.id);
         if (await this.normalizeOne(config, task)) {
-          this.logger.warn(
-            `Title normalization of project ${projectId} paused: the provider refused the key or the quota; the rest of the queue waits`,
-          );
-          return;
+          state.paused = true;
         }
+      };
+      if (round === 0) {
+        await work(queue.shift()!);
+      }
+      const worker = async (): Promise<void> => {
+        while (!state.paused) {
+          const task = queue.shift();
+          if (!task) {
+            return;
+          }
+          await work(task);
+        }
+      };
+      await Promise.all(
+        Array.from(
+          { length: Math.min(NORMALIZATION_CONCURRENCY, queue.length) },
+          worker,
+        ),
+      );
+      if (state.paused) {
+        this.logger.warn(
+          `Title normalization of project ${projectId} paused: the provider refused the key or the quota; the rest of the queue waits`,
+        );
+        return;
       }
     }
   }
@@ -299,6 +377,7 @@ export class TitleNormalizationService {
         data: {
           titleNormalization: 'FAILED',
           titleNormalizationError: outcome.message,
+          titleNormalizationAttempts: { increment: 1 },
         },
       });
       this.logger.warn(
@@ -319,6 +398,7 @@ export class TitleNormalizationService {
         titleNormalization: 'DONE',
         titleNormalizedAt: new Date(),
         titleNormalizationError: null,
+        titleNormalizationAttempts: 0,
         ...(descriptionIsFree
           ? {
               description: outcome.description,

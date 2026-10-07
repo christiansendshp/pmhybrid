@@ -208,6 +208,7 @@ describe('ConflictsService.resolve permissions (Roadmap SECURITY-02)', () => {
         originalTitle: null,
         titleNormalization: null,
         titleNormalizationError: null,
+        titleNormalizationAttempts: 0,
         titleNormalizedAt: null,
       },
     });

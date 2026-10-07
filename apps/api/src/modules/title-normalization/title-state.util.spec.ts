@@ -26,6 +26,7 @@ describe('title state (Roadmap GAP-39d)', () => {
       originalTitle: null,
       titleNormalization: 'PENDING',
       titleNormalizationError: null,
+      titleNormalizationAttempts: 0,
       titleNormalizedAt: null,
     });
   });
@@ -73,6 +74,7 @@ describe('title state (Roadmap GAP-39d)', () => {
       originalTitle: null,
       titleNormalization: null,
       titleNormalizationError: null,
+      titleNormalizationAttempts: 0,
       titleNormalizedAt: null,
     });
   });

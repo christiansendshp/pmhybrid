@@ -323,3 +323,14 @@ segments live in `docs/history/`.
 - Summary: OpenRouter is a provider (one OpenAI-compatible adapter serves OpenAI and OpenRouter: URL, token-limit parameter and x-title header differ; default model anthropic/claude-haiku-4.5) and the LLM works by itself the moment a ready configuration is saved: every non-archived project's failed and never-queued long titles are queued and worked one project after another, with no sync or request; a refused key or quota (401/403/429) ends the pass at the first answer and leaves the rest PENDING instead of failing every task; the Configuración page offers OpenRouter, hints how its models are named and says enabling processes what already waited
 - Files: apps/api/src/modules/llm/, apps/api/src/modules/settings/llm-settings.service.ts, apps/api/src/modules/title-normalization/title-normalization.service.ts, packages/shared-types/src/llm.ts, apps/web/src/app/features/settings/, apps/api/test/llm.e2e-spec.ts, docs/title-normalization.md, docs/decisions/ADR-020-llm-normalization-of-long-roadmap-titles.md, docs/Stack_Tecnologies.md, docs/api-reference.md, docs/ProductDescription.md
 - Verify: api unit 587 and lint ok, api e2e 345 with the coverage floor met (llm.e2e-spec 28 incl. OpenRouter URL/bearer/max_tokens and enable-without-sync), web unit 323 and eslint ok, builds ok; found live: the user's OpenRouter key was saved under OpenAI and failed with 401 against api.openai.com
+
+## [2026-10-07T13:31:09Z] | claude | BUG-14 | IN_PROGRESS
+
+- Summary: Adapt long titles promptly after a sync: concurrency, empty-answer retry, bounded automatic retry of failed ones
+- Verify: pending
+
+## [2026-10-07T13:43:12Z] | claude | BUG-14 | DONE
+
+- Summary: After a sync the long titles are adapted promptly and completely, in the system only (Roadmap.md is never written): the queue is worked four calls at a time within a project with the first call of a pass on its own, an answer with no text is asked again once with a four times larger output budget, and every sync tries a failed task again up to three failures in a row (Task.titleNormalizationAttempts; a person's retry or saving the configuration starts the count over)
+- Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261007120000_add_title_normalization_attempts/, apps/api/src/modules/title-normalization/, apps/api/src/modules/llm/, apps/api/test/llm.e2e-spec.ts, docs/title-normalization.md, docs/decisions/ADR-020-llm-normalization-of-long-roadmap-titles.md, docs/Stack_Tecnologies.md, docs/ProductDescription.md
+- Verify: api unit 602 and lint ok, api e2e 350 with the coverage floor met (llm.e2e-spec 32: automatic retry by the next sync, stop after three failures, empty answer retried with 4096 tokens, concurrency peak between 2 and 4, document byte-identical), builds ok; found live: 43 adapted, 131 queued and 13 failed with no text hours after the first sync

@@ -48,6 +48,8 @@ export class LlmProviderError extends Error {
   constructor(
     readonly kind: LlmErrorKind,
     message: string,
+    /** The call succeeded but carried no text: a model that reasons can spend the whole output budget before it writes (Roadmap BUG-14). */
+    readonly emptyAnswer = false,
   ) {
     super(message);
     this.name = 'LlmProviderError';

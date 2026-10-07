@@ -24,6 +24,7 @@ const CLEARED = {
   originalTitle: null,
   titleNormalization: null,
   titleNormalizationError: null,
+  titleNormalizationAttempts: 0,
   titleNormalizedAt: null,
 } as const;
 

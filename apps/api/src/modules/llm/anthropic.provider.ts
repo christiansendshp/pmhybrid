@@ -43,7 +43,11 @@ export class AnthropicProvider implements LlmProvider {
       .map((block) => block.text as string)
       .join('');
     if (!text.trim()) {
-      throw new LlmProviderError('PROVIDER', 'Anthropic answered with no text');
+      throw new LlmProviderError(
+        'PROVIDER',
+        'Anthropic answered with no text',
+        true,
+      );
     }
     return text;
   }

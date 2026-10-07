@@ -3,7 +3,10 @@ import type { PrismaService } from '../../prisma/prisma.service.js';
 import type { AuditService } from '../audit/audit.service.js';
 import type { LlmRuntimeConfig } from '../llm/llm.types.js';
 import type { LlmSettingsService } from '../settings/llm-settings.service.js';
-import { TitleNormalizationService } from './title-normalization.service.js';
+import {
+  NORMALIZATION_CONCURRENCY,
+  TitleNormalizationService,
+} from './title-normalization.service.js';
 import type {
   NormalizationOutcome,
   TitleNormalizer,
@@ -134,6 +137,7 @@ describe('TitleNormalizationService (Roadmap GAP-39d)', () => {
     expect(call.data).toEqual({
       titleNormalization: 'FAILED',
       titleNormalizationError: 'Anthropic did not answer within 1 seconds',
+      titleNormalizationAttempts: { increment: 1 },
     });
     expect(record).not.toHaveBeenCalled();
   });
@@ -163,13 +167,17 @@ describe('working every project once the configuration is ready (Roadmap BUG-13)
     projectId: string;
     title: string;
     state: 'PENDING' | 'FAILED' | null;
+    /** Failures in a row; absent is none. */
+    attempts?: number;
   }
 
   /** A database of two projects, enough of Prisma to queue and work them. */
   function world(
     rows: Row[],
     config: LlmRuntimeConfig | null = CONFIG,
-    outcomeFor: (title: string) => NormalizationOutcome = () => ({
+    outcomeFor: (
+      title: string,
+    ) => NormalizationOutcome | Promise<NormalizationOutcome> = () => ({
       status: 'SKIPPED',
     }),
   ) {
@@ -188,8 +196,12 @@ describe('working every project once the configuration is ready (Roadmap BUG-13)
               projectId?: string;
               id?: string | { in: string[] };
               titleNormalization?: string | null;
+              titleNormalizationAttempts?: { lt: number };
             };
-            data: { titleNormalization?: 'PENDING' | 'FAILED' | null };
+            data: {
+              titleNormalization?: 'PENDING' | 'FAILED' | null;
+              titleNormalizationAttempts?: number | { increment: number };
+            };
           }) => {
             let count = 0;
             for (const row of rows) {
@@ -204,13 +216,24 @@ describe('working every project once the configuration is ready (Roadmap BUG-13)
               const byState =
                 where.titleNormalization === undefined ||
                 where.titleNormalization === row.state;
+              const byAttempts =
+                where.titleNormalizationAttempts === undefined ||
+                (row.attempts ?? 0) < where.titleNormalizationAttempts.lt;
               if (
                 byProject &&
                 byId &&
                 byState &&
+                byAttempts &&
                 'titleNormalization' in data
               ) {
                 row.state = data.titleNormalization ?? null;
+                const attempts = data.titleNormalizationAttempts;
+                if (attempts !== undefined) {
+                  row.attempts =
+                    typeof attempts === 'number'
+                      ? attempts
+                      : (row.attempts ?? 0) + attempts.increment;
+                }
                 count += 1;
               }
             }
@@ -386,6 +409,185 @@ describe('working every project once the configuration is ready (Roadmap BUG-13)
 
       expect(normalized).toHaveLength(2);
       expect(rows.filter((row) => row.state === 'PENDING')).toHaveLength(4);
+    });
+  });
+
+  describe('after a sync (Roadmap BUG-14)', () => {
+    const failing = (): NormalizationOutcome => ({
+      status: 'FAILED',
+      kind: 'PROVIDER',
+      message: 'The provider answered 500',
+    });
+
+    it('tries the failed ones again with the ones the sync queued, and works them', async () => {
+      const rows: Row[] = [
+        { id: 'a', projectId: 'p1', title: LONG, state: 'FAILED', attempts: 1 },
+        {
+          id: 'b',
+          projectId: 'p1',
+          title: `${LONG} dos`,
+          state: 'PENDING',
+        },
+        { id: 'c', projectId: 'p2', title: `${LONG} tres`, state: 'FAILED' },
+      ];
+      const { service, normalized } = world(rows);
+
+      await service.afterSync('p1');
+
+      // The project that synced is worked; another project's failed one is not its business.
+      expect(normalized.sort()).toEqual([LONG, `${LONG} dos`].sort());
+      expect(rows.find((row) => row.id === 'c')?.state).toBe('FAILED');
+    });
+
+    it('leaves a task alone once it has failed too many times in a row', async () => {
+      const rows: Row[] = [
+        { id: 'a', projectId: 'p1', title: LONG, state: 'FAILED', attempts: 3 },
+        {
+          id: 'b',
+          projectId: 'p1',
+          title: `${LONG} dos`,
+          state: 'FAILED',
+          attempts: 2,
+        },
+      ];
+      const { service, normalized } = world(rows);
+
+      await service.afterSync('p1');
+
+      expect(normalized).toEqual([`${LONG} dos`]);
+      expect(rows.find((row) => row.id === 'a')).toMatchObject({
+        state: 'FAILED',
+        attempts: 3,
+      });
+    });
+
+    it('counts each failure, so a task that always fails stops being paid for after three syncs', async () => {
+      const rows: Row[] = [
+        { id: 'a', projectId: 'p1', title: LONG, state: 'PENDING' },
+      ];
+      const { service, normalized } = world(rows, CONFIG, failing);
+
+      await service.afterSync('p1');
+      await service.afterSync('p1');
+      await service.afterSync('p1');
+      await service.afterSync('p1');
+      await service.afterSync('p1');
+
+      expect(normalized).toHaveLength(3);
+      expect(rows[0]).toMatchObject({ state: 'FAILED', attempts: 3 });
+    });
+
+    it('starts the count again when a person asks, or the configuration is saved', async () => {
+      const rows: Row[] = [
+        { id: 'a', projectId: 'p1', title: LONG, state: 'FAILED', attempts: 3 },
+      ];
+      const { service, normalized } = world(rows);
+
+      const result = await service.queueProject('p1');
+      await service.drain('p1');
+
+      expect(result).toMatchObject({ retried: 1, processing: true });
+      expect(normalized).toEqual([LONG]);
+      expect(rows[0].attempts).toBe(0);
+    });
+
+    it('only works what is queued, and leaves the failed ones as they are, while the LLM is not ready', async () => {
+      const rows: Row[] = [
+        { id: 'a', projectId: 'p1', title: LONG, state: 'FAILED', attempts: 1 },
+      ];
+      const { service, normalized } = world(rows, null);
+
+      await service.afterSync('p1');
+
+      expect(normalized).toEqual([]);
+      expect(rows[0]).toMatchObject({ state: 'FAILED', attempts: 1 });
+    });
+
+    it('never rejects when the database fails', async () => {
+      const { service, prisma } = world([]);
+      prisma.task.updateMany.mockRejectedValueOnce(
+        new Error('database said no'),
+      );
+
+      await expect(service.afterSync('p1')).resolves.toBeUndefined();
+    });
+
+    it('is what a finished sync does, and returns at once', () => {
+      const { service } = world([]);
+      const afterSync = vi
+        .spyOn(service, 'afterSync')
+        .mockResolvedValue(undefined);
+
+      expect(service.onSyncCompleted({ projectId: 'p1' })).toBeUndefined();
+
+      expect(afterSync).toHaveBeenCalledWith('p1');
+    });
+  });
+
+  describe('a few calls at a time (Roadmap BUG-14)', () => {
+    const many = (count: number): Row[] =>
+      Array.from({ length: count }, (_, index) => ({
+        id: `t${index}`,
+        projectId: 'p1',
+        title: `${LONG} ${index}`,
+        state: 'PENDING' as const,
+      }));
+
+    function slow() {
+      const tick = { running: 0, peak: 0, atFirstCall: -1, started: 0 };
+      const outcomeFor = async (): Promise<NormalizationOutcome> => {
+        tick.started += 1;
+        tick.running += 1;
+        if (tick.started === 1) {
+          tick.atFirstCall = tick.running;
+        }
+        tick.peak = Math.max(tick.peak, tick.running);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        tick.running -= 1;
+        return { status: 'SKIPPED' };
+      };
+      return { tick, outcomeFor };
+    }
+
+    it('works the queue with a bounded concurrency, not one at a time and not all at once', async () => {
+      const rows = many(12);
+      const { tick, outcomeFor } = slow();
+      const { service, normalized } = world(rows, CONFIG, outcomeFor);
+
+      await service.drain('p1');
+
+      expect(normalized).toHaveLength(12);
+      expect(tick.peak).toBe(NORMALIZATION_CONCURRENCY);
+    });
+
+    it('sends the first call of a pass alone, so a wrong key costs one call', async () => {
+      const rows = many(8);
+      const { tick, outcomeFor } = slow();
+      const { service } = world(rows, CONFIG, outcomeFor);
+
+      await service.drain('p1');
+
+      expect(tick.atFirstCall).toBe(1);
+    });
+
+    it('starts no more once one is refused, and leaves what was not started waiting', async () => {
+      const rows = many(12);
+      let started = 0;
+      const { service } = world(rows, CONFIG, async () => {
+        started += 1;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        return {
+          status: 'FAILED',
+          kind: 'RATE_LIMIT',
+          message: 'OpenRouter answered 429',
+        };
+      });
+
+      await service.drain('p1');
+
+      // Refused on the call that went alone: nothing else is started.
+      expect(started).toBe(1);
+      expect(rows.filter((row) => row.state === 'PENDING')).toHaveLength(11);
     });
   });
 

@@ -58,7 +58,11 @@ export class OpenAiCompatibleProvider implements LlmProvider {
 
     const text = answer.choices?.[0]?.message?.content;
     if (typeof text !== 'string' || !text.trim()) {
-      throw new LlmProviderError('PROVIDER', `${name} answered with no text`);
+      throw new LlmProviderError(
+        'PROVIDER',
+        `${name} answered with no text`,
+        true,
+      );
     }
     return text;
   }

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { LLM_LIMITS } from '@pmhybrid/shared-types';
 import { LlmClient } from '../llm/llm-client.service.js';
 import {
   LlmProviderError,
@@ -19,6 +20,9 @@ import {
   needsNormalization,
   truncateToWords,
 } from './word-count.util.js';
+
+/** How many times the output budget grows for the second try of an empty answer. */
+const EMPTY_ANSWER_BUDGET_FACTOR = 4;
 
 export type NormalizationFailureKind = LlmErrorKind | 'INVALID_RESPONSE';
 
@@ -68,7 +72,7 @@ export class TitleNormalizer {
       messages: [{ role: 'user', content: buildUserMessage(source) }],
     };
     try {
-      const first = await this.llm.complete(config, request);
+      const first = await this.ask(config, request);
       const firstCheck = checkAnswer(first, sourceText);
       if (firstCheck.ok) {
         return {
@@ -78,7 +82,7 @@ export class TitleNormalizer {
         };
       }
 
-      const second = await this.llm.complete(config, {
+      const second = await this.ask(config, {
         system: SYSTEM_PROMPT,
         messages: [
           ...request.messages,
@@ -118,6 +122,33 @@ export class TitleNormalizer {
         kind: 'PROVIDER',
         message: 'The normalization failed unexpectedly',
       };
+    }
+  }
+
+  /**
+   * One call. An answer with no text is asked again once with a larger output
+   * budget (Roadmap BUG-14): a model that reasons spends tokens thinking before it
+   * writes, and when the budget ends first the answer is empty, not wrong.
+   */
+  private async ask(
+    config: LlmRuntimeConfig,
+    request: LlmRequest,
+  ): Promise<string> {
+    try {
+      return await this.llm.complete(config, request);
+    } catch (error) {
+      const roomier = Math.min(
+        config.maxTokens * EMPTY_ANSWER_BUDGET_FACTOR,
+        LLM_LIMITS.MAX_TOKENS.max,
+      );
+      if (
+        error instanceof LlmProviderError &&
+        error.emptyAnswer &&
+        roomier > config.maxTokens
+      ) {
+        return this.llm.complete({ ...config, maxTokens: roomier }, request);
+      }
+      throw error;
     }
   }
 }

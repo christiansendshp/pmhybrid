@@ -308,7 +308,9 @@ describe('Title normalization of long Roadmap titles (Roadmap GAP-39d — e2e)',
   // What the faked provider has been asked about, and how it answers each title.
   let asked: string[];
   let requests: { url: string; headers: Record<string, string>; body: Record<string, unknown>; title: string }[];
-  let behavior: Map<string, 'http500' | 'http401' | 'badjson'>;
+  let behavior: Map<string, 'http500' | 'http401' | 'badjson' | 'emptyOnce'>;
+  // Titles whose first answer was already empty (the 'emptyOnce' behavior).
+  let emptied: Set<string>;
 
   /** The text in the dialect of whoever was called: Anthropic's content blocks, or chat completions (OpenAI, OpenRouter). */
   const replyFor = (url: string, text: string) =>
@@ -321,7 +323,7 @@ describe('Title normalization of long Roadmap titles (Roadmap GAP-39d — e2e)',
       { status: 200 },
     );
 
-  const fakeProvider = async (url: unknown, init?: RequestInit) => {
+  const answer = async (url: unknown, init?: RequestInit) => {
     const target = String(url);
     const body = JSON.parse(init?.body as string);
     const prompt = (body.messages as { role: string; content: string }[]).find((m) => m.role === 'user')?.content ?? '';
@@ -333,6 +335,10 @@ describe('Title normalization of long Roadmap titles (Roadmap GAP-39d — e2e)',
       return new Response(JSON.stringify({ error: { message: `overloaded for ${KEY}` } }), {
         status: 500,
       });
+    }
+    if (mode === 'emptyOnce' && !emptied.has(title)) {
+      emptied.add(title);
+      return replyFor(target, '');
     }
     if (mode === 'http401') {
       return new Response(JSON.stringify({ error: { message: `Incorrect API key provided: ${KEY}` } }), {
@@ -346,10 +352,25 @@ describe('Title normalization of long Roadmap titles (Roadmap GAP-39d — e2e)',
     return answer ? replyFor(target, JSON.stringify(answer)) : new Response('{}', { status: 500 });
   };
 
+  // How many calls were answering at once: the queue is worked a few at a time (Roadmap BUG-14).
+  const inFlightPeak = { value: 0, running: 0 };
+
+  const fakeProvider = async (url: unknown, init?: RequestInit) => {
+    inFlightPeak.running += 1;
+    inFlightPeak.value = Math.max(inFlightPeak.value, inFlightPeak.running);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      return await answer(url, init);
+    } finally {
+      inFlightPeak.running -= 1;
+    }
+  };
+
   beforeEach(async () => {
     asked = [];
     requests = [];
     behavior = new Map();
+    emptied = new Set();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -389,7 +410,15 @@ describe('Title normalization of long Roadmap titles (Roadmap GAP-39d — e2e)',
     await request(server())
       .put('/settings/llm')
       .set('Authorization', auth())
-      .send({ provider: 'ANTHROPIC', apiKey: KEY, model: 'claude-test', enabled })
+      .send({
+        provider: 'ANTHROPIC',
+        apiKey: KEY,
+        model: 'claude-test',
+        enabled,
+        maxTokens: 1024,
+        timeoutMs: 30_000,
+        temperature: null,
+      })
       .expect(200);
     if (enabled) {
       await app.get(TitleNormalizationService).queueEveryProject();
@@ -604,6 +633,104 @@ describe('Title normalization of long Roadmap titles (Roadmap GAP-39d — e2e)',
     behavior.clear();
     await configure(true);
     await until(async () => (await prisma.task.count({ where: { projectId, titleNormalization: 'DONE' } })) === 2);
+  });
+
+  it('a sync tries a failed task again by itself, so the Roadmap ends adapted with nobody asking (Roadmap BUG-14)', async () => {
+    await configure(true);
+    behavior.set(LONG_1, 'http500');
+    const { file, projectId } = await project(entry('N-1', LONG_1), entry('N-2', SHORT));
+    const before = readFileSync(file, 'utf-8');
+    await sync(projectId).expect(201);
+    await until(noPending(projectId));
+    expect(await taskRow(projectId, 'N-1')).toMatchObject({
+      titleNormalization: 'FAILED',
+      titleNormalizationAttempts: 1,
+    });
+
+    // The provider recovers; the next sync is all that happens.
+    behavior.clear();
+    await sync(projectId).expect(201);
+
+    await until(async () => (await taskRow(projectId, 'N-1')).titleNormalization === 'DONE');
+    expect(await taskRow(projectId, 'N-1')).toMatchObject({
+      title: ANSWERS[LONG_1].title,
+      originalTitle: LONG_1,
+      description: ANSWERS[LONG_1].description,
+      titleNormalizationError: null,
+      titleNormalizationAttempts: 0,
+    });
+    // In the system only: the document is exactly as it was.
+    expect(readFileSync(file, 'utf-8')).toBe(before);
+  });
+
+  it('stops paying for a task that always fails after three syncs, and a person asking starts the count again', async () => {
+    await configure(true);
+    behavior.set(LONG_1, 'http500');
+    const { projectId } = await project(entry('N-1', LONG_1));
+
+    for (let round = 0; round < 5; round += 1) {
+      await sync(projectId).expect(201);
+      await until(noPending(projectId));
+    }
+
+    expect(requests.filter((call) => call.title === LONG_1)).toHaveLength(3);
+    expect(await taskRow(projectId, 'N-1')).toMatchObject({
+      titleNormalization: 'FAILED',
+      titleNormalizationAttempts: 3,
+    });
+
+    behavior.clear();
+    const res = await request(server())
+      .post(`/projects/${projectId}/titles/normalize`)
+      .set('Authorization', auth())
+      .expect(200);
+    expect(res.body).toEqual({ retried: 1, queued: 0, processing: true });
+    await until(async () => (await taskRow(projectId, 'N-1')).titleNormalization === 'DONE');
+    expect(await taskRow(projectId, 'N-1')).toMatchObject({ titleNormalizationAttempts: 0 });
+  });
+
+  it('asks again once, with a larger output budget, when a model answers with no text (Roadmap BUG-14)', async () => {
+    await configure(true);
+    behavior.set(LONG_1, 'emptyOnce');
+    const { projectId } = await project(entry('N-1', LONG_1));
+
+    await sync(projectId).expect(201);
+    await until(noPending(projectId));
+
+    expect(await taskRow(projectId, 'N-1')).toMatchObject({
+      title: ANSWERS[LONG_1].title,
+      titleNormalization: 'DONE',
+    });
+    const calls = requests.filter((call) => call.title === LONG_1);
+    expect(calls).toHaveLength(2);
+    expect(calls[0].body.max_tokens).toBe(1024);
+    expect(calls[1].body.max_tokens).toBe(4096);
+  });
+
+  it('works a long queue a few calls at a time, after a first one on its own', async () => {
+    await configure(true);
+    const titles = Array.from({ length: 9 }, (_, index) => `${LONG_3} número ${index + 1}`);
+    const docs = createScratchDocsPath();
+    writeFileSync(
+      path.join(docs, 'Roadmap.md'),
+      roadmapOf(...titles.map((title, index) => entry(`N-${index + 1}`, title))),
+      'utf-8',
+    );
+    const projectId = await createProject(docs);
+    for (const title of titles) {
+      ANSWERS[title] = { title: `Rediseñar alta de agentes ${title.slice(-1)}`, description: ANSWERS[LONG_3].description };
+    }
+    inFlightPeak.value = 0;
+
+    await sync(projectId).expect(201);
+    await until(noPending(projectId));
+
+    expect(await prisma.task.count({ where: { projectId, titleNormalization: 'DONE' } })).toBe(9);
+    expect(inFlightPeak.value).toBeGreaterThan(1);
+    expect(inFlightPeak.value).toBeLessThanOrEqual(4);
+    for (const title of titles) {
+      delete ANSWERS[title];
+    }
   });
 
   it('waits, without calling anyone, while the LLM is not configured, and works the queue the moment it is switched on, with nobody asking', async () => {

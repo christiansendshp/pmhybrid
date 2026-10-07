@@ -246,4 +246,75 @@ describe('TitleNormalizer (Roadmap GAP-39c)', () => {
     });
     expect(JSON.stringify(outcome)).not.toContain(KEY);
   });
+
+  describe('an answer with no text (Roadmap BUG-14)', () => {
+    const empty = () =>
+      new LlmProviderError(
+        'PROVIDER',
+        'OpenRouter answered with no text',
+        true,
+      );
+
+    it('is asked again once with a larger output budget, and the second answer is used', async () => {
+      const { normalizer, complete } = setup([empty(), GOOD]);
+
+      const outcome = await normalizer.normalize(CONFIG, { title: LONG_TITLE });
+
+      expect(outcome).toMatchObject({
+        status: 'NORMALIZED',
+        title: 'Validar y conciliar novedades de asistencia',
+      });
+      expect(complete).toHaveBeenCalledTimes(2);
+      expect(complete.mock.calls[0][0].maxTokens).toBe(512);
+      expect(complete.mock.calls[1][0].maxTokens).toBe(2048);
+      // The same question: nothing is added to the conversation.
+      expect(complete.mock.calls[1][1]).toEqual(complete.mock.calls[0][1]);
+    });
+
+    it('is a failure of the provider when the larger budget is no better, and never asks a third time', async () => {
+      const { normalizer, complete } = setup([empty(), empty()]);
+
+      const outcome = await normalizer.normalize(CONFIG, { title: LONG_TITLE });
+
+      expect(outcome).toEqual({
+        status: 'FAILED',
+        kind: 'PROVIDER',
+        message: 'OpenRouter answered with no text',
+      });
+      expect(complete).toHaveBeenCalledTimes(2);
+    });
+
+    it('is not asked again when the budget is already the largest allowed', async () => {
+      const { normalizer, complete } = setup([empty()]);
+
+      const outcome = await normalizer.normalize(
+        { ...CONFIG, maxTokens: 8192 },
+        { title: LONG_TITLE },
+      );
+
+      expect(outcome).toMatchObject({ status: 'FAILED', kind: 'PROVIDER' });
+      expect(complete).toHaveBeenCalledTimes(1);
+    });
+
+    it('is not what any other failure gets: a provider error is not asked again', async () => {
+      const { normalizer, complete } = setup([
+        new LlmProviderError('PROVIDER', 'OpenRouter answered 500'),
+      ]);
+
+      const outcome = await normalizer.normalize(CONFIG, { title: LONG_TITLE });
+
+      expect(outcome).toMatchObject({ status: 'FAILED', kind: 'PROVIDER' });
+      expect(complete).toHaveBeenCalledTimes(1);
+    });
+
+    it('also covers the corrective call', async () => {
+      const { normalizer, complete } = setup(['no json', empty(), GOOD]);
+
+      const outcome = await normalizer.normalize(CONFIG, { title: LONG_TITLE });
+
+      expect(outcome).toMatchObject({ status: 'NORMALIZED' });
+      expect(complete).toHaveBeenCalledTimes(3);
+      expect(complete.mock.calls[2][0].maxTokens).toBe(2048);
+    });
+  });
 });

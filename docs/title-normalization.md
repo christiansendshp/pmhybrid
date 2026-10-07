@@ -103,11 +103,26 @@ about the task, so the pass ends at the first such answer: that task is `FAILED`
 reason and the rest of the queue stays `PENDING`, waiting, instead of every task being
 sent and marked failed. The next pass — a sync, saving the configuration again — goes on.
 
+**A sync adapts what failed too.** When a sync finishes, the tasks of that project that
+failed, and have failed fewer than three times in a row (`Task.titleNormalizationAttempts`),
+are queued again with the ones the sync marked, so a Roadmap ends adapted without anyone
+asking. After the third failure in a row only an explicit action tries the task again, so a
+task that always fails is not paid for at every sync. Everything stays in the system:
+`Roadmap.md` is never written.
+
+**An answer with no text** (a model that reasons can spend the whole output budget before
+it writes, which OpenRouter's free models do now and then) is asked again once with an
+output budget four times larger, up to 8192 tokens; if that is empty too, it is a failure.
+
+**How fast.** Within a project the queue is worked four calls at a time, the first call of
+a pass on its own (so a wrong key costs one call), instead of one at a time: a free model
+takes 10 to 50 seconds per answer, which left a Roadmap of 150 tasks unadapted for hours.
+
 To try again: `POST /projects/:projectId/titles/normalize` (`project.update`) puts
 the failed ones and the long titles never queued back in the queue (the same thing
-the save above does for every project);
+the save above does for every project, and both start the count of failures again);
 `POST /projects/:projectId/tasks/:taskId/normalize-title` (`task.write`) does it for
-one task. Nothing is retried in a loop.
+one task. Nothing is retried in an unbounded loop.
 
 ## In the app
 
