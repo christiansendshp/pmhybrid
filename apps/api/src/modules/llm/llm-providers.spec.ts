@@ -237,6 +237,7 @@ describe('LLM providers over fetch (Roadmap GAP-39c)', () => {
       [401, 'AUTH'],
       [403, 'AUTH'],
       [429, 'RATE_LIMIT'],
+      [402, 'RATE_LIMIT'],
       [504, 'TIMEOUT'],
       [400, 'PROVIDER'],
       [404, 'PROVIDER'],

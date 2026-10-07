@@ -96,12 +96,21 @@ in the background after the save has answered, one pass at a time (a save during
 pass makes it go round once more), and its failures are outcomes on the tasks, never
 an error of the save.
 
-A refused key or quota is different: an HTTP 401 or 403 (the key is wrong or the provider
+A refused key, quota or balance is different: an HTTP 401 or 403 (the key is wrong or the provider
 does not know it — OpenRouter keys are `sk-or-v1-…` and only work with the `OPENROUTER`
-provider) or a 429 (a rate limit or a spent quota, common with free models) says nothing
+provider) a 429 (a rate limit or a spent quota, common with free models) or a 402 (OpenRouter's "not enough credits") says nothing
 about the task, so the pass ends at the first such answer: that task is `FAILED` with the
 reason and the rest of the queue stays `PENDING`, waiting, instead of every task being
 sent and marked failed. The next pass — a sync, saving the configuration again — goes on.
+
+One exception, because calls go a few at a time: OpenRouter reserves credits for every
+request in flight and answers 402 ("retry after in-flight requests settle") when the
+reservations exceed the balance, which says something about the concurrency and not
+about the key. A refusal of that kind reaching a call that was in flight with others
+does not fail its task: the pass goes one call at a time from then on and the task
+takes its turn again. Only a refusal reaching a call that was alone pauses the pass.
+The balance itself is the account's: with too few credits even one call can be refused,
+and the fix is to add credits or to choose a model that costs nothing.
 
 **A sync adapts what failed too.** When a sync finishes, the tasks of that project that
 failed, and have failed fewer than three times in a row (`Task.titleNormalizationAttempts`),

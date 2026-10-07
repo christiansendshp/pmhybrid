@@ -8,7 +8,10 @@ import {
   LLM_SETTINGS_READY_EVENT,
   LlmSettingsService,
 } from '../settings/llm-settings.service.js';
-import { TitleNormalizer } from './title-normalizer.service.js';
+import {
+  TitleNormalizer,
+  type NormalizationOutcome,
+} from './title-normalizer.service.js';
 import { needsNormalization } from './word-count.util.js';
 
 /** Tasks read per round, and rounds per run: a run is bounded, the rest waits for the next one. */
@@ -37,6 +40,23 @@ export const MAX_AUTOMATIC_ATTEMPTS = 3;
  * `FAILED` mark on every task.
  */
 const STOPS_THE_PASS: ReadonlySet<string> = new Set(['AUTH', 'RATE_LIMIT']);
+
+/** A task with what the prompt needs about where it sits. */
+type QueuedTask = Prisma.TaskGetPayload<{
+  include: {
+    phase: { select: { name: true } };
+    epic: { select: { name: true } };
+  };
+}>;
+
+/** How a pass is going: how many calls it may have in flight, how many are, and whether it stopped. */
+interface PassFlow {
+  limit: number;
+  running: number;
+  /** Calls started so far: tells whether another one began during a call. */
+  started: number;
+  paused: boolean;
+}
 
 export interface QueueResult {
   /** Failed ones put back in the queue. */
@@ -278,6 +298,12 @@ export class TitleNormalizationService {
       return;
     }
     const seen = new Set<string>();
+    const flow: PassFlow = {
+      limit: NORMALIZATION_CONCURRENCY,
+      running: 0,
+      started: 0,
+      paused: false,
+    };
     for (let round = 0; round < MAX_ROUNDS; round += 1) {
       const tasks = await this.prisma.task.findMany({
         where: {
@@ -296,36 +322,8 @@ export class TitleNormalizationService {
       if (tasks.length === 0) {
         return;
       }
-      // The first call of a pass goes alone (Roadmap BUG-14): a wrong key or a
-      // spent quota costs one call, not one per task in flight. The rest of the
-      // batch goes a few at a time, and stops being started once one is refused.
-      const state = { paused: false };
-      const queue = [...tasks];
-      const work = async (task: (typeof tasks)[number]): Promise<void> => {
-        seen.add(task.id);
-        if (await this.normalizeOne(config, task)) {
-          state.paused = true;
-        }
-      };
-      if (round === 0) {
-        await work(queue.shift()!);
-      }
-      const worker = async (): Promise<void> => {
-        while (!state.paused) {
-          const task = queue.shift();
-          if (!task) {
-            return;
-          }
-          await work(task);
-        }
-      };
-      await Promise.all(
-        Array.from(
-          { length: Math.min(NORMALIZATION_CONCURRENCY, queue.length) },
-          worker,
-        ),
-      );
-      if (state.paused) {
+      await this.workBatch(config, tasks, seen, flow, round === 0);
+      if (flow.paused) {
         this.logger.warn(
           `Title normalization of project ${projectId} paused: the provider refused the key or the quota; the rest of the queue waits`,
         );
@@ -334,25 +332,93 @@ export class TitleNormalizationService {
     }
   }
 
-  private async normalizeOne(
+  /**
+   * Works one batch a few calls at a time (Roadmap BUG-14). The first call of a
+   * pass goes alone, so a wrong key or a spent quota costs one call, not one per
+   * task in flight.
+   *
+   * A refusal of the quota or the balance that arrives while other calls were in
+   * flight may be their doing — OpenRouter reserves credits for every request in
+   * flight and answers 402 "retry after in-flight requests settle" — so it does
+   * not fail the task: the pass goes one call at a time from then on and the task
+   * takes its turn again. Only a refusal that reaches a call that was alone
+   * pauses the pass.
+   */
+  private async workBatch(
     config: LlmRuntimeConfig,
-    task: Prisma.TaskGetPayload<{
-      include: {
-        phase: { select: { name: true } };
-        epic: { select: { name: true } };
-      };
-    }>,
-  ): Promise<boolean> {
+    tasks: QueuedTask[],
+    seen: Set<string>,
+    flow: PassFlow,
+    probeFirst: boolean,
+  ): Promise<void> {
+    const queue = [...tasks];
+    const work = async (task: QueuedTask): Promise<void> => {
+      // One at a time means one: the calls still in flight from before settle first.
+      while (flow.limit === 1 && flow.running > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      seen.add(task.id);
+      const startedWith = flow.running;
+      const marker = flow.started;
+      flow.running += 1;
+      flow.started += 1;
+      let outcome: NormalizationOutcome;
+      try {
+        outcome = await this.normalizer.normalize(config, {
+          externalId: task.externalId,
+          entryType: task.entryType,
+          title: task.title,
+          description: task.description,
+          acceptanceCriteria: task.acceptanceCriteria,
+          phase: task.phase?.name,
+          epic: task.epic?.name,
+        });
+      } finally {
+        flow.running -= 1;
+      }
+      if (outcome.status === 'FAILED' && STOPS_THE_PASS.has(outcome.kind)) {
+        const overlapped = startedWith > 0 || flow.started - marker > 1;
+        if (overlapped) {
+          if (flow.limit > 1) {
+            this.logger.warn(
+              'The provider refused while several calls were in flight; going one call at a time',
+            );
+          }
+          flow.limit = 1;
+          seen.delete(task.id);
+          queue.unshift(task);
+          return;
+        }
+        flow.paused = true;
+      }
+      await this.record(task, outcome);
+    };
+
+    if (probeFirst && queue.length > 0) {
+      await work(queue.shift()!);
+    }
+    const worker = async (index: number): Promise<void> => {
+      while (!flow.paused && index < flow.limit) {
+        const task = queue.shift();
+        if (!task) {
+          return;
+        }
+        await work(task);
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(flow.limit, queue.length) }, (_, index) =>
+        worker(index),
+      ),
+    );
+  }
+
+  /** Writes what normalizing a task came to. */
+  private async record(
+    task: QueuedTask,
+    outcome: NormalizationOutcome,
+  ): Promise<void> {
     const sourceTitle = task.title;
-    const outcome = await this.normalizer.normalize(config, {
-      externalId: task.externalId,
-      entryType: task.entryType,
-      title: sourceTitle,
-      description: task.description,
-      acceptanceCriteria: task.acceptanceCriteria,
-      phase: task.phase?.name,
-      epic: task.epic?.name,
-    });
     // Applied only over the very title that was normalized and only while it is
     // still queued: if the document changed it meanwhile, this answer is for a
     // title that no longer exists and is dropped.
@@ -369,7 +435,7 @@ export class TitleNormalizationService {
         where: stillThis,
         data: { titleNormalization: null },
       });
-      return false;
+      return;
     }
     if (outcome.status === 'FAILED') {
       await this.prisma.task.updateMany({
@@ -383,7 +449,7 @@ export class TitleNormalizationService {
       this.logger.warn(
         `Could not normalize the title of ${task.externalId ?? task.id} (${outcome.kind})`,
       );
-      return STOPS_THE_PASS.has(outcome.kind);
+      return;
     }
 
     // A description a person wrote is never replaced; the system's own is.
@@ -422,6 +488,5 @@ export class TitleNormalizationService {
         },
       });
     }
-    return false;
   }
 }

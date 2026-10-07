@@ -96,7 +96,9 @@ function statusToKind(status: number) {
   if (status === 401 || status === 403) {
     return 'AUTH' as const;
   }
-  if (status === 429) {
+  // 402 is OpenRouter's "not enough credits": like a rate limit it is about the
+  // account, not the request, so the rest of a queue would be refused the same way.
+  if (status === 429 || status === 402) {
     return 'RATE_LIMIT' as const;
   }
   if (status === 408 || status === 504) {

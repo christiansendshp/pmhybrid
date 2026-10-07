@@ -334,3 +334,14 @@ segments live in `docs/history/`.
 - Summary: After a sync the long titles are adapted promptly and completely, in the system only (Roadmap.md is never written): the queue is worked four calls at a time within a project with the first call of a pass on its own, an answer with no text is asked again once with a four times larger output budget, and every sync tries a failed task again up to three failures in a row (Task.titleNormalizationAttempts; a person's retry or saving the configuration starts the count over)
 - Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261007120000_add_title_normalization_attempts/, apps/api/src/modules/title-normalization/, apps/api/src/modules/llm/, apps/api/test/llm.e2e-spec.ts, docs/title-normalization.md, docs/decisions/ADR-020-llm-normalization-of-long-roadmap-titles.md, docs/Stack_Tecnologies.md, docs/ProductDescription.md
 - Verify: api unit 602 and lint ok, api e2e 350 with the coverage floor met (llm.e2e-spec 32: automatic retry by the next sync, stop after three failures, empty answer retried with 4096 tokens, concurrency peak between 2 and 4, document byte-identical), builds ok; found live: 43 adapted, 131 queued and 13 failed with no text hours after the first sync
+
+## [2026-10-07T13:49:40Z] | claude | BUG-15 | IN_PROGRESS
+
+- Summary: Degrade to one call at a time on an overlapped credit/quota refusal; 402 is a quota refusal
+- Verify: pending
+
+## [2026-10-07T13:54:39Z] | claude | BUG-15 | DONE
+
+- Summary: A quota or balance refusal is handled as the account's, not the task's: 402 (OpenRouter, not enough credits given the requests in flight) is a RATE_LIMIT, and when such a refusal reaches a call that was in flight with others the pass goes one call at a time from then on and the task takes its turn again without being marked failed; only a refusal reaching a call that was alone pauses the pass, leaving the rest waiting
+- Files: apps/api/src/modules/llm/http-json.util.ts, apps/api/src/modules/llm/llm.types.ts, apps/api/src/modules/title-normalization/title-normalization.service.ts, docs/title-normalization.md, docs/decisions/ADR-020-llm-normalization-of-long-roadmap-titles.md, docs/Stack_Tecnologies.md
+- Verify: api unit 605 and lint ok, api e2e 350 with the coverage floor met, build ok; found live: four calls at a time made OpenRouter answer 402 for the credits reserved for requests in flight and 42 tasks were marked failed in seconds

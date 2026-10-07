@@ -589,6 +589,60 @@ describe('working every project once the configuration is ready (Roadmap BUG-13)
       expect(started).toBe(1);
       expect(rows.filter((row) => row.state === 'PENDING')).toHaveLength(11);
     });
+
+    /**
+     * A provider that refuses while more than one call is in flight, as OpenRouter
+     * does when the credits reserved for the calls in flight exceed the balance
+     * (402 "retry after in-flight requests settle"), and answers a call alone.
+     */
+    function refusesOverlap(firstAlwaysWorks: boolean) {
+      const calls = { total: 0, running: 0, refusedAlone: 0 };
+      const outcomeFor = async (): Promise<NormalizationOutcome> => {
+        calls.total += 1;
+        const isFirst = calls.total === 1;
+        calls.running += 1;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        const overlapped = calls.running > 1;
+        calls.running -= 1;
+        if (overlapped || (!firstAlwaysWorks && !isFirst)) {
+          if (!overlapped) {
+            calls.refusedAlone += 1;
+          }
+          return {
+            status: 'FAILED',
+            kind: 'RATE_LIMIT',
+            message:
+              'OpenRouter answered 402: retry after in-flight requests settle',
+          };
+        }
+        return { status: 'SKIPPED' };
+      };
+      return { calls, outcomeFor };
+    }
+
+    it('goes one call at a time when the provider refuses while calls overlap, and no task is failed for it', async () => {
+      const rows = many(10);
+      const { calls, outcomeFor } = refusesOverlap(true);
+      const { service } = world(rows, CONFIG, outcomeFor);
+
+      await service.drain('p1');
+
+      // Every task was worked, none was marked failed, and some calls were asked twice.
+      expect(rows.map((row) => row.state)).toEqual(Array(10).fill(null));
+      expect(calls.total).toBeGreaterThan(10);
+    });
+
+    it('pauses, and fails only the task that was refused alone, once going one at a time is refused too', async () => {
+      const rows = many(10);
+      const { service } = world(rows, CONFIG, refusesOverlap(false).outcomeFor);
+
+      await service.drain('p1');
+
+      const states = rows.map((row) => row.state);
+      expect(states.filter((state) => state === 'FAILED')).toHaveLength(1);
+      expect(states.filter((state) => state === 'PENDING')).toHaveLength(8);
+      expect(states.filter((state) => state === null)).toHaveLength(1);
+    });
   });
 
   it('never rejects when the database fails', async () => {

@@ -34,6 +34,7 @@ export interface LlmProvider {
 export type LlmErrorKind =
   /** The provider rejected the key (401/403). */
   | 'AUTH'
+  /** A rate limit or a spent quota or balance (429, or 402 "not enough credits"). */
   | 'RATE_LIMIT'
   | 'TIMEOUT'
   | 'NETWORK'
