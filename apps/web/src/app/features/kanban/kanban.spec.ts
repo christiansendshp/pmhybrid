@@ -128,6 +128,28 @@ describe('Kanban (brief §15)', () => {
     expect(text()).toContain('1 de 1 tareas');
   });
 
+  it('shows a long title shortened, with the whole title as a tooltip, and a short one as it is (Roadmap UX-04)', async () => {
+    const long =
+      'Modal de avance con fases nombradas durante la generación de un parte, reemplaza el mensaje genérico de empleados';
+    const { harness } = await render([
+      card({ id: 't1', title: long }),
+      card({ id: 't2', title: 'Actualizar documentación del proyecto' }),
+    ]);
+    const links = Array.from(
+      harness.routeNativeElement!.querySelectorAll<HTMLAnchorElement>('.card__title'),
+    );
+    const byText = (prefix: string) => links.find((link) => link.textContent?.startsWith(prefix))!;
+
+    expect(byText('Modal de avance')?.textContent?.trim()).toBe(
+      'Modal de avance con fases nombradas durante la generación…',
+    );
+    expect(byText('Modal de avance').getAttribute('title')).toBe(long);
+    expect(byText('Actualizar').textContent?.trim()).toBe('Actualizar documentación del proyecto');
+    expect(byText('Actualizar').hasAttribute('title')).toBe(false);
+    // The task keeps its title: only the view is shorter, and the search still finds the whole of it.
+    expect(harness.routeNativeElement!.textContent).not.toContain('mensaje genérico de empleados');
+  });
+
   it('marks the assignee of a task in development as fixed, and only then (Roadmap UX-01)', async () => {
     const { harness } = await render([
       card({ id: 't1', status: 'EN_DESARROLLO' }),

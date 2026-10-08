@@ -147,6 +147,15 @@ one task. Nothing is retried in an unbounded loop.
   field starts empty after every save, so the key is never in the page again. The
   field asks the browser not to offer the person's own login password
   (`autocomplete="new-password"`).
+- **Kanban board** (Roadmap UX-04): a card never shows a long title. One of more than 10
+  words is shown as its first 10, cut at a word boundary (not ending on "de", "y"…) and
+  followed by an ellipsis, with the whole title as a tooltip; one of 10 or fewer, and one
+  the LLM already shortened, is shown as it is. It is only how the card presents the title,
+  so it works the moment a sync has read the Roadmap, before the LLM answers and while the
+  LLM is refused; nothing is stored and `Roadmap.md` is not touched. The rule is the one
+  above, defined once in `packages/shared-types/src/title-words.ts` and shared by the API
+  and the web (`shortTitle` in `apps/web/src/app/shared/short-title.pipe.ts`). The board
+  search still looks in the whole title.
 - **Task detail**: for a normalized task, the title the Roadmap holds and when it
   was summarized; while it is queued, a note; when it failed, the reason and a
   "Reintentar" button for whoever has `task.write` (the page looks again for a few

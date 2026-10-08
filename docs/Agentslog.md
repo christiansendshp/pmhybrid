@@ -356,3 +356,14 @@ segments live in `docs/history/`.
 - Summary: A failure about the key, the quota or the balance (401, 403, 429, 402) is recorded on the task with its reason but no longer counts as one of its three automatic attempts: while an account is refused (OpenRouter: Insufficient credits) every sync costs one call and no task is given up on, and once it is fixed the next sync goes on with the whole queue
 - Files: apps/api/src/modules/title-normalization/title-normalization.service.ts, docs/title-normalization.md, docs/decisions/ADR-020-llm-normalization-of-long-roadmap-titles.md, docs/Stack_Tecnologies.md
 - Verify: api unit 607 and lint ok, build ok, llm e2e 32 pass; found live: OpenRouter answered 402 Insufficient credits, the pass paused after one call as designed but that task was charged an attempt
+
+## [2026-10-08T12:28:33Z] | claude | UX-04 | IN_PROGRESS
+
+- Summary: Short titles on the board cards, as a view of the title: shared 10-word rule, shortTitle pipe
+- Verify: pending
+
+## [2026-10-08T12:32:03Z] | claude | UX-04 | DONE
+
+- Summary: A Kanban card never shows a long title: one of more than 10 words is shown as its first 10, cut at a word boundary and followed by an ellipsis, with the whole title as a tooltip; a title of 10 words or fewer, and one the LLM already shortened, is shown as it is. It is only how the view presents the title, so it works as soon as a sync has read the Roadmap and while the LLM is refused; nothing is stored and Roadmap.md is not touched. The 10-word rule is defined once in shared-types and used by the API and the web
+- Files: packages/shared-types/src/title-words.ts, apps/api/src/modules/title-normalization/word-count.util.ts, apps/web/src/app/shared/short-title.pipe.ts, apps/web/src/app/features/kanban/, docs/title-normalization.md, docs/ProductDescription.md
+- Verify: web unit 331 and eslint ok, api unit 607 and lint ok, builds ok; checked live on the rebuilt persistent stack

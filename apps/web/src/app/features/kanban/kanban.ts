@@ -1,5 +1,6 @@
 import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { LabelPipe } from '../../shared/label.pipe.js';
+import { ShortTitlePipe } from '../../shared/short-title.pipe.js';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -70,6 +71,7 @@ export const COLUMN_CAP = 8;
   selector: 'app-kanban',
   imports: [
     LabelPipe,
+    ShortTitlePipe,
     DatePipe,
     DecimalPipe,
     FormsModule,

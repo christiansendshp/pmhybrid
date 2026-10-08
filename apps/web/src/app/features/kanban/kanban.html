@@ -193,7 +193,12 @@
                         }}</span>
                       }
                     </div>
-                    <a class="card__title" [routerLink]="['../tasks', card.id]">{{ card.title }}</a>
+                    <a
+                      class="card__title"
+                      [routerLink]="['../tasks', card.id]"
+                      [attr.title]="card.title | shortTitle: 'hint'"
+                      >{{ card.title | shortTitle }}</a
+                    >
                     @if (placementOf(card); as placement) {
                       <p class="card__placement">{{ placement }}</p>
                     }
