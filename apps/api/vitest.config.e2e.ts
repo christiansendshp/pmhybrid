@@ -3,6 +3,7 @@ import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import swc from 'unplugin-swc';
+import { HOST_MOUNTS_ENV } from './test/helpers/host-mounts.js';
 import { LOCAL_TEST_DATABASE_URL } from './test/test-database.js';
 
 export default defineConfig({
@@ -28,6 +29,9 @@ export default defineConfig({
       // under the working tree, so both are allowed here; the default
       // (home dir alone) stays what a real deployment gets.
       PROJECT_DOCS_BROWSE_ROOT: [homedir(), tmpdir()].join(path.delimiter),
+      // Two folders the suite is told are one folder of the user's machine, as a
+      // Docker mount that is mounted twice is (Roadmap UX-05).
+      PROJECT_DOCS_HOST_MOUNTS: HOST_MOUNTS_ENV,
       // Every e2e spec creates several throwaway projects with no cleanup —
       // outside CI (whose Postgres service container is fresh per run and
       // discarded after), that used to leak straight into the same database

@@ -15,6 +15,8 @@ export interface EnvConfig {
   GIT_PROVIDER_TYPE: string;
   /** Filesystem browser (docsPath picker) is confined to this directory and its descendants. */
   PROJECT_DOCS_BROWSE_ROOT: string;
+  /** `container|host` pairs separated by `;`: the user's own name for a mounted folder (Roadmap UX-05), used to show paths, to read a typed Windows path and to tell that two mounts are one folder. Empty when the API does not run in a container. */
+  PROJECT_DOCS_HOST_MOUNTS: string;
   /** GitHub REST API token used only when GIT_PROVIDER_TYPE=github (Roadmap GAP-23). */
   GITHUB_TOKEN: string;
   /** HMAC secret for verifying `/webhooks/github` deliveries (Roadmap GAP-29); empty disables the endpoint. */
@@ -78,6 +80,7 @@ export function validateEnv(
     ),
     GIT_PROVIDER_TYPE: raw.GIT_PROVIDER_TYPE ?? 'local',
     PROJECT_DOCS_BROWSE_ROOT: raw.PROJECT_DOCS_BROWSE_ROOT ?? homedir(),
+    PROJECT_DOCS_HOST_MOUNTS: raw.PROJECT_DOCS_HOST_MOUNTS ?? '',
     GITHUB_TOKEN: raw.GITHUB_TOKEN ?? '',
     GITHUB_WEBHOOK_SECRET: raw.GITHUB_WEBHOOK_SECRET ?? '',
   };

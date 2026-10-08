@@ -26,3 +26,4 @@ and documents cite them by id (`ADR-002`).
 | [ADR-018](ADR-018-investigation-before-rewriting-the-parsers.md)         | 2026-09-18 | CONFIRMED | Investigation before rewriting the parsers for the skill's v2 schema                    |
 | [ADR-019](ADR-019-task-comments.md)                                      | 2026-09-18 | CONFIRMED | Task comments                                                                           |
 | [ADR-020](ADR-020-llm-normalization-of-long-roadmap-titles.md)           | 2026-10-05 | CONFIRMED | LLM normalization of long Roadmap titles                                                |
+| [ADR-021](ADR-021-docspath-picker-explorer-over-documents.md)            | 2026-10-08 | CONFIRMED | The docsPath picker is a folder explorer over the user's Documents                      |

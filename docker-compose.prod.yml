@@ -57,8 +57,13 @@ services:
       GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
       # Where the projects' docs folders are, inside the container (see volumes). `:`
       # (the container's own, Linux, path.delimiter) separates multiple roots -- the
-      # folder picker starts at the first and can browse either.
-      PROJECT_DOCS_BROWSE_ROOT: /data/projects:/data/extra-docs
+      # folder picker starts at the first (the user's Documents) and can browse any of them.
+      PROJECT_DOCS_BROWSE_ROOT: /data/documents:/data/projects:/data/extra-docs
+      # What the user calls each of those folders on the host (Roadmap UX-05), so the folder
+      # picker shows `C:\Users\...` rather than `/data/documents/...`, a path typed that way
+      # is understood, and a folder mounted twice (a folder inside DOCUMENTS_DIR that is
+      # also EXTRA_DOCS_DIR) counts as one folder. `container|host` pairs separated by `;`.
+      PROJECT_DOCS_HOST_MOUNTS: /data/projects|${PROJECTS_DIR:-./deploy/projects};/data/extra-docs|${EXTRA_DOCS_DIR:-./deploy/extra-docs};/data/documents|${DOCUMENTS_DIR:-./deploy/documents}
     volumes:
       # The folders of the projects PM Hub manages when GIT_PROVIDER_TYPE is local. The API
       # runs as the container's node user (uid 1000): it must be able to write here.
@@ -68,6 +73,11 @@ services:
       # track it in place instead of it being copied or moved under PROJECTS_DIR. Left
       # unset, EXTRA_DOCS_DIR defaults to an empty local folder, same as PROJECTS_DIR.
       - ${EXTRA_DOCS_DIR:-./deploy/extra-docs}:/data/extra-docs
+      # The user's own folder of documents (e.g. C:/Users/me/Documents), so the folder picker
+      # can browse it freely (Roadmap UX-05, DEC-003). Read-write: the write-back of the
+      # Roadmap writes into the projects' folders. Only this folder is within reach; the
+      # rest of the machine is not mounted, and the allowed roots still confine docsPath.
+      - ${DOCUMENTS_DIR:-./deploy/documents}:/data/documents
     ports:
       - '${API_PORT:-3000}:3000'
 

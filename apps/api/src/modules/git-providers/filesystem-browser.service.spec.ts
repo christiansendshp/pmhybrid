@@ -65,7 +65,7 @@ describe('FilesystemBrowserService', () => {
     const result = await service.browse(undefined);
 
     expect(result.root).toBe(root);
-    expect(result.roots).toEqual([root]);
+    expect(result.roots).toEqual([{ path: root, label: root }]);
   });
 
   it('serves a second `path.delimiter`-separated root, and lists both in `roots`', async () => {
@@ -84,7 +84,7 @@ describe('FilesystemBrowserService', () => {
 
       const atFirstRoot = await multiRootService.browse(undefined);
       expect(atFirstRoot.root).toBe(root);
-      expect(atFirstRoot.roots).toEqual([root, secondRoot]);
+      expect(atFirstRoot.roots.map((r) => r.path)).toEqual([root, secondRoot]);
 
       const atSecondRoot = await multiRootService.browse(secondRoot);
       expect(atSecondRoot.root).toBe(secondRoot);
@@ -92,10 +92,85 @@ describe('FilesystemBrowserService', () => {
       expect(atSecondRoot.directories.map((d) => d.name)).toEqual([
         'other-project',
       ]);
-      expect(atSecondRoot.roots).toEqual([root, secondRoot]);
+      expect(atSecondRoot.roots.map((r) => r.path)).toEqual([root, secondRoot]);
     } finally {
       rmSync(secondRoot, { recursive: true, force: true });
     }
+  });
+
+  describe('as a folder explorer over a mounted folder (Roadmap UX-05)', () => {
+    const HOST = 'C:/Users/me/Documents';
+
+    function mounted(): FilesystemBrowserService {
+      const config = {
+        get: (key: string) => {
+          if (key === 'GIT_PROVIDER_TYPE') {
+            return 'local';
+          }
+          return key === 'PROJECT_DOCS_HOST_MOUNTS' ? `${root}|${HOST}` : root;
+        },
+      };
+      return new FilesystemBrowserService(
+        config as unknown as ConfigService<EnvConfig, true>,
+      );
+    }
+
+    it('shows every folder as the user knows it, and names the roots the same way', async () => {
+      const result = await mounted().browse(path.join(root, 'project-a'));
+
+      expect(result.path).toBe(path.join(root, 'project-a'));
+      expect(result.displayPath).toBe('C:\\Users\\me\\Documents\\project-a');
+      expect(result.roots).toEqual([
+        { path: root, label: 'C:\\Users\\me\\Documents' },
+      ]);
+    });
+
+    it('gives the way from the root to the folder, step by step', async () => {
+      mkdirSync(path.join(root, 'project-a', 'docs'), { recursive: true });
+
+      const result = await mounted().browse(
+        path.join(root, 'project-a', 'docs'),
+      );
+
+      expect(result.breadcrumbs).toEqual([
+        { name: 'C:\\Users\\me\\Documents', path: root },
+        { name: 'project-a', path: path.join(root, 'project-a') },
+        { name: 'docs', path: path.join(root, 'project-a', 'docs') },
+      ]);
+    });
+
+    it('has the root alone as its way when it is the folder viewed', async () => {
+      const result = await mounted().browse(undefined);
+
+      expect(result.breadcrumbs).toEqual([
+        { name: 'C:\\Users\\me\\Documents', path: root },
+      ]);
+    });
+
+    it('understands a path typed the Windows way, in any case, and answers with the folder as the API sees it', async () => {
+      const result = await mounted().browse(
+        'c:\\USERS\\me\\documents\\project-a',
+      );
+
+      expect(result.path).toBe(path.join(root, 'project-a'));
+      expect(result.documents.find((d) => d.kind === 'roadmap')?.found).toBe(
+        true,
+      );
+    });
+
+    it('still refuses a Windows path that leads out of the mounted folder', async () => {
+      await expect(
+        mounted().browse('C:\\Users\\me\\Documents\\..\\..\\Windows'),
+      ).rejects.toThrow(/outside the allowed root/);
+      await expect(mounted().browse('D:\\elsewhere')).rejects.toThrow();
+    });
+
+    it('shows the folder as it is when nothing mounts it (the API runs on the machine itself)', async () => {
+      const result = await service.browse(path.join(root, 'project-a'));
+
+      expect(result.displayPath).toBe(path.join(root, 'project-a'));
+      expect(result.breadcrumbs[0]).toEqual({ name: root, path: root });
+    });
   });
 
   it('refuses to browse when GIT_PROVIDER_TYPE is not local (Roadmap GAP-23)', async () => {

@@ -123,6 +123,18 @@ permission.
   a project the requester is not an active member of (409
   `docsPath is not available`, deliberately not naming the other project);
   reusing a folder that only the requester's own projects use is fine.
+- **The host mount map** (Roadmap UX-05, ADR-021): in the Docker deployment the
+  API sees the user's `C:/Users/…/Documents` as `/data/documents`.
+  `PROJECT_DOCS_HOST_MOUNTS` (`container|host` pairs separated by `;`) lets the
+  picker show paths the way the user knows them and lets a path typed that way
+  be understood. It only translates: the translated path is confined to the
+  roots like any other (`..` and the real location included), so the map adds
+  no reach. It also makes a folder mounted twice (inside `DOCUMENTS_DIR` and as
+  `EXTRA_DOCS_DIR`) **one folder** for the aliasing check above, which would
+  otherwise compare two container paths and let a second way in get round it.
+  `DOCUMENTS_DIR` is mounted read-write (the write-back of the Roadmap writes
+  into the projects' folders); it is the only part of the machine beyond the two
+  project roots that the API can reach.
 - **Update** validates `docsPath` only when it actually changes, so a project
   stored before the confinement stays editable for its other settings.
 - **Every read, write and `git log`** goes through `LocalFsGitProvider`, which

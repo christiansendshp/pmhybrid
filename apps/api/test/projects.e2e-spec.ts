@@ -5,6 +5,8 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 import { DEMO_EMAIL, DEMO_PASSWORD } from './../prisma/demo-credentials.js';
+import { mkdirSync } from 'node:fs';
+import { MOUNT_A, MOUNT_B, MOUNTED_HOST_WINDOWS } from './helpers/host-mounts.js';
 import { createScratchDocsPath, uniqueDocsPath } from './helpers/scratch-docs.js';
 
 describe('Projects / RBAC (e2e)', () => {
@@ -306,6 +308,34 @@ describe('Projects / RBAC (e2e)', () => {
 
     it('rejects a ../ escape out of an allowed folder', async () => {
       await createAt(`${uniqueDocsPath('dotdot')}/../../../..`).expect(400);
+    });
+
+    it('counts a folder reached through two mounts as one folder, so the second way in does not get round the check (Roadmap UX-05)', async () => {
+      const viaA = path.join(MOUNT_A, 'shared-docs');
+      const viaB = path.join(MOUNT_B, 'shared-docs');
+      mkdirSync(viaA, { recursive: true });
+      mkdirSync(viaB, { recursive: true });
+      await createAt(viaA).expect(201);
+
+      const other = await createAt(viaB, outsiderToken).expect(409);
+      expect(other.body.message).toBe('docsPath is not available');
+      // And a path typed the way the user knows it is the same folder too.
+      await createAt(`${MOUNTED_HOST_WINDOWS}\\shared-docs`, outsiderToken).expect(409);
+      // Whoever belongs to the first project may reuse the folder, by either way in.
+      await createAt(viaB).expect(201);
+    });
+
+    it('creates a project from a path typed the way the user knows it, and stores the folder as the API sees it (Roadmap UX-05)', async () => {
+      mkdirSync(path.join(MOUNT_A, 'typed-docs'), { recursive: true });
+
+      const res = await createAt(`${MOUNTED_HOST_WINDOWS}\\typed-docs`).expect(201);
+
+      expect(res.body.docsPath).toBe(path.join(MOUNT_A, 'typed-docs'));
+    });
+
+    it('still refuses a path typed the way the user knows it that leads out of the mounted folder', async () => {
+      await createAt(`${MOUNTED_HOST_WINDOWS}\\..\\..\\Windows`).expect(400);
+      await createAt('D:\\somewhere\\else').expect(400);
     });
 
     it("does not let a non-member point a new project at another project's folder", async () => {

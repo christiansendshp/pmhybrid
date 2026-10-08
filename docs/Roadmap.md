@@ -33,6 +33,42 @@ THEME/EPIC/FEATURE/TASK/SUBTASK-level planning entry is ever needed.
 
 ## Cross-cutting
 
+### DEC-003 — How much of the machine may the docsPath folder picker browse?
+
+```yaml
+id: DEC-003
+type: DECISION
+title: How much of the machine may the docsPath folder picker browse?
+status: DECIDED
+question: >
+  The picker is confined to the allowed roots (/data/projects and
+  /data/extra-docs inside the API container), on purpose (Roadmap SECURITY-01):
+  the same roots confine every stored docsPath, so an authenticated user or agent
+  cannot point a project at a folder it should not read or write. The user asked
+  for a normal modal that browses freely through all folders. The API runs in
+  Docker and sees only what is mounted, so "all folders" means choosing what to
+  mount, read-write because the write-back of the Roadmap needs to write.
+options:
+  - The user's Documents folder (C:\Users\Administrador\Documents), read-write.
+  - The whole C: drive, read-write, which gives back the exposure SECURITY-01 closed.
+  - Keep the two roots and only improve the modal.
+decision: Mount the user's Documents folder and browse it freely.
+decision_reason: >
+  Chosen by the user, asked in the session. It covers PROYECTO\SMARTHR and every
+  other project of the user, and keeps the rest of the machine out of reach. The
+  mount is read-write because the write-back of Roadmap.md must write.
+decision_owner:
+  type: HUMAN
+  name: Christian
+decision_date: 2026-10-08T00:00:00Z
+affects:
+  - UX-05
+next_action: >
+  Implemented by UX-05; recorded as ADR-021.
+created_at: 2026-10-08T00:00:00Z
+updated_at: 2026-10-08T00:00:00Z
+```
+
 ### DEC-002 — Frontend redesign: refine the existing GAP-20 system, or replace it with a new visual direction?
 
 ```yaml

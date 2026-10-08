@@ -12,6 +12,7 @@ import {
   parseAllowedRoots,
   resolveAllowedLocalDocsPath,
 } from './docs-path-policy.js';
+import { fromHostPath, parseHostMounts, toHostPath } from './host-mounts.js';
 import {
   DOCUMENT_KINDS,
   resolveDocumentFilename,
@@ -28,12 +29,29 @@ export interface DocumentPresence {
   found: boolean;
 }
 
-export interface BrowseDirectoryResult {
+/** A root the picker can jump to (Roadmap BUG-11), named the way the user knows the folder (Roadmap UX-05). */
+export interface BrowseRoot {
   path: string;
+  label: string;
+}
+
+/** One step of the way from the root to the folder being viewed. */
+export interface BrowseCrumb {
+  name: string;
+  path: string;
+}
+
+export interface BrowseDirectoryResult {
+  /** The folder as the API sees it: what is stored as the project's `docsPath`. */
+  path: string;
+  /** The same folder as the user knows it (`C:Users…`), or `path` when no mount names it (Roadmap UX-05). */
+  displayPath: string;
   parentPath: string | null;
   root: string;
   /** Every configured root (Roadmap BUG-11), not just `root` — lets the picker offer a way to jump to any of them, not only the one the viewed path is under. */
-  roots: string[];
+  roots: BrowseRoot[];
+  /** From the root to the folder being viewed, the first being the root itself. */
+  breadcrumbs: BrowseCrumb[];
   directories: FilesystemEntry[];
   documents: DocumentPresence[];
 }
@@ -76,12 +94,19 @@ export class FilesystemBrowserService {
     const roots = parseAllowedRoots(
       this.configService.get('PROJECT_DOCS_BROWSE_ROOT', { infer: true }),
     );
+    const mounts = parseHostMounts(
+      this.configService.get('PROJECT_DOCS_HOST_MOUNTS', { infer: true }),
+    );
     // Same confinement a stored docsPath gets (real location included, so a
     // symlink inside a root cannot lead out of it); the picker starts at the
-    // first configured root and can browse any of them.
+    // first configured root and can browse any of them. A path written the way
+    // the user knows it (C:Users…) is read through the mount map first.
     const target =
       requestedPath && requestedPath.length > 0
-        ? await resolveAllowedLocalDocsPath(requestedPath, roots)
+        ? await resolveAllowedLocalDocsPath(
+            fromHostPath(requestedPath, mounts) ?? requestedPath,
+            roots,
+          )
         : roots[0];
     const root = roots.find((candidate) => isInside(candidate, target))!;
 
@@ -95,7 +120,13 @@ export class FilesystemBrowserService {
       throw new BadRequestException(`Not a directory: ${target}`);
     }
 
-    const entries = await fs.readdir(target, { withFileTypes: true });
+    let entries;
+    try {
+      entries = await fs.readdir(target, { withFileTypes: true });
+    } catch {
+      // A folder the API process may not read: said as such, not as a server error.
+      throw new BadRequestException(`Cannot read the directory: ${target}`);
+    }
     const directories: FilesystemEntry[] = entries
       .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
       .map((entry) => ({
@@ -115,11 +146,26 @@ export class FilesystemBrowserService {
       }),
     );
 
+    const breadcrumbs = [{ name: toHostPath(root, mounts), path: root }];
+    let cursor = root;
+    for (const segment of path
+      .relative(root, target)
+      .split(path.sep)
+      .filter(Boolean)) {
+      cursor = path.join(cursor, segment);
+      breadcrumbs.push({ name: segment, path: cursor });
+    }
+
     return {
       path: target,
+      displayPath: toHostPath(target, mounts),
       parentPath: target === root ? null : path.dirname(target),
       root,
-      roots,
+      roots: roots.map((candidate) => ({
+        path: candidate,
+        label: toHostPath(candidate, mounts),
+      })),
+      breadcrumbs,
       directories,
       documents,
     };

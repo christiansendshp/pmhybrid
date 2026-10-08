@@ -52,6 +52,16 @@ test.describe('accessibility (Roadmap GAP-25)', () => {
     await checkA11y(page, 'my-projects');
   });
 
+  test('docsPath folder picker (explorer dialog, Roadmap UX-05)', async ({ page }) => {
+    await page.goto('/projects');
+    await page.getByRole('button', { name: 'Nuevo proyecto' }).click();
+    await page.getByRole('button', { name: 'Explorar…' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('heading', { name: 'Elegir carpeta de documentos' })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Elegir esta carpeta' })).toBeEnabled();
+    await checkA11y(page, 'folder-picker');
+  });
+
   test('kanban board (dense interactive surface)', async ({ page }) => {
     await page.goto('/projects');
     await page.locator('.projects__name').first().click();

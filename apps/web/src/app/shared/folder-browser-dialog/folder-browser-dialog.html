@@ -1,53 +1,125 @@
 <h2 matDialogTitle>Elegir carpeta de documentos</h2>
 
 <mat-dialog-content class="folder-browser">
-  @if (loading()) {
-    <p class="meta-text">Cargando…</p>
-  } @else if (errorMessage()) {
-    <p role="alert">{{ errorMessage() }}</p>
-  } @else if (current(); as result) {
+  @if (current(); as result) {
     @if (result.roots.length > 1) {
-      <div class="folder-browser__roots" aria-label="Raíces disponibles">
-        @for (r of result.roots; track r) {
+      <nav class="folder-browser__places" aria-label="Accesos rápidos">
+        @for (root of result.roots; track root.path) {
           <button
-            mat-button
+            mat-stroked-button
             type="button"
-            class="folder-browser__root"
-            [disabled]="r === result.root"
-            (click)="open(r)"
+            class="folder-browser__place"
+            [attr.title]="root.label"
+            [attr.aria-current]="root.path === result.root ? 'true' : null"
+            [class.folder-browser__place--current]="root.path === result.root"
+            (click)="open(root.path)"
           >
-            {{ r }}
+            {{ placeName(root) }}
           </button>
         }
-      </div>
+      </nav>
     }
 
-    <div class="folder-browser__path">
+    <div class="folder-browser__bar">
       <button
-        mat-button
+        mat-stroked-button
         type="button"
         class="folder-browser__up"
-        [disabled]="!result.parentPath"
+        [disabled]="!result.parentPath || loading()"
         (click)="up()"
       >
         ↑ Subir
       </button>
-      <code class="folder-browser__current">{{ result.path }}</code>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="folder-browser__field">
+        <mat-label>Ruta</mat-label>
+        <input
+          matInput
+          [formControl]="pathControl"
+          autocomplete="off"
+          spellcheck="false"
+          (keydown.enter)="$event.preventDefault(); goToTypedPath()"
+        />
+        <mat-hint>Escribe o pega una ruta y presiona Enter.</mat-hint>
+      </mat-form-field>
+      <button
+        mat-stroked-button
+        type="button"
+        class="folder-browser__go"
+        [disabled]="loading()"
+        (click)="goToTypedPath()"
+      >
+        Ir
+      </button>
     </div>
 
-    @if (result.directories.length > 0) {
-      <ul class="folder-browser__list" aria-label="Subcarpetas">
-        @for (dir of result.directories; track dir.path) {
+    <nav aria-label="Ruta actual">
+      <ol class="folder-browser__crumbs">
+        @for (crumb of result.breadcrumbs; track crumb.path; let last = $last) {
           <li>
-            <button mat-button type="button" class="folder-browser__entry" (click)="open(dir.path)">
-              {{ dir.name }}
-            </button>
+            @if (last) {
+              <span
+                class="folder-browser__crumb folder-browser__crumb--here"
+                aria-current="location"
+                >{{ crumb.name }}</span
+              >
+            } @else {
+              <button
+                mat-button
+                type="button"
+                class="folder-browser__crumb"
+                [disabled]="loading()"
+                (click)="open(crumb.path)"
+              >
+                {{ crumb.name }}
+              </button>
+              <span class="folder-browser__crumb-sep" aria-hidden="true">›</span>
+            }
           </li>
         }
-      </ul>
-    } @else {
-      <p class="meta-text">Esta carpeta no tiene subcarpetas.</p>
-    }
+      </ol>
+    </nav>
+  }
+
+  @if (errorMessage()) {
+    <p role="alert" class="folder-browser__error">{{ errorMessage() }}</p>
+  }
+
+  @if (loading() && !current()) {
+    <p class="meta-text">Cargando…</p>
+  } @else if (current(); as result) {
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="folder-browser__filter">
+      <mat-label>Filtrar carpetas</mat-label>
+      <input matInput type="search" [formControl]="filterControl" autocomplete="off" />
+    </mat-form-field>
+
+    <div class="folder-browser__panel" [attr.aria-busy]="loading()">
+      @if (visibleDirectories().length > 0) {
+        <ul class="folder-browser__list" aria-label="Subcarpetas">
+          @for (dir of visibleDirectories(); track dir.path) {
+            <li>
+              <button
+                type="button"
+                class="folder-browser__entry"
+                [disabled]="loading()"
+                (click)="open(dir.path)"
+              >
+                <svg class="folder-browser__icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"
+                    fill="currentColor"
+                  />
+                </svg>
+                <span class="folder-browser__entry-name">{{ dir.name }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+      } @else if (filterControl.value.trim()) {
+        <p class="meta-text folder-browser__empty">Ninguna carpeta coincide con el filtro.</p>
+      } @else {
+        <p class="meta-text folder-browser__empty">Esta carpeta no tiene subcarpetas.</p>
+      }
+    </div>
 
     <ul class="folder-browser__docs" aria-label="Documentos encontrados en esta carpeta">
       @for (doc of result.documents; track doc.kind) {
@@ -59,14 +131,15 @@
   }
 </mat-dialog-content>
 
-<mat-dialog-actions align="end">
+<mat-dialog-actions class="folder-browser__actions">
+  <p class="folder-browser__chosen" aria-live="polite">
+    @if (current(); as result) {
+      <span class="folder-browser__chosen-label">Carpeta:</span>
+      <code>{{ result.displayPath }}</code>
+    }
+  </p>
   <button mat-button type="button" matDialogClose>Cancelar</button>
-  <button
-    mat-flat-button
-    type="button"
-    [disabled]="loading() || !!errorMessage()"
-    (click)="select()"
-  >
+  <button mat-flat-button type="button" [disabled]="loading() || !current()" (click)="select()">
     Elegir esta carpeta
   </button>
 </mat-dialog-actions>

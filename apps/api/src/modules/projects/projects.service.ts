@@ -12,10 +12,14 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
 import {
   assertSafeRemoteDocsPath,
-  docsPathKey,
   parseAllowedRoots,
   resolveAllowedLocalDocsPath,
 } from '../git-providers/docs-path-policy.js';
+import {
+  folderKey,
+  fromHostPath,
+  parseHostMounts,
+} from '../git-providers/host-mounts.js';
 import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository-provider.interface.js';
 import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
 import { ProgressRollupService } from '../tasks/progress-rollup.service.js';
@@ -77,14 +81,22 @@ export class ProjectsService {
     const roots = parseAllowedRoots(
       this.config.get('PROJECT_DOCS_BROWSE_ROOT', { infer: true }),
     );
-    const resolved = await resolveAllowedLocalDocsPath(raw, roots);
-    const key = docsPathKey(resolved);
+    // A path typed the way the user knows it (C:Users…) is read through the mount
+    // map, then confined to the roots like any other (Roadmap UX-05).
+    const mounts = this.hostMounts();
+    const resolved = await resolveAllowedLocalDocsPath(
+      fromHostPath(raw, mounts) ?? raw,
+      roots,
+    );
+    // One folder reached through two mounts is one folder: otherwise the second
+    // way in would get round the check below.
+    const key = folderKey(resolved, mounts);
     const others = await this.prisma.project.findMany({
       where: excludeProjectId ? { id: { not: excludeProjectId } } : {},
       select: { id: true, docsPath: true },
     });
     const sharing = others
-      .filter((project) => docsPathKey(project.docsPath) === key)
+      .filter((project) => folderKey(project.docsPath, mounts) === key)
       .map((project) => project.id);
     if (sharing.length > 0) {
       const memberOf = await this.prisma.projectMember.count({
@@ -99,6 +111,12 @@ export class ProjectsService {
       }
     }
     return resolved;
+  }
+
+  private hostMounts() {
+    return parseHostMounts(
+      this.config.get('PROJECT_DOCS_HOST_MOUNTS', { infer: true }),
+    );
   }
 
   /** "My Projects" (brief §19): the projects the actor is an active member of, each with its summary. */
@@ -329,8 +347,12 @@ export class ProjectsService {
       // Only a real change is validated: the settings form resubmits the
       // stored value on every save, and a project stored before the
       // confinement existed must stay editable for its other settings.
+      const mounts = this.hostMounts();
       data.docsPath =
-        docsPathKey(dto.docsPath) === docsPathKey(project.docsPath)
+        folderKey(
+          fromHostPath(dto.docsPath, mounts) ?? dto.docsPath,
+          mounts,
+        ) === folderKey(project.docsPath, mounts)
           ? project.docsPath
           : await this.checkedDocsPath(dto.docsPath, requesterActorId, id);
     }
