@@ -24,12 +24,234 @@ this point.
 
 ## Plan
 
-No entries yet — this project has never tracked a Phase/Epic/Task planning
-hierarchy in this file; that hierarchy lives in the PM Hub app's own
-database, one level below this document (this repository is itself a
-project the app manages, `docsPath` = this repo's `docs/`). Add a
-`### TYPE-ID — Title` heading and `yaml` block here if a VISION/PHASE/
-THEME/EPIC/FEATURE/TASK/SUBTASK-level planning entry is ever needed.
+The tracking plan below is a proposal (`IDEA`): nothing in it is approved or built.
+The rest of this project's Phase/Epic/Task hierarchy lives in the PM Hub app's own database
+(this repository is itself a project the app manages, `docsPath` = this repo's `docs/`).
+
+### EPIC-01 — Project tracking, from a snapshot to a time axis and to attention
+
+```yaml
+id: EPIC-01
+type: EPIC
+title: Project tracking, from a snapshot to a time axis and to attention
+status: IDEA
+priority: P1
+description: >
+  User request 2026-10-09: analyze how the system works and propose improvements to the
+  tracking of projects. The analysis, the evidence from the live instance and the plan are
+  in docs/tracking-improvement-plan.md. Today every view answers "what is the state now" and none has a time axis
+  or says what needs attention: in SMARTHR no task has an assignee or a date, 40 % of the
+  ledger is about work that is not a task, and nothing shows the pace. Nothing here is
+  approved or built.
+blocked_by:
+  - DEC-004
+next_action: >
+  Answer DEC-004, then refine wave 1 (FEATURE-03, FEATURE-04, FEATURE-01, FEATURE-09) into
+  READY tasks. Waves: 1 existing data, 2 hidden work and waiting, 3 summaries and risk, 4 report.
+created_at: 2026-10-09T00:00:00Z
+updated_at: 2026-10-09T00:00:00Z
+```
+
+### FEATURE-01 — Pace, progress over time and forecast
+
+```yaml
+id: FEATURE-01
+type: FEATURE
+title: Pace, progress over time and forecast
+status: IDEA
+priority: P1
+parent: EPIC-01
+description: >
+  Weekly completed and created, burn-up per phase and a forecast shown as a range next to
+  the scope growth, from Task.completedAt (246 of 246 done tasks have it). A Seguimiento tab
+  and GET /projects/:id/metrics, no migration.
+next_action: Refine into READY tasks once approved; the proposal is section FEATURE-01 of docs/tracking-improvement-plan.md.
+created_at: 2026-10-09T00:00:00Z
+updated_at: 2026-10-09T00:00:00Z
+```
+
+### FEATURE-02 — Work logged without a task
+
+```yaml
+id: FEATURE-02
+type: FEATURE
+title: Work logged without a task
+status: IDEA
+priority: P2
+parent: EPIC-01
+description: >
+  387 of 978 ledger entries (280 IDs) are not tasks in PM Hub. List them per project, then
+  import them as completed tasks as a choice, not by default. Needs a TaskSourceOrigin value.
+blocked_by:
+  - DEC-004
+depends_on:
+  - FEATURE-04
+next_action: Refine into READY tasks once approved; the proposal is section FEATURE-02 of docs/tracking-improvement-plan.md.
+created_at: 2026-10-09T00:00:00Z
+updated_at: 2026-10-09T00:00:00Z
+```
+
+### FEATURE-03 — Agents as the responsible actors
+
+```yaml
+id: FEATURE-03
+type: FEATURE
+title: Agents as the responsible actors
+status: IDEA
+priority: P1
+parent: EPIC-01
+description: >
+  Suggest registering the agents seen in the log as members, and resolve the agent@timestamp
+  owner to the assignee and ownerClaimedAt, so Workload and active agents answer.
+blocked_by:
+  - DEC-004
+next_action: Refine into READY tasks once approved; the proposal is section FEATURE-03 of docs/tracking-improvement-plan.md.
+created_at: 2026-10-09T00:00:00Z
+updated_at: 2026-10-09T00:00:00Z
+```
+
+### FEATURE-04 — A normalized status for each log entry
+
+```yaml
+id: FEATURE-04
+type: FEATURE
+title: A normalized status for each log entry
+status: IDEA
+priority: P2
+parent: EPIC-01
+description: >
+  AgentLogEvent.canonicalStatus derived from the 34 free-text status words, keeping the
+  original and the qualifier; a backfill of the 978 existing rows.
+next_action: Refine into READY tasks once approved; the proposal is section FEATURE-04 of docs/tracking-improvement-plan.md.
+created_at: 2026-10-09T00:00:00Z
+updated_at: 2026-10-09T00:00:00Z
+```
+
+### FEATURE-05 — What is waiting, and on whom
+
+```yaml
+id: FEATURE-05
+type: FEATURE
+title: What is waiting, and on whom
+status: IDEA
+priority: P1
+parent: EPIC-01
+description: >
+  One list of blocked tasks, decisions needed and conflicts open, oldest first, with the
+  time each has waited (blockedSince, read from the audit trail for past rows), and the
+  blocked count per phase and epic.
+depends_on:
+  - FEATURE-03
+next_action: Refine into READY tasks once approved; the proposal is section FEATURE-05 of docs/tracking-improvement-plan.md.
+created_at: 2026-10-09T00:00:00Z
+updated_at: 2026-10-09T00:00:00Z
+```
+
+### FEATURE-06 — What changed, and a periodic summary
+
+```yaml
+id: FEATURE-06
+type: FEATURE
+title: What changed, and a periodic summary
+status: IDEA
+priority: P2
+parent: EPIC-01
+description: >
+  Desde tu ultima visita at the top of the Panel, new notification types (blocked, unblocked,
+  decision needed, phase completed, stale) and a daily or weekly summary per person.
+blocked_by:
+  - DEC-004
+depends_on:
+  - FEATURE-05
+next_action: Refine into READY tasks once approved; the proposal is section FEATURE-06 of docs/tracking-improvement-plan.md.
+created_at: 2026-10-09T00:00:00Z
+updated_at: 2026-10-09T00:00:00Z
+```
+
+### FEATURE-07 — Risk signals
+
+```yaml
+id: FEATURE-07
+type: FEATURE
+title: Risk signals
+status: IDEA
+priority: P2
+parent: EPIC-01
+description: >
+  A semaphore per phase and epic and a list of signals: in development with no owner or no
+  activity, blocked by a blocked task, due date passed, and the critical path over the 182
+  dependency links. Start with the two signals that cannot be wrong.
+blocked_by:
+  - DEC-004
+depends_on:
+  - FEATURE-03
+  - FEATURE-05
+next_action: Refine into READY tasks once approved; the proposal is section FEATURE-07 of docs/tracking-improvement-plan.md.
+created_at: 2026-10-09T00:00:00Z
+updated_at: 2026-10-09T00:00:00Z
+```
+
+### FEATURE-08 — Shareable status report and history
+
+```yaml
+id: FEATURE-08
+type: FEATURE
+title: Shareable status report and history
+status: IDEA
+priority: P3
+parent: EPIC-01
+description: >
+  A weekly status report (Markdown first, PDF after) built from the metrics, and a daily
+  ProjectSnapshot so the past state is a number and not a reconstruction.
+depends_on:
+  - FEATURE-01
+  - FEATURE-05
+  - FEATURE-07
+next_action: Refine into READY tasks once approved; the proposal is section FEATURE-08 of docs/tracking-improvement-plan.md.
+created_at: 2026-10-09T00:00:00Z
+updated_at: 2026-10-09T00:00:00Z
+```
+
+### FEATURE-09 — Operational hygiene
+
+```yaml
+id: FEATURE-09
+type: FEATURE
+title: Operational hygiene
+status: IDEA
+priority: P2
+parent: EPIC-01
+description: >
+  Retention for SyncRun (about 230 rows a day) and read notifications, and a documented,
+  restore-tested Postgres backup for the persistent stack, which holds the only copy of the
+  audit trail and of the LLM configuration.
+next_action: Refine into READY tasks once approved; the proposal is section FEATURE-09 of docs/tracking-improvement-plan.md.
+created_at: 2026-10-09T00:00:00Z
+updated_at: 2026-10-09T00:00:00Z
+```
+
+### DEC-004 — Which of the tracking plan product choices to take
+
+```yaml
+id: DEC-004
+type: DECISION
+title: Which of the tracking plan product choices to take
+status: PENDING
+question: >
+  The tracking plan (docs/tracking-improvement-plan.md) needs five product choices before wave 1 and 2 can be refined.
+  D1: do work logged without a task count in the progress? D2: may the system register the
+  agents it sees in the log as members? D3: how are periodic summaries delivered? D4: should the
+  Roadmap carry a target date per phase? D5: should agents log a start entry when they claim a task?
+options:
+  - Take the recommended answers of section 6 of the plan (show unlogged work first and count it later, suggest agents and register on one click, in-app summaries first, a target date per phase only, a start entry on claim).
+  - Answer them one by one.
+  - Defer the plan.
+affects:
+  - EPIC-01
+next_action: Ask the user; record decision, decision_reason, decision_owner (HUMAN) and decision_date.
+created_at: 2026-10-09T00:00:00Z
+updated_at: 2026-10-09T00:00:00Z
+```
 
 ## Cross-cutting
 
