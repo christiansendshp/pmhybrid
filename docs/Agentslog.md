@@ -556,3 +556,37 @@ segments live in `docs/history/`.
 - Summary: The board filters by tasks that have not moved for a number of hours (a finished one never is), kind of assignee, reviewer, ledger and board disagreeing and instant closes; each one is in the address and in the project's remembered board, combines with the older filters, and a value the board does not know is ignored without an error
 - Files: apps/web/src/app/core/board.ts, apps/web/src/app/core/board-query.ts, apps/web/src/app/features/kanban/kanban.ts, apps/web/src/app/features/kanban/kanban.html, docs/board-views.md
 - Verify: web unit 380 and eslint ok (board 6, board-query 4, kanban 2 new: a shared link shows the same board, the address and the memory); api untouched; the controls are not yet through the axe suite, which runs once at the end of wave 3
+
+## [2026-10-13T18:51:12Z] | claude | TASK-18 | IN_PROGRESS
+
+- Summary: List view: the tasks as a table with the board's filters, ordered and paged on the server
+- Verify: pending
+
+## [2026-10-13T18:51:13Z] | claude | TASK-17 | IN_PROGRESS
+
+- Summary: The view switcher over one set of filters and one address
+- Verify: pending
+
+## [2026-10-13T19:24:15Z] | claude | SUBTASK-09.3 | DONE
+
+- Summary: The task page offers, for the move to QA, the members who may approve QA as an optional reviewer (a list that does not load leaves the choice out and the move still works in one step), sends the one chosen with the move and spends the choice, and shows the reviewer and since when
+- Files: apps/api/src/modules/tasks/reviewers.controller.ts, apps/api/src/modules/tasks/tasks.service.ts, apps/web/src/app/features/task-detail/, apps/web/src/app/core/tasks.service.ts
+- Verify: api unit 718 and lint ok, api e2e 450 with the coverage floor met, nest build ok, web unit 416, eslint and build ok, axe suite 71 passed (the list page is in the axe, mobile-layout and target-size suites; the card title and the sort header were under 24px and are fixed)
+
+## [2026-10-13T19:24:16Z] | claude | TASK-13 | DONE
+
+- Summary: A card says in words the agent with its kind and model, how long the task has been in its stage ("en QA hace 2 d", elapsed time, right across a day boundary and a time zone, none for a finished task), the reviewer, an instant close, and on hover or focus the start of the latest ledger line, which the title link carries as its description; a card without any of them looks as before
+- Files: apps/api/prisma/migrations/20261013240000_add_task_ledger_note/, apps/api/src/modules/tasks/tasks.service.ts, apps/api/src/modules/synchronization/synchronization.service.ts, apps/web/src/app/core/stage-age.ts, apps/web/src/app/features/kanban/, docs/board-views.md
+- Verify: api unit 718 and lint ok, api e2e 450 with the coverage floor met, nest build ok, web unit 416, eslint and build ok, axe suite 71 passed (the list page is in the axe, mobile-layout and target-size suites; the card title and the sort header were under 24px and are fixed)
+
+## [2026-10-13T19:24:17Z] | claude | TASK-17 | DONE
+
+- Summary: A switcher between the views of a project's tasks (Tablero, Lista; only those that exist), a navigation landmark usable with the keyboard, that carries the filters in the address of every link and says in words when a view cannot use one; /projects/:id/kanban, its query and the project's remembered board behave as before
+- Files: apps/web/src/app/shared/board-views/, apps/web/src/app/features/kanban/, apps/web/src/app/app.routes.ts, apps/web/src/app/core/board-query.ts, docs/board-views.md
+- Verify: api unit 718 and lint ok, api e2e 450 with the coverage floor met, nest build ok, web unit 416, eslint and build ok, axe suite 71 passed (the list page is in the axe, mobile-layout and target-size suites; the card title and the sort header were under 24px and are fixed)
+
+## [2026-10-13T19:24:18Z] | claude | TASK-18 | DONE
+
+- Summary: The tasks as a table at /projects/:id/list: ID, short title, state with its notes, agent, reviewer, priority, time in the stage, due and updated, with the board's filters; GET /projects/:id/task-table filters, orders over everything the filters keep and cuts pages on the server (the same order on every page, nulls last, IDs in natural order), a page of 50 is all a project of 300 tasks sends, headers are buttons with aria-sort and the page and the order are in the address
+- Files: apps/api/src/modules/tasks/task-table.service.ts, apps/api/src/modules/tasks/task-table.util.ts, apps/api/src/modules/tasks/task-table.controller.ts, apps/api/src/modules/tasks/dto/list-task-table-query.dto.ts, apps/api/test/task-table.e2e-spec.ts, apps/web/src/app/features/task-table/, apps/web/src/app/features/kanban/, docs/board-views.md, docs/api-reference.md
+- Verify: api unit 718 and lint ok, api e2e 450 with the coverage floor met, nest build ok, web unit 416, eslint and build ok, axe suite 71 passed (the list page is in the axe, mobile-layout and target-size suites; the card title and the sort header were under 24px and are fixed)

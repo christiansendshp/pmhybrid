@@ -139,7 +139,10 @@
   font-variant-numeric: tabular-nums;
 }
 
+// A link on a line of its own is a target: at least 24px high even when the title is one short line (WCAG 2.5.8).
 .card__title {
+  display: block;
+  min-height: 1.5rem;
   font: var(--mat-sys-title-small);
   color: var(--mat-sys-on-surface);
   text-decoration: none;

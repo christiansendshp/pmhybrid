@@ -106,14 +106,14 @@ function presentAssignee<
     : null;
 }
 
-const CARD_INCLUDE = {
+export const CARD_INCLUDE = {
   assignee: { select: ASSIGNEE_SELECT },
   reviewer: { select: { id: true, displayName: true, kind: true } },
   subtasks: { where: { deletedAt: null }, select: { status: true } },
   dependencies: { select: { dependsOnTask: { select: { status: true } } } },
 } satisfies Prisma.TaskInclude;
 
-type CardRow = Prisma.TaskGetPayload<{ include: typeof CARD_INCLUDE }>;
+export type CardRow = Prisma.TaskGetPayload<{ include: typeof CARD_INCLUDE }>;
 
 @Injectable()
 export class TasksService {
@@ -171,7 +171,7 @@ export class TasksService {
     return { tasks: await this.cardsOf(kept), nextCursor };
   }
 
-  private async cardsOf(tasks: CardRow[]) {
+  async cardsOf(tasks: CardRow[]) {
     // Progress for the whole list from one batch of reads, not a query per task.
     const progress = await this.progressRollup.computeTasksProgress(tasks);
     // Closed within minutes of starting, in the ledger (Roadmap TASK-12): one read for the list.

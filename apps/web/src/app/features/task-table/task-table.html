@@ -1,0 +1,130 @@
+@if (error()) {
+  <p role="alert">{{ error() }}</p>
+}
+
+<div class="task-table" role="region" aria-label="Lista de tareas" tabindex="0">
+  <table class="task-table__table" [attr.aria-busy]="loading()">
+    <thead>
+      <tr>
+        @for (column of columns; track column.key) {
+          <th scope="col" [attr.aria-sort]="ariaSort(column.key)">
+            <button type="button" class="task-table__sort" (click)="sortBy(column.key)">
+              {{ column.label }}
+              <span aria-hidden="true" class="task-table__arrow">{{
+                ariaSort(column.key) === 'ascending'
+                  ? '↑'
+                  : ariaSort(column.key) === 'descending'
+                    ? '↓'
+                    : ''
+              }}</span>
+            </button>
+          </th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (card of rows(); track card.id) {
+        <tr>
+          <td class="task-table__id">{{ card.externalId ?? '—' }}</td>
+          <td>
+            <a
+              class="task-table__title"
+              [routerLink]="['../tasks', card.id]"
+              [attr.title]="card.title | shortTitle: 'hint'"
+              >{{ card.title | shortTitle }}</a
+            >
+          </td>
+          <td>
+            {{ statusLabel(card.status) }}
+            @if (card.ledgerStage && ledgerDiverges(card.ledgerStage, card.status)) {
+              <span class="task-table__note">{{
+                divergenceText(card.ledgerStage, card.status)
+              }}</span>
+            }
+            @if (card.instantClose) {
+              <span class="task-table__note">Cierre inmediato</span>
+            }
+          </td>
+          <td>
+            @if (card.assignee; as assignee) {
+              {{ assignee.displayName }}
+              <span class="kind-badge" [attr.data-kind]="assignee.kind">{{
+                kindLabel(assignee.kind)
+              }}</span>
+              @if (assignee.model) {
+                <span class="task-table__model">{{ assignee.model }}</span>
+              }
+            } @else {
+              <span class="task-table__muted">Sin asignar</span>
+            }
+          </td>
+          <td>
+            @if (card.reviewer; as reviewer) {
+              {{ reviewer.displayName }}
+              <span class="kind-badge" [attr.data-kind]="reviewer.kind">{{
+                kindLabel(reviewer.kind)
+              }}</span>
+            } @else {
+              <span class="task-table__muted">—</span>
+            }
+          </td>
+          <td>
+            @if (card.priority) {
+              <span class="priority" [attr.data-priority]="card.priority">{{
+                card.priority | label: 'priority'
+              }}</span>
+            } @else {
+              <span class="task-table__muted">—</span>
+            }
+          </td>
+          <td>{{ elapsed(card) }}</td>
+          <td>
+            @if (dateOf(card); as date) {
+              {{ date | date: 'd MMM y' : 'UTC' }}
+            } @else {
+              <span class="task-table__muted">—</span>
+            }
+          </td>
+          <td>{{ card.updatedAt | date: 'd MMM y' }}</td>
+        </tr>
+      } @empty {
+        <tr>
+          <td [attr.colspan]="columns.length" class="task-table__empty">
+            @if (loading()) {
+              Cargando la lista…
+            } @else {
+              Ninguna tarea coincide con estos filtros.
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+<div class="task-table__pager" role="navigation" aria-label="Páginas de la lista">
+  <span class="meta-text" aria-live="polite">
+    @if (total() > 0) {
+      Tareas {{ firstShown() }} a {{ lastShown() }} de {{ total() }}
+    } @else if (!loading()) {
+      Sin tareas
+    }
+  </span>
+  <button
+    mat-stroked-button
+    type="button"
+    [disabled]="list().page <= 1 || loading()"
+    (click)="goTo(list().page - 1)"
+  >
+    Anterior
+  </button>
+  <span class="meta-text">Página {{ list().page }} de {{ pages() }}</span>
+  <button
+    mat-stroked-button
+    type="button"
+    [disabled]="list().page >= pages() || loading()"
+    (click)="goTo(list().page + 1)"
+  >
+    Siguiente
+  </button>
+</div>

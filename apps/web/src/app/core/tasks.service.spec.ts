@@ -7,6 +7,60 @@ import { TaskCard, TasksService } from './tasks.service.js';
 
 const card = (id: string) => ({ id, title: `Task ${id}` }) as unknown as TaskCard;
 
+describe('TasksService.table (Roadmap TASK-18)', () => {
+  let service: TasksService;
+  let backend: HttpTestingController;
+  const url = `${API_BASE_URL}/projects/p1/task-table`;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(TasksService);
+    backend = TestBed.inject(HttpTestingController);
+  });
+
+  it('sends only what it was asked for, with a flag as 1', async () => {
+    const result = service.table('p1', {
+      q: 'sync',
+      blocked: true,
+      divergent: false,
+      stale: 72,
+      sort: 'priority',
+      dir: 'desc',
+      limit: 50,
+      offset: 100,
+    });
+
+    const request = backend.expectOne((req) => req.url === url);
+    expect(
+      Object.fromEntries(
+        request.request.params.keys().map((key) => [key, request.request.params.get(key)]),
+      ),
+    ).toEqual({
+      q: 'sync',
+      blocked: '1',
+      stale: '72',
+      sort: 'priority',
+      dir: 'desc',
+      limit: '50',
+      offset: '100',
+    });
+    request.flush({ total: 0, offset: 100, limit: 50, sort: 'priority', dir: 'desc', items: [] });
+    expect((await result).total).toBe(0);
+    backend.verify();
+  });
+
+  it('sends no query at all for a table nobody filtered or ordered', async () => {
+    const result = service.table('p1', {});
+
+    const request = backend.expectOne((req) => req.url === url);
+    expect(request.request.params.keys()).toEqual([]);
+    request.flush({ total: 3, offset: 0, limit: 50, sort: 'createdAt', dir: 'asc', items: [] });
+    expect((await result).total).toBe(3);
+  });
+});
+
 describe('TasksService.listForProject (Roadmap IMPROVEMENT-01d3)', () => {
   let service: TasksService;
   let backend: HttpTestingController;

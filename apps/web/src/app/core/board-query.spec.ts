@@ -3,8 +3,12 @@ import { NO_FILTERS, UNASSIGNED } from './board.js';
 import {
   BoardMemory,
   BoardView,
+  DEFAULT_LIST,
   DEFAULT_VIEW,
+  filtersToTableQuery,
   hasBoardParams,
+  listToParams,
+  paramsToList,
   paramsToView,
   viewToParams,
 } from './board-query.js';
@@ -135,6 +139,92 @@ describe('the board view in a query string (Roadmap UX-02b)', () => {
     expect(view.sortBy).toBe('created');
     // What it can use, it keeps.
     expect(view.filters.search).toBe('x');
+  });
+});
+
+describe('the list in a query string (Roadmap TASK-18)', () => {
+  it('has no query for the list as it starts, and says only what differs', () => {
+    expect(listToParams(DEFAULT_LIST)).toEqual({});
+    expect(listToParams({ sort: 'title', dir: 'asc', page: 1 })).toEqual({ order: 'title' });
+    expect(listToParams({ sort: 'createdAt', dir: 'desc', page: 4 })).toEqual({
+      dir: 'desc',
+      page: '4',
+    });
+  });
+
+  it('gives back the order and the page it was made from', () => {
+    const list = { sort: 'dueDate' as const, dir: 'desc' as const, page: 7 };
+
+    expect(paramsToList(fromRecord(listToParams(list) as Record<string, string>))).toEqual(list);
+  });
+
+  it('knows every column the server can order by', () => {
+    for (const sort of [
+      'externalId',
+      'title',
+      'status',
+      'assignee',
+      'reviewer',
+      'priority',
+      'age',
+      'dueDate',
+      'updatedAt',
+      'createdAt',
+    ] as const) {
+      expect(paramsToList(fromRecord({ order: sort })).sort).toBe(sort);
+    }
+  });
+
+  it('leaves at its default a value that makes no sense, instead of failing on a hand-edited address', () => {
+    for (const record of <Record<string, string>[]>[
+      { order: 'mood', dir: 'sideways', page: '0' },
+      { page: '-2' },
+      { page: '2.5' },
+      { page: 'last' },
+      { page: '' },
+    ]) {
+      expect(paramsToList(fromRecord(record)), JSON.stringify(record)).toEqual(DEFAULT_LIST);
+    }
+  });
+});
+
+describe('the filters as the table of tasks is asked for them (Roadmap TASK-18)', () => {
+  it('asks for nothing when nothing is filtered', () => {
+    expect(filtersToTableQuery(NO_FILTERS)).toEqual({});
+  });
+
+  it('names every filter the way the table understands it, and trims the search', () => {
+    expect(
+      filtersToTableQuery({
+        search: '  sync  ',
+        assigneeId: UNASSIGNED,
+        priority: 'HIGH',
+        phaseId: 'ph1',
+        epicId: 'ep1',
+        blockedOnly: true,
+        staleHours: 72,
+        assigneeKind: 'AI_AGENT',
+        reviewerId: 'ana',
+        divergentOnly: true,
+        instantCloseOnly: true,
+      }),
+    ).toEqual({
+      q: 'sync',
+      assignee: UNASSIGNED,
+      priority: 'HIGH',
+      phase: 'ph1',
+      epic: 'ep1',
+      blocked: true,
+      stale: 72,
+      kind: 'AI_AGENT',
+      reviewer: 'ana',
+      divergent: true,
+      instant: true,
+    });
+  });
+
+  it('leaves out a search that is only spaces', () => {
+    expect(filtersToTableQuery({ ...NO_FILTERS, search: '   ' })).toEqual({});
   });
 });
 

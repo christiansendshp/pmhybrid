@@ -1,9 +1,11 @@
 <div class="board-header">
-  <h2 class="board-header__title">Kanban</h2>
+  <h2 class="board-header__title">{{ view() === 'list' ? 'Lista' : 'Kanban' }}</h2>
   @if (!showCreateForm() && canWrite()) {
     <button mat-flat-button type="button" (click)="openCreateForm()">Nueva tarea</button>
   }
 </div>
+
+<app-board-views [params]="carriedParams()" />
 
 @if (showCreateForm()) {
   <app-task-form
@@ -159,33 +161,39 @@
         Solo cierres inmediatos
       </mat-checkbox>
 
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Agrupar por</mat-label>
-        <mat-select [ngModel]="groupBy()" (ngModelChange)="groupBy.set($event)">
-          <mat-option value="none">Sin agrupar</mat-option>
-          <mat-option value="assignee">Responsable</mat-option>
-          <mat-option value="phase">Fase</mat-option>
-          <mat-option value="epic">Épica</mat-option>
-          <mat-option value="priority">Prioridad</mat-option>
-        </mat-select>
-      </mat-form-field>
+      @if (view() === 'board') {
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Agrupar por</mat-label>
+          <mat-select [ngModel]="groupBy()" (ngModelChange)="groupBy.set($event)">
+            <mat-option value="none">Sin agrupar</mat-option>
+            <mat-option value="assignee">Responsable</mat-option>
+            <mat-option value="phase">Fase</mat-option>
+            <mat-option value="epic">Épica</mat-option>
+            <mat-option value="priority">Prioridad</mat-option>
+          </mat-select>
+        </mat-form-field>
 
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Ordenar por</mat-label>
-        <mat-select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)">
-          <mat-option value="created">Más antiguas primero</mat-option>
-          <mat-option value="priority">Prioridad</mat-option>
-          <mat-option value="dueDate">Fecha de vencimiento</mat-option>
-          <mat-option value="progress">Menor progreso</mat-option>
-          <mat-option value="updated">Actualizadas recientemente</mat-option>
-          <mat-option value="externalId">ID del Roadmap</mat-option>
-        </mat-select>
-      </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Ordenar por</mat-label>
+          <mat-select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)">
+            <mat-option value="created">Más antiguas primero</mat-option>
+            <mat-option value="priority">Prioridad</mat-option>
+            <mat-option value="dueDate">Fecha de vencimiento</mat-option>
+            <mat-option value="progress">Menor progreso</mat-option>
+            <mat-option value="updated">Actualizadas recientemente</mat-option>
+            <mat-option value="externalId">ID del Roadmap</mat-option>
+          </mat-select>
+        </mat-form-field>
+      }
     </div>
   }
 
   <span class="meta-text board-toolbar__count" aria-live="polite">
-    {{ visibleCards().length }} de {{ cards().length }} tareas
+    @if (view() === 'list') {
+      {{ listTotal() }} tareas
+    } @else {
+      {{ visibleCards().length }} de {{ cards().length }} tareas
+    }
   </span>
   @if (filtersActive()) {
     <button mat-button type="button" (click)="clearFilters()">Limpiar filtros</button>
@@ -196,7 +204,19 @@
   <p role="alert">{{ boardError() }}</p>
 }
 
-@if (loading()) {
+@if (view() === 'list') {
+  @if (!loading()) {
+    <app-task-table
+      [projectId]="projectId"
+      [filters]="filters()"
+      [list]="list()"
+      [reloadToken]="listVersion()"
+      (sortChange)="onListSort($event)"
+      (pageChange)="onListPage($event)"
+      (totalChange)="listTotal.set($event)"
+    />
+  }
+} @else if (loading()) {
   <p class="meta-text">Cargando el tablero…</p>
 } @else if (cards().length === 0) {
   <p class="board-empty">

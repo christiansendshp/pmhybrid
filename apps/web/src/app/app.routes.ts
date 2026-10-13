@@ -60,6 +60,12 @@ export const routes: Routes = [
             loadComponent: () => import('./features/kanban/kanban').then((m) => m.Kanban),
           },
           {
+            // The same page as the board, showing the tasks as a table (Roadmap TASK-18).
+            path: 'list',
+            data: { view: 'list' },
+            loadComponent: () => import('./features/kanban/kanban').then((m) => m.Kanban),
+          },
+          {
             path: 'progress',
             loadComponent: () =>
               import('./features/phases-progress/phases-progress').then((m) => m.PhasesProgress),

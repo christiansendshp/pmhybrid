@@ -4,6 +4,19 @@ What the project's board shows is held in its address, so a board can be reloade
 to from a task, and it is the same board each time (Roadmap UX-02b). This page says what the address
 holds and how each filter works. It grows with the views next to the Kanban (`FEATURE-13`).
 
+## The views (Roadmap TASK-17)
+
+A switcher at the top of the page, a navigation landmark called "Vistas del tablero", offers the views
+that exist and only those: **Tablero** (`/projects/:id/kanban`, the board, whose address does not
+change) and **Lista** (`/projects/:id/list`, below). Every link carries the filters of the view being
+left in its address, so the next view shows the same tasks; what only one view has (the board's grouping
+and column order, the list's order and page) is not carried. A view that cannot use a filter that is on
+says so in words under the switcher (none does today). The current view is marked as the current page,
+by weight and underline as well as by colour. A view is added to the switcher when it ships.
+
+Both views are one page: the same toolbar, the same filters, the same address and the same remembered
+state, so what is filtered on one is filtered on the other.
+
 ## The address
 
 `/projects/:projectId/kanban` is the board. Only what differs from a plain board is in its query, so an
@@ -29,6 +42,25 @@ hand-edited or an old link still opens.
 The board also remembers, for the length of the session, what each project's board was left with: a
 link back to the board that carries no query (a breadcrumb, the tab) finds the filters where they were
 left. An address that names a view wins over what was left.
+
+## The list (Roadmap TASK-18)
+
+`/projects/:projectId/list` shows the tasks as a table: ID, title (shortened like a card's, with the whole
+title as its tooltip), state (with the "Registro: … · PM Hub: …" and "Cierre inmediato" notes), agent
+(with its kind and model), reviewer, priority, time in the stage, due date and last update. It does not
+load every task: it asks the server for one page of 50 (`GET /projects/:id/task-table`), filtered with the
+same filters as the board and ordered by the column the person chose over everything the filters keep,
+so the order is the same on every page and a project of any size shows its first page at once.
+
+Its address holds, besides the filters above, `order` (the column: `externalId`, `title`, `status`,
+`assignee`, `reviewer`, `priority`, `age`, `dueDate`, `updatedAt`; creation order when absent), `dir`
+(`desc`; ascending when absent) and `page` (from 2; the first when absent). A value that makes no sense
+is ignored. Changing a filter, or the order, goes back to the first page; a page past the end goes to the
+last one there is. Each header is a button that orders by its column (again, the other way round) and
+says so with `aria-sort`; "ascending" on the time in the stage is the shortest first. Text is ordered the
+way a person reads it ("PMH-2" before "PMH-10"), the status by the board and the priority from the most
+urgent, and a task with no value for the column goes last either way. The table scrolls inside its own
+region, which has a name and can be reached with the keyboard, so the page does not scroll sideways on a phone.
 
 ## The filters of Roadmap TASK-16
 

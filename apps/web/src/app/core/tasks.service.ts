@@ -10,6 +10,48 @@ export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 /** Mirrors shared-types TaskPriority, lowest first. */
 export const TASK_PRIORITIES: readonly TaskPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 
+/** The columns the table of tasks can be ordered by (Roadmap TASK-18). */
+export type TaskTableSort =
+  | 'externalId'
+  | 'title'
+  | 'status'
+  | 'assignee'
+  | 'reviewer'
+  | 'priority'
+  | 'age'
+  | 'dueDate'
+  | 'updatedAt'
+  | 'createdAt';
+
+/** What the table of tasks is asked for: the board's filters, an order and a page. */
+export interface TaskTableQuery {
+  q?: string;
+  assignee?: string;
+  priority?: TaskPriority;
+  phase?: string;
+  epic?: string;
+  blocked?: boolean;
+  stale?: number;
+  kind?: 'HUMAN' | 'AI_AGENT';
+  reviewer?: string;
+  divergent?: boolean;
+  instant?: boolean;
+  sort?: TaskTableSort;
+  dir?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
+}
+
+/** One page of the table, ordered on the server over everything the filters keep. */
+export interface TaskTablePage {
+  total: number;
+  offset: number;
+  limit: number;
+  sort: TaskTableSort;
+  dir: 'asc' | 'desc';
+  items: TaskCard[];
+}
+
 export interface Task {
   id: string;
   projectId: string;
@@ -198,6 +240,21 @@ export class TasksService {
       cursor = response.headers.get('X-Next-Cursor');
     } while (cursor);
     return cards;
+  }
+
+  /** One page of the tasks as a table, filtered like the board and ordered on the server (Roadmap TASK-18). */
+  table(projectId: string, query: TaskTableQuery): Promise<TaskTablePage> {
+    const params: Record<string, string> = {};
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined && value !== false && value !== '') {
+        params[key] = value === true ? '1' : String(value);
+      }
+    }
+    return firstValueFrom(
+      this.http.get<TaskTablePage>(`${API_BASE_URL}/projects/${projectId}/task-table`, {
+        params,
+      }),
+    );
   }
 
   getById(projectId: string, taskId: string): Promise<TaskDetail> {

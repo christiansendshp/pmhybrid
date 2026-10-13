@@ -1,6 +1,8 @@
 import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { LabelPipe } from '../../shared/label.pipe.js';
 import { ShortTitlePipe } from '../../shared/short-title.pipe.js';
+import { BoardViews } from '../../shared/board-views/board-views.js';
+import { TaskTable } from '../task-table/task-table.js';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -25,7 +27,13 @@ import {
 } from '../../core/board.js';
 import {
   BoardMemory,
+  DEFAULT_GROUP,
+  DEFAULT_LIST,
+  DEFAULT_SORT,
+  ListState,
   hasBoardParams,
+  listToParams,
+  paramsToList,
   paramsToView,
   sameParams,
   viewToParams,
@@ -87,6 +95,8 @@ export const COLUMN_CAP = 8;
     MatInputModule,
     MatSelectModule,
     TaskForm,
+    BoardViews,
+    TaskTable,
   ],
   templateUrl: './kanban.html',
   styleUrl: './kanban.scss',
@@ -100,6 +110,18 @@ export class Kanban implements OnInit {
   private readonly router = inject(Router);
   private readonly memory = inject(BoardMemory);
   readonly viewport = inject(Viewport);
+
+  /**
+   * Which of the views of the tasks this page shows (Roadmap TASK-17, TASK-18): the board, or the list
+   * the route `list` names. They share the filters, their toolbar and their address; each has its own body.
+   */
+  readonly view = signal<'board' | 'list'>('board');
+  /** How the list is ordered and which page it is on; only the list has them. */
+  readonly list = signal<ListState>(DEFAULT_LIST);
+  /** How many tasks the filters keep, as the list last read it. */
+  readonly listTotal = signal(0);
+  /** Bumped when something changes the tasks, so the list reads its page again. */
+  readonly listVersion = signal(0);
 
   /** Creating a task needs `task.write`; the API enforces it regardless (Roadmap SECURITY-02). */
   readonly canWrite = computed(() => this.context.permissions().includes(TASK_WRITE));
@@ -174,8 +196,15 @@ export class Kanban implements OnInit {
   /** How many of the search, the filters and the view differ from a plain board, for the folded toolbar's label. */
   readonly changesCount = computed(() => Object.keys(this.viewParams()).length);
 
+  /** What a view hands to the next: the filters, never what only one view has. */
+  readonly carriedParams = computed(() =>
+    viewToParams({ filters: this.filters(), groupBy: DEFAULT_GROUP, sortBy: DEFAULT_SORT }),
+  );
+
   private readonly viewParams = computed(() =>
-    viewToParams({ filters: this.filters(), groupBy: this.groupBy(), sortBy: this.sortBy() }),
+    this.view() === 'list'
+      ? { ...this.carriedParams(), ...listToParams(this.list()) }
+      : viewToParams({ filters: this.filters(), groupBy: this.groupBy(), sortBy: this.sortBy() }),
   );
 
   /** Set once the view has been read from the address: before that the defaults are not what the address says. */
@@ -223,15 +252,20 @@ export class Kanban implements OnInit {
     ]),
   ) as Record<TaskStatus, (drag: CdkDrag<TaskCard>) => boolean>;
 
-  private get projectId(): string {
+  /** The project this page shows, for the list to read from. */
+  get projectId(): string {
     return this.route.parent!.snapshot.paramMap.get('projectId')!;
   }
 
   async ngOnInit(): Promise<void> {
+    this.view.set(this.route.snapshot?.data?.['view'] === 'list' ? 'list' : 'board');
     this.readViewFromAddress();
     try {
+      // The list reads its own page, so it does not load every task to show the first one.
       const [cards, members, hierarchy] = await Promise.all([
-        this.tasksService.listForProject(this.projectId),
+        this.view() === 'list'
+          ? Promise.resolve([])
+          : this.tasksService.listForProject(this.projectId),
         this.projectsService.listMembers(this.projectId),
         this.hierarchyService.load(this.projectId),
       ]);
@@ -258,6 +292,16 @@ export class Kanban implements OnInit {
     this.filters.set(view.filters);
     this.groupBy.set(view.groupBy);
     this.sortBy.set(view.sortBy);
+    if (this.view() === 'list') {
+      this.list.set(
+        hasBoardParams(address)
+          ? paramsToList((key) => snapshot.queryParamMap.get(key))
+          : paramsToList((key) => {
+              const remembered = this.memory.recall(this.projectId)[key];
+              return typeof remembered === 'string' ? remembered : null;
+            }),
+      );
+    }
     this.viewRead = true;
   }
 
@@ -296,10 +340,27 @@ export class Kanban implements OnInit {
 
   patchFilters(patch: Partial<BoardFilters>): void {
     this.filters.update((filters) => ({ ...filters, ...patch }));
+    this.firstPage();
+  }
+
+  /** Another set of tasks starts at the first page of the list. */
+  private firstPage(): void {
+    if (this.list().page !== 1) {
+      this.list.update((list) => ({ ...list, page: 1 }));
+    }
+  }
+
+  onListSort(change: { sort: ListState['sort']; dir: ListState['dir'] }): void {
+    this.list.update((list) => ({ ...list, ...change, page: 1 }));
+  }
+
+  onListPage(page: number): void {
+    this.list.update((list) => ({ ...list, page }));
   }
 
   clearFilters(): void {
     this.filters.set(NO_FILTERS);
+    this.firstPage();
   }
 
   /** Phase › Epic, by name. */
@@ -358,6 +419,10 @@ export class Kanban implements OnInit {
   }
 
   openCreateForm(): void {
+    // The list did not load every task, and the form offers them as the ones a new task can depend on.
+    if (this.view() === 'list' && this.cards().length === 0) {
+      void this.reloadCards();
+    }
     this.createError.set(null);
     this.createKey = newIdempotencyKey();
     this.showCreateForm.set(true);
@@ -384,6 +449,7 @@ export class Kanban implements OnInit {
   }
 
   private async reloadCards(): Promise<void> {
+    this.listVersion.update((version) => version + 1);
     try {
       this.cards.set(await this.tasksService.listForProject(this.projectId));
     } catch (error) {

@@ -85,6 +85,17 @@ export class InstantCloseService {
     );
   }
 
+  /** The Roadmap IDs of every task of the project the ledger shows closed instantly (Roadmap TASK-18, the table's filter). */
+  async flaggedExternalIds(projectId: string): Promise<string[]> {
+    const [threshold, spans] = await Promise.all([
+      this.thresholdOf(projectId),
+      this.spansOf(projectId),
+    ]);
+    return [...spans]
+      .filter(([, span]) => isInstantClose(span, threshold))
+      .map(([id]) => id);
+  }
+
   /** The project's figures: how many tasks the ledger shows closed, how many of them instantly, and the share. */
   async metrics(
     projectId: string,

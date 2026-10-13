@@ -59,6 +59,9 @@ test.describe('accessibility (Roadmap GAP-25)', () => {
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('heading', { name: 'Elegir carpeta de documentos' })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Elegir esta carpeta' })).toBeEnabled();
+    // The error text of the form behind the dialog fades in; axe must not read its colour half way (a flake
+    // in a full run, never alone: the measured foreground was the page's own background).
+    await page.waitForTimeout(600);
     await checkA11y(page, 'folder-picker');
   });
 
@@ -101,6 +104,7 @@ test.describe('accessibility (Roadmap GAP-25)', () => {
     { name: 'team', url: '/team', heading: 'Equipo' },
     { name: 'roles', url: '/roles', heading: 'Roles' },
     { name: 'application settings (Roadmap GAP-39b)', url: '/settings', heading: 'Configuración' },
+    { name: 'task list (Roadmap TASK-18)', url: '/projects/pmhybrid-self/list', heading: 'Lista' },
     { name: 'conflicts', url: '/projects/pmhybrid-self/conflicts', heading: 'Conflictos' },
     { name: 'audit', url: '/projects/pmhybrid-self/audit', heading: 'Auditoría' },
     { name: 'project settings', url: '/projects/pmhybrid-self/settings', heading: 'Configuración' },

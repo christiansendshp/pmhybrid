@@ -72,17 +72,32 @@ const HIERARCHY: ProjectHierarchy = {
 describe('Kanban (brief §15)', () => {
   let listForProject: ReturnType<typeof vi.fn>;
   let transition: ReturnType<typeof vi.fn>;
+  let table: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     listForProject = vi.fn();
     transition = vi.fn().mockResolvedValue({});
+    table = vi.fn().mockResolvedValue({
+      total: 0,
+      offset: 0,
+      limit: 50,
+      sort: 'createdAt',
+      dir: 'asc',
+      items: [],
+    });
     TestBed.configureTestingModule({
       providers: [
         ProjectContext,
         provideRouter([
-          { path: 'projects/:projectId', children: [{ path: 'kanban', component: Kanban }] },
+          {
+            path: 'projects/:projectId',
+            children: [
+              { path: 'kanban', component: Kanban },
+              { path: 'list', component: Kanban, data: { view: 'list' } },
+            ],
+          },
         ]),
-        { provide: TasksService, useValue: { listForProject, transition } },
+        { provide: TasksService, useValue: { listForProject, transition, table } },
         { provide: ProjectsService, useValue: { listMembers: vi.fn().mockResolvedValue([]) } },
         { provide: HierarchyService, useValue: { load: vi.fn().mockResolvedValue(HIERARCHY) } },
       ],
@@ -539,6 +554,166 @@ describe('Kanban (brief §15)', () => {
 
       expect(root.querySelector('.board-toolbar__toggle')).toBeNull();
       expect(root.querySelector('#board-controls')).not.toBeNull();
+    });
+  });
+
+  describe('the list view and the switcher (Roadmap TASK-17, TASK-18)', () => {
+    const FIFTY = 50;
+    /** A list long enough that the pages the tests ask for exist. */
+    const longList = () =>
+      table.mockResolvedValue({
+        total: 300,
+        offset: 0,
+        limit: FIFTY,
+        sort: 'createdAt',
+        dir: 'asc',
+        items: [],
+      });
+
+    it('keeps the board where it was, with its switcher and its grouping and order', async () => {
+      const { harness, component } = await render([card()]);
+      const root = harness.routeNativeElement!;
+
+      expect(component.view()).toBe('board');
+      expect(root.querySelector('h2')?.textContent).toBe('Kanban');
+      expect(root.querySelector('nav[aria-label="Vistas del tablero"]')).not.toBeNull();
+      expect(root.querySelector('app-task-table')).toBeNull();
+      expect(root.textContent).toContain('Agrupar por');
+      expect(root.textContent).toContain('Ordenar por');
+      expect(table).not.toHaveBeenCalled();
+    });
+
+    it('shows the tasks as a table on the route list, reads only its own page, and has no grouping or column order', async () => {
+      const { harness, component } = await render([], ['task.write'], '/projects/p1/list');
+      const root = harness.routeNativeElement!;
+
+      expect(component.view()).toBe('list');
+      expect(listForProject).not.toHaveBeenCalled();
+      expect(root.querySelector('h2')?.textContent).toBe('Lista');
+      expect(root.querySelector('app-task-table')).not.toBeNull();
+      expect(root.querySelector('.board')).toBeNull();
+      expect(root.textContent).not.toContain('Agrupar por');
+      expect(root.textContent).not.toContain('Ordenar por');
+      expect(table).toHaveBeenCalledWith('p1', {
+        sort: 'createdAt',
+        dir: 'asc',
+        limit: FIFTY,
+        offset: 0,
+      });
+    });
+
+    it('reads the filters, the order and the page of the list from its address', async () => {
+      longList();
+      const { component } = await render(
+        [],
+        ['task.write'],
+        '/projects/p1/list?q=api&kind=AI_AGENT&order=title&dir=desc&page=3',
+      );
+
+      expect(component.filters()).toMatchObject({ search: 'api', assigneeKind: 'AI_AGENT' });
+      expect(component.list()).toEqual({ sort: 'title', dir: 'desc', page: 3 });
+      expect(table).toHaveBeenLastCalledWith('p1', {
+        q: 'api',
+        kind: 'AI_AGENT',
+        sort: 'title',
+        dir: 'desc',
+        limit: FIFTY,
+        offset: 2 * FIFTY,
+      });
+    });
+
+    it('writes the order and the page into the address, and starts again at the first page when the tasks change', async () => {
+      longList();
+      const { component, harness } = await render([], ['task.write'], '/projects/p1/list');
+      const router = TestBed.inject(Router);
+      const settle = async () => {
+        harness.detectChanges();
+        await harness.fixture.whenStable();
+      };
+
+      component.onListSort({ sort: 'priority', dir: 'desc' });
+      component.onListPage(2);
+      await settle();
+      expect(router.url).toBe('/projects/p1/list?order=priority&dir=desc&page=2');
+
+      component.patchFilters({ search: 'sync' });
+      await settle();
+      expect(router.url).toBe('/projects/p1/list?q=sync&order=priority&dir=desc');
+
+      component.onListPage(4);
+      component.clearFilters();
+      await settle();
+      expect(router.url).toBe('/projects/p1/list?order=priority&dir=desc');
+    });
+
+    it('brings a list back to the order and the filters it was left with when the address says nothing', async () => {
+      longList();
+      TestBed.inject(BoardMemory).remember('p1', { q: 'left', order: 'dueDate', page: '2' });
+
+      const { component } = await render([], ['task.write'], '/projects/p1/list');
+
+      expect(component.filters().search).toBe('left');
+      expect(component.list()).toEqual({ sort: 'dueDate', dir: 'asc', page: 2 });
+    });
+
+    it('ignores a value of the list that makes no sense instead of failing', async () => {
+      const { component } = await render(
+        [],
+        ['task.write'],
+        '/projects/p1/list?order=mood&dir=sideways&page=0',
+      );
+
+      expect(component.list()).toEqual({ sort: 'createdAt', dir: 'asc', page: 1 });
+    });
+
+    it('carries the filters, and only the filters, from one view to the other', async () => {
+      const onBoard = await render(
+        [card()],
+        ['task.write'],
+        '/projects/p1/kanban?q=api&stale=72&group=epic&sort=priority',
+      );
+      const hrefsOnBoard = Array.from(
+        onBoard.harness.routeNativeElement!.querySelectorAll('.board-views__link'),
+      ).map((link) => link.getAttribute('href'));
+
+      expect(hrefsOnBoard).toEqual([
+        '/projects/p1/kanban?q=api&stale=72',
+        '/projects/p1/list?q=api&stale=72',
+      ]);
+    });
+
+    it('carries the filters of the list to the board, without its order or its page', async () => {
+      const { harness } = await render(
+        [],
+        ['task.write'],
+        '/projects/p1/list?q=api&divergent=1&order=title&dir=desc&page=3',
+      );
+
+      const hrefs = Array.from(
+        harness.routeNativeElement!.querySelectorAll('.board-views__link'),
+      ).map((link) => link.getAttribute('href'));
+
+      expect(hrefs).toEqual([
+        '/projects/p1/kanban?q=api&divergent=1',
+        '/projects/p1/list?q=api&divergent=1',
+      ]);
+    });
+
+    it('counts the tasks the filters keep, as the list read them', async () => {
+      table.mockResolvedValue({
+        total: 7,
+        offset: 0,
+        limit: FIFTY,
+        sort: 'createdAt',
+        dir: 'asc',
+        items: [],
+      });
+
+      const { harness } = await render([], ['task.write'], '/projects/p1/list');
+
+      expect(
+        harness.routeNativeElement!.querySelector('.board-toolbar__count')?.textContent,
+      ).toContain('7 tareas');
     });
   });
 });

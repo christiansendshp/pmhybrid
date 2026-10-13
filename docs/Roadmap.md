@@ -544,34 +544,6 @@ created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
 
-### SUBTASK-09.3 — Choose and show the reviewer in the task page
-
-```yaml
-id: SUBTASK-09.3
-assigned_agent: 'claude'
-executor: AI
-type: SUBTASK
-title: Choose and show the reviewer in the task page
-status: IN_PROGRESS
-parent: TASK-09
-description: >
-  Sending a task to QA asks for an optional reviewer among the members who may approve; the task page shows the reviewer and since when.
-acceptance_criteria:
-  - id: AC-1
-    description: Keyboard and screen-reader usable, covered by the axe suite.
-    status: pending
-  - id: AC-2
-    description: The existing move to QA without choosing still works in one step.
-    status: pending
-definition_of_done:
-  - implementation_complete
-  - tests_green
-depends_on:
-  - SUBTASK-09.1
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T18:44:30Z
-```
-
 ### TASK-10 — MCP handoff_task and review_task
 
 ```yaml
@@ -608,48 +580,6 @@ next_action: >
   Wait for TASK-09.
 created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
-```
-
-### TASK-13 — The card shows the agent, the age in the stage and the reviewer
-
-```yaml
-id: TASK-13
-assigned_agent: 'claude'
-executor: AI
-type: TASK
-title: The card shows the agent, the age in the stage and the reviewer
-status: IN_PROGRESS
-priority: P1
-parent: FEATURE-12
-description: >
-  An agent chip (name, kind, model), the age in the stage ("en QA hace 2 d"), the reviewer, the instant-close chip
-  and, on hover or focus, the last ledger line (first 120 characters).
-acceptance_criteria:
-  - id: AC-1
-    description: Each of the four is visible as text; none depends on color; the card keeps its target sizes (the axe and target-size suites pass).
-    status: pending
-  - id: AC-2
-    description: A card without an agent, a reviewer or a ledger line looks as today.
-    status: pending
-  - id: AC-3
-    description: The age is computed from statusChangedAt and is right across a day boundary and a time zone (tested).
-    status: pending
-definition_of_done:
-  - implementation_complete
-  - tests_green
-  - documentation_updated
-  - roadmap_updated
-depends_on:
-  - TASK-02
-  - TASK-11
-  - SUBTASK-09.1
-technical_context:
-  frontend: apps/web/src/app/features/kanban, apps/web/src/app/core/board.ts
-  backend: apps/api/src/modules/tasks
-next_action: >
-  Wait for TASK-02, TASK-11 and SUBTASK-09.1.
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T18:44:29Z
 ```
 
 ### TASK-15 — Advisory WIP limits
@@ -727,80 +657,6 @@ definition_of_done:
   - tests_green
 depends_on:
   - SUBTASK-15.1
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-```
-
-### TASK-17 — The view switcher over one set of filters
-
-```yaml
-id: TASK-17
-type: TASK
-title: The view switcher over one set of filters
-status: READY
-priority: P1
-parent: FEATURE-13
-description: >
-  A switcher in the project (Tablero, Lista, En revisión, Por agente, and the others as they ship) that
-  keeps the filters and the URL state when the view changes. /kanban keeps working and is the Tablero.
-acceptance_criteria:
-  - id: AC-1
-    description: The existing /projects/:id/kanban addresses, query strings and per-project memory behave exactly as before (regression tests).
-    status: pending
-  - id: AC-2
-    description: Changing view keeps search, assignee, priority, phase, epic and blocked; a view that cannot use one says so in words.
-    status: pending
-  - id: AC-3
-    description: Only the views that exist are listed; the switcher is a navigation landmark, keyboard usable, and covered by the axe suite.
-    status: pending
-definition_of_done:
-  - implementation_complete
-  - tests_green
-  - documentation_updated
-  - roadmap_updated
-technical_context:
-  frontend: apps/web/src/app/features/kanban, apps/web/src/app/core/board-query.ts, apps/web/src/app/features/project-dashboard
-next_action: >
-  Start with a failing test for the first acceptance criterion; the proposal is in docs/agent-stage-and-kanban-plan.md, section 4 (4.4).
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-```
-
-### TASK-18 — List view
-
-```yaml
-id: TASK-18
-type: TASK
-title: List view
-status: READY
-priority: P1
-parent: FEATURE-13
-description: >
-  A table of the tasks with ID, short title, state and stage, agent, reviewer, priority, age in the stage, due and updated;
-  keyboard accessible; paginated by the existing limit and offset of the task list; sorted on the server so the
-  order holds across pages.
-acceptance_criteria:
-  - id: AC-1
-    description: Sorting by any column is right across pages (the list API gains a sort parameter if it has none); the same filters as the board apply.
-    status: pending
-  - id: AC-2
-    description: A project of 300 tasks renders the first page without loading the rest (IMPROVEMENT-01d3).
-    status: pending
-  - id: AC-3
-    description: The short title uses the same rule as the card (UX-04) with the whole title as a tooltip.
-    status: pending
-definition_of_done:
-  - implementation_complete
-  - tests_green
-  - documentation_updated
-  - roadmap_updated
-depends_on:
-  - TASK-17
-technical_context:
-  frontend: apps/web/src/app/features
-  backend: apps/api/src/modules/tasks
-next_action: >
-  Wait for TASK-17.
 created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```

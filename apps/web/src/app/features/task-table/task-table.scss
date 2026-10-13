@@ -1,0 +1,95 @@
+// The table scrolls inside its own region when it is wider than the screen, never the page.
+.task-table {
+  overflow-x: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-small);
+}
+
+.task-table__table {
+  width: 100%;
+  min-width: 60rem;
+  border-collapse: collapse;
+  font: var(--mat-sys-body-medium);
+
+  th,
+  td {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    background: var(--mat-sys-surface-container);
+    white-space: nowrap;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+}
+
+// A header is a button that orders by its column: the arrow says which way, as text, and the cell says it too.
+.task-table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.task-table__arrow {
+  display: inline-block;
+  min-width: 1ch;
+}
+
+.task-table__id {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.task-table__title {
+  color: var(--mat-sys-primary);
+}
+
+.task-table__muted,
+.task-table__model {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.task-table__note {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-small);
+  font: var(--mat-sys-body-small);
+}
+
+.task-table__empty {
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.task-table__pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+
+  > .meta-text:first-child {
+    margin-right: auto;
+  }
+}

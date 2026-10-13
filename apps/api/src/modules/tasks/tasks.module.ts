@@ -6,6 +6,8 @@ import { MetricsController } from './metrics.controller.js';
 import { ProgressController } from './progress.controller.js';
 import { ProgressRollupService } from './progress-rollup.service.js';
 import { ReviewersController } from './reviewers.controller.js';
+import { TaskTableController } from './task-table.controller.js';
+import { TaskTableService } from './task-table.service.js';
 import { TaskCommentsController } from './task-comments.controller.js';
 import { TaskCommentsService } from './task-comments.service.js';
 import { TasksController } from './tasks.controller.js';
@@ -18,6 +20,7 @@ import { TasksService } from './tasks.service.js';
     ProgressController,
     MetricsController,
     ReviewersController,
+    TaskTableController,
     TaskCommentsController,
   ],
   providers: [
@@ -25,6 +28,7 @@ import { TasksService } from './tasks.service.js';
     ProgressRollupService,
     TaskCommentsService,
     InstantCloseService,
+    TaskTableService,
   ],
   exports: [
     TasksService,
