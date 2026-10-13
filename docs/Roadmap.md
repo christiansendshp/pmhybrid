@@ -947,32 +947,6 @@ created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
 
-### GAP-44 — The write-back audit records an agent's change as a UI action
-
-```yaml
-id: GAP-44
-type: GAP
-title: The write-back audit records an agent's change as a UI action
-status: READY
-priority: P2
-description: >
-  Write-back audit events and document revisions are recorded with origin UI even when the change was caused by an agent's API call
-  (write-back.service.ts, lines 1143 and 1171, read, not run), so the trail of a document does not say that an agent wrote it.
-acceptance_criteria:
-  - id: AC-1
-    description: A change made with an API key and written back is audited and revised with the origin of the call and the agent as the actor.
-    status: pending
-  - id: AC-2
-    description: A UI change is recorded as before; a test covers both.
-    status: pending
-affects:
-  - FEATURE-10
-next_action: >
-  Write the test that shows the origin, then pass the origin through recordTaskEvent.
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-```
-
 ### GAP-45 — The Roadmap names an assigned agent by its display name, the ledger by its ledger name
 
 ```yaml

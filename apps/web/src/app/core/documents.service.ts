@@ -50,7 +50,7 @@ export interface ParsedAgentslog {
   previousSegment?: { archivePath: string; sha256: string };
 }
 
-export type RevisionSource = 'SYNC' | 'UI';
+export type RevisionSource = 'SYNC' | 'UI' | 'API';
 
 export interface DocumentRevisionSummary {
   id: string;

@@ -88,6 +88,7 @@ const DICTIONARIES: Record<LabelKind, Record<string, string>> = {
   revisionSource: {
     SYNC: 'Sincronización',
     UI: 'Aplicación',
+    API: 'API',
   },
   documentKind: {
     ROADMAP: 'Roadmap',

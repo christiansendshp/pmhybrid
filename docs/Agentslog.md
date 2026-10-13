@@ -645,3 +645,14 @@ segments live in `docs/history/`.
 - Summary: The view by agent at /projects/:id/agents: a lane for every agent of the project, the idle ones too, with its tasks by stage and its work in development against the limit per agent, the tasks no agent holds counted, and a lane marked as unregistered for the names the ledger carries that no agent answers to, with how often and why (the one list it adds to what the board and the workload read)
 - Files: apps/web/src/app/core/agent-lanes.ts, apps/web/src/app/features/agent-lanes/, apps/web/src/app/features/kanban/, apps/web/src/app/core/synchronization.service.ts, docs/board-views.md
 - Verify: api unit 718 and lint ok, api e2e 462 with the coverage floor met, nest build ok, web unit 473, eslint and build ok, axe suite 79 passed with the limits of the project on (the new views are in the axe, mobile-layout and target-size suites)
+
+## [2026-10-13T20:40:32Z] | claude | GAP-44 | IN_PROGRESS
+
+- Summary: The write-back audit and the document revisions record the origin of the call and the agent as the actor
+- Verify: pending
+
+## [2026-10-13T20:52:13Z] | claude | GAP-44 | DONE
+
+- Summary: A change an API key causes is written back, audited and revised with the origin of the call and the agent as the actor: every write-back (creation, start, completion, reassignment, field edit, dependency, removal, conflict resolution) carries the origin of the request, and a document revision can say it came from the API; a person's change is recorded as before
+- Files: apps/api/src/modules/synchronization/write-back.service.ts, apps/api/src/modules/tasks/tasks.service.ts, apps/api/src/modules/conflicts/conflicts.service.ts, apps/api/prisma/schema.prisma, apps/api/test/write-back-origin.e2e-spec.ts, apps/web/src/app/core/labels.ts, docs/synchronization.md, docs/domain-model.md
+- Verify: api unit 719 and lint ok, api e2e 465 with the coverage floor met (new spec: API key creation and title edit audited and revised as API with the agent as actor, person's as UI), nest build ok, web unit 473, eslint and build ok

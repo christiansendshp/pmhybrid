@@ -332,6 +332,7 @@ export class TasksService {
         'CREATED',
         requesterActorId,
         tx,
+        origin,
       );
       if (idempotencyKey) {
         await tx.idempotencyKey.create({
@@ -507,6 +508,7 @@ export class TasksService {
           previous,
           requesterActorId,
           tx,
+          origin,
         );
       }
       return result;
@@ -634,6 +636,7 @@ export class TasksService {
             'LOCKED_REASSIGN',
             requesterActorId,
             tx,
+            origin,
           );
         }
         if (task.externalId) {
@@ -643,6 +646,7 @@ export class TasksService {
             { assignee: previousAssigneeName },
             requesterActorId,
             tx,
+            origin,
           );
         }
         return null;
@@ -807,6 +811,7 @@ export class TasksService {
             'STATUS_EN_DESARROLLO',
             requesterActorId,
             tx,
+            origin,
           );
         }
         if (toStatus === TaskStatus.TERMINADA) {
@@ -816,6 +821,7 @@ export class TasksService {
             'STATUS_TERMINADA',
             requesterActorId,
             tx,
+            origin,
           );
         }
         return null;
@@ -894,6 +900,7 @@ export class TasksService {
         taskId,
         requesterActorId,
         tx,
+        origin,
       );
     });
   }
@@ -941,6 +948,7 @@ export class TasksService {
         taskId,
         requesterActorId,
         tx,
+        origin,
       );
     });
   }
@@ -1006,6 +1014,7 @@ export class TasksService {
         taskId,
         requesterActorId,
         tx,
+        origin,
       );
     });
   }

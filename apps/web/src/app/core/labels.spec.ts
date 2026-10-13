@@ -12,6 +12,7 @@ describe('label (Roadmap UX-03a)', () => {
     expect(label('conflictKind', 'CONCURRENT_FIELD_EDIT')).toBe('Edición simultánea');
     expect(label('resolution', 'KEEP_LOCAL')).toBe('se conservó el valor de PM Hub');
     expect(label('revisionSource', 'SYNC')).toBe('Sincronización');
+    expect(label('revisionSource', 'API')).toBe('API');
     expect(label('documentKind', 'AGENTS_RULES')).toBe('Reglas para agentes');
     expect(label('roadmapTable', 'NEAR_TERM')).toBe('Próximamente');
     expect(label('priority', 'HIGH')).toBe('Alta');

@@ -5,7 +5,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { DocumentKind, Prisma, TaskStatus } from '@prisma/client';
-import type { Task, TaskDependency } from '@prisma/client';
+import type { AuditOrigin, Task, TaskDependency } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { AgentslogParserService } from '../roadmap/agentslog-parser.service.js';
@@ -90,6 +90,12 @@ const DOCUMENT_FILENAMES: Record<'ROADMAP' | 'AGENTSLOG', string> = {
  * raises WRITE_BACK_COLLISION and skips the blind write; it just doesn't
  * also reconcile every other row on the page while doing so. The next
  * scheduled/manual sync catches the rest.
+ *
+ * Every public method takes the origin of the call that caused the write
+ * (`UI` unless the caller says otherwise), and the audit events and the
+ * document revision it records carry it, so the trail of a document says that
+ * an agent wrote it when an API key did (Roadmap GAP-44). The actor is the
+ * requester, which for an API key is the agent.
  */
 @Injectable()
 export class WriteBackService {
@@ -148,6 +154,7 @@ export class WriteBackService {
     trigger: WriteBackTrigger,
     requesterActorId: string,
     tx?: Prisma.TransactionClient,
+    origin: AuditOrigin = 'UI',
   ) {
     return this.within(projectId, tx, (client) =>
       this.writeBackLocked(
@@ -156,6 +163,7 @@ export class WriteBackService {
         taskId,
         trigger,
         requesterActorId,
+        origin,
       ),
     );
   }
@@ -173,6 +181,7 @@ export class WriteBackService {
     previous: RoadmapFieldEdit,
     requesterActorId: string,
     tx?: Prisma.TransactionClient,
+    origin: AuditOrigin = 'UI',
   ) {
     return this.within(projectId, tx, (client) =>
       this.fieldEditLocked(
@@ -181,6 +190,7 @@ export class WriteBackService {
         taskId,
         previous,
         requesterActorId,
+        origin,
       ),
     );
   }
@@ -204,6 +214,7 @@ export class WriteBackService {
     documentSide: ResolvedTaskFields,
     requesterActorId: string,
     tx?: Prisma.TransactionClient,
+    origin: AuditOrigin = 'UI',
   ) {
     return this.within(projectId, tx, (client) =>
       this.resolutionLocked(
@@ -213,6 +224,7 @@ export class WriteBackService {
         chosen,
         documentSide,
         requesterActorId,
+        origin,
       ),
     );
   }
@@ -224,6 +236,7 @@ export class WriteBackService {
     chosen: ResolvedTaskFields,
     documentSide: ResolvedTaskFields,
     requesterActorId: string,
+    origin: AuditOrigin,
   ): Promise<void> {
     const project = await tx.project.findUniqueOrThrow({
       where: { id: projectId },
@@ -355,7 +368,7 @@ export class WriteBackService {
             entityType: 'Task',
             entityId: task.id,
             operation: 'WRITE_BACK_DEFERRED',
-            origin: 'UI',
+            origin,
             newValue: { trigger: 'CONFLICT_RESOLUTION', deferred },
           },
           tx,
@@ -375,6 +388,7 @@ export class WriteBackService {
       'ROADMAP',
       DOCUMENT_FILENAMES.ROADMAP,
       updatedMarkdown,
+      origin,
     );
 
     // The written row is the new baseline only if nothing else in it changed
@@ -404,7 +418,7 @@ export class WriteBackService {
         entityType: 'Task',
         entityId: task.id,
         operation: 'WRITE_BACK',
-        origin: 'UI',
+        origin,
         newValue: {
           trigger: 'CONFLICT_RESOLUTION',
           fields: writtenFields,
@@ -426,9 +440,10 @@ export class WriteBackService {
     taskId: string,
     requesterActorId: string,
     tx?: Prisma.TransactionClient,
+    origin: AuditOrigin = 'UI',
   ) {
     return this.within(projectId, tx, (client) =>
-      this.removalLocked(client, projectId, taskId, requesterActorId),
+      this.removalLocked(client, projectId, taskId, requesterActorId, origin),
     );
   }
 
@@ -449,6 +464,7 @@ export class WriteBackService {
     taskId: string,
     requesterActorId: string,
     tx?: Prisma.TransactionClient,
+    origin: AuditOrigin = 'UI',
   ) {
     return this.within(projectId, tx, (client) =>
       this.dependencyChangedLocked(
@@ -457,6 +473,7 @@ export class WriteBackService {
         taskId,
         requesterActorId,
         'DEPENDENCY_ADD',
+        origin,
       ),
     );
   }
@@ -471,6 +488,7 @@ export class WriteBackService {
     taskId: string,
     requesterActorId: string,
     tx?: Prisma.TransactionClient,
+    origin: AuditOrigin = 'UI',
   ) {
     return this.within(projectId, tx, (client) =>
       this.dependencyChangedLocked(
@@ -479,6 +497,7 @@ export class WriteBackService {
         taskId,
         requesterActorId,
         'DEPENDENCY_REMOVE',
+        origin,
       ),
     );
   }
@@ -489,6 +508,7 @@ export class WriteBackService {
     taskId: string,
     requesterActorId: string,
     trigger: 'DEPENDENCY_ADD' | 'DEPENDENCY_REMOVE',
+    origin: AuditOrigin,
   ): Promise<Task> {
     const project = await tx.project.findUniqueOrThrow({
       where: { id: projectId },
@@ -529,6 +549,7 @@ export class WriteBackService {
       'ROADMAP',
       DOCUMENT_FILENAMES.ROADMAP,
       written.markdown,
+      origin,
     );
 
     const writtenRow = this.roadmapParser
@@ -559,7 +580,7 @@ export class WriteBackService {
         entityType: 'Task',
         entityId: task.id,
         operation: 'WRITE_BACK',
-        origin: 'UI',
+        origin,
         newValue: { trigger },
       },
       tx,
@@ -573,6 +594,7 @@ export class WriteBackService {
     projectId: string,
     taskId: string,
     requesterActorId: string,
+    origin: AuditOrigin,
   ) {
     const project = await tx.project.findUniqueOrThrow({
       where: { id: projectId },
@@ -621,6 +643,7 @@ export class WriteBackService {
         'AGENTSLOG',
         DOCUMENT_FILENAMES.AGENTSLOG,
         updatedAgentslog,
+        origin,
       );
     }
 
@@ -637,6 +660,7 @@ export class WriteBackService {
         'ROADMAP',
         DOCUMENT_FILENAMES.ROADMAP,
         updatedRoadmap,
+        origin,
       );
     }
 
@@ -647,7 +671,7 @@ export class WriteBackService {
         entityType: 'Task',
         entityId: task.id,
         operation: 'WRITE_BACK',
-        origin: 'UI',
+        origin,
         newValue: { trigger: 'REMOVED', rowRemoved: updatedRoadmap !== null },
       },
       tx,
@@ -705,6 +729,7 @@ export class WriteBackService {
     taskId: string,
     previous: RoadmapFieldEdit,
     requesterActorId: string,
+    origin: AuditOrigin,
   ) {
     const project = await tx.project.findUniqueOrThrow({
       where: { id: projectId },
@@ -861,7 +886,7 @@ export class WriteBackService {
             entityType: 'Task',
             entityId: task.id,
             operation: 'WRITE_BACK_DEFERRED',
-            origin: 'UI',
+            origin,
             newValue: { trigger: 'FIELD_EDIT', deferred },
           },
           tx,
@@ -881,6 +906,7 @@ export class WriteBackService {
       'ROADMAP',
       DOCUMENT_FILENAMES.ROADMAP,
       updatedMarkdown,
+      origin,
     );
 
     // The written row becomes the baseline only if the row carried no
@@ -919,7 +945,7 @@ export class WriteBackService {
         entityType: 'Task',
         entityId: task.id,
         operation: 'WRITE_BACK',
-        origin: 'UI',
+        origin,
         newValue: {
           trigger: 'FIELD_EDIT',
           fields: writtenFields,
@@ -938,6 +964,7 @@ export class WriteBackService {
     taskId: string,
     trigger: WriteBackTrigger,
     requesterActorId: string,
+    origin: AuditOrigin,
   ) {
     const project = await tx.project.findUniqueOrThrow({
       where: { id: projectId },
@@ -1029,6 +1056,7 @@ export class WriteBackService {
         'AGENTSLOG',
         DOCUMENT_FILENAMES.AGENTSLOG,
         updatedAgentslog,
+        origin,
       );
     }
 
@@ -1068,7 +1096,7 @@ export class WriteBackService {
             entityType: 'Task',
             entityId: task.id,
             operation: 'WRITE_BACK_AGENTSLOG_ONLY',
-            origin: 'UI',
+            origin,
             newValue: { trigger },
           },
           tx,
@@ -1126,6 +1154,7 @@ export class WriteBackService {
       'ROADMAP',
       DOCUMENT_FILENAMES.ROADMAP,
       updatedRoadmap,
+      origin,
     );
 
     // The row now on disk is exactly what PM Hub just rendered, so it becomes
@@ -1153,7 +1182,7 @@ export class WriteBackService {
         entityType: 'Task',
         entityId: task.id,
         operation: 'WRITE_BACK',
-        origin: 'UI',
+        origin,
         newValue: { trigger },
       },
       tx,
@@ -1168,6 +1197,7 @@ export class WriteBackService {
     kind: DocumentKind,
     filePath: string,
     content: string,
+    origin: AuditOrigin,
   ) {
     const hash = createHash('sha256').update(content).digest('hex');
     const document = await tx.document.upsert({
@@ -1180,7 +1210,7 @@ export class WriteBackService {
         documentId: document.id,
         contentHash: hash,
         rawContent: content,
-        source: 'UI',
+        source: revisionSourceOf(origin),
       },
     });
     await tx.document.update({
@@ -1188,6 +1218,11 @@ export class WriteBackService {
       data: { lastKnownHash: hash, lastSyncedAt: new Date() },
     });
   }
+}
+
+/** What a revision says wrote it: the API for an API key's call, the application for every other one (the sync writes its own). */
+function revisionSourceOf(origin: AuditOrigin): 'UI' | 'API' {
+  return origin === 'API' ? 'API' : 'UI';
 }
 
 function statusWordFor(trigger: WriteBackTrigger): string {

@@ -454,6 +454,7 @@ enum DocumentKind {
 enum RevisionSource {
   SYNC
   UI
+  API
 }
 
 enum SyncTrigger {

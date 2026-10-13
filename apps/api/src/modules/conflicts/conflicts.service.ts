@@ -314,7 +314,13 @@ export class ConflictsService {
         },
       });
     });
-    await this.writeChosenBack(projectId, conflict, dto, requesterActorId);
+    await this.writeChosenBack(
+      projectId,
+      conflict,
+      dto,
+      requesterActorId,
+      origin,
+    );
     return resolved;
   }
 
@@ -338,6 +344,7 @@ export class ConflictsService {
     },
     dto: ResolveConflictDto,
     requesterActorId: string,
+    origin: AuditOrigin,
   ): Promise<void> {
     if (
       conflict.entityType !== 'Task' ||
@@ -379,6 +386,8 @@ export class ConflictsService {
         chosen as ResolvedTaskFields,
         documentSide as ResolvedTaskFields,
         requesterActorId,
+        undefined,
+        origin,
       );
     } catch (error) {
       this.logger.error(

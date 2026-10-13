@@ -473,7 +473,8 @@ today, Roadmap DEPENDENCY-01) nothing changes on any board.
 
 ## Write-back (Postgres → Documents)
 
-Triggered by a UI-originated task change. The four that move a task through its
+Triggered by a task change made through the application or through the API (a person, or an agent with its
+API key). The four that move a task through its
 life — creation, starting (`EN_DESARROLLO`), completing (`TERMINADA`) and a
 locked reassignment — follow the steps below in full. A field edit, a
 dependency added or removed, a removal and a conflict resolution write the row
@@ -528,13 +529,18 @@ dependency added or removed, a removal and a conflict resolution write the row
    `WRITE_BACK_AGENTSLOG_ONLY`). A drifted document whose row still agrees is
    written as usual: the edit replaces only that row's line, in the file as it
    is now, so the person's other edits stay.
-7. Write, rehash, update `Document`, insert `DocumentRevision(source=UI)`.
+7. Write, rehash, update `Document`, insert `DocumentRevision(source=UI)` (`source=API` when the call that
+   caused the write was an API key's).
    Re-parse the written row and store its hash as the task's
    `lastSyncedContentHash` (and `lastSyncedAt = now`): the row on disk is
    exactly what PM Hub rendered, so the next read must neither mistake it for
    a document-side change nor treat the task's earlier, now-written UI edits
    as still contested.
-8. `AuditEvent(origin=UI)`, operation `WRITE_BACK` with the trigger.
+8. `AuditEvent(origin=UI)`, operation `WRITE_BACK` with the trigger. The origin is the one of the call that
+   caused the write (Roadmap GAP-44): `API` when an API key made it, with the agent as the actor, `UI`
+   otherwise. Every kind of write-back follows it (creation, start, completion, locked reassignment, field
+   edit, dependency, removal, conflict resolution), and so does the revision of step 7, so the trail of a
+   document says that an agent wrote it. The sync keeps its own origins and `source=SYNC`.
 
 ### One unit, or nothing (Roadmap BUG-07a)
 

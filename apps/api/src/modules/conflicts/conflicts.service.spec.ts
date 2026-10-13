@@ -490,6 +490,35 @@ describe('ConflictsService.resolve writes the chosen value to the document (Road
       { title: 'Local title' },
       { title: 'Doc title' },
       'actor-1',
+      undefined,
+      'UI',
+    );
+  });
+
+  it('writes the chosen value back with the origin of the call, so an agent resolving through the API is not recorded as the application (Roadmap GAP-44)', async () => {
+    const { service, recordConflictResolution } = setup({
+      held: [],
+      taskStatus: 'ASIGNADA',
+      currentTask: { title: 'Local title', status: 'ASIGNADA' },
+      ...titleConflict,
+    });
+
+    await service.resolve(
+      'p1',
+      'c1',
+      { strategy: 'KEEP_LOCAL' } as never,
+      'agent-1',
+      'API',
+    );
+
+    expect(recordConflictResolution).toHaveBeenCalledWith(
+      'p1',
+      't1',
+      { title: 'Local title' },
+      { title: 'Doc title' },
+      'agent-1',
+      undefined,
+      'API',
     );
   });
 
@@ -517,6 +546,8 @@ describe('ConflictsService.resolve writes the chosen value to the document (Road
       { title: 'Merged' },
       { title: 'Doc' },
       'actor-1',
+      undefined,
+      'UI',
     );
   });
 
