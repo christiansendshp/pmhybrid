@@ -9,6 +9,20 @@ export function statusStamp(
   previousStatus: string | null | undefined,
   nextStatus: string,
   now: Date = new Date(),
-): { statusChangedAt?: Date } {
-  return previousStatus === nextStatus ? {} : { statusChangedAt: now };
+): {
+  statusChangedAt?: Date;
+  reviewerActorId?: null;
+  reviewRequestedAt?: null;
+} {
+  if (previousStatus === nextStatus) {
+    return {};
+  }
+  // A reviewer was asked for the time the task was in QA (Roadmap SUBTASK-09.1): whichever way
+  // the task leaves it, the request is over.
+  return {
+    statusChangedAt: now,
+    ...(previousStatus === 'QA'
+      ? { reviewerActorId: null, reviewRequestedAt: null }
+      : {}),
+  };
 }

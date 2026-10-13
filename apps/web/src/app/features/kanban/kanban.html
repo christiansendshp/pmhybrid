@@ -196,6 +196,7 @@
                     <a
                       class="card__title"
                       [routerLink]="['../tasks', card.id]"
+                      [attr.aria-describedby]="card.ledgerNote ? 'ledger-' + card.id : null"
                       [attr.title]="card.title | shortTitle: 'hint'"
                       >{{ card.title | shortTitle }}</a
                     >
@@ -208,6 +209,9 @@
                         <span class="kind-badge" [attr.data-kind]="assignee.kind">{{
                           kindLabel(assignee.kind)
                         }}</span>
+                        @if (assignee.model) {
+                          <span class="card__model">{{ assignee.model }}</span>
+                        }
                         @if (card.status === 'EN_DESARROLLO') {
                           <span
                             class="lock-badge"
@@ -255,6 +259,14 @@
                           {{ date.label }} {{ date.value | date: 'd MMM' : 'UTC' }}
                         </li>
                       }
+                      @if (stageAge(card); as age) {
+                        <li>{{ age }}</li>
+                      }
+                      @if (card.reviewer; as reviewer) {
+                        <li>
+                          Revisor: {{ reviewer.displayName }} ({{ kindLabel(reviewer.kind) }})
+                        </li>
+                      }
                       @if (card.instantClose) {
                         <li class="card__note">Cierre inmediato</li>
                       }
@@ -272,6 +284,11 @@
                         </li>
                       }
                     </ul>
+                    @if (card.ledgerNote) {
+                      <p class="card__ledger" [id]="'ledger-' + card.id">
+                        Último registro: {{ card.ledgerNote }}
+                      </p>
+                    }
                   </article>
                 } @empty {
                   <p class="column__empty">Sin tareas</p>

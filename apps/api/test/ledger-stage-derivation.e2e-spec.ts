@@ -520,6 +520,25 @@ describe('Ledger stage of a task (e2e, Roadmap TASK-14)', () => {
     });
   });
 
+  it('keeps the start of the summary of the latest entry on each card (Roadmap TASK-13)', async () => {
+    const projectId = await syncedProject();
+
+    const list = (
+      await request(app.getHttpServer())
+        .get(`/projects/${projectId}/tasks`)
+        .set('Authorization', auth())
+        .expect(200)
+    ).body as { externalId: string; ledgerNote: string | null }[];
+
+    expect(list.map((card) => card.ledgerNote)).toEqual([
+      's',
+      's',
+      's',
+      's',
+      's',
+    ]);
+  });
+
   it('is on the task page too, and follows the ledger on the next sync without touching updatedAt', async () => {
     const projectId = await syncedProject();
     const before = await prisma.task.findFirstOrThrow({

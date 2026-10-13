@@ -34,6 +34,8 @@ model Actor {
   actorRoles        ActorRole[]
   memberships       ProjectMember[]
   assignedTasks     Task[]           @relation("TaskAssignee")
+  // The tasks it was asked to review while they are in QA (Roadmap SUBTASK-09.1); never an assignment.
+  reviewingTasks    Task[]           @relation("TaskReviewer")
   taskAssignments   TaskAssignment[] @relation("AssignmentActor")
   assignedByEvents  TaskAssignment[] @relation("AssignmentBy")
   auditEvents       AuditEvent[]
@@ -302,6 +304,9 @@ model Task {
   // null when the task has no entry or its latest says nothing of the stage. Only read, to show
   // when the ledger and the board disagree; it never moves the task.
   ledgerStage     TaskStatus?
+  // The start of the summary of that same entry, at most LEDGER_NOTE_LENGTH characters (Roadmap TASK-13):
+  // what the card shows, on hover or focus, as the last thing the ledger said about the task.
+  ledgerNote      String?
   priority        String?
   progressPercent Int?
 
@@ -334,6 +339,12 @@ model Task {
 
   assigneeActorId  String?
   assignee         Actor?    @relation("TaskAssignee", fields: [assigneeActorId], references: [id])
+  // Who was asked to review the task and since when (Roadmap SUBTASK-09.1): set on the way into QA,
+  // cleared by whatever takes the task out of it. Kept in Postgres only (no document has a field for
+  // it) and apart from the assignee: it changes neither Workload nor the assignee lock.
+  reviewerActorId   String?
+  reviewer          Actor?    @relation("TaskReviewer", fields: [reviewerActorId], references: [id], onDelete: SetNull)
+  reviewRequestedAt DateTime?
   assigneeLockedAt DateTime?
 
   rawOwner       String?

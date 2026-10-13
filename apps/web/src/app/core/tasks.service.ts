@@ -50,6 +50,11 @@ export interface Task {
   instantClose: boolean;
   /** The stage the ledger's latest entry gives the task, as of the last sync; null when it says nothing (Roadmap TASK-14). */
   ledgerStage: TaskStatus | null;
+  /** The start of the summary of the ledger's latest entry for the task, for the card to show (Roadmap TASK-13). */
+  ledgerNote: string | null;
+  /** Who was asked to review the task while it is in QA, and since when (Roadmap SUBTASK-09.1); null otherwise. */
+  reviewerActorId: string | null;
+  reviewRequestedAt: string | null;
   roadmapTable: 'ACTIVE' | 'NEAR_TERM' | 'BLOCKED' | null;
   createdAt: string;
   updatedAt: string;
@@ -58,7 +63,14 @@ export interface Task {
 /** A task as the board lists it (brief §15): the task plus what its card shows at a glance. */
 export interface TaskCard extends Task {
   blockedReason: string | null;
-  assignee: { id: string; displayName: string; kind: 'HUMAN' | 'AI_AGENT' } | null;
+  assignee: {
+    id: string;
+    displayName: string;
+    kind: 'HUMAN' | 'AI_AGENT';
+    /** The model of an agent, when it has one (Roadmap TASK-13). */
+    model?: string | null;
+  } | null;
+  reviewer: { id: string; displayName: string; kind: 'HUMAN' | 'AI_AGENT' } | null;
   computedProgress: number;
   subtaskCounts: { total: number; done: number };
   /** `open` counts dependencies whose task is not TERMINADA yet. */
@@ -83,7 +95,8 @@ export interface TaskDetail extends Task {
     assignedAt: string;
     actor: { displayName: string };
   }[];
-  assignee: { id: string; displayName: string; kind: string } | null;
+  assignee: { id: string; displayName: string; kind: string; model: string | null } | null;
+  reviewer: { id: string; displayName: string; kind: 'HUMAN' | 'AI_AGENT' } | null;
   agentLogEvents: {
     id: string;
     agentName: string;
@@ -225,11 +238,29 @@ export class TasksService {
     );
   }
 
-  transition(projectId: string, taskId: string, status: TaskStatus): Promise<Task> {
+  /** `reviewerActorId` asks someone to review the task and goes only with the move to QA (Roadmap SUBTASK-09.1). */
+  transition(
+    projectId: string,
+    taskId: string,
+    status: TaskStatus,
+    reviewerActorId?: string | null,
+  ): Promise<Task> {
     return firstValueFrom(
       this.http.post<Task>(`${API_BASE_URL}/projects/${projectId}/tasks/${taskId}/transition`, {
         status,
+        ...(reviewerActorId ? { reviewerActorId } : {}),
       }),
+    );
+  }
+
+  /** The members who may be asked to review a task: those who may approve QA (Roadmap SUBTASK-09.3). */
+  reviewers(
+    projectId: string,
+  ): Promise<{ id: string; displayName: string; kind: 'HUMAN' | 'AI_AGENT' }[]> {
+    return firstValueFrom(
+      this.http.get<{ id: string; displayName: string; kind: 'HUMAN' | 'AI_AGENT' }[]>(
+        `${API_BASE_URL}/projects/${projectId}/reviewers`,
+      ),
     );
   }
 

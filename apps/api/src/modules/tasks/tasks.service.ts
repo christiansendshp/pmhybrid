@@ -79,8 +79,36 @@ const HIERARCHY_FIELDS = [
 const DATE_FIELDS = ['startDate', 'estimatedDate', 'dueDate'] as const;
 
 /** What a board card needs read with each task. */
+/** Who a card names as its assignee, with the model of an agent (Roadmap TASK-13). */
+const ASSIGNEE_SELECT = {
+  id: true,
+  displayName: true,
+  kind: true,
+  agentProfile: { select: { modelName: true } },
+} as const;
+
+/** The assignee as the API shows it: the agent's model lifted out of its profile. */
+function presentAssignee<
+  T extends {
+    id: string;
+    displayName: string;
+    kind: 'HUMAN' | 'AI_AGENT';
+    agentProfile: { modelName: string | null } | null;
+  },
+>(assignee: T | null) {
+  return assignee
+    ? {
+        id: assignee.id,
+        displayName: assignee.displayName,
+        kind: assignee.kind,
+        model: assignee.agentProfile?.modelName ?? null,
+      }
+    : null;
+}
+
 const CARD_INCLUDE = {
-  assignee: { select: { id: true, displayName: true, kind: true } },
+  assignee: { select: ASSIGNEE_SELECT },
+  reviewer: { select: { id: true, displayName: true, kind: true } },
   subtasks: { where: { deletedAt: null }, select: { status: true } },
   dependencies: { select: { dependsOnTask: { select: { status: true } } } },
 } satisfies Prisma.TaskInclude;
@@ -155,8 +183,9 @@ export class TasksService {
           )
         : new Set<string>();
     return Promise.all(
-      tasks.map(async ({ subtasks, dependencies, ...task }) => ({
+      tasks.map(async ({ subtasks, dependencies, assignee, ...task }) => ({
         ...task,
+        assignee: presentAssignee(assignee),
         computedProgress: progress.get(task.id) ?? 0,
         instantClose: task.externalId !== null && instant.has(task.externalId),
         subtaskCounts: {
@@ -194,7 +223,8 @@ export class TasksService {
             orderBy: { assignedAt: 'desc' },
             include: { actor: { select: { id: true, displayName: true } } },
           },
-          assignee: { select: { id: true, displayName: true, kind: true } },
+          assignee: { select: ASSIGNEE_SELECT },
+          reviewer: { select: { id: true, displayName: true, kind: true } },
           // Brief §17 "actividad de agentes" — ordered by ingestion, never by
           // the agent-authored (untrusted) timestampFromLog.
           agentLogEvents: {
@@ -216,6 +246,7 @@ export class TasksService {
     ]);
     return {
       ...full,
+      assignee: presentAssignee(full.assignee),
       computedProgress,
       instantClose: full.externalId !== null && instant.has(full.externalId),
     };
@@ -636,6 +667,52 @@ export class TasksService {
     return result;
   }
 
+  /**
+   * The members who may be asked to review a task: active, in the project, and holding the permission
+   * to approve QA there (Roadmap SUBTASK-09.3). The list a person chooses from; the API accepts any
+   * active member until the project decides who may review (DEC-006).
+   */
+  async reviewerCandidates(projectId: string) {
+    const members = await this.prisma.projectMember.findMany({
+      where: { projectId, isActive: true, actor: { isActive: true } },
+      select: {
+        actor: { select: { id: true, displayName: true, kind: true } },
+      },
+      orderBy: { joinedAt: 'asc' },
+    });
+    const candidates: (typeof members)[number]['actor'][] = [];
+    for (const { actor } of members) {
+      if (
+        await this.permissionsResolver.hasPermission(
+          actor.id,
+          PERMISSIONS.TASK_QA_APPROVE,
+          projectId,
+        )
+      ) {
+        candidates.push(actor);
+      }
+    }
+    return candidates;
+  }
+
+  /** An actor named for a role on a task must be an active member of the project, and active itself. */
+  private async assertActiveMember(
+    projectId: string,
+    actorId: string,
+    who: string,
+  ): Promise<void> {
+    const member = await this.prisma.projectMember.findUnique({
+      where: { projectId_actorId: { projectId, actorId } },
+      include: { actor: { select: { isActive: true } } },
+    });
+    if (!member || !member.isActive) {
+      throw new BadRequestException(`${who} must be a project member`);
+    }
+    if (!member.actor.isActive) {
+      throw new BadRequestException(`${who} is inactive`);
+    }
+  }
+
   /** Kanban transition (docs/domain-model.md, task-status-policy.ts) — the one legal way to change Task.status. */
   async transition(
     projectId: string,
@@ -643,8 +720,15 @@ export class TasksService {
     toStatus: TaskStatus,
     requesterActorId: string,
     origin: AuditOrigin = 'UI',
+    reviewerActorId?: string | null,
   ) {
     const task = await this.getOwned(projectId, taskId);
+    // A reviewer goes with the move to QA and nowhere else (Roadmap SUBTASK-09.1).
+    if (reviewerActorId && toStatus !== TaskStatus.QA) {
+      throw new BadRequestException(
+        'A reviewer can only be asked for with the move to QA',
+      );
+    }
 
     const rule = findTransitionRule(toSharedStatus(task.status), toStatus);
     if (!rule) {
@@ -663,6 +747,11 @@ export class TasksService {
       );
     }
 
+    // An active member of this project, asked at the time of the move: they are the one to look at it.
+    if (reviewerActorId) {
+      await this.assertActiveMember(projectId, reviewerActorId, 'The reviewer');
+    }
+
     const written = await this.writeBack.inTransaction(
       projectId,
       async (tx) => {
@@ -676,6 +765,9 @@ export class TasksService {
             assigneeLockedAt: isAssigneeLocked(toStatus) ? new Date() : null,
             completedAt: completedAtFor(task.status, toStatus),
             ...statusStamp(task.status, toStatus),
+            ...(toStatus === TaskStatus.QA && reviewerActorId
+              ? { reviewerActorId, reviewRequestedAt: new Date() }
+              : {}),
           },
         });
         if (count !== 1) {
@@ -688,8 +780,18 @@ export class TasksService {
             entityType: 'Task',
             entityId: taskId,
             operation: 'STATUS_CHANGE',
-            previousValue: { status: task.status },
-            newValue: { status: toStatus },
+            previousValue: {
+              status: task.status,
+              ...(task.reviewerActorId
+                ? { reviewerActorId: task.reviewerActorId }
+                : {}),
+            },
+            newValue: {
+              status: toStatus,
+              ...(toStatus === TaskStatus.QA && reviewerActorId
+                ? { reviewerActorId }
+                : {}),
+            },
             origin,
           },
           tx,

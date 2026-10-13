@@ -37,6 +37,9 @@ function taskDetail(overrides: Partial<TaskDetailModel> = {}): TaskDetailModel {
     statusChangedAt: '2026-10-01T10:00:00.000Z',
     instantClose: false,
     ledgerStage: null,
+    ledgerNote: null,
+    reviewerActorId: null,
+    reviewRequestedAt: null,
     roadmapTable: 'ACTIVE',
     blockedReason: null,
     neededDecision: null,
@@ -47,6 +50,7 @@ function taskDetail(overrides: Partial<TaskDetailModel> = {}): TaskDetailModel {
     dependencies: [],
     assignments: [],
     assignee: null,
+    reviewer: null,
     agentLogEvents: [],
     ...overrides,
   };
@@ -109,6 +113,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
   let myPermissions: ReturnType<typeof vi.fn>;
   let listAudit: ReturnType<typeof vi.fn>;
   let listForProject: ReturnType<typeof vi.fn>;
+  let reviewers: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     getById = vi.fn();
@@ -121,6 +126,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     myPermissions = vi.fn().mockResolvedValue(['task.delete', 'task.write']);
     listAudit = vi.fn();
     listForProject = vi.fn().mockResolvedValue([]);
+    reviewers = vi.fn().mockResolvedValue([]);
     TestBed.configureTestingModule({
       providers: [
         ProjectContext,
@@ -144,6 +150,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
             removeDependency,
             normalizeTitle,
             listForProject,
+            reviewers,
           },
         },
         {
@@ -228,6 +235,77 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     expect(note?.textContent).toContain('Cierre inmediato');
     expect(note?.textContent?.replace(/\s+/g, ' ')).toContain('menos de 15 minutos');
     expect(note?.textContent).toContain('no cambia nada de la tarea');
+  });
+
+  it('shows the reviewer and since when, and how long the task has been in its stage (Roadmap SUBTASK-09.3, TASK-13)', async () => {
+    getById.mockResolvedValue(
+      taskDetail({
+        status: 'QA',
+        statusChangedAt: new Date(Date.now() - 3 * 60 * 60 * 1000 - 60_000).toISOString(),
+        reviewerActorId: 'ana',
+        reviewRequestedAt: '2026-10-13T10:00:00.000Z',
+        reviewer: { id: 'ana', displayName: 'Ana García', kind: 'HUMAN' },
+      }),
+    );
+    listAudit.mockResolvedValue([]);
+
+    const { text } = await render();
+
+    expect(text().replace(/\s+/g, ' ')).toContain('Estado: QA (en QA hace 3 h)');
+    expect(text()).toContain('Revisor');
+    expect(text().replace(/\s+/g, ' ')).toContain('Ana García (Humano)');
+    expect(text()).toContain('pedido el');
+  });
+
+  it('offers the members who may approve as reviewer for the move to QA, and sends the one chosen with it (Roadmap SUBTASK-09.3)', async () => {
+    getById.mockResolvedValue(taskDetail({ status: 'EN_DESARROLLO' }));
+    listAudit.mockResolvedValue([]);
+    reviewers.mockResolvedValue([{ id: 'ana', displayName: 'Ana García', kind: 'HUMAN' }]);
+
+    const { component, harness } = await render();
+    const picker = harness.routeNativeElement!.querySelector(
+      'mat-select[aria-label="Revisor (opcional) al pasar a QA"]',
+    );
+    expect(picker).not.toBeNull();
+    expect(component.reviewers()).toEqual([
+      { id: 'ana', displayName: 'Ana García', kind: 'HUMAN' },
+    ]);
+
+    component.selectedReviewerId.set('ana');
+    await component.transition('QA');
+
+    expect(transition).toHaveBeenCalledWith('p1', 't1', 'QA', 'ana');
+    // The choice is spent with the move.
+    expect(component.selectedReviewerId()).toBeNull();
+  });
+
+  it('moves to QA in one step when nobody is chosen, and never sends a reviewer with another move (Roadmap SUBTASK-09.3)', async () => {
+    getById.mockResolvedValue(taskDetail({ status: 'EN_DESARROLLO' }));
+    listAudit.mockResolvedValue([]);
+    reviewers.mockResolvedValue([{ id: 'ana', displayName: 'Ana García', kind: 'HUMAN' }]);
+
+    const { component } = await render();
+    await component.transition('QA');
+    component.selectedReviewerId.set('ana');
+    await component.transition('ASIGNADA');
+
+    expect(transition).toHaveBeenNthCalledWith(1, 'p1', 't1', 'QA', null);
+    expect(transition).toHaveBeenNthCalledWith(2, 'p1', 't1', 'ASIGNADA', null);
+  });
+
+  it('leaves the choice out when the list of reviewers does not load, and still moves the task (Roadmap SUBTASK-09.3)', async () => {
+    getById.mockResolvedValue(taskDetail({ status: 'EN_DESARROLLO' }));
+    listAudit.mockResolvedValue([]);
+    reviewers.mockRejectedValue(new Error('boom'));
+
+    const { component, harness } = await render();
+
+    expect(component.reviewers()).toEqual([]);
+    expect(
+      harness.routeNativeElement!.querySelector('mat-select[aria-label^="Revisor"]'),
+    ).toBeNull();
+    await component.transition('QA');
+    expect(transition).toHaveBeenCalledWith('p1', 't1', 'QA', null);
   });
 
   it('says both stages when the ledger and the board disagree about the task (Roadmap TASK-14)', async () => {
@@ -433,7 +511,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
 
     await component.transition('EN_DESARROLLO');
 
-    expect(transition).toHaveBeenCalledWith('p1', 't1', 'EN_DESARROLLO');
+    expect(transition).toHaveBeenCalledWith('p1', 't1', 'EN_DESARROLLO', null);
     expect(listAudit).toHaveBeenCalledTimes(2);
   });
 

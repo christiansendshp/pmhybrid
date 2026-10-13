@@ -524,3 +524,24 @@ segments live in `docs/history/`.
 - Summary: A card and the task page say, in words, when the latest ledger stage and the task's status disagree (Registro: QA · PM Hub: EN DESARROLLO): the sync keeps Task.ledgerStage (the stage of the latest entry, TERMINADA for the exact closing word, null when it says nothing) without moving updatedAt, the card payload carries it, and a start in the ledger agrees with development and with QA alike
 - Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261013220000_add_task_ledger_stage/, apps/api/src/modules/roadmap/ledger-status.util.ts, apps/api/src/modules/synchronization/synchronization.service.ts, apps/api/test/ledger-stage-derivation.e2e-spec.ts, apps/web/src/app/core/ledger-stage.ts, apps/web/src/app/features/kanban/, apps/web/src/app/features/task-detail/, docs/synchronization.md, docs/api-reference.md, docs/domain-model.md
 - Verify: api unit 706 and lint ok, api e2e 412 with the coverage floor met (2 new: the stage on card and task page, and rewritten without touching updatedAt), web unit 356 and eslint ok; the badge is not yet through the axe suite, which runs once at the end of wave 3
+
+## [2026-10-13T18:44:27Z] | claude | SUBTASK-09.1 | IN_PROGRESS
+
+- Summary: Task.reviewerActorId and reviewRequestedAt, set on the way into QA
+- Verify: pending
+
+## [2026-10-13T18:44:29Z] | claude | TASK-13 | IN_PROGRESS
+
+- Summary: The card shows the agent with its model, the age in the stage, the reviewer and the last ledger line
+- Verify: pending
+
+## [2026-10-13T18:44:30Z] | claude | SUBTASK-09.3 | IN_PROGRESS
+
+- Summary: Choose and show the reviewer in the task page
+- Verify: pending
+
+## [2026-10-13T18:44:31Z] | claude | SUBTASK-09.1 | DONE
+
+- Summary: A task can have a reviewer: the move to QA may ask an active member of the project (Task.reviewerActorId, reviewRequestedAt), whichever way the task leaves QA clears both, the task payload carries the reviewer's name and kind, the move is audited with it, and it changes neither the assignee, Workload nor the assignee lock; a task moved to QA with nobody named behaves as before
+- Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261013230000_add_task_reviewer/, apps/api/src/modules/tasks/tasks.service.ts, apps/api/src/modules/tasks/status-change.util.ts, apps/api/src/modules/tasks/dto/transition-task.dto.ts, apps/api/test/task-reviewer.e2e-spec.ts
+- Verify: api unit 711 and lint ok, api e2e 422 with the coverage floor met (task-reviewer 9 new: stored and shown, an agent as reviewer, cleared on leaving QA, nobody named, assignee untouched, not a member or inactive refused, only with the move to QA, the reviewers list, the agent's model), nest build ok

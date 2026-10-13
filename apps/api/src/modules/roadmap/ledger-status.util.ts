@@ -130,6 +130,20 @@ export function derivedStage(
   return null;
 }
 
+/** How much of an entry's summary a card carries (Roadmap TASK-13). */
+export const LEDGER_NOTE_LENGTH = 120;
+
+/** The start of an entry's summary for the card: one line, cut at the limit with an ellipsis, or null when it is empty. */
+export function ledgerNoteOf(summary: string): string | null {
+  const line = summary.replace(/\s+/g, ' ').trim();
+  if (line === '') {
+    return null;
+  }
+  return line.length <= LEDGER_NOTE_LENGTH
+    ? line
+    : `${line.slice(0, LEDGER_NOTE_LENGTH - 1).trimEnd()}…`;
+}
+
 /**
  * The stage the ledger's latest entry gives a task, to compare with the board (Roadmap TASK-14):
  * the stage of its word, or TERMINADA for the exact closing word. A partial close, a pause and a

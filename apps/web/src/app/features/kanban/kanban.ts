@@ -39,6 +39,7 @@ import { describeHttpError } from '../../core/http-error.js';
 import { newIdempotencyKey } from '../../core/idempotency-key.js';
 import { ledgerDivergenceText, ledgerDiverges } from '../../core/ledger-stage.js';
 import { ProjectContext } from '../../core/project-context.js';
+import { stageAgeText } from '../../core/stage-age.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { Viewport } from '../../core/viewport.js';
 import {
@@ -110,6 +111,7 @@ export class Kanban implements OnInit {
   readonly isBlocked = isBlocked;
   readonly ledgerDiverges = ledgerDiverges;
   readonly divergenceText = ledgerDivergenceText;
+  readonly stageAge = (card: TaskCard) => stageAgeText(card.status, card.statusChangedAt);
 
   readonly cards = signal<TaskCard[]>([]);
   readonly members = signal<ProjectMember[]>([]);

@@ -192,6 +192,25 @@
   color: var(--mat-sys-error);
 }
 
+// The last thing the ledger said about the task (Roadmap TASK-13): out of the way until the card is hovered
+// or something in it has focus. The title link names it as its description, so a screen reader has it either way.
+.card__ledger {
+  display: none;
+  margin: 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.card:hover .card__ledger,
+.card:focus-within .card__ledger {
+  display: block;
+}
+
+.card__model {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
 // A note about how the work was recorded, not a problem with it: text on a quiet outline, so it
 // reads without colour and does not compete with the alerts (Roadmap TASK-12).
 .card__note {

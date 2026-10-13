@@ -19,6 +19,7 @@ import type { ParsedAgentLogEntry } from '../roadmap/agentslog-parser.service.js
 import {
   derivedStage,
   latestEntryByTask,
+  ledgerNoteOf,
   ledgerStageOf,
 } from '../roadmap/ledger-status.util.js';
 import {
@@ -1561,19 +1562,22 @@ export class SynchronizationService {
         deletedAt: null,
         externalId: { in: [...latestByTask.keys()] },
       },
-      select: { id: true, externalId: true, ledgerStage: true },
+      select: {
+        id: true,
+        externalId: true,
+        ledgerStage: true,
+        ledgerNote: true,
+      },
     });
-    const changed = new Map<TaskStatus | null, string[]>();
-    for (const task of tasks) {
-      const stage = ledgerStageOf(latestByTask.get(task.externalId!)!);
-      if (stage !== task.ledgerStage) {
-        changed.set(stage, [...(changed.get(stage) ?? []), task.id]);
-      }
-    }
     // Raw, not `update`: this is derived data, and a write through Prisma would also move
     // `updatedAt`, which the board sorts by, for every task at once the first time it runs.
-    for (const [stage, ids] of changed) {
-      await tx.$executeRaw`UPDATE "Task" SET "ledgerStage" = ${stage}::"TaskStatus" WHERE "id" IN (${Prisma.join(ids)})`;
+    for (const task of tasks) {
+      const entry = latestByTask.get(task.externalId!)!;
+      const stage = ledgerStageOf(entry);
+      const note = ledgerNoteOf(entry.summary);
+      if (stage !== task.ledgerStage || note !== task.ledgerNote) {
+        await tx.$executeRaw`UPDATE "Task" SET "ledgerStage" = ${stage}::"TaskStatus", "ledgerNote" = ${note} WHERE "id" = ${task.id}`;
+      }
     }
   }
 

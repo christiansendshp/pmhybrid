@@ -164,6 +164,7 @@ export class TasksController {
       dto.status,
       requesterActorId,
       origin,
+      dto.reviewerActorId,
     );
   }
 

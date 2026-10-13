@@ -21,6 +21,7 @@ import { newIdempotencyKey } from '../../core/idempotency-key.js';
 import { ProjectContext } from '../../core/project-context.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { ledgerDivergenceText, ledgerDiverges } from '../../core/ledger-stage.js';
+import { stageAgeText } from '../../core/stage-age.js';
 import { LEGAL_NEXT_STATUSES, statusLabel } from '../../core/task-status-policy.js';
 import {
   Task,
@@ -78,11 +79,21 @@ export class TaskDetail implements OnInit {
   readonly instantCloseMinutes = computed(
     () => this.projectContext?.project()?.instantCloseMinutes ?? 5,
   );
+  /** How long the task has been in its stage, as the card says it (Roadmap TASK-13). */
+  readonly stageAge = computed(() => {
+    const task = this.task();
+    return task ? stageAgeText(task.status, task.statusChangedAt) : null;
+  });
   readonly history = signal<AuditEvent[]>([]);
   readonly members = signal<ProjectMember[]>([]);
   readonly allTasks = signal<Task[]>([]);
   readonly hierarchy = signal<ProjectHierarchy>(EMPTY_HIERARCHY);
   readonly selectedAssigneeId = signal<string | null>(null);
+  /** Who may be asked to review a task, and the one chosen for the move to QA (Roadmap SUBTASK-09.3). */
+  readonly reviewers = signal<{ id: string; displayName: string; kind: 'HUMAN' | 'AI_AGENT' }[]>(
+    [],
+  );
+  readonly selectedReviewerId = signal<string | null>(null);
   readonly selectedDependsOnId = signal<string | null>(null);
   readonly editing = signal(false);
   readonly addingSubtask = signal(false);
@@ -193,12 +204,15 @@ export class TaskDetail implements OnInit {
       }
       return;
     }
-    const [members, allTasks, hierarchy, permissions] = await Promise.all([
+    const [members, allTasks, hierarchy, permissions, reviewers] = await Promise.all([
       this.projectsService.listMembers(this.projectId),
       this.tasksService.listForProject(this.projectId),
       this.hierarchyService.load(this.projectId),
       this.projectsService.myPermissions(this.projectId),
+      // A list that does not load only leaves the choice out: moving to QA still works in one step.
+      this.tasksService.reviewers(this.projectId).catch(() => []),
     ]);
+    this.reviewers.set(reviewers);
     this.members.set(members);
     this.allTasks.set(allTasks);
     this.hierarchy.set(hierarchy);
@@ -247,10 +261,12 @@ export class TaskDetail implements OnInit {
   }
 
   async transition(status: TaskStatus): Promise<void> {
-    await this.runAction(
-      () => this.tasksService.transition(this.projectId, this.taskId, status),
-      'No se pudo cambiar el estado.',
-    );
+    // Only the move to QA can name a reviewer, and the choice is spent with it.
+    const reviewerId = status === 'QA' ? this.selectedReviewerId() : null;
+    await this.runAction(async () => {
+      await this.tasksService.transition(this.projectId, this.taskId, status, reviewerId);
+      this.selectedReviewerId.set(null);
+    }, 'No se pudo cambiar el estado.');
   }
 
   async assign(): Promise<void> {

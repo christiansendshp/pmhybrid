@@ -516,30 +516,6 @@ created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
 
-### SUBTASK-09.1 — Task.reviewerActorId and reviewRequestedAt, set on the way into QA
-
-```yaml
-id: SUBTASK-09.1
-type: SUBTASK
-title: Task.reviewerActorId and reviewRequestedAt, set on the way into QA
-status: READY
-parent: TASK-09
-description: >
-  Nullable columns, an optional reviewer on the transition into QA, cleared on leaving QA, exposed on the task payload with the reviewer's name and kind, audited.
-acceptance_criteria:
-  - id: AC-1
-    description: Moving to QA with a reviewer stores both; moving out clears both; a task without a reviewer behaves as today.
-    status: pending
-  - id: AC-2
-    description: The reviewer must be an active member of the project.
-    status: pending
-definition_of_done:
-  - implementation_complete
-  - tests_green
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-```
-
 ### SUBTASK-09.2 — Reviewer rules
 
 ```yaml
@@ -572,9 +548,11 @@ updated_at: 2026-10-13T00:00:00Z
 
 ```yaml
 id: SUBTASK-09.3
+assigned_agent: 'claude'
+executor: AI
 type: SUBTASK
 title: Choose and show the reviewer in the task page
-status: BACKLOG
+status: IN_PROGRESS
 parent: TASK-09
 description: >
   Sending a task to QA asks for an optional reviewer among the members who may approve; the task page shows the reviewer and since when.
@@ -591,7 +569,7 @@ definition_of_done:
 depends_on:
   - SUBTASK-09.1
 created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
+updated_at: 2026-10-13T18:44:30Z
 ```
 
 ### TASK-10 — MCP handoff_task and review_task
@@ -636,9 +614,11 @@ updated_at: 2026-10-13T00:00:00Z
 
 ```yaml
 id: TASK-13
+assigned_agent: 'claude'
+executor: AI
 type: TASK
 title: The card shows the agent, the age in the stage and the reviewer
-status: READY
+status: IN_PROGRESS
 priority: P1
 parent: FEATURE-12
 description: >
@@ -669,7 +649,7 @@ technical_context:
 next_action: >
   Wait for TASK-02, TASK-11 and SUBTASK-09.1.
 created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
+updated_at: 2026-10-13T18:44:29Z
 ```
 
 ### TASK-15 — Advisory WIP limits

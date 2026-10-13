@@ -96,7 +96,11 @@
     </div>
   }
   <p>
-    Estado: {{ statusLabel(t.status) }} — Progreso: {{ t.computedProgress | number: '1.0-0' }} %
+    Estado: {{ statusLabel(t.status) }}
+    @if (stageAge(); as age) {
+      ({{ age }})
+    }
+    — Progreso: {{ t.computedProgress | number: '1.0-0' }} %
   </p>
   @if (t.ledgerStage && ledgerDiverges(t.ledgerStage, t.status)) {
     <p class="ledger-note">
@@ -164,6 +168,17 @@
         <dd>{{ (t.estimatedDate | date: 'd MMM y' : 'UTC') ?? '—' }}</dd>
         <dt>Fecha de vencimiento</dt>
         <dd>{{ (t.dueDate | date: 'd MMM y' : 'UTC') ?? '—' }}</dd>
+        @if (t.reviewer) {
+          <dt>Revisor</dt>
+          <dd>
+            {{ t.reviewer.displayName }} ({{ actorKindLabel(t.reviewer.kind) }})
+            @if (t.reviewRequestedAt) {
+              <span class="meta-text">
+                — pedido el {{ t.reviewRequestedAt | date: 'd MMM y, HH:mm' }}</span
+              >
+            }
+          </dd>
+        }
         <dt>Creada</dt>
         <dd>{{ t.createdAt | date: 'd MMM y, HH:mm' }}</dd>
         @if (t.completedAt) {
@@ -193,6 +208,21 @@
 
   <section>
     <h3>Transición</h3>
+    @if (legalNextStatuses().includes('QA') && reviewers().length > 0) {
+      <mat-select
+        aria-label="Revisor (opcional) al pasar a QA"
+        placeholder="Revisor (opcional)"
+        [ngModel]="selectedReviewerId()"
+        (ngModelChange)="selectedReviewerId.set($event)"
+      >
+        <mat-option [value]="null">Sin revisor</mat-option>
+        @for (reviewer of reviewers(); track reviewer.id) {
+          <mat-option [value]="reviewer.id"
+            >{{ reviewer.displayName }} ({{ actorKindLabel(reviewer.kind) }})</mat-option
+          >
+        }
+      </mat-select>
+    }
     @for (status of legalNextStatuses(); track status) {
       <button mat-flat-button type="button" [disabled]="acting()" (click)="transition(status)">
         {{ statusLabel(status) }}

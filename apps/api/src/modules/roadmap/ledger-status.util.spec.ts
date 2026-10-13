@@ -4,6 +4,8 @@ import {
   classifyLedgerWord,
   derivedStage,
   latestEntryByTask,
+  LEDGER_NOTE_LENGTH,
+  ledgerNoteOf,
   ledgerStageOf,
   reviewResultOf,
   stageOfEntry,
@@ -267,5 +269,29 @@ describe('ledgerStageOf (Roadmap TASK-14)', () => {
     ]) {
       expect(ledgerStageOf({ statusWord: word }), word).toBeNull();
     }
+  });
+});
+
+describe('ledgerNoteOf (Roadmap TASK-13)', () => {
+  it('is the summary as one line', () => {
+    expect(ledgerNoteOf('  Started the\n  API   work ')).toBe(
+      'Started the API work',
+    );
+  });
+
+  it('keeps a summary of exactly the limit and cuts a longer one with an ellipsis, inside the limit', () => {
+    const exact = 'a'.repeat(LEDGER_NOTE_LENGTH);
+    const long = `${'word '.repeat(40)}end`;
+
+    expect(ledgerNoteOf(exact)).toBe(exact);
+    const cut = ledgerNoteOf(long)!;
+    expect(cut.length).toBeLessThanOrEqual(LEDGER_NOTE_LENGTH);
+    expect(cut.endsWith('…')).toBe(true);
+    expect(long.startsWith(cut.slice(0, -1))).toBe(true);
+  });
+
+  it('is null for an empty summary', () => {
+    expect(ledgerNoteOf('')).toBeNull();
+    expect(ledgerNoteOf(' \n ')).toBeNull();
   });
 });

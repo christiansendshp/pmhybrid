@@ -35,11 +35,15 @@ function card(overrides: Partial<TaskCard> = {}): TaskCard {
     statusChangedAt: '2026-10-01T10:00:00.000Z',
     instantClose: false,
     ledgerStage: null,
+    ledgerNote: null,
+    reviewerActorId: null,
+    reviewRequestedAt: null,
     roadmapTable: 'BLOCKED',
     blockedReason: 'Waiting on credentials',
     createdAt: '2026-09-15T09:00:00.000Z',
     updatedAt: '2026-09-15T09:00:00.000Z',
-    assignee: { id: 'codex', displayName: 'Codex', kind: 'AI_AGENT' },
+    assignee: { id: 'codex', displayName: 'Codex', kind: 'AI_AGENT', model: null },
+    reviewer: null,
     computedProgress: 45,
     subtaskCounts: { total: 2, done: 1 },
     dependencyCounts: { total: 1, open: 1 },
@@ -142,6 +146,62 @@ describe('Kanban (brief §15)', () => {
 
     // Words, not only a colour, and not in the alert colour: it says how the work was recorded.
     expect(notes).toEqual([['Cierre inmediato'], []]);
+  });
+
+  it('names the agent with its model, how long the task has been in its stage, the reviewer and the last ledger line (Roadmap TASK-13)', async () => {
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 - 60_000).toISOString();
+    const { harness } = await render([
+      card({
+        id: 't1',
+        status: 'QA',
+        statusChangedAt: twoDaysAgo,
+        assignee: {
+          id: 'codex',
+          displayName: 'Codex',
+          kind: 'AI_AGENT',
+          model: 'Claude Sonnet 5.5',
+        },
+        reviewer: { id: 'ana', displayName: 'Ana García', kind: 'HUMAN' },
+        ledgerNote: 'Handed over for review',
+      }),
+      card({
+        id: 't2',
+        externalId: 'PMH-2',
+        status: 'PENDIENTE',
+        statusChangedAt: new Date().toISOString(),
+        assignee: null,
+        reviewer: null,
+        ledgerNote: null,
+      }),
+    ]);
+    const cardOf = (externalId: string) =>
+      Array.from(harness.routeNativeElement!.querySelectorAll('.card'))
+        .map((element) => (element.textContent ?? '').replace(/\s+/g, ' '))
+        .find((text) => text.includes(externalId))!;
+    const cards = [cardOf('PMH-1'), cardOf('PMH-2')];
+
+    for (const expected of [
+      'Codex',
+      'Agente IA',
+      'Claude Sonnet 5.5',
+      'en QA hace 2 d',
+      'Revisor: Ana García (Humano)',
+      'Último registro: Handed over for review',
+    ]) {
+      expect(cards[0], expected).toContain(expected);
+    }
+    // A card without an agent, a reviewer or a ledger line looks as before.
+    expect(cards[1]).toContain('pendiente ahora');
+    expect(cards[1]).not.toContain('Revisor');
+    expect(cards[1]).not.toContain('Último registro');
+    const title = harness
+      .routeNativeElement!.querySelector('#ledger-t1')!
+      .closest('.card')!
+      .querySelector('.card__title')!;
+    expect(title.getAttribute('aria-describedby')).toBe('ledger-t1');
+    expect(harness.routeNativeElement!.querySelector('#ledger-t1')?.textContent).toContain(
+      'Handed over for review',
+    );
   });
 
   it('says both stages on a card whose status and ledger disagree, and nothing when they agree or the ledger is silent (Roadmap TASK-14)', async () => {
