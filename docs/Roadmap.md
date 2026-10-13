@@ -253,11 +253,11 @@ description: >
   rule: a fact is born in the skill's documents, the app reads it, shows it and never
   guesses it. Evidence, conflicts and plan: docs/agent-stage-and-kanban-plan.md.
   Why now (SMARTHR, 2026-10-13): 0 tasks in ASIGNADA or QA out of 293, because the skill has
-  no word for either; the ledger lines IN_PROGRESS and DONE of a task are written one second
-  apart, so no card is ever seen in development; no agent is a registered actor, so no task
-  has an assignee; moving a task to QA writes nothing to the documents.
+  no word for either; a third of the tasks are documented after the fact (117 of the 358 tasks that have both an IN_PROGRESS and a DONE entry were closed within 5 minutes of starting (91 within one minute) and 56 took an hour or more), so the
+  board cannot show that work in development; no agent is a registered actor, so no task has an
+  assignee; moving a task to QA writes nothing to the documents.
 next_action: >
-  Answer DEC-005 and DEC-006, then start wave 1 (TASK-01, TASK-02, TASK-11, TASK-12, TASK-05, TASK-04).
+  Start wave 1 now (TASK-01, TASK-02, TASK-11, TASK-12, TASK-05, TASK-04): it needs nothing from the skill and no decision. DEC-005 and DEC-006 gate the writing of QA to the ledger (TASK-08), the reviewer rules (SUBTASK-09.2) and GAP-41.
 created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
@@ -301,8 +301,6 @@ description: >
   closes; after the skill accepts a REVIEW word it writes the handoff to the ledger (opt in
   per project); a task gets a reviewer in Postgres only, and MCP gets handoff and review.
   Not proposed: inferring stages from today's free-text words.
-depends_on:
-  - FEATURE-10
 affects:
   - FEATURE-04
   - DEPENDENCY-01
@@ -324,9 +322,6 @@ parent: EPIC-02
 description: >
   Agent chip, age in the stage, reviewer, last ledger line, a ledger-versus-board divergence
   badge, advisory WIP limits and new filters. Never by color alone.
-depends_on:
-  - FEATURE-10
-  - FEATURE-11
 next_action: >
   Refine after TASK-02 and TASK-11 land; TASK-17 (the view switcher) can start earlier.
 created_at: 2026-10-13T00:00:00Z
@@ -346,8 +341,6 @@ description: >
   A view switcher over one set of filters and one URL state, then a list, a review queue, an
   agent view, and three views that wrap EPIC-01 features (waiting, dependencies, timeline)
   instead of duplicating their queries. The /kanban address keeps working.
-depends_on:
-  - FEATURE-12
 affects:
   - FEATURE-05
   - FEATURE-07
@@ -367,9 +360,11 @@ status: READY
 priority: P1
 parent: FEATURE-10
 description: >
-  AgentProfile holds only providerType and configJson. Add aliases (the strings an agent
-  writes in the documents), model and stageRole (DEVELOPER, QA or BOTH, default BOTH), with the
-  bounded lengths of the DTO limits table, a migration, the API and the agent form on the Team page.
+  AgentProfile holds only providerType and configJson. Add ledgerName (the one exact string the agent
+  passes to the skill: the skill compares it exactly, so it is also what PM Hub must write in the
+  ledger), aliases (other strings the agent has written), model and stageRole (DEVELOPER, QA or BOTH,
+  default BOTH), with the bounded lengths of the DTO limits table, a migration, the API and the agent
+  form on the Team page.
 acceptance_criteria:
   - id: AC-1
     description: An agent can be given aliases, a model and a stage role from the Team page and from PATCH /actors/:id, by someone holding actors.manage; nobody else can.
@@ -382,6 +377,9 @@ acceptance_criteria:
     status: pending
   - id: AC-4
     description: Every change is audited with what changed; existing agents get empty aliases, no model and BOTH, and nothing else changes.
+    status: pending
+  - id: AC-5
+    description: 'The ledger name is unique across the instance (compared without case or surrounding space), defaults to the display name, and is the string PM Hub writes in the ledger for that agent; changing it is audited and says that it must match what the agent passes to the skill.'
     status: pending
 definition_of_done:
   - implementation_complete
@@ -409,7 +407,8 @@ parent: FEATURE-10
 description: >
   The owner cell (name@timestamp) resolves only by exact display name today, and the ledger's
   agent name never feeds identity (AgentLogEvent.agentName is raw). Resolve both through the
-  display name and the aliases, link each ledger event to its actor, and keep the claim time current.
+  display name, the ledger name and the aliases, link each ledger event to its actor, and keep the
+  claim time current.
 acceptance_criteria:
   - id: AC-1
     description: With the five agents of SMARTHR registered with their aliases, every task whose owner cell names one of them has that assignee after the next sync, and the Workload page lists them.
@@ -421,7 +420,7 @@ acceptance_criteria:
     description: Existing AgentLogEvent rows are linked by a backfill that can be run twice with the same result; an event that cannot be linked keeps agentActorId null.
     status: pending
   - id: AC-4
-    description: Resolving an owner never writes to a document and never breaks BR-001 (a task in EN_DESARROLLO keeps its locked assignee).
+    description: 'Resolving an owner never writes to a document. A document owner change on a task in EN_DESARROLLO applies as it does today (reconcileAssignee: the lock restricts who may reassign in PM Hub, not the document, and a local assignee edit since the last sync raises a conflict); the first test pins that behavior.'
     status: pending
 definition_of_done:
   - implementation_complete
@@ -560,13 +559,13 @@ status: READY
 priority: P2
 parent: FEATURE-10
 description: >
-  An agent cannot ask the system who it is. Add an MCP tool whoami and make the ledger entries PM Hub writes for an API-key agent use its canonical name, so the log and the roster agree.
+  An agent cannot ask the system who it is. Add an MCP tool whoami and make the ledger entries PM Hub writes for an API-key agent use its ledger name, the exact string the agent passes to the skill. The skill's holder rule compares the string exactly: if PM Hub wrote a display name that differs from it, the agent's own done would be refused as another agent's task, and the ledger would show two holders.
 acceptance_criteria:
   - id: AC-1
-    description: whoami returns the actor id, display name, kind, aliases, model, stage role and the permissions the agent holds in each project it belongs to; it needs a valid key and shows nothing of any other actor.
+    description: whoami returns the actor id, display name, ledger name, kind, aliases, model, stage role and the permissions the agent holds in each project it belongs to; it needs a valid key and shows nothing of any other actor.
     status: pending
   - id: AC-2
-    description: A ledger entry PM Hub writes for an agent uses the display name, never an alias or free text (skill-ledger.util.ts names the requester or the assignee today, read, not run).
+    description: A ledger entry PM Hub writes for an agent carries its ledger name exactly, never the display name when they differ, an alias or free text (skill-ledger.util.ts names the requester or the assignee by display name today, read, not run); a test with a display name that differs from the ledger name shows that the agent's own claim, pause and done after PM Hub's entry are accepted by the skill's check.
     status: pending
   - id: AC-3
     description: The MCP tool list in docs/api-reference.md and the agent instructions mention whoami.
@@ -678,7 +677,8 @@ description: >
   and the latest ledger entry of the task is a REVIEW (not followed by a FAIL), the task is QA;
   when it is a FAIL, EN_DESARROLLO. ASSIGNED on a TODO row is ASIGNADA. Derived on sync, writes
   nothing to any document. The row and the document win: a row that says TODO or DONE is
-  read as today.
+  read as today. This is the read side only: the QA and ASIGNADA columns of SMARTHR fill only
+  once the skill accepts these words (DEPENDENCY-01) and agents write them.
 acceptance_criteria:
   - id: AC-1
     description: 'Fixture: row IN_PROGRESS + latest ledger REVIEW gives QA; + IN_PROGRESS gives EN_DESARROLLO; row DONE gives TERMINADA whatever the ledger says; row TODO gives PENDIENTE.'
@@ -691,6 +691,9 @@ acceptance_criteria:
     status: pending
   - id: AC-4
     description: BR-002 and BR-003 e2e tests are unchanged and green.
+    status: pending
+  - id: AC-5
+    description: A later edit to another field of the same row (so its hash changes) raises no status conflict for the derived QA, because QA and the row's IN_PROGRESS are the same coarse state (rowStatusDiffers); a test proves it.
     status: pending
 definition_of_done:
   - implementation_complete
@@ -948,13 +951,13 @@ status: READY
 priority: P1
 parent: FEATURE-11
 description: >
-  In SMARTHR the IN_PROGRESS and DONE entries of a task are one second apart and the median span between
-  a task's entries is 25 s, so no card is ever seen in development. Flag a task whose first IN_PROGRESS
+  In SMARTHR a third of the tasks are documented after the fact: 117 of the 358 tasks that have both an IN_PROGRESS and a DONE entry were closed within 5 minutes of starting (91 within one minute) and 56 took an hour or more. The
+  board cannot show that work in development. Flag a task whose first IN_PROGRESS
   and its DONE are less than N minutes apart (default 5, a project setting). A signal, not an accusation:
   closing a batch after the fact is legitimate, it just means the board could not show the work.
 acceptance_criteria:
   - id: AC-1
-    description: GET /projects/:id/metrics (or the task payload) carries instantClose per task and the project's share of instant closes; the figure for SMARTHR matches the SQL in the plan.
+    description: GET /projects/:id/metrics (or the task payload) carries instantClose per task and the project's share of instant closes; the figure for SMARTHR matches the query in the appendix of docs/agent-stage-and-kanban-plan.md (117 of 358 under 5 minutes on 2026-10-13).
     status: pending
   - id: AC-2
     description: The task page and the card show a text chip, not only a color; nothing is blocked or changed by the flag.
@@ -1459,7 +1462,7 @@ affects:
   - SUBTASK-09.2
   - TASK-09
 next_action: >
-  Ask the user; record decision, decision_reason, decision_owner (HUMAN) and decision_date. Recommended: the second.
+  Ask the user; record decision, decision_reason, decision_owner (HUMAN) and decision_date. Recommended: the second, with the reviewer rule applied only when someone other than the developer may approve; in a project with a single agent it would freeze every task in QA.
 created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
@@ -1683,7 +1686,7 @@ title: Documents that no longer say what the system does
 status: READY
 priority: P2
 description: >
-  Four documents are wrong or incomplete now, found while comparing the skill and the app.
+  Five documents are wrong or incomplete now, found while comparing the skill and the app.
 acceptance_criteria:
   - id: AC-1
     description: docs/skillProyectDocument-analysis.md says it describes the v1 skill (2026-09-14) and points to the plan for the current one, or is rewritten.
@@ -1697,8 +1700,11 @@ acceptance_criteria:
   - id: AC-4
     description: The supersession of ADR-002 by the YAML translation is recorded in an ADR, not only in a code comment (roadmap-yaml-entry.util.ts, 317-319).
     status: pending
+  - id: AC-5
+    description: 'BR-001 in docs/ProductDescription.md says that changing the assignee of a task in EN_DESARROLLO needs a special permission, and says nothing of the document, which does change it (reconcileAssignee); it says that the lock binds changes made in PM Hub.'
+    status: pending
 next_action: >
-  Edit the four documents; no code.
+  Edit the five documents; no code.
 created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
@@ -1715,8 +1721,8 @@ question: >
   D1: do work logged without a task count in the progress? D2: may the system register the
   agents it sees in the log as members? D3: how are periodic summaries delivered? D4: should the
   Roadmap carry a target date per phase? D5: should agents log a start entry when they claim a task?
-  Reframed 2026-10-13: D5 is already what claim writes. Tasks are never seen in development
-  because agents close in batch (a task's IN_PROGRESS and DONE are a second apart in SMARTHR);
+  Reframed 2026-10-13: D5 is already what claim writes. Many tasks are not seen in development
+  because agents close in batch (117 of 358 SMARTHR tasks with both entries closed within 5 minutes);
   that is TASK-12 and DEPENDENCY-02 of EPIC-02. Answer D5 only to decide whether the rule goes into
   the AGENTS.md template.
 options:

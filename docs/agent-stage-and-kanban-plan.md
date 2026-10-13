@@ -48,14 +48,14 @@ What the live data and the code say:
    TERMINADA and a locked reassignment are write-back triggers
    (`tasks.service.ts:675-696`, verified). An agent that hands a task to QA through MCP leaves no
    trace in the ledger, which is the opposite of "agents document every step".
-3. **"In development" is almost invisible because agents document after the fact.** In SMARTHR's
-   ledger the `IN_PROGRESS` and `DONE` entries of a task are written one second apart (for example
-   `14:18:09` and `14:18:10`); the median span between a task's entries is 25 seconds. The card
-   never sits in EN_DESARROLLO. This is how the agents work, not a missing feature.
+3. **A third of the work is documented after the fact, so the board cannot show it in development.**
+   In SMARTHR 117 of the 358 tasks that have both an IN_PROGRESS and a DONE entry were closed within 5 minutes of starting (91 within one minute) and 56 took an hour or more; a batch close writes both entries a second apart (for example `14:18:09` and
+   `14:18:10`). This is how the agents work, not a missing feature. See the appendix for the query.
 4. **Agent identity is free text and must match exactly.** In the skill, `<agent>` is any string and
    ownership is an exact match; a probe showed that after `claim` as `claude-sonnet-5-5`, a `pause`
-   as `claude-sonnet-5` is refused. This repo's own log uses `claude` (167 entries), `claude-code`
-   (35), `Claude` (33) and `claude-sonnet-5` (24); SMARTHR's uses five model names. In the app the
+   as `claude-sonnet-5` is refused. This repo's own logs use `claude`, `claude-code`, `Claude` and
+   `claude-sonnet-5` for the same kind of agent (the counts differ between the current and the
+   archived logs, so none is quoted); SMARTHR's uses five model names. In the app the
    owner cell `name@timestamp` is already parsed and matched to a member by exact display name
    (`parseOwnerCell`, `resolveOwner`), but the ledger's agent name never feeds identity, and no
    agent of SMARTHR is registered, so no task has an assignee.
@@ -83,23 +83,26 @@ What the live data and the code say:
 
 Read this section before the proposals. **BLOCKS** means something cannot be built before the
 thing it names is settled; **OVERLAP** means do not build it twice; **INVARIANT** is a rule the
-design keeps; **STALE** is a document that is now wrong.
+design keeps; **STALE** is a document that is now wrong; **DECISION** needs your answer; **CONFLICT** and
+**DEFECT** are things that would break, or already are broken.
 
-| #   | Kind      | The request implies                                | What exists or is planned                                                                                                                                                                                     | Resolution                                                                                                                                                                                                              |
-| --- | --------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| C1  | BLOCKS    | The app records a handoff to QA in the ledger.     | The latest skill's `check` rejects any ledger word but three; the app's own write-back already follows that (`SKILL_STATES`).                                                                                 | The app **reads** `REVIEW` now; it **writes** it only after the skill accepts it (`DEPENDENCY-01`, `TASK-08`).                                                                                                          |
-| C2  | BLOCKS    | One place to add the QA word.                      | Two skill lines: this repo's YAML fork and the upstream tables, diverged (upstream reverted to tables in PRs #4 and #5).                                                                                      | `DEC-005`. The app side is built format-agnostic so almost nothing waits for it.                                                                                                                                        |
-| C3  | DECISION  | QA approval means something.                       | Sync applies a document's status with no transition or permission check: a document `DONE` moves a task out of QA without `task.qa.approve`, as does a disappeared row with a DONE entry (**read, not run**). | `DEC-006` and `GAP-41`. Today's behavior is kept unless a project turns approval on.                                                                                                                                    |
-| C4  | OVERLAP   | Agents resolve to actors.                          | `FEATURE-03` of `EPIC-01`. Its `name@time` form is already implemented; what is missing is aliases and registration.                                                                                          | `FEATURE-10` refines `FEATURE-03`; `FEATURE-03` is narrowed, not built twice.                                                                                                                                           |
-| C5  | OVERLAP   | The ledger carries the stage.                      | `FEATURE-04` (`canonicalStatus`) has no REVIEW or ASSIGNED, and BR-003's terminal check is the exact word `DONE`.                                                                                             | `TASK-06` adds the stage words and `FEATURE-04` is amended to cover partial closes (`DONE parcial` is not terminal).                                                                                                    |
-| C6  | OVERLAP   | Agents document when they start.                   | `D5` of `DEC-004` asks for a start entry on claim. `claim` already writes one.                                                                                                                                | The cause is closing in batch, not a missing entry. `D5` is reframed; see `TASK-12` and `DEPENDENCY-02`.                                                                                                                |
-| C7  | OVERLAP   | Waiting and dependency views.                      | `FEATURE-05` (waiting) and `FEATURE-07` (critical path) of `EPIC-01`.                                                                                                                                         | `TASK-21` and `TASK-22` are thin board views over those features, not new queries.                                                                                                                                      |
-| C8  | OVERLAP   | Short names.                                       | Upstream's `Name` column (at most 10 words) and `GAP-39`/`UX-04` (LLM and view shortening) apply the same rule twice.                                                                                         | `GAP-43`: when a row carries a `Name`, the app uses it and does not call the LLM for that row.                                                                                                                          |
-| C9  | INVARIANT | A reviewer per task.                               | BR-001 locks the assignee in EN_DESARROLLO; Workload reads the assignee.                                                                                                                                      | A separate `reviewerActorId`, in Postgres only (no document has a field for it). Never the assignee column.                                                                                                             |
-| C10 | INVARIANT | The app derives QA from the documents.             | ADR-001: documents stay the write target; the app never silently overwrites them.                                                                                                                             | Deriving QA writes nothing. Writing the handoff appends to the ledger only, per project, opt in (`TASK-08`).                                                                                                            |
-| C11 | STALE     | Docs say the app writes `QA` into the Status cell. | True for the old tables; false for latest-skill tables, where QA is written as `IN_PROGRESS`.                                                                                                                 | `DOC-01`. It also covers `skillProyectDocument-analysis.md` (describes the v1 skill), `domain-model.md:357` (reopen is also held by PROJECT_MANAGER), BR-002's wording, and ADR-002, superseded only in a code comment. |
-| C12 | DEFECT    | Agents identified in the audit trail.              | Write-back audit and revisions are recorded as origin `UI` even when an agent's API call caused them (`write-back.service.ts:1143,1171`, **read, not run**).                                                  | `GAP-44`.                                                                                                                                                                                                               |
-| C13 | OVERLAP   | An agent lane on the board.                        | Swimlanes by assignee and the Workload page exist.                                                                                                                                                            | `TASK-20` builds on them; the new part is resolving agents (`TASK-02`) and showing the unregistered ones.                                                                                                               |
+| #   | Kind      | The request implies                                | What exists or is planned                                                                                                                                                                                                             | Resolution                                                                                                                                                                                                                             |
+| --- | --------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C1  | BLOCKS    | The app records a handoff to QA in the ledger.     | The latest skill's `check` rejects any ledger word but three; the app's own write-back already follows that (`SKILL_STATES`).                                                                                                         | The app **reads** `REVIEW` now; it **writes** it only after the skill accepts it (`DEPENDENCY-01`, `TASK-08`).                                                                                                                         |
+| C2  | BLOCKS    | One place to add the QA word.                      | Two skill lines: this repo's YAML fork and the upstream tables, diverged (upstream reverted to tables in PRs #4 and #5).                                                                                                              | `DEC-005`. The app side is built format-agnostic so almost nothing waits for it.                                                                                                                                                       |
+| C3  | DECISION  | QA approval means something.                       | Sync applies a document's status with no transition or permission check: a document `DONE` moves a task out of QA without `task.qa.approve`, as does a disappeared row with a DONE entry (**read, not run**).                         | `DEC-006` and `GAP-41`. Today's behavior is kept unless a project turns approval on.                                                                                                                                                   |
+| C4  | OVERLAP   | Agents resolve to actors.                          | `FEATURE-03` of `EPIC-01`. Its `name@time` form is already implemented; what is missing is aliases and registration.                                                                                                                  | `FEATURE-10` refines `FEATURE-03`; `FEATURE-03` is narrowed, not built twice.                                                                                                                                                          |
+| C5  | OVERLAP   | The ledger carries the stage.                      | `FEATURE-04` (`canonicalStatus`) has no REVIEW or ASSIGNED, and BR-003's terminal check is the exact word `DONE`.                                                                                                                     | `TASK-06` adds the stage words and `FEATURE-04` is amended to cover partial closes (`DONE parcial` is not terminal).                                                                                                                   |
+| C6  | OVERLAP   | Agents document when they start.                   | `D5` of `DEC-004` asks for a start entry on claim. `claim` already writes one.                                                                                                                                                        | The cause is closing in batch, not a missing entry. `D5` is reframed; see `TASK-12` and `DEPENDENCY-02`.                                                                                                                               |
+| C7  | OVERLAP   | Waiting and dependency views.                      | `FEATURE-05` (waiting) and `FEATURE-07` (critical path) of `EPIC-01`.                                                                                                                                                                 | `TASK-21` and `TASK-22` are thin board views over those features, not new queries.                                                                                                                                                     |
+| C8  | OVERLAP   | Short names.                                       | Upstream's `Name` column (at most 10 words) and `GAP-39`/`UX-04` (LLM and view shortening) apply the same rule twice.                                                                                                                 | `GAP-43`: when a row carries a `Name`, the app uses it and does not call the LLM for that row.                                                                                                                                         |
+| C9  | INVARIANT | A reviewer per task.                               | BR-001 locks the assignee in EN_DESARROLLO; Workload reads the assignee.                                                                                                                                                              | A separate `reviewerActorId`, in Postgres only (no document has a field for it). Never the assignee column.                                                                                                                            |
+| C10 | INVARIANT | The app derives QA from the documents.             | ADR-001: documents stay the write target; the app never silently overwrites them.                                                                                                                                                     | Deriving QA writes nothing. Writing the handoff appends to the ledger only, per project, opt in (`TASK-08`).                                                                                                                           |
+| C11 | STALE     | Docs say the app writes `QA` into the Status cell. | True for the old tables; false for latest-skill tables, where QA is written as `IN_PROGRESS`.                                                                                                                                         | `DOC-01`. It also covers `skillProyectDocument-analysis.md` (describes the v1 skill), `domain-model.md:357` (reopen is also held by PROJECT_MANAGER), BR-002's wording, and ADR-002, superseded only in a code comment.                |
+| C12 | DEFECT    | Agents identified in the audit trail.              | Write-back audit and revisions are recorded as origin `UI` even when an agent's API call caused them (`write-back.service.ts:1143,1171`, **read, not run**).                                                                          | `GAP-44`.                                                                                                                                                                                                                              |
+| C13 | OVERLAP   | An agent lane on the board.                        | Swimlanes by assignee and the Workload page exist.                                                                                                                                                                                    | `TASK-20` builds on them; the new part is resolving agents (`TASK-02`) and showing the unregistered ones.                                                                                                                              |
+| C14 | CONFLICT  | Agents are identified by one name everywhere.      | PM Hub writes the agent's display name in the ledger (`skill-ledger.util.ts`, **read, not run**); the skill compares the agent string exactly, and a probe showed `claude-sonnet-5` is refused on a task held by `claude-sonnet-5-5`. | The agent's own `done` after PM Hub's entry would be refused as another agent's task, and the ledger would show two holders. `TASK-01` adds a `ledgerName`, the exact string the agent passes to the skill, and `TASK-04` writes that. |
+| C15 | STALE     | The assignee is locked in development.             | BR-001 says changing it needs a special permission; `reconcileAssignee` applies a document owner change anyway (the lock restricts reassigning in PM Hub, not the document).                                                          | `DOC-01` states it; `TASK-02` pins today's behavior with a test instead of asserting a rule the code does not have.                                                                                                                    |
 
 ## 4. Proposals
 
@@ -109,7 +112,8 @@ design keeps; **STALE** is a document that is now wrong.
   aliases); `claim`, `handoff`, `review` and `done` normalize an alias to the canonical id without
   regard to case, warn on an unknown name, and `check` lists unknown names in the ledger; the
   adapters say which string each runtime passes and that it never changes.
-- **App:** `AgentProfile` gains aliases, model and stage role (`TASK-01`); the owner cell and the
+- **App:** `AgentProfile` gains a `ledgerName` (the exact string the agent passes to the skill, and the
+  one PM Hub writes in the ledger), aliases, model and stage role (`TASK-01`); the owner cell and the
   ledger's agent name resolve through them, with `AgentLogEvent.agentActorId` backfilled
   (`TASK-02`); unknown names are suggested for registration, never registered silently
   (`TASK-03`); MCP `whoami` (`TASK-04`); the skeleton of a project created in the app carries the
@@ -172,10 +176,13 @@ existing `/kanban` address keeps working.
 | 4    | `TASK-09` (3 subtasks), `TASK-10`, `TASK-19`, `TASK-20`, and `TASK-08` once `DEPENDENCY-01` lands    | `DEC-006`; the skill for `TASK-08`     |
 | 5    | `TASK-21`, `TASK-22`, `TASK-23`                                                                      | `EPIC-01`'s `FEATURE-05`, `FEATURE-07` |
 
-Success, checked on SMARTHR after waves 1-3: the board shows the agents by their names; a task
-handed to review shows in QA with its age; the 2 empty columns fill when agents use the ledger
-words; an instant close is visible as one; the list and the review queue answer "what is on my
-plate" without opening cards.
+What waves 1-3 change on SMARTHR **by themselves**: the board shows the agents by their names, how long a
+task has been in its state, the reviewer and the last ledger line; an instant close is visible as one;
+the list and the review queue answer "what is on my plate" without opening cards.
+
+**What they do not change until the skill does:** no app-side task fills the QA or ASIGNADA column of
+SMARTHR. Waves 1-2 are the read side; the columns fill only once the skill accepts the `REVIEW` and
+`ASSIGNED` words (`DEPENDENCY-01`) and the agents write them. That is the other repository.
 
 ## 6. Decisions
 
@@ -191,3 +198,25 @@ plate" without opening cards.
   from reading the code. The first task that touches each starts with a test that proves it.
 - Whether the app reads the upstream `Name` column: not checked (`GAP-43` starts there).
 - Upstream's scripts at `15805b1` were not executed, and the PowerShell scripts were only skimmed.
+
+## Appendix: queries behind the numbers
+
+Run against the persistent Postgres (`pmhybrid-prod-postgres-1`, database `pmhybrid`), 2026-10-13.
+
+```sql
+-- Finding 3: tasks documented after the fact (a start entry and a close entry minutes apart)
+with s as (
+  select "taskExternalId" ext,
+         min("timestampFromLog") filter (where "statusWord" like 'IN_PROGRESS%') started,
+         max("timestampFromLog") filter (where "statusWord" = 'DONE') done
+  from "AgentLogEvent" group by 1)
+select count(*) closed_tasks,
+       count(*) filter (where done - started < interval '5 minutes') under_5_min,
+       count(*) filter (where done - started < interval '1 minute') under_1_min,
+       count(*) filter (where done - started >= interval '1 hour') an_hour_or_more
+from s where started is not null and done is not null and done >= started;
+-- 358 tasks: 117 under 5 minutes, 91 under 1 minute, 56 an hour or more
+
+-- Status of every task in SMARTHR (no ASIGNADA, no QA)
+select status, count(*) from "Task" where "deletedAt" is null group by 1;
+```

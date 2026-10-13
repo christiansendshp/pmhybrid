@@ -385,3 +385,10 @@ segments live in `docs/history/`.
 - Files: docs/tracking-improvement-plan.md, docs/Roadmap.md
 - Verify: Roadmap parses (api roadmap specs 160 pass), project_docs check OK; every figure in the plan comes from a query listed in its appendix; nothing built
 - Follow-up: none
+
+## [2026-10-13T15:07:14Z] | claude | EPIC-02 | DONE
+
+- Summary: Analyzed the app and the skill together and planned the agent identity, QA stage and Kanban views work: EPIC-02 with FEATURE-10 to FEATURE-13, TASK-01 to TASK-23 with 9 subtasks, GAP-40 to GAP-44, BUG-17, DOC-01, DEPENDENCY-01 and 02, DEC-005 and DEC-006; EPIC-01's FEATURE-03, FEATURE-04 and DEC-004 narrowed instead of built twice; reviewed by the advisor, who found the ledger-name conflict (PM Hub wrote display names the skill compares exactly) and an acceptance criterion the code contradicted (the document does change a locked assignee)
+- Files: docs/agent-stage-and-kanban-plan.md, docs/Roadmap.md, docs/tracking-improvement-plan.md
+- Verify: Roadmap parses (api roadmap specs 160 pass), project_docs check OK; every figure comes from a query in the plan's appendix or from reading the code, marked as such; nothing built
+- Follow-up: none
