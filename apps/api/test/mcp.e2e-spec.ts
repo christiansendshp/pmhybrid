@@ -134,6 +134,7 @@ describe('MCP server for agent task operations (e2e)', () => {
       'read_document',
       'transition_task',
       'update_task',
+      'whoami',
     ]);
   });
 

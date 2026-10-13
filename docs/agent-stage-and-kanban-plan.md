@@ -116,8 +116,9 @@ design keeps; **STALE** is a document that is now wrong; **DECISION** needs your
   one PM Hub writes in the ledger), aliases, model and stage role (`TASK-01`); the owner cell and the
   ledger's agent name resolve through them, with `AgentLogEvent.agentActorId` backfilled
   (`TASK-02`); unknown names are suggested for registration, never registered silently
-  (`TASK-03`); MCP `whoami` (`TASK-04`); the skeleton of a project created in the app carries the
-  roster and the rules (`TASK-05`).
+  (`TASK-03`); MCP `whoami` (`TASK-04`). The roster and the three rules in `AGENTS.md` are the skill's
+  template (`DEPENDENCY-02`); the app's skeleton holds no `AGENTS.md`, so `TASK-05` was cancelled and the
+  app only offers the roster to paste (`TASK-25`).
 
 ### 4.2 Development and QA are visible (`FEATURE-11`)
 
@@ -170,7 +171,7 @@ existing `/kanban` address keeps working.
 | Wave | Contents                                                                                             | Needs                                  |
 | ---- | ---------------------------------------------------------------------------------------------------- | -------------------------------------- |
 | 0    | `DEC-005`, `DEC-006`; `GAP-44`; `DOC-01`; `BUG-17` after `DEC-005`; send `DEPENDENCY-01/02` upstream | Your answers                           |
-| 1    | `TASK-01`, `TASK-02` (with its 3 subtasks), `TASK-11`, `TASK-12`, `TASK-05`, `TASK-04`               | Nothing from the skill                 |
+| 1    | `TASK-01`, `TASK-02` (with its 3 subtasks), `TASK-11`, `TASK-12`, `TASK-04` (`TASK-05` cancelled)    | Nothing from the skill                 |
 | 2    | `TASK-06`, `TASK-07`                                                                                 | Wave 1 (`TASK-11` for precedence)      |
 | 3    | `TASK-17`, `TASK-13`, `TASK-14`, `TASK-16`, `TASK-18`, `TASK-15` (2 subtasks)                        | Waves 1-2                              |
 | 4    | `TASK-09` (3 subtasks), `TASK-10`, `TASK-19`, `TASK-20`, and `TASK-08` once `DEPENDENCY-01` lands    | `DEC-006`; the skill for `TASK-08`     |

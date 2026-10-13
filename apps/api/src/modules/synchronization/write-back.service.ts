@@ -9,12 +9,18 @@ import type { Task, TaskDependency } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { AgentslogParserService } from '../roadmap/agentslog-parser.service.js';
-import { isSkillRoadmap } from '../roadmap/markdown-table.util.js';
 import { RoadmapParserService } from '../roadmap/roadmap-parser.service.js';
 import { looksLikeNewFormatRoadmap } from '../roadmap/roadmap-yaml-entry.util.js';
 import { rowContentHash } from './row-content-hash.util.js';
+import {
+  LEDGER_NAME_INCLUDE,
+  ledgerNameOf,
+} from '../agents/agent-identity.util.js';
 import { appendAgentslogEntry } from '../roadmap/agentslog-writer.util.js';
-import { skillLedgerEntries } from '../roadmap/skill-ledger.util.js';
+import {
+  skillLedgerEntries,
+  usesSkillLedger,
+} from '../roadmap/skill-ledger.util.js';
 import { rowStatusDiffers } from '../roadmap/status-vocabulary.util.js';
 import {
   normalizeOwnerName,
@@ -577,6 +583,7 @@ export class WriteBackService {
     }
     const actor = await tx.actor.findUnique({
       where: { id: requesterActorId },
+      include: LEDGER_NAME_INCLUDE,
     });
 
     const roadmapContent = await this.repositoryProvider.readFile(
@@ -588,14 +595,14 @@ export class WriteBackService {
     // refuses a ledger ID that is in neither Roadmap.md nor Features.md, so a
     // project documented with it gets no entry (Roadmap GAP-37b); the audit
     // trail below still records the removal.
-    if (!isSkillRoadmap(roadmapContent)) {
+    if (!usesSkillLedger(roadmapContent)) {
       const agentslogContent = await this.repositoryProvider.readFile(
         project.docsPath,
         DOCUMENT_FILENAMES.AGENTSLOG,
       );
       const updatedAgentslog = appendAgentslogEntry(agentslogContent, {
         timestampIso: new Date().toISOString(),
-        agentName: actor?.displayName ?? 'system',
+        agentName: ledgerNameOf(actor),
         taskExternalId: task.externalId,
         statusWord: 'REMOVED',
         summary: `Removed: ${task.title}`,
@@ -952,6 +959,7 @@ export class WriteBackService {
 
     const actor = await tx.actor.findUnique({
       where: { id: requesterActorId },
+      include: LEDGER_NAME_INCLUDE,
     });
 
     // Read first: which format the document is in decides what the ledger
@@ -968,13 +976,17 @@ export class WriteBackService {
       DOCUMENT_FILENAMES.AGENTSLOG,
     );
     const timestampIso = new Date().toISOString();
-    const requesterName = actor?.displayName ?? 'system';
+    // The string the skill compares to say who holds a task, not the display name (Roadmap TASK-04).
+    const requesterName = ledgerNameOf(actor);
     let updatedAgentslog: string | null;
-    if (isSkillRoadmap(roadmapContent)) {
+    if (usesSkillLedger(roadmapContent)) {
       // The latest skill's ledger knows three states and its `check` rejects
       // anything else (Roadmap GAP-37b); an event with no state writes none.
       const assignee = task.assigneeActorId
-        ? await tx.actor.findUnique({ where: { id: task.assigneeActorId } })
+        ? await tx.actor.findUnique({
+            where: { id: task.assigneeActorId },
+            include: LEDGER_NAME_INCLUDE,
+          })
         : null;
       const entries = skillLedgerEntries({
         trigger,
@@ -982,7 +994,7 @@ export class WriteBackService {
         taskExternalId: externalId,
         title: task.title,
         requesterName,
-        assigneeName: assignee?.displayName ?? null,
+        assigneeName: assignee ? ledgerNameOf(assignee) : null,
         history: this.agentslogParser
           .parse(agentslogContent)
           .entries.filter((entry) => entry.taskExternalId === externalId),

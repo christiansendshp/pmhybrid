@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   identifierKey,
   identifierProblem,
+  ledgerNameOf,
   looksLikeCredential,
 } from './agent-identity.util.js';
 
@@ -60,5 +61,34 @@ describe('agent identity (Roadmap TASK-01)', () => {
         expect(looksLikeCredential(name)).toBe(false);
       }
     });
+  });
+});
+
+describe('ledgerNameOf (Roadmap TASK-04)', () => {
+  it('is the ledger name of an agent that has one, not its display name', () => {
+    expect(
+      ledgerNameOf({
+        displayName: 'Claude Sonnet',
+        agentProfile: { identifiers: [{ value: 'claude-sonnet-5-5' }] },
+      }),
+    ).toBe('claude-sonnet-5-5');
+  });
+
+  it('is the display name of an agent with no ledger name, of a person, and of an actor with no profile', () => {
+    expect(
+      ledgerNameOf({
+        displayName: 'Codex',
+        agentProfile: { identifiers: [] },
+      }),
+    ).toBe('Codex');
+    expect(
+      ledgerNameOf({ displayName: 'Ana García', agentProfile: null }),
+    ).toBe('Ana García');
+    expect(ledgerNameOf({ displayName: 'Ana García' })).toBe('Ana García');
+  });
+
+  it('is the fallback for no actor at all, "system" unless another is given', () => {
+    expect(ledgerNameOf(null)).toBe('system');
+    expect(ledgerNameOf(undefined, 'unknown')).toBe('unknown');
   });
 });

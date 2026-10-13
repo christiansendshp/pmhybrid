@@ -1,10 +1,25 @@
 import type { ParsedAgentLogEntry } from './agentslog-parser.service.js';
 import type { AgentslogEntryInput } from './agentslog-writer.util.js';
+import { isSkillRoadmap } from './markdown-table.util.js';
+import { looksLikeNewFormatRoadmap } from './roadmap-yaml-entry.util.js';
 
 export type SkillLedgerTrigger =
   'CREATED' | 'STATUS_EN_DESARROLLO' | 'STATUS_TERMINADA' | 'LOCKED_REASSIGN';
 
 const SKILL_STATES = new Set(['IN_PROGRESS', 'PAUSE', 'DONE']);
+
+/**
+ * Whether the Roadmap is in a format of the project-documentation skill, whose ledger knows
+ * three states (Roadmap GAP-37b, TASK-04): the table with a `Pause reason` column, or the
+ * entries with a YAML block under `## Plan` and `## Cross-cutting`, which is what the
+ * skill's own `init` writes today. Every other document keeps the older entries.
+ */
+export function usesSkillLedger(roadmapMarkdown: string): boolean {
+  return (
+    isSkillRoadmap(roadmapMarkdown) ||
+    looksLikeNewFormatRoadmap(roadmapMarkdown)
+  );
+}
 
 /**
  * The ledger entries a PM Hub lifecycle event becomes in a project documented

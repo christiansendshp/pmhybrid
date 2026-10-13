@@ -139,7 +139,7 @@ section, and the "no push" known limitation); GitHub webhook ingestion
 followed it, extending GAP-23's `GitHubGitProvider`. The brief §27/§29 trio
 closes with an MCP server (`mcp` module, Roadmap GAP-30): `list_tasks`/
 `get_task`/`update_task`/`transition_task` tools (and, since GAP-36b, the workflow
-tools `list_projects`/`get_context`/`claim_task`/`create_task`/`list_conflicts`/
+tools `whoami`/`list_projects`/`get_context`/`claim_task`/`create_task`/`list_conflicts`/
 `read_document`, `docs/permissions.md`) over a stateless
 Streamable HTTP endpoint, thin adapters over `tasks`'s existing service
 methods rather than a new authorization model (`docs/Stack_Tecnologies.md`

@@ -287,7 +287,9 @@
         <h2>Claves de API</h2>
         <p class="page-header__description">
           Permite que {{ actor.displayName }} se autentique directamente contra la API con un
-          encabezado <code>X-API-Key</code>, en lugar de un inicio de sesión humano.
+          encabezado <code>X-API-Key</code>, en lugar de un inicio de sesión humano. Por MCP, la
+          herramienta <code>whoami</code> le dice quién es: el nombre exacto que debe pasar al skill
+          como agente, sus alias y lo que puede hacer en cada proyecto.
         </p>
 
         @if (keyErrorMessage()) {

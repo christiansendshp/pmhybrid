@@ -637,7 +637,14 @@ written exactly as before.
   skill's `done` does the same).
 - **The ledger holds only states the skill accepts** (`IN_PROGRESS`, `PAUSE`,
   `DONE`), a real `Verify` on `DONE`, one holder per task, and no ID that is in
-  neither Roadmap.md nor Features.md:
+  neither Roadmap.md nor Features.md. This applies to both formats of the skill: the table
+  with a `Pause reason` column and the YAML entries under `## Plan` and `## Cross-cutting`
+  that its own `init` writes (Roadmap TASK-04; until then a YAML project got the older
+  `CREATED`/`REASSIGNED`/`REMOVED` entries, signed by whoever clicked).
+  **Every name is the actor's ledger name** (Roadmap TASK-04): the string the agent passes
+  to the skill, which the skill compares exactly to say who holds a task. It is the agent's
+  chosen ledger name, else its display name; a person's is the display name. An alias is never
+  written. What the owner cell and `assigned_agent` say is the display name still (GAP-45).
 
   | Event                           | Entries                                                                                                |
   | ------------------------------- | ------------------------------------------------------------------------------------------------------ |

@@ -37,6 +37,8 @@ export interface McpWorkflowContext extends McpToolContext {
     markAllRead(actorId: string): Promise<{ count: number }>;
   };
   repositoryProvider: ProjectRepositoryProvider;
+  /** Who the caller is, as PM Hub knows it (Roadmap TASK-04). */
+  identity: { whoami(actorId: string): Promise<unknown> };
   /** Where each project's documents live, so a document can be read by project id. */
   docsPathOf(projectId: string): Promise<string>;
 }
@@ -155,6 +157,22 @@ export function registerWorkflowTools(
             summary: project.summary,
           })),
         );
+      } catch (error) {
+        return fail(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'whoami',
+    {
+      description:
+        'Who the caller is in PM Hub: its id, display name, kind, model and stage role, the exact ledger name to pass to the skill as <agent> (use it as it is, every time), its aliases, and the projects it is a member of with what it may do in each. Nothing of any other actor.',
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        return textResult(await ctx.identity.whoami(ctx.actorId));
       } catch (error) {
         return fail(error);
       }

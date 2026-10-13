@@ -71,8 +71,9 @@ keys are rejected, secrets live in environment variables (brief §28).
 
 **How an agent signs in the documents (Roadmap TASK-01).** An agent has at most one
 ledger name, the one exact string it passes to the skill, which compares it
-exactly, so it is also what PM Hub writes in the ledger for that agent; with none
-chosen it is the display name. It can also have aliases, other strings it has
+exactly, so it is also what PM Hub writes in the ledger for that agent (Roadmap
+TASK-04); with none chosen it is the display name. The MCP tool `whoami` tells an agent
+its own. It can also have aliases, other strings it has
 written. All of them are unique across the instance once folded (`AgentIdentifier.key`),
 and no other agent's display name may equal them either: a name in a document
 resolves to one agent or to none. They are plain text (no `|`, no line break, nothing

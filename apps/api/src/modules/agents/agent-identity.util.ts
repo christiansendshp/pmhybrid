@@ -12,6 +12,43 @@ export const MAX_ALIASES = 20;
  */
 export const identifierKey = normalizeOwnerName;
 
+/**
+ * What to read of an actor to name it in the ledger (Roadmap TASK-04): the explicit
+ * ledger name, if the actor has one. Spread it into a Prisma `include`.
+ */
+export const LEDGER_NAME_INCLUDE = {
+  agentProfile: {
+    select: {
+      identifiers: {
+        where: { kind: 'LEDGER_NAME' as const },
+        select: { value: true },
+      },
+    },
+  },
+} as const;
+
+/**
+ * The exact string PM Hub writes in the Agentslog for an actor, and the one the skill
+ * compares to decide who holds a task (Roadmap TASK-04): the agent's ledger name when it
+ * has one, else its display name (a person's, or an agent that never chose another), else
+ * `fallback` for no actor at all. Never an alias, never free text.
+ */
+export function ledgerNameOf(
+  actor:
+    | {
+        displayName: string;
+        agentProfile?: { identifiers: { value: string }[] } | null;
+      }
+    | null
+    | undefined,
+  fallback = 'system',
+): string {
+  if (!actor) {
+    return fallback;
+  }
+  return actor.agentProfile?.identifiers[0]?.value ?? actor.displayName;
+}
+
 /** A token of this shape (a prefix a provider uses for its keys, or a long opaque run) is a credential, not a name. */
 const KEY_PREFIX =
   /^(sk[-_]|pmh_|gh[pos]_|github_pat_|xox[abprs]-)[A-Za-z0-9_-]{8,}/i;

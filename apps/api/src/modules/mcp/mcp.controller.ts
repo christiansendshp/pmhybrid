@@ -25,6 +25,7 @@ import { registerTaskTools } from './mcp-tools.js';
 import { registerWorkflowTools } from './mcp-workflow-tools.js';
 import { TaskCommentsService } from '../tasks/task-comments.service.js';
 import { TasksService } from '../tasks/tasks.service.js';
+import { WhoAmIService } from './whoami.service.js';
 
 const METHOD_NOT_ALLOWED_BODY = {
   jsonrpc: '2.0',
@@ -38,7 +39,8 @@ const METHOD_NOT_ALLOWED_BODY = {
  * `update_task`/`transition_task`/`list_comments`/`add_comment` directly,
  * instead of only via the REST API + API keys (GAP-15), and — since Roadmap
  * GAP-36b — the workflow tools around them (`list_projects`, `get_context`,
- * `claim_task`, `create_task`, `list_conflicts`, `read_document`).
+ * `claim_task`, `create_task`, `list_conflicts`, `read_document`) and, since Roadmap TASK-04,
+ * `whoami`.
  *
  * `ApiKeyGuard` alone, not `JwtAuthGuard`: this endpoint exists specifically
  * for agent clients (the ticket's own wording), and `ApiKeyGuard` already
@@ -69,6 +71,7 @@ export class McpController {
     private readonly projectsService: ProjectsService,
     private readonly conflictsService: ConflictsService,
     private readonly notificationsService: NotificationsService,
+    private readonly whoAmI: WhoAmIService,
     @Inject(PROJECT_REPOSITORY_PROVIDER)
     private readonly repositoryProvider: ProjectRepositoryProvider,
   ) {}
@@ -89,6 +92,7 @@ export class McpController {
       projectsService: this.projectsService,
       conflictsService: this.conflictsService,
       notificationsService: this.notificationsService,
+      identity: this.whoAmI,
       repositoryProvider: this.repositoryProvider,
       docsPathOf: async (projectId) =>
         (

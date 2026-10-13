@@ -6,6 +6,7 @@ import { NotificationsModule } from '../notifications/notifications.module.js';
 import { ProjectsModule } from '../projects/projects.module.js';
 import { TasksModule } from '../tasks/tasks.module.js';
 import { McpController } from './mcp.controller.js';
+import { WhoAmIService } from './whoami.service.js';
 
 @Module({
   imports: [
@@ -17,5 +18,6 @@ import { McpController } from './mcp.controller.js';
     TasksModule,
   ],
   controllers: [McpController],
+  providers: [WhoAmIService],
 })
 export class McpModule {}

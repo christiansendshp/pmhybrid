@@ -201,7 +201,11 @@ transport onto existing authorization, not a second one.
 
 ## The workflow tools (Roadmap GAP-36b)
 
-Eight more MCP tools let an agent run its whole loop without the REST API:
+Nine more MCP tools let an agent run its whole loop without the REST API:
+`whoami` (who the caller is: its id, display name, kind, model and stage role, the
+**ledger name** — the exact string to pass to the skill as `<agent>`, and the one PM Hub
+writes in the ledger for it — its aliases, and the projects it is a member of with the
+permissions it holds in each; it reads only the caller's own actor, Roadmap TASK-04),
 `list_projects` (the projects it belongs to, with a summary each — the place to
 start), `get_context` (one call for a project: figures by status, the agent's own
 open tasks, what is blocked, how many conflicts are open), `claim_task` (assign the

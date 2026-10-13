@@ -257,7 +257,7 @@ description: >
   board cannot show that work in development; no agent is a registered actor, so no task has an
   assignee; moving a task to QA writes nothing to the documents.
 next_action: >
-  Start wave 1 now (TASK-01, TASK-02, TASK-11, TASK-12, TASK-05, TASK-04): it needs nothing from the skill and no decision. DEC-005 and DEC-006 gate the writing of QA to the ledger (TASK-08), the reviewer rules (SUBTASK-09.2) and GAP-41.
+  Start wave 1 now (TASK-01, TASK-02, TASK-11, TASK-12, TASK-04; TASK-05 was cancelled, see it): it needs nothing from the skill and no decision. DEC-005 and DEC-006 gate the writing of QA to the ledger (TASK-08), the reviewer rules (SUBTASK-09.2) and GAP-41.
 created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
@@ -391,49 +391,13 @@ created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
 
-### TASK-04 — MCP whoami, and ledger entries written under the canonical identity
-
-```yaml
-id: TASK-04
-type: TASK
-title: MCP whoami, and ledger entries written under the canonical identity
-status: READY
-priority: P2
-parent: FEATURE-10
-description: >
-  An agent cannot ask the system who it is. Add an MCP tool whoami and make the ledger entries PM Hub writes for an API-key agent use its ledger name, the exact string the agent passes to the skill. The skill's holder rule compares the string exactly: if PM Hub wrote a display name that differs from it, the agent's own done would be refused as another agent's task, and the ledger would show two holders.
-acceptance_criteria:
-  - id: AC-1
-    description: whoami returns the actor id, display name, ledger name, kind, aliases, model, stage role and the permissions the agent holds in each project it belongs to; it needs a valid key and shows nothing of any other actor.
-    status: pending
-  - id: AC-2
-    description: A ledger entry PM Hub writes for an agent carries its ledger name exactly, never the display name when they differ, an alias or free text (skill-ledger.util.ts names the requester or the assignee by display name today, read, not run); a test with a display name that differs from the ledger name shows that the agent's own claim, pause and done after PM Hub's entry are accepted by the skill's check.
-    status: pending
-  - id: AC-3
-    description: The MCP tool list in docs/api-reference.md and the agent instructions mention whoami.
-    status: pending
-definition_of_done:
-  - implementation_complete
-  - tests_green
-  - documentation_updated
-  - roadmap_updated
-depends_on:
-  - TASK-01
-technical_context:
-  backend: apps/api/src/modules/mcp (mcp-workflow-tools.ts), apps/api/src/modules/roadmap/skill-ledger.util.ts
-next_action: >
-  Start with a failing test for the first acceptance criterion; the proposal is in docs/agent-stage-and-kanban-plan.md, section 4 (4.1).
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-```
-
 ### TASK-05 — The skeleton of a project created in the app carries the roster and the rules
 
 ```yaml
 id: TASK-05
 type: TASK
 title: The skeleton of a project created in the app carries the roster and the rules
-status: READY
+status: CANCELLED
 priority: P2
 parent: FEATURE-10
 description: >
@@ -441,6 +405,13 @@ description: >
   Add to its AGENTS.md an Agent identity section (a roster table to fill, one string per agent that
   never changes) and three rules: claim before the first edit, hand off when the code is done and
   before verifying, close only after verification.
+  Cancelled on 2026-10-13, before any work, because its premise is wrong. The app's skeleton holds
+  two files, Roadmap.md and Agentslog.md, written into the project's docs folder; there is no AGENTS.md
+  in it, and the skill keeps its AGENTS.md at the repository root, above that folder. Writing one there
+  would also put a stale copy where the skill's own init would never replace it (init does not touch an
+  existing file), shadowing the template that carries the roster and the three rules, which is the skill's
+  change (DEPENDENCY-02, S7 and S9). What is left for the app is to give a person the roster to paste:
+  TASK-25.
 acceptance_criteria:
   - id: AC-1
     description: A project created in the app has the section and the three rules in its AGENTS.md, and the skill's check still passes on it.
@@ -461,9 +432,9 @@ affects:
 technical_context:
   backend: apps/api/src/modules/projects/document-skeletons.ts
 next_action: >
-  Start with a failing test for the first acceptance criterion; the proposal is in docs/agent-stage-and-kanban-plan.md, section 4 (4.1).
+  None: cancelled. The roster and the rules are the skill's template (DEPENDENCY-02); TASK-25 gives a person the roster to paste.
 created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
+updated_at: 2026-10-13T20:00:00Z
 ```
 
 ### TASK-06 — Read the stage words of the ledger (REVIEW, TESTING, ASSIGNED)
@@ -1207,6 +1178,41 @@ created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
 
+### TASK-25 — The Team page gives the roster as the skill's Agent identity table
+
+```yaml
+id: TASK-25
+type: TASK
+title: The Team page gives the roster as the skill's Agent identity table
+status: BACKLOG
+priority: P3
+parent: FEATURE-10
+description: >
+  Replaces the cancelled TASK-05. The skill's roster (DEPENDENCY-02, S7) is a table in AGENTS.md: Agent id, Kind, Model, Role and Aliases,
+  one row per agent. PM Hub already holds all five for each agent (TASK-01), so the Team page can offer the table already filled
+  (Agent id is the ledger name, Kind is AI, Role is DEVELOPER, QA or BOTH), with a copy button, for a person to paste into the
+  project's AGENTS.md. The app writes nothing to the project's files.
+acceptance_criteria:
+  - id: AC-1
+    description: The table has exactly the columns and the Role words of the skill's roster, one row per active AI agent, with the ledger name as Agent id and the aliases comma separated.
+    status: pending
+  - id: AC-2
+    description: A name that would break the table (a pipe, a line break) never reaches it; the copy button reports success or failure in words.
+    status: pending
+definition_of_done:
+  - implementation_complete
+  - tests_green
+  - documentation_updated
+  - roadmap_updated
+depends_on:
+  - TASK-01
+  - DEPENDENCY-02
+next_action: >
+  Wait for the skill to ship the roster (DEPENDENCY-02) and read its exact columns from its template, not from the prompt that proposed them.
+created_at: 2026-10-13T00:00:00Z
+updated_at: 2026-10-13T00:00:00Z
+```
+
 ## Cross-cutting
 
 ### DEC-005 — Which skill line do the ledger changes target
@@ -1307,13 +1313,13 @@ description: >
   check lists the unknown names in the ledger. S8 check and done warn when a task's IN_PROGRESS and DONE are less than N minutes
   apart (default 5): documenting in batch is allowed, it is just said. S9 the AGENTS.md template says: claim before the first edit,
   hand off after coding and before verifying, close after verification. S10 the adapters say which string each runtime passes
-  (the model id) and that it never changes. Informs TASK-04, TASK-05 and TASK-12; blocks none of them.
+  (the model id) and that it never changes. Informs TASK-04, TASK-12 and TASK-25; blocks none of them.
 blocked_by:
   - DEC-005
 affects:
   - FEATURE-10
-  - TASK-05
   - TASK-12
+  - TASK-25
 next_action: >
   Once DEC-005 is answered, open the proposal upstream; changes 5 to 8 of docs/prompts/skill-review-handoff-and-identity.md carry it.
 created_at: 2026-10-13T00:00:00Z
@@ -1433,6 +1439,33 @@ affects:
   - FEATURE-10
 next_action: >
   Write the test that shows the origin, then pass the origin through recordTaskEvent.
+created_at: 2026-10-13T00:00:00Z
+updated_at: 2026-10-13T00:00:00Z
+```
+
+### GAP-45 — The Roadmap names an assigned agent by its display name, the ledger by its ledger name
+
+```yaml
+id: GAP-45
+type: GAP
+title: The Roadmap names an assigned agent by its display name, the ledger by its ledger name
+status: BACKLOG
+priority: P3
+description: >
+  TASK-04 makes every ledger entry PM Hub writes carry the agent's ledger name, because the skill compares that string exactly to say who
+  holds a task. The Roadmap is still written with the display name: assigned_agent in an entry, the Owner cell of a table (applyOwnerToEntry,
+  ownerCell, write-back.service.ts). PM Hub reads either back to the same agent (TASK-02), and the skill's holder rule reads the ledger, not
+  the owner field (probed with this repo's copy of the skill on 2026-10-13: pause by another string is refused on the ledger's holder, whatever
+  the Roadmap says), so nothing breaks. What is UNKNOWN is whether the skill, or a person reading the document, expects the two to agree.
+acceptance_criteria:
+  - id: AC-1
+    description: The question is answered with the skill's owner (does anything in the skill read assigned_agent or the Owner cell as an identity?); if yes, PM Hub writes the ledger name there too and a test with a differing display name shows the document and the ledger agree.
+    status: pending
+affects:
+  - FEATURE-10
+  - TASK-04
+next_action: >
+  Ask the skill's agent, or read the skill's check and claim for any use of assigned_agent; decide with that answer.
 created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
