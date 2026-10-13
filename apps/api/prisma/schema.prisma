@@ -536,6 +536,14 @@ model AgentLogEvent {
   files                    String
   verify                   String
   followUp                 String
+  // What the status word says in the skill's vocabulary (Roadmap TASK-06): IN_PROGRESS, REVIEW,
+  // ASSIGNED, PAUSE, DONE, DONE_PARTIAL or TODO; null for a word it does not know. The qualifier is
+  // what follows the word as written; the two lines are the optional `Handoff` and `Review` ones.
+  // `statusWord` stays what was written, and BR-003's terminal check stays the exact word DONE.
+  canonicalStatus          String?
+  statusQualifier          String?
+  handoffTo                String?
+  reviewResult             String?
   rawEntryHash             String
   sourceDocumentRevisionId String
   createdAt                DateTime @default(now())

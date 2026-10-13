@@ -25,6 +25,8 @@ export interface SyncRunSummary {
   conflictsRaised?: number;
   dependenciesLinked?: number;
   assigneesUpdated?: number;
+  /** Tasks moved to QA, back to development or to ASIGNADA because the ledger's latest entry says so (Roadmap TASK-07). */
+  stagesDerived?: number;
   dependenciesRemoved?: number;
   /** Phases and epics made or updated from the document's PHASE and EPIC entries (Roadmap GAP-35d). */
   structureSynced?: number;

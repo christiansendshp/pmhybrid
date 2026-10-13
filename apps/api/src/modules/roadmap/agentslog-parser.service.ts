@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
+import { reviewResultOf } from './ledger-status.util.js';
 
 export interface ParsedAgentLogEntry {
   timestampFromLog: string; // ISO-8601, as written — never trusted for ordering (docs/roadmap-parser.md)
@@ -15,6 +16,12 @@ export interface ParsedAgentLogEntry {
   followUp: string;
   /** "CATEGORY - detail"; only present on a skill v2 PAUSE entry. Not yet persisted by AgentslogIngestionService (no DB column) — surfaced here so a caller can use it without another parser change. */
   pause?: string;
+  /** Who the work is handed to (an agent or a role), from a `- Handoff:` line (Roadmap TASK-06). */
+  handoff?: string;
+  /** The result of a `- Review: PASS|FAIL - detail` line, when it is one of the two (Roadmap TASK-06). */
+  review?: 'PASS' | 'FAIL';
+  /** Set on an entry read from the archived segment, which is older than every entry of the hot ledger. */
+  archived?: true;
   rawEntryHash: string;
 }
 
@@ -29,7 +36,8 @@ export interface ParsedAgentslog {
 }
 
 const ENTRY_HEADER = /^## \[(.+?)\] \| (.+?) \| (.+?) \| (.+)$/;
-const BULLET = /^- (Summary|Files|Verify|Follow-up|Pause): (.*)$/;
+const BULLET =
+  /^- (Summary|Files|Verify|Follow-up|Pause|Handoff|Review): (.*)$/;
 
 /**
  * Parses Agentslog.md's entry format, accepting both the pre-v2 shape
@@ -124,6 +132,8 @@ export class AgentslogParserService {
           verify: bullets['Verify'] ?? '',
           followUp: bullets['Follow-up'] ?? '',
           pause: bullets['Pause'],
+          handoff: bullets['Handoff']?.trim() || undefined,
+          review: reviewResultOf(bullets['Review']),
           rawEntryHash: createHash('sha256')
             .update(entryLines.join('\n'))
             .digest('hex'),

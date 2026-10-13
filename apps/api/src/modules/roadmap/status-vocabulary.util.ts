@@ -36,6 +36,13 @@ export function workflowStatusFor(status: string): WorkflowStatus {
   return workflow;
 }
 
+/** The skill's word a Status cell says (TODO, IN_PROGRESS or DONE), or undefined for any other word, such as a Kanban one. */
+export function workflowWordOf(
+  raw: string | undefined,
+): WorkflowStatus | undefined {
+  return raw === undefined ? undefined : WORKFLOW_TOKENS[normalize(raw)];
+}
+
 /** Whether a Status cell already says PAUSE. */
 export function isPauseCell(raw: string | undefined): boolean {
   return raw !== undefined && normalize(raw) === 'PAUSE';

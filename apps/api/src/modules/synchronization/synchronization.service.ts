@@ -15,7 +15,15 @@ import {
   type StructureEntry,
 } from '../roadmap/roadmap-parser.service.js';
 import { readRulesDocument } from '../git-providers/read-rules-document.js';
-import { rowStatusDiffers } from '../roadmap/status-vocabulary.util.js';
+import type { ParsedAgentLogEntry } from '../roadmap/agentslog-parser.service.js';
+import {
+  derivedStage,
+  latestEntryByTask,
+} from '../roadmap/ledger-status.util.js';
+import {
+  rowStatusDiffers,
+  workflowWordOf,
+} from '../roadmap/status-vocabulary.util.js';
 import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository-provider.interface.js';
 import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
@@ -102,6 +110,8 @@ interface SyncSummary extends HierarchySummary {
   conflictsClosed: number;
   /** Tasks whose assignee was set or changed because the document names a different member (Roadmap GAP-35a). */
   assigneesUpdated: number;
+  /** Tasks moved to QA, back to development or to ASIGNADA because the ledger's latest entry says so (Roadmap TASK-07). */
+  stagesDerived: number;
   /** Dependencies the document listed and then dropped, removed here (Roadmap GAP-35e). */
   dependenciesRemoved: number;
   /** New TaskDependency rows linked from a row's "Depends on" cell (Roadmap GAP-14) — resolved or still dangling on a raw external ref. */
@@ -285,6 +295,7 @@ export class SynchronizationService {
       conflictsRaised: 0,
       conflictsClosed: 0,
       assigneesUpdated: 0,
+      stagesDerived: 0,
       dependenciesLinked: 0,
       dependenciesRemoved: 0,
       structureSynced: 0,
@@ -329,6 +340,8 @@ export class SynchronizationService {
     // (Roadmap TASK-02): every run, whether or not the ledger changed, so it is also the
     // backfill, and idempotent.
     await this.agentLinks.linkUnlinked(tx, projectId);
+    // The same for the stage of each entry's word, so a ledger read before it existed gets it (Roadmap TASK-06).
+    await this.agentslogIngestion.classifyUnclassified(tx, projectId);
 
     const roadmapContent = await this.repositoryProvider.readFile(
       project.docsPath,
@@ -363,6 +376,8 @@ export class SynchronizationService {
       structure,
       new Set(errors.map((error) => error.id)),
       summary,
+      latestEntryByTask(entries),
+      syncRun.startedAt,
     );
 
     const previousErrors = (
@@ -475,6 +490,8 @@ export class SynchronizationService {
     structure: readonly StructureEntry[],
     unreadableIds: ReadonlySet<string>,
     summary: SyncSummary,
+    latestByTask: ReadonlyMap<string, ParsedAgentLogEntry>,
+    runStartedAt: Date,
   ) {
     const existingTasks = await tx.task.findMany({
       where: { projectId, externalId: { not: null } },
@@ -687,6 +704,16 @@ export class SynchronizationService {
       projectId,
       existingByExternalId,
       dependencyGraph,
+      summary,
+    );
+
+    // The stage the ledger gives a row that only says TODO or IN_PROGRESS (Roadmap TASK-07).
+    await this.deriveStagesFromLedger(
+      tx,
+      projectId,
+      rows,
+      latestByTask,
+      runStartedAt,
       summary,
     );
 
@@ -1422,6 +1449,95 @@ export class SynchronizationService {
       },
     });
     return changed;
+  }
+
+  /**
+   * The stage of a task whose row is coarse, read from the latest entry the ledger has for it
+   * (Roadmap TASK-07): `IN_PROGRESS` plus a REVIEW is QA, plus a failed review or a start is
+   * development, `TODO` plus ASSIGNED is ASIGNADA. It only reads: nothing is written to a document,
+   * no conflict is raised (QA and the row's IN_PROGRESS are the same coarse state, so the row is
+   * not seen to differ), and it never moves a task out of TERMINADA, since a row that says DONE is
+   * not coarse. A change made before this run stands unless the entry was read after it (the time
+   * it was read, not the clock the agent wrote), so a person's move in PM Hub is not undone by an
+   * older entry; a change this run made from the document does not protect anything.
+   */
+  private async deriveStagesFromLedger(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    rows: readonly ParsedRoadmapRow[],
+    latestByTask: ReadonlyMap<string, ParsedAgentLogEntry>,
+    runStartedAt: Date,
+    summary: SyncSummary,
+  ): Promise<void> {
+    const wanted = new Map<
+      string,
+      { stage: TaskStatus; entry: ParsedAgentLogEntry }
+    >();
+    for (const row of rows) {
+      const entry = latestByTask.get(row.externalId);
+      const stage = entry
+        ? derivedStage(workflowWordOf(row.statusRaw), entry)
+        : null;
+      if (entry && stage) {
+        wanted.set(row.externalId, { stage, entry });
+      }
+    }
+    if (wanted.size === 0) {
+      return;
+    }
+    const tasks = await tx.task.findMany({
+      where: {
+        projectId,
+        deletedAt: null,
+        externalId: { in: [...wanted.keys()] },
+      },
+      select: {
+        id: true,
+        externalId: true,
+        status: true,
+        statusChangedAt: true,
+      },
+    });
+    for (const task of tasks) {
+      const { stage, entry } = wanted.get(task.externalId!)!;
+      if (task.status === stage || task.status === TaskStatus.TERMINADA) {
+        continue;
+      }
+      // A change of status from before this run (a person's, an API client's, an earlier sync's)
+      // stands unless the entry was read after it. One this run made itself, from the document,
+      // protects nothing: the entry is as new as the row.
+      if (task.statusChangedAt < runStartedAt) {
+        const event = await tx.agentLogEvent.findUnique({
+          where: {
+            projectId_rawEntryHash: {
+              projectId,
+              rawEntryHash: entry.rawEntryHash,
+            },
+          },
+          select: { createdAt: true },
+        });
+        if (!event || event.createdAt <= task.statusChangedAt) {
+          continue;
+        }
+      }
+      await tx.task.update({
+        where: { id: task.id },
+        data: { status: stage, ...statusStamp(task.status, stage) },
+      });
+      await this.audit.record(
+        {
+          projectId,
+          entityType: 'Task',
+          entityId: task.id,
+          operation: 'STATUS_CHANGE',
+          origin: 'SYNC',
+          previousValue: { status: task.status },
+          newValue: { status: stage },
+        },
+        tx,
+      );
+      summary.stagesDerived += 1;
+    }
   }
 
   /** Records one skipped edge once per run, however many places notice it, bounded like the entry errors. */

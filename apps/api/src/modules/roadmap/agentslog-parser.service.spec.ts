@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { AgentslogParserService } from './agentslog-parser.service.js';
 import { SKILL_AGENTSLOG } from './skill-format.fixtures.js';
@@ -190,5 +191,75 @@ describe('AgentslogParserService latest skill ledger (Roadmap GAP-37a)', () => {
       files: 'package.json',
       verify: 'pnpm test passes',
     });
+  });
+});
+
+describe('AgentslogParserService: the lines a handoff and a review add (Roadmap TASK-06)', () => {
+  const parser = new AgentslogParserService();
+  const entry = (word: string, lines: string[]) =>
+    parser.parse(
+      [
+        '# Agents log',
+        '',
+        '## Entries',
+        '',
+        `## [2026-10-13T10:00:00Z] | claude-sonnet-5-5 | TASK-01 | ${word}`,
+        ...lines,
+        '',
+      ].join('\n'),
+    ).entries[0];
+
+  it('reads the Handoff line, with or without a reviewer', () => {
+    expect(
+      entry('REVIEW', ['- Summary: s', '- Verify: v', '- Handoff: qa-agent']),
+    ).toMatchObject({ statusWord: 'REVIEW', handoff: 'qa-agent' });
+    expect(
+      entry('REVIEW', ['- Summary: s', '- Verify: v'])?.handoff,
+    ).toBeUndefined();
+  });
+
+  it('reads the result of a Review line, and nothing from a malformed one', () => {
+    expect(
+      entry('REVIEW', ['- Summary: s', '- Review: PASS - looks right'])?.review,
+    ).toBe('PASS');
+    expect(
+      entry('REVIEW', ['- Summary: s', '- Review: FAIL - the edge case'])
+        ?.review,
+    ).toBe('FAIL');
+    expect(
+      entry('REVIEW', ['- Summary: s', '- Review: maybe'])?.review,
+    ).toBeUndefined();
+  });
+
+  it('reads the lines in any order and keeps every other field', () => {
+    expect(
+      entry('REVIEW', [
+        '- Summary: handed over',
+        '- Verify: tests pass',
+        '- Handoff: qa-agent',
+        '- Review: FAIL - needs a retry',
+      ]),
+    ).toMatchObject({
+      summary: 'handed over',
+      verify: 'tests pass',
+      handoff: 'qa-agent',
+      review: 'FAIL',
+    });
+  });
+
+  it('leaves the hash of an entry that has neither line as it was', () => {
+    const plain = ['- Summary: s', '- Verify: v'];
+    const hash = entry('IN_PROGRESS', plain)?.rawEntryHash;
+
+    expect(hash).toBe(
+      createHash('sha256')
+        .update(
+          [
+            '## [2026-10-13T10:00:00Z] | claude-sonnet-5-5 | TASK-01 | IN_PROGRESS',
+            ...plain,
+          ].join('\n'),
+        )
+        .digest('hex'),
+    );
   });
 });

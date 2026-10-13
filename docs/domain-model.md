@@ -262,8 +262,8 @@ SyncRun(id, projectId, startedAt, finishedAt?, trigger: SCHEDULED|MANUAL,
   status: SUCCESS|PARTIAL|FAILED|RUNNING, summary jsonb?)
 
 AgentLogEvent(id, projectId, taskExternalId?, taskId?, agentName, agentActorId?,
-  timestampFromLog, statusWord, summary, files, verify, followUp, rawEntryHash unique,
-  sourceDocumentRevisionId, createdAt)
+  timestampFromLog, statusWord, canonicalStatus?, statusQualifier?, handoffTo?, reviewResult?,
+  summary, files, verify, followUp, rawEntryHash unique, sourceDocumentRevisionId, createdAt)
 ```
 
 `agentName` is what the agent wrote, exactly. `agentActorId` is the agent it is (Roadmap
@@ -282,6 +282,14 @@ the earliest `IN_PROGRESS*` and the latest `DONE` by `timestampFromLog` (the age
 clock, as in the plan's appendix), a close before its start is no span, and exactly the
 threshold is not instant. It is a signal about the record, not about the agent: nothing is
 blocked, moved or changed because of it.
+
+`canonicalStatus` and `statusQualifier` are what `statusWord` means in the skill's vocabulary and
+what follows it, `handoffTo` and `reviewResult` the optional `Handoff` and `Review` lines of a
+handoff and a review (Roadmap TASK-06; the word and its rules are in `docs/roadmap-parser.md`).
+They are filled at ingestion and, for an entry read before they existed, by the sync that
+follows (a word is looked at once, so a second pass changes nothing); null means "no such
+word or line". Nothing is derived from them without saying so: the stage of a task is
+described in `docs/synchronization.md`.
 
 `rawEntryHash` is unique so re-ingesting an overlapping revision (e.g. after
 ledger rotation) is idempotent. `timestampFromLog` is an untrusted,

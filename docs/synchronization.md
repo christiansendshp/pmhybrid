@@ -430,6 +430,39 @@ idempotent via the unique `rawEntryHash`, so re-parsing an overlapping
 revision (e.g. across a rotation boundary) is safe. `taskExternalId` is
 correlated to `Task.externalId` within the same project to backfill `taskId`.
 
+Each entry also keeps what its status word means (`canonicalStatus`, `statusQualifier`) and
+the optional `Handoff` and `Review` lines (`handoffTo`, `reviewResult`): see
+`docs/roadmap-parser.md` (Roadmap TASK-06). The entries read before those columns existed are
+classified by the sync that follows, a word at a time, so a second pass changes nothing.
+
+### The stage the ledger gives a coarse row (Roadmap TASK-07)
+
+A row of the latest skill says `TODO` or `IN_PROGRESS`, which is coarser than the board
+(`IN_PROGRESS` covers development and QA, `TODO` covers pending and assigned). After the rows
+are reconciled, each task whose row says one of the two takes the stage of **the latest entry
+the ledger has for it** (the last one written in the hot ledger, else in the archive: file order,
+never the agent's clock):
+
+| Row says      | Latest entry                                      | Task becomes    |
+| ------------- | ------------------------------------------------- | --------------- |
+| `IN_PROGRESS` | `REVIEW` (also `TESTING`, `QA_REVIEW`), no `FAIL` | `QA`            |
+| `IN_PROGRESS` | `REVIEW` with `Review: FAIL`, or `IN_PROGRESS`    | `EN_DESARROLLO` |
+| `TODO`        | `ASSIGNED` (also `READY`)                         | `ASIGNADA`      |
+
+Anything else is read as before: a row that says `DONE`, `PAUSE` or a Kanban word is the
+document's, a word the skill does not know gives nothing, and a task that is `TERMINADA` never
+moves. It reads and never writes: no document changes, no conflict is raised (QA and the row's
+`IN_PROGRESS` are the same coarse state, so a later edit of the row is not a status
+difference), and each change is audited as a `STATUS_CHANGE` with origin `SYNC` and counted in
+`summary.stagesDerived`. It is the same in the table and the YAML format.
+
+A change made in PM Hub stands over an older entry: the entry must have been **read** after
+the task's last change of status (the time PM Hub ingested it, not the clock in its header),
+unless that change was made by this very run from the document, which protects nothing. So a
+person who sends a task back from QA is not overridden by the entry that put it there, and the
+next entry is followed. Until agents write `REVIEW` and `ASSIGNED` (the skill rejects both
+today, Roadmap DEPENDENCY-01) nothing changes on any board.
+
 ## Write-back (Postgres → Documents)
 
 Triggered by a UI-originated task change. The four that move a task through its

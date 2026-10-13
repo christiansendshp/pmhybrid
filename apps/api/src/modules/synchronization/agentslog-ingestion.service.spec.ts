@@ -144,3 +144,97 @@ describe('AgentslogIngestionService.parseWithArchive (Roadmap BUG-09)', () => {
     expect(provider.readFile).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('AgentslogIngestionService: the stage of an entry (Roadmap TASK-06)', () => {
+  it('marks the entries read from the archive, and only those', async () => {
+    const { service } = serviceWith({ 'history/a.md': ARCHIVE });
+
+    const entries = await service.parseWithArchive(
+      'docs',
+      hotLog('history/a.md', sha(ARCHIVE)),
+    );
+
+    expect(
+      Object.fromEntries(
+        entries.map((entry) => [entry.taskExternalId, entry.archived ?? false]),
+      ),
+    ).toEqual({ 'PMH-7': true, 'PMH-8': false });
+  });
+
+  describe('classifyUnclassified', () => {
+    /** Just the two queries it makes, over an array of rows. */
+    function fakeTx(words: string[]) {
+      const rows = words.map((statusWord) => ({
+        statusWord,
+        canonicalStatus: null as string | null,
+        statusQualifier: null as string | null,
+      }));
+      return {
+        rows,
+        tx: {
+          agentLogEvent: {
+            groupBy: vi.fn(async () =>
+              [
+                ...new Set(
+                  rows
+                    .filter((r) => r.canonicalStatus === null)
+                    .map((r) => r.statusWord),
+                ),
+              ].map((statusWord) => ({ statusWord })),
+            ),
+            updateMany: vi.fn(
+              async ({
+                where,
+                data,
+              }: {
+                where: { statusWord: string };
+                data: {
+                  canonicalStatus: string;
+                  statusQualifier: string | null;
+                };
+              }) => {
+                const hit = rows.filter(
+                  (row) =>
+                    row.statusWord === where.statusWord &&
+                    row.canonicalStatus === null,
+                );
+                hit.forEach((row) => Object.assign(row, data));
+                return { count: hit.length };
+              },
+            ),
+          },
+        } as never,
+      };
+    }
+
+    it('classifies the words it knows, leaves the others null, and a second run changes nothing', async () => {
+      const { service } = serviceWith({});
+      const { tx, rows } = fakeTx([
+        'DONE',
+        'DONE',
+        'DONE (2 de 3 partes)',
+        'IN_PROGRESS (impacto wireado)',
+        'HALLAZGO',
+      ]);
+
+      const first = await service.classifyUnclassified(tx, 'p1');
+      const second = await service.classifyUnclassified(tx, 'p1');
+
+      expect(first).toBe(4);
+      expect(second).toBe(0);
+      expect(
+        rows.map((row) => [
+          row.statusWord,
+          row.canonicalStatus,
+          row.statusQualifier,
+        ]),
+      ).toEqual([
+        ['DONE', 'DONE', null],
+        ['DONE', 'DONE', null],
+        ['DONE (2 de 3 partes)', 'DONE_PARTIAL', '2 de 3 partes'],
+        ['IN_PROGRESS (impacto wireado)', 'IN_PROGRESS', 'impacto wireado'],
+        ['HALLAZGO', null, null],
+      ]);
+    });
+  });
+});

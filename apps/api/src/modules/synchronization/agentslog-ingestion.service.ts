@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { AgentLedgerLinkService } from '../agents/agent-ledger-link.service.js';
+import { classifyLedgerWord } from '../roadmap/ledger-status.util.js';
 import {
   AgentslogParserService,
   ParsedAgentLogEntry,
@@ -71,7 +72,14 @@ export class AgentslogIngestionService {
     }
 
     const archived = this.parser.parse(archiveContent);
-    return [...hot.entries, ...archived.entries];
+    // Marked, so a reader of "the latest entry of a task" knows the hot ledger's come after these.
+    return [
+      ...hot.entries,
+      ...archived.entries.map((entry) => ({
+        ...entry,
+        archived: true as const,
+      })),
+    ];
   }
 
   /** The archive under whichever of its possible paths is readable, or null. */
@@ -119,6 +127,7 @@ export class AgentslogIngestionService {
         select: { id: true },
       });
 
+      const word = classifyLedgerWord(entry.statusWord);
       await tx.agentLogEvent.create({
         data: {
           projectId,
@@ -128,6 +137,10 @@ export class AgentslogIngestionService {
           agentActorId: agents.get(entry.agentName) ?? null,
           timestampFromLog: new Date(entry.timestampFromLog),
           statusWord: entry.statusWord,
+          canonicalStatus: word.canonicalStatus,
+          statusQualifier: word.qualifier,
+          handoffTo: entry.handoff ?? null,
+          reviewResult: entry.review ?? null,
           summary: entry.summary,
           files: entry.files,
           verify: entry.verify,
@@ -137,6 +150,38 @@ export class AgentslogIngestionService {
         },
       });
     }
+  }
+
+  /**
+   * Gives the entries that were read before their word was classified, or whose word was not known
+   * then, the canonical status and qualifier of their word (Roadmap TASK-06). It looks at each
+   * distinct word once, so it costs a handful of statements however long the ledger is, and a
+   * second run changes nothing; a word that is still unknown stays null. Returns how many it set.
+   */
+  async classifyUnclassified(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ): Promise<number> {
+    const unclassified = await tx.agentLogEvent.groupBy({
+      by: ['statusWord'],
+      where: { projectId, canonicalStatus: null },
+    });
+    let set = 0;
+    for (const { statusWord } of unclassified) {
+      const word = classifyLedgerWord(statusWord);
+      if (word.canonicalStatus === null) {
+        continue;
+      }
+      const { count } = await tx.agentLogEvent.updateMany({
+        where: { projectId, statusWord, canonicalStatus: null },
+        data: {
+          canonicalStatus: word.canonicalStatus,
+          statusQualifier: word.qualifier,
+        },
+      });
+      set += count;
+    }
+    return set;
   }
 
   async hasTerminalEntry(

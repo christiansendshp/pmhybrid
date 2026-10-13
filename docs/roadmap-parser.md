@@ -203,7 +203,9 @@ a document of the older format:
 ```
 
 Regex-anchored on the header line. An entry is accepted once it has a
-`Summary` bullet; `Files`, `Verify`, `Follow-up` and `Pause` are read when
+`Summary` bullet; `Files`, `Verify`, `Follow-up`, `Pause` and, for a handoff to
+review, `Handoff` (who the work goes to) and `Review` (`PASS|FAIL - detail`; only
+the result is kept, and only when it is one of the two; Roadmap TASK-06) are read when
 present, in any subset, each at most once (a bullet name that repeats ends the
 entry, so a malformed neighbour is not swallowed), with one optional blank line
 allowed between the header and the bullets. The latest skill's shape is the
@@ -213,6 +215,16 @@ at write time by the skill's own `clean_field()` (pipe/CR/LF stripped to
 spaces/slashes), so the parser does not need to re-sanitize on read, only split
 on `|`.
 
+- **The status word is read, not replaced** (Roadmap TASK-06). `statusWord` stays as
+  written; `canonicalStatus` and `statusQualifier` say what it means in the skill's
+  vocabulary, read from the start of the word: `IN_PROGRESS`, `REVIEW` (also `TESTING` and
+  `QA_REVIEW`), `ASSIGNED` (also `READY`), `PAUSE`, `DONE`, `TODO`, and `DONE_PARTIAL` for a
+  `DONE` whose qualifier says it is a part (`parcial`, `2 de 3 partes`, `chunk 1/2`). The
+  qualifier is what follows the word, without its parentheses or separator
+  (`IN_PROGRESS (revisión, 3 correcciones)` gives `IN_PROGRESS` and `revisión, 3
+correcciones`). A word that starts with none of them (`HALLAZGO`, `EN CURSO — …`) has no
+  canonical status and is read as before. **BR-003's terminal check is still the exact word
+  `DONE`**: a `DONE parcial`, or any `DONE (…)`, never closes a task whose row left.
 - `timestampFromLog` is parsed but **never trusted** as an ordering signal
   for reconciliation (it's agent-authored and can be wrong or backdated) —
   only used for display. The parser's own ingestion time (`createdAt`) is

@@ -491,3 +491,25 @@ segments live in `docs/history/`.
 - Summary: An agent can ask the system who it is (MCP whoami: id, display name, kind, model, stage role, the ledger name to pass to the skill, aliases and the permissions it holds in each project it belongs to, nothing of any other actor), and every ledger entry PM Hub writes for an actor carries its ledger name, not its display name, in both formats of the skill (the table with a Pause reason and the YAML entries, which until now got the older CREATED/REASSIGNED/REMOVED entries signed by whoever clicked); the skill's own pause, claim and done by the ledger name are accepted after PM Hub's entry and its check passes
 - Files: apps/api/src/modules/agents/agent-identity.util.ts, apps/api/src/modules/mcp/whoami.service.ts, apps/api/src/modules/mcp/mcp-workflow-tools.ts, apps/api/src/modules/mcp/mcp.controller.ts, apps/api/src/modules/roadmap/skill-ledger.util.ts, apps/api/src/modules/synchronization/write-back.service.ts, apps/api/test/ledger-name.e2e-spec.ts, apps/web/src/app/features/team/team.html, docs/permissions.md, docs/synchronization.md, docs/domain-model.md, docs/architecture.md
 - Verify: api unit 659 and lint ok, api e2e 399 with the coverage floor met (ledger-name 6 new, run with this repo's copy of the skill: pause, claim, done and check all pass, and a pause under the display name is refused as owned by the ledger name), nest build ok, web unit 348 and eslint ok; GAP-45 opened for the owner cell, which still names the display name
+
+## [2026-10-13T18:07:29Z] | claude | TASK-06 | IN_PROGRESS
+
+- Summary: Read the stage words of the ledger: canonical status, qualifier, handoff and review lines stored per entry, classified at ingestion and by the sync for old entries
+- Verify: pending
+
+## [2026-10-13T18:16:17Z] | claude | TASK-07 | IN_PROGRESS
+
+- Summary: Derive QA and ASIGNADA from the ledger's latest entry for a coarse row, read only
+- Verify: pending
+
+## [2026-10-13T18:16:46Z] | claude | TASK-06 | DONE
+
+- Summary: The stage words of the ledger are read and kept: each Agentslog entry stores what its status word means in the skill's vocabulary (IN_PROGRESS, REVIEW, ASSIGNED, PAUSE, DONE, TODO, and DONE_PARTIAL for a DONE that says it is a part) with its qualifier, and the result of its Handoff and Review lines; entries read before are classified by the sync that follows, a second pass changes nothing; a word it does not know is read as before, and BR-003's terminal check stays the exact word DONE
+- Files: apps/api/src/modules/roadmap/ledger-status.util.ts, apps/api/src/modules/roadmap/agentslog-parser.service.ts, apps/api/src/modules/synchronization/agentslog-ingestion.service.ts, apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261013200000_add_agent_log_event_stage/, apps/api/test/ledger-stage-words.e2e-spec.ts, docs/roadmap-parser.md, docs/domain-model.md
+- Verify: api unit 704 and lint ok, api e2e 410 with the coverage floor met, nest build ok, web unit 348 and eslint ok (ledger-status 39 unit, parser 4, ingestion 2, e2e 4: words and qualifiers, handoff and review lines, the backfill run twice, a partial DONE does not close a vanished row)
+
+## [2026-10-13T18:16:47Z] | claude | TASK-07 | DONE
+
+- Summary: A task whose Roadmap row only says IN_PROGRESS or TODO takes the stage of the latest ledger entry for it: QA after a REVIEW, development again after a failed review or a start, ASIGNADA after an ASSIGNED; read only (nothing written to a document, no conflict), audited as a STATUS_CHANGE with origin SYNC and counted in summary.stagesDerived, never out of TERMINADA, and a change made in PM Hub after the entry stands
+- Files: apps/api/src/modules/synchronization/synchronization.service.ts, apps/api/src/modules/roadmap/ledger-status.util.ts, apps/api/src/modules/roadmap/status-vocabulary.util.ts, apps/api/test/ledger-stage-derivation.e2e-spec.ts, docs/synchronization.md
+- Verify: api unit 704 and lint ok, api e2e 410 with the coverage floor met, nest build ok, web unit 348 and eslint ok (ledger-status derivedStage and latestEntryByTask unit, e2e 7: every row and entry pair of the criteria, the YAML format and untouched documents, a newer entry followed and idempotent, a person's move kept, a review arriving with its row, no conflict while in QA, a finished task never moved); nothing changes on any board until agents write REVIEW and ASSIGNED (DEPENDENCY-01)
