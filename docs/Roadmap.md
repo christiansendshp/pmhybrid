@@ -350,51 +350,6 @@ created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
 
-### TASK-01 — Agent aliases, model and stage role on the agent profile
-
-```yaml
-id: TASK-01
-type: TASK
-title: Agent aliases, model and stage role on the agent profile
-status: READY
-priority: P1
-parent: FEATURE-10
-description: >
-  AgentProfile holds only providerType and configJson. Add ledgerName (the one exact string the agent
-  passes to the skill: the skill compares it exactly, so it is also what PM Hub must write in the
-  ledger), aliases (other strings the agent has written), model and stageRole (DEVELOPER, QA or BOTH,
-  default BOTH), with the bounded lengths of the DTO limits table, a migration, the API and the agent
-  form on the Team page.
-acceptance_criteria:
-  - id: AC-1
-    description: An agent can be given aliases, a model and a stage role from the Team page and from PATCH /actors/:id, by someone holding actors.manage; nobody else can.
-    status: pending
-  - id: AC-2
-    description: 'An alias belongs to one actor: it is compared without case or surrounding space and a repeat on another actor is refused with 409 and no hint of whose it is.'
-    status: pending
-  - id: AC-3
-    description: 'No credential is stored or accepted in these fields (BR-008): the DTO refuses a value that looks like a key, as the agent config already does.'
-    status: pending
-  - id: AC-4
-    description: Every change is audited with what changed; existing agents get empty aliases, no model and BOTH, and nothing else changes.
-    status: pending
-  - id: AC-5
-    description: 'The ledger name is unique across the instance (compared without case or surrounding space), defaults to the display name, and is the string PM Hub writes in the ledger for that agent; changing it is audited and says that it must match what the agent passes to the skill.'
-    status: pending
-definition_of_done:
-  - implementation_complete
-  - tests_green
-  - documentation_updated
-  - roadmap_updated
-technical_context:
-  backend: apps/api/src/modules/agents, apps/api/src/modules/actors, apps/api/prisma/schema.prisma (AgentProfile)
-  frontend: apps/web/src/app/features/team
-next_action: >
-  Start with a failing test for the first acceptance criterion; the proposal is in docs/agent-stage-and-kanban-plan.md, section 4 (4.1).
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-```
-
 ### TASK-02 — Resolve the owner and the ledger's agent name through the aliases
 
 ```yaml

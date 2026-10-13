@@ -34,7 +34,11 @@ Actor(id, kind: HUMAN|AI_AGENT, displayName, avatarUrl?, email?, isActive, creat
 UserCredential(1:1 Actor where kind=HUMAN): passwordHash?, authProvider, providerUserId?
 AgentProfile(1:1 Actor where kind=AI_AGENT): providerType (free text — "no asumir
   nombres concretos"), configJson? (non-secret labels/refs only; real API keys
-  stay in environment variables per brief §28)
+  stay in environment variables per brief §28), modelName?, stageRole
+  (DEVELOPER|QA|BOTH, default BOTH), identifiers: AgentIdentifier[]
+AgentIdentifier(N:1 AgentProfile): kind (LEDGER_NAME|ALIAS), value, key — the
+  normalized value (case, spacing and Unicode composition folded, accents kept),
+  unique across the instance
 ```
 
 ## RBAC (brief §4)
@@ -64,6 +68,16 @@ already-issued access token (checked per request), and the actor can no longer
 join a project or be assigned a task; history and existing assignments stay.
 `AgentProfile.configJson` holds non-secret settings only — credential-looking
 keys are rejected, secrets live in environment variables (brief §28).
+
+**How an agent signs in the documents (Roadmap TASK-01).** An agent has at most one
+ledger name, the one exact string it passes to the skill, which compares it
+exactly, so it is also what PM Hub writes in the ledger for that agent; with none
+chosen it is the display name. It can also have aliases, other strings it has
+written. All of them are unique across the instance once folded (`AgentIdentifier.key`),
+and no other agent's display name may equal them either: a name in a document
+resolves to one agent or to none. They are plain text (no `|`, no line break, nothing
+that looks like a credential) and are stored in Postgres only: no document has a
+field for them.
 
 **Postgres nuance to carry into the migration**: the natural
 `@@unique([actorId, roleId, projectId])` does **not** deduplicate global grants,

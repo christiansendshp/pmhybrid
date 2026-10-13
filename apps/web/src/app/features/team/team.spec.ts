@@ -146,6 +146,10 @@ describe('Team (brief §3 — administrable actors)', () => {
       displayName: 'Claude QA',
       providerType: 'claude',
       config: '{"model":"claude-opus-5"}',
+      ledgerName: '',
+      aliases: '',
+      model: '',
+      stageRole: 'BOTH',
     });
     await component.createAgent();
     expect(actorsService.createAgent).toHaveBeenCalledWith({
@@ -159,6 +163,10 @@ describe('Team (brief §3 — administrable actors)', () => {
       displayName: 'Broken',
       providerType: 'custom',
       config: '[1, 2]',
+      ledgerName: '',
+      aliases: '',
+      model: '',
+      stageRole: 'BOTH',
     });
     await component.createAgent();
     expect(actorsService.createAgent).toHaveBeenCalledTimes(1);
@@ -193,8 +201,162 @@ describe('Team (brief §3 — administrable actors)', () => {
       avatarUrl: undefined,
       providerType: 'codex',
       config: { focus: 'backend' },
+      // An agent that never chose its names goes on answering to its display name.
+      ledgerName: null,
+      aliases: [],
+      model: null,
+      stageRole: 'BOTH',
     });
     expect(component.editing()).toBeNull();
+  });
+
+  describe('how an agent signs in the documents (Roadmap TASK-01)', () => {
+    it('creates an agent with a ledger name, aliases (commas or line breaks, no blanks or repeats), a model and a role', async () => {
+      const { component } = await render();
+
+      component.agentForm.setValue({
+        displayName: 'Claude Sonnet',
+        providerType: 'claude',
+        config: '',
+        ledgerName: '  claude-sonnet-5-5 ',
+        aliases: 'claude, claude-sonnet-5\n claude ,, ',
+        model: ' Claude Sonnet 5.5 ',
+        stageRole: 'QA',
+      });
+      await component.createAgent();
+
+      expect(actorsService.createAgent).toHaveBeenCalledWith({
+        displayName: 'Claude Sonnet',
+        providerType: 'claude',
+        config: undefined,
+        ledgerName: 'claude-sonnet-5-5',
+        aliases: ['claude', 'claude-sonnet-5'],
+        model: 'Claude Sonnet 5.5',
+        stageRole: 'QA',
+      });
+    });
+
+    it('creates an agent that sets none of it exactly as before: no identity fields are sent', async () => {
+      const { component } = await render();
+
+      component.agentForm.setValue({
+        displayName: 'Plain',
+        providerType: 'custom',
+        config: '',
+        ledgerName: '',
+        aliases: '',
+        model: '',
+        stageRole: 'BOTH',
+      });
+      await component.createAgent();
+
+      const sent = actorsService.createAgent.mock.calls[0][0] as Record<string, unknown>;
+      expect(Object.keys(sent).sort()).toEqual(['config', 'displayName', 'providerType']);
+    });
+
+    it('shows a chosen ledger name for editing, and leaves the field empty when it is only the display name', async () => {
+      const { component } = await render();
+      const chosen = actor({
+        id: 'a2',
+        kind: 'AI_AGENT',
+        displayName: 'Claude',
+        agentProfile: {
+          providerType: 'claude',
+          configJson: null,
+          model: 'Sonnet',
+          stageRole: 'QA',
+          ledgerName: 'claude-sonnet-5-5',
+          customLedgerName: true,
+          aliases: ['claude', 'claude-code'],
+        },
+      });
+
+      component.startEdit(chosen);
+      expect(component.editForm.getRawValue()).toMatchObject({
+        ledgerName: 'claude-sonnet-5-5',
+        aliases: 'claude, claude-code',
+        model: 'Sonnet',
+        stageRole: 'QA',
+      });
+
+      component.startEdit({
+        ...chosen,
+        agentProfile: { ...chosen.agentProfile!, ledgerName: 'Claude', customLedgerName: false },
+      });
+      expect(component.editForm.getRawValue().ledgerName).toBe('');
+    });
+
+    it('clears a field when it is emptied on save: an empty ledger name or model is null, an empty list is none', async () => {
+      const { component } = await render();
+      component.startEdit({
+        ...codex,
+        agentProfile: {
+          providerType: 'codex',
+          configJson: null,
+          model: 'gpt',
+          ledgerName: 'codex-cli',
+          customLedgerName: true,
+          aliases: ['codex'],
+        },
+      });
+
+      component.editForm.patchValue({ ledgerName: '', aliases: '', model: '' });
+      await component.saveEdit();
+
+      expect(actorsService.update).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ ledgerName: null, aliases: [], model: null }),
+      );
+    });
+
+    it('shows the signature, the aliases and the role of each agent in the table, and the display name when none was chosen', async () => {
+      const named = actor({
+        id: 'a3',
+        kind: 'AI_AGENT',
+        displayName: 'Reviewer',
+        agentProfile: {
+          providerType: 'claude',
+          configJson: null,
+          stageRole: 'QA',
+          ledgerName: 'qa-agent',
+          customLedgerName: true,
+          aliases: ['qa', 'reviewer-bot'],
+        },
+      });
+      actorsService.listAgents.mockResolvedValue([codex, named]);
+      const { fixture } = await render();
+
+      const text = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
+
+      expect(text).toContain('Firma en los documentos');
+      expect(text).toContain('qa-agent');
+      expect(text).toContain('también: qa, reviewer-bot');
+      expect(text).toContain('Revisión (QA)');
+      // Codex chose nothing: it signs with its display name.
+      expect(text).toMatch(/Codex[\s\S]*Desarrollo y revisión/);
+    });
+
+    it("shows the API's refusal of a name that is taken, and keeps what was typed", async () => {
+      const { component } = await render();
+      actorsService.createAgent.mockRejectedValueOnce(
+        new HttpErrorResponse({
+          status: 409,
+          error: { message: 'That ledger name or alias is already used by another agent' },
+        }),
+      );
+      component.agentForm.patchValue({
+        displayName: 'Dup',
+        providerType: 'custom',
+        aliases: 'claude',
+      });
+
+      await component.createAgent();
+
+      expect(component.errorMessage()).toBe(
+        'That ledger name or alias is already used by another agent',
+      );
+      expect(component.agentForm.getRawValue().aliases).toBe('claude');
+    });
   });
 
   it("loads an AI agent's API keys when editing starts, but not for a human", async () => {

@@ -124,6 +124,8 @@
           <tr>
             <th scope="col">Nombre</th>
             <th scope="col">Proveedor</th>
+            <th scope="col">Firma en los documentos</th>
+            <th scope="col">Rol</th>
             <th scope="col">Estado</th>
             @if (canManage()) {
               <th scope="col">Acciones</th>
@@ -137,7 +139,21 @@
                 {{ agent.displayName }}
                 <span class="kind-badge" data-kind="AI_AGENT">Agente IA</span>
               </td>
-              <td>{{ agent.agentProfile?.providerType ?? '—' }}</td>
+              <td>
+                {{ agent.agentProfile?.providerType ?? '—' }}
+                @if (agent.agentProfile?.model; as model) {
+                  <span class="meta-text">{{ model }}</span>
+                }
+              </td>
+              <td>
+                <code>{{ agent.agentProfile?.ledgerName ?? agent.displayName }}</code>
+                @if (agent.agentProfile?.aliases?.length) {
+                  <span class="meta-text">
+                    también: {{ agent.agentProfile?.aliases?.join(', ') }}
+                  </span>
+                }
+              </td>
+              <td>{{ agent.agentProfile?.stageRole | label: 'agentStageRole' }}</td>
               <td>
                 <span
                   class="status-badge"
@@ -180,6 +196,28 @@
             placeholder="claude, codex, gemini, custom…"
           />
         </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Nombre en el registro</mat-label>
+          <input matInput formControlName="ledgerName" autocomplete="off" spellcheck="false" />
+          <mat-hint>El texto exacto que el agente pasa a la skill. Vacío: el nombre.</mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Alias</mat-label>
+          <input matInput formControlName="aliases" autocomplete="off" spellcheck="false" />
+          <mat-hint>Otros textos con los que firma, separados por coma.</mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Modelo</mat-label>
+          <input matInput formControlName="model" autocomplete="off" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Rol</mat-label>
+          <mat-select formControlName="stageRole">
+            @for (role of stageRoles; track role) {
+              <mat-option [value]="role">{{ role | label: 'agentStageRole' }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
         <mat-form-field appearance="outline" class="team-form__wide">
           <mat-label>Configuración (JSON, sin secretos)</mat-label>
           <textarea matInput formControlName="config" rows="3"></textarea>
@@ -207,6 +245,28 @@
           <mat-form-field appearance="outline">
             <mat-label>Proveedor</mat-label>
             <input matInput formControlName="providerType" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Nombre en el registro</mat-label>
+            <input matInput formControlName="ledgerName" autocomplete="off" spellcheck="false" />
+            <mat-hint>El texto exacto que el agente pasa a la skill. Vacío: el nombre.</mat-hint>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Alias</mat-label>
+            <input matInput formControlName="aliases" autocomplete="off" spellcheck="false" />
+            <mat-hint>Otros textos con los que firma, separados por coma.</mat-hint>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Modelo</mat-label>
+            <input matInput formControlName="model" autocomplete="off" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Rol</mat-label>
+            <mat-select formControlName="stageRole">
+              @for (role of stageRoles; track role) {
+                <mat-option [value]="role">{{ role | label: 'agentStageRole' }}</mat-option>
+              }
+            </mat-select>
           </mat-form-field>
           <mat-form-field appearance="outline" class="team-form__wide">
             <mat-label>Configuración (JSON, sin secretos)</mat-label>

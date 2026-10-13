@@ -6,3 +6,4 @@ export * from './permissions.js';
 export * from './llm.js';
 export * from './realtime-message.js';
 export * from './title-words.js';
+export * from './agents.js';

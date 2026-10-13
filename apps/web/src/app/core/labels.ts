@@ -17,6 +17,7 @@ export type LabelKind =
   | 'priority'
   | 'entryType'
   | 'ledgerState'
+  | 'agentStageRole'
   | 'taskField';
 
 const DICTIONARIES: Record<LabelKind, Record<string, string>> = {
@@ -157,6 +158,11 @@ const DICTIONARIES: Record<LabelKind, Record<string, string>> = {
     neededDecision: 'Decisión necesaria',
     rawOwner: 'Responsable en el documento',
     trigger: 'Disparador',
+  },
+  agentStageRole: {
+    DEVELOPER: 'Desarrollo',
+    QA: 'Revisión (QA)',
+    BOTH: 'Desarrollo y revisión',
   },
   ledgerState: {
     IN_PROGRESS: 'En curso',

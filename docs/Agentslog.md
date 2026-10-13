@@ -403,3 +403,14 @@ segments live in `docs/history/`.
 - Summary: A prompt with the skill changes, ready to give to an agent in the skill repository: it asks the agent to confirm nine facts about upstream 15805b1 first, then to add the REVIEW ledger word with handoff and review commands, a done that checks who holds the task, a stable agent identity roster, a warning for work documented after the fact and optionally assign, all backward compatible and in sh and ps1, with smoke tests and evals, and states the contract PM Hub reads
 - Files: docs/prompts/skill-review-handoff-and-identity.md, docs/Roadmap.md
 - Verify: Facts F1 to F9 and the absence of a roster, handoff and REVIEW checked against a clone of christiansendshp/skillProyectDocument at 15805b1 (function names and lines recorded in the prompt); the Roadmap still parses (api roadmap specs 160 pass); the prompt was not run by an agent
+
+## [2026-10-13T16:30:13Z] | claude | TASK-01 | IN_PROGRESS
+
+- Summary: Agent ledgerName, aliases, model and stage role on the agent profile (migration, API, Team form)
+- Verify: pending
+
+## [2026-10-13T16:42:43Z] | claude | TASK-01 | DONE
+
+- Summary: An AI agent has a ledger name (the one exact string it passes to the skill and the one PM Hub writes in the ledger, the display name unless one was chosen), aliases, a model and a stage role (DEVELOPER, QA or BOTH): AgentProfile gains modelName and stageRole, a new AgentIdentifier table holds the names with a normalized key that is unique across the instance and may not equal another agent's display name, PATCH and POST /agents take ledgerName, aliases, model and stageRole under actors.manage, a taken name answers 409 without saying whose, a name with a pipe, a control character or the shape of a credential is refused without echoing it, every change is audited, and the Team page shows how each agent signs in and edits it
+- Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261013120000_add_agent_identity/, apps/api/src/modules/agents/, apps/api/test/agent-identity.e2e-spec.ts, packages/shared-types/src/agents.ts, apps/web/src/app/features/team/, apps/web/src/app/core/actors.service.ts, docs/domain-model.md, docs/api-reference.md
+- Verify: api unit 634 and lint ok, api e2e 366 with the coverage floor met (agent-identity 9 new), web unit 344 and eslint ok, builds ok; the endpoint is PATCH /agents/:id (the task's criterion said /actors/:id); the Team page is not yet through the axe suite, which runs once at the end of wave 1

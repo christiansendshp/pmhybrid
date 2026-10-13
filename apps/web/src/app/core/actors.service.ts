@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import type { AgentStageRole } from '@pmhybrid/shared-types';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE_URL } from './api-base-url.js';
 
@@ -14,7 +15,22 @@ export interface Actor {
   isActive: boolean;
   createdAt: string;
   /** AI agents only. */
-  agentProfile?: { providerType: string; configJson: Record<string, unknown> | null } | null;
+  agentProfile?: AgentProfile | null;
+}
+
+/** What an agent is, beyond being an actor (Roadmap TASK-01). */
+export interface AgentProfile {
+  providerType: string;
+  configJson: Record<string, unknown> | null;
+  /** The model the agent runs as. */
+  model?: string | null;
+  stageRole?: AgentStageRole;
+  /** The exact string the agent passes to the skill and PM Hub writes in the ledger: the display name unless one was chosen. */
+  ledgerName?: string;
+  /** Whether `ledgerName` was chosen, not just the display name. */
+  customLedgerName?: boolean;
+  /** Other strings the agent has written in the documents. */
+  aliases?: string[];
 }
 
 export interface CreateUserInput {
@@ -30,15 +46,23 @@ export interface CreateAgentInput {
   email?: string;
   avatarUrl?: string;
   config?: Record<string, unknown>;
+  ledgerName?: string;
+  aliases?: string[];
+  model?: string;
+  stageRole?: AgentStageRole;
 }
 
-/** `providerType`/`config` only apply to AI agents. */
+/** `providerType`, `config` and the identity fields only apply to AI agents; `null` clears the ledger name or the model. */
 export interface UpdateActorInput {
   displayName?: string;
   avatarUrl?: string;
   isActive?: boolean;
   providerType?: string;
   config?: Record<string, unknown>;
+  ledgerName?: string | null;
+  aliases?: string[];
+  model?: string | null;
+  stageRole?: AgentStageRole;
 }
 
 /** Humans and AI agents (brief §3) — mirrors apps/api's users and agents modules. */

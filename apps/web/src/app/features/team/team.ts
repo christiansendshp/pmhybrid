@@ -5,6 +5,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { AGENT_STAGE_ROLES, type AgentStageRole } from '@pmhybrid/shared-types';
 import { ApiKey, ApiKeyScope, ApiKeysService, CreatedApiKey } from '../../core/api-keys.service.js';
 import { LabelPipe } from '../../shared/label.pipe.js';
 import { ScrollCue } from '../../shared/scroll-cue';
@@ -31,6 +33,7 @@ const INVALID_CONFIG = Symbol('invalid-config');
     MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     ScrollCue,
   ],
   templateUrl: './team.html',
@@ -95,10 +98,17 @@ export class Team implements OnInit {
     password: ['', [Validators.required, Validators.minLength(8)]],
   });
 
+  /** The roles an agent can have in a task's life, for the select. */
+  readonly stageRoles = AGENT_STAGE_ROLES;
+
   readonly agentForm = this.fb.nonNullable.group({
     displayName: ['', Validators.required],
     providerType: ['', Validators.required],
     config: [''],
+    ledgerName: [''],
+    aliases: [''],
+    model: [''],
+    stageRole: ['BOTH' as AgentStageRole],
   });
 
   readonly editForm = this.fb.nonNullable.group({
@@ -106,6 +116,10 @@ export class Team implements OnInit {
     avatarUrl: [''],
     providerType: [''],
     config: [''],
+    ledgerName: [''],
+    aliases: [''],
+    model: [''],
+    stageRole: ['BOTH' as AgentStageRole],
   });
 
   async ngOnInit(): Promise<void> {
@@ -130,14 +144,24 @@ export class Team implements OnInit {
     if (this.agentForm.invalid) {
       return;
     }
-    const { displayName, providerType, config } = this.agentForm.getRawValue();
+    const { displayName, providerType, config, ledgerName, aliases, model, stageRole } =
+      this.agentForm.getRawValue();
     const parsedConfig = parseConfig(config);
     if (parsedConfig === INVALID_CONFIG) {
       this.errorMessage.set('La configuración debe ser un objeto JSON.');
       return;
     }
     await this.applyChange(async () => {
-      await this.actorsService.createAgent({ displayName, providerType, config: parsedConfig });
+      // Only what was filled in: an agent that sets no identity is created as it always was.
+      await this.actorsService.createAgent({
+        displayName,
+        providerType,
+        config: parsedConfig,
+        ...(ledgerName.trim() ? { ledgerName: ledgerName.trim() } : {}),
+        ...(parseNames(aliases).length > 0 ? { aliases: parseNames(aliases) } : {}),
+        ...(model.trim() ? { model: model.trim() } : {}),
+        ...(stageRole !== 'BOTH' ? { stageRole } : {}),
+      });
       this.agentForm.reset();
     });
   }
@@ -145,12 +169,18 @@ export class Team implements OnInit {
   startEdit(actor: Actor): void {
     this.errorMessage.set(null);
     this.editing.set(actor);
-    const configJson = actor.agentProfile?.configJson;
+    const profile = actor.agentProfile;
+    const configJson = profile?.configJson;
     this.editForm.setValue({
       displayName: actor.displayName,
       avatarUrl: actor.avatarUrl ?? '',
-      providerType: actor.agentProfile?.providerType ?? '',
+      providerType: profile?.providerType ?? '',
       config: configJson ? JSON.stringify(configJson, null, 2) : '',
+      // Empty means "the display name": only a chosen ledger name is shown as one.
+      ledgerName: profile?.customLedgerName ? (profile.ledgerName ?? '') : '',
+      aliases: (profile?.aliases ?? []).join(', '),
+      model: profile?.model ?? '',
+      stageRole: profile?.stageRole ?? 'BOTH',
     });
     this.justCreatedKey.set(null);
     this.keyErrorMessage.set(null);
@@ -236,7 +266,8 @@ export class Team implements OnInit {
     if (!actor || this.editForm.invalid) {
       return;
     }
-    const { displayName, avatarUrl, providerType, config } = this.editForm.getRawValue();
+    const { displayName, avatarUrl, providerType, config, ledgerName, aliases, model, stageRole } =
+      this.editForm.getRawValue();
     const input: UpdateActorInput = { displayName, avatarUrl: avatarUrl || undefined };
     if (actor.kind === 'AI_AGENT') {
       const parsedConfig = parseConfig(config);
@@ -246,6 +277,12 @@ export class Team implements OnInit {
       }
       input.providerType = providerType || undefined;
       input.config = parsedConfig;
+      // Always sent, so that emptying a field clears it: an empty ledger name goes back to the
+      // display name, an empty model to none, an empty list of aliases to no aliases.
+      input.ledgerName = ledgerName.trim() || null;
+      input.aliases = parseNames(aliases);
+      input.model = model.trim() || null;
+      input.stageRole = stageRole;
     }
     await this.applyChange(async () => {
       await this.actorsService.update(actor, input);
@@ -295,4 +332,13 @@ function parseConfig(raw: string): Record<string, unknown> | undefined | typeof 
   } catch {
     return INVALID_CONFIG;
   }
+}
+
+/** Names typed in one box, separated by commas or line breaks, without blanks or repeats. */
+function parseNames(text: string): string[] {
+  const names = text
+    .split(/[,\n]/)
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+  return [...new Set(names)];
 }

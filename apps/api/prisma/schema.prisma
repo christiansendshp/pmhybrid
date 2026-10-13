@@ -60,6 +60,41 @@ model AgentProfile {
   actor        Actor  @relation(fields: [actorId], references: [id])
   providerType String
   configJson   Json?
+
+  // Identity (Roadmap TASK-01, EPIC-02). `modelName` is the model the agent runs
+  // as; `stageRole` says whether it develops, reviews (QA) or both. The strings
+  // the agent writes in the documents live in `identifiers`.
+  modelName   String?
+  stageRole   AgentStageRole @default(BOTH)
+  identifiers AgentIdentifier[]
+}
+
+enum AgentStageRole {
+  DEVELOPER
+  QA
+  BOTH
+}
+
+enum AgentIdentifierKind {
+  LEDGER_NAME
+  ALIAS
+}
+
+/// A string an agent goes by in the documents: its ledger name (the one exact
+/// string it passes to the skill, which compares it exactly) or an alias it has
+/// written. `key` is the normalized form (case, spacing and Unicode composition
+/// folded away) and is unique across the instance, so a name resolves to one
+/// agent or to none.
+model AgentIdentifier {
+  id             String              @id @default(uuid())
+  agentProfileId String
+  agentProfile   AgentProfile        @relation(fields: [agentProfileId], references: [id], onDelete: Cascade)
+  kind           AgentIdentifierKind
+  value          String
+  key            String              @unique
+  createdAt      DateTime            @default(now())
+
+  @@index([agentProfileId])
 }
 
 // Controlled API access for AI agents (brief §27, §28, Roadmap GAP-15). The
