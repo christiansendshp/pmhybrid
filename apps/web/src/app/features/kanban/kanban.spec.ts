@@ -76,10 +76,12 @@ describe('Kanban (brief §15)', () => {
   let table: ReturnType<typeof vi.fn>;
   let listMembers: ReturnType<typeof vi.fn>;
   let unresolvedNames: ReturnType<typeof vi.fn>;
+  let spans: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     listMembers = vi.fn().mockResolvedValue([]);
     unresolvedNames = vi.fn().mockResolvedValue({ ledgerNames: [], ownerNames: [] });
+    spans = vi.fn().mockResolvedValue({});
     listForProject = vi.fn();
     transition = vi.fn().mockResolvedValue({});
     table = vi.fn().mockResolvedValue({
@@ -101,10 +103,11 @@ describe('Kanban (brief §15)', () => {
               { path: 'list', component: Kanban, data: { view: 'list' } },
               { path: 'review', component: Kanban, data: { view: 'review' } },
               { path: 'agents', component: Kanban, data: { view: 'agents' } },
+              { path: 'timeline', component: Kanban, data: { view: 'timeline' } },
             ],
           },
         ]),
-        { provide: TasksService, useValue: { listForProject, transition, table } },
+        { provide: TasksService, useValue: { listForProject, transition, table, spans } },
         { provide: ProjectsService, useValue: { listMembers } },
         { provide: SynchronizationService, useValue: { unresolvedNames } },
         { provide: HierarchyService, useValue: { load: vi.fn().mockResolvedValue(HIERARCHY) } },
@@ -689,6 +692,7 @@ describe('Kanban (brief §15)', () => {
         '/projects/p1/list?q=api&stale=72',
         '/projects/p1/review?q=api&stale=72',
         '/projects/p1/agents?q=api&stale=72',
+        '/projects/p1/timeline?q=api&stale=72',
       ]);
     });
 
@@ -708,6 +712,7 @@ describe('Kanban (brief §15)', () => {
         '/projects/p1/list?q=api&divergent=1',
         '/projects/p1/review?q=api&divergent=1',
         '/projects/p1/agents?q=api&divergent=1',
+        '/projects/p1/timeline?q=api&divergent=1',
       ]);
     });
 
@@ -1042,6 +1047,97 @@ describe('Kanban (brief §15)', () => {
       await render([card()]);
 
       expect(unresolvedNames).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('the timeline (Roadmap TASK-23)', () => {
+    const started = (externalId: string, overrides: Partial<TaskCard> = {}) =>
+      card({
+        id: externalId,
+        externalId,
+        status: 'EN_DESARROLLO',
+        phaseId: 'ph1',
+        ...overrides,
+      });
+
+    it('shows the tasks of a phase as rows with their dates in words, after reading the spans of the ledger once', async () => {
+      spans.mockResolvedValue({
+        'T-1': { startedAt: '2026-10-05T10:00:00Z', doneAt: '2026-10-07T10:00:00Z' },
+      });
+      const { harness, component } = await render(
+        [started('T-1', { status: 'TERMINADA', completedAt: '2026-10-07T10:00:00Z' })],
+        ['task.write'],
+        '/projects/p1/timeline',
+      );
+      const root = harness.routeNativeElement!;
+
+      expect(component.view()).toBe('timeline');
+      expect(root.querySelector('h2')?.textContent?.trim()).toBe('Línea de tiempo');
+      expect(root.querySelector('.board')).toBeNull();
+      expect(spans).toHaveBeenCalledTimes(1);
+      expect(spans).toHaveBeenCalledWith('p1');
+      const when = root.querySelector('.timeline-row__when')?.textContent ?? '';
+      expect(when).toContain('2 d');
+      expect(when).toContain('fechas del registro de agentes');
+      expect(root.querySelector('.timeline-phase__facts')?.textContent).toContain('1 tarea');
+    });
+
+    it('draws a task closed instantly as a mark and says so in words', async () => {
+      spans.mockResolvedValue({
+        'T-1': { startedAt: '2026-10-05T10:00:00Z', doneAt: '2026-10-05T10:02:00Z' },
+      });
+      const { harness } = await render(
+        [
+          started('T-1', {
+            status: 'TERMINADA',
+            instantClose: true,
+            completedAt: '2026-10-05T10:02:00Z',
+          }),
+        ],
+        ['task.write'],
+        '/projects/p1/timeline',
+      );
+      const root = harness.routeNativeElement!;
+
+      expect(root.querySelector('.timeline-row .timeline-mark')).not.toBeNull();
+      expect(root.querySelector('.timeline-row .timeline-bar')).toBeNull();
+      expect(root.querySelector('.timeline-row__when')?.textContent).toContain('cierre inmediato');
+    });
+
+    it('keeps the filters: a task they leave out is not a row', async () => {
+      const { harness } = await render(
+        [started('T-1'), started('T-2')],
+        ['task.write'],
+        '/projects/p1/timeline?q=T-2',
+      );
+
+      const ids = Array.from(harness.routeNativeElement!.querySelectorAll('.timeline-row__id')).map(
+        (id) => id.textContent?.trim(),
+      );
+
+      expect(ids).toEqual(['T-2']);
+    });
+
+    it('says the spans could not be read and still draws the tasks from their own dates', async () => {
+      spans.mockRejectedValue(new Error('boom'));
+      const { harness, component } = await render(
+        [started('T-1')],
+        ['task.write'],
+        '/projects/p1/timeline',
+      );
+      const root = harness.routeNativeElement!;
+
+      expect(component.spansFailed()).toBe(true);
+      expect(root.textContent).toContain('No se pudo leer el registro de agentes');
+      expect(root.querySelector('.timeline-row__when')?.textContent).toContain(
+        'fechas de la tarea, sin registro de agentes',
+      );
+    });
+
+    it('does not read the spans on the board', async () => {
+      await render([card()]);
+
+      expect(spans).not.toHaveBeenCalled();
     });
   });
 });

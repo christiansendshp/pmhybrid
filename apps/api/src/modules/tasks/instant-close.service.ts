@@ -96,6 +96,17 @@ export class InstantCloseService {
       .map(([id]) => id);
   }
 
+  /**
+   * Every task the ledger shows started or closed, by Roadmap ID, with the first start and the last close as
+   * the agent's own clock wrote them (Roadmap TASK-23, the timeline). The same read the instant closes are
+   * judged from, handed out as it is: the view decides what to draw.
+   */
+  async spans(
+    projectId: string,
+  ): Promise<{ spans: Record<string, TaskLifeSpan> }> {
+    return { spans: Object.fromEntries(await this.spansOf(projectId)) };
+  }
+
   /** The project's figures: how many tasks the ledger shows closed, how many of them instantly, and the share. */
   async metrics(
     projectId: string,

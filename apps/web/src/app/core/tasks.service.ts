@@ -2,6 +2,7 @@ import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE_URL } from './api-base-url.js';
+import type { LedgerSpans } from './timeline.js';
 
 export type TaskStatus = 'PENDIENTE' | 'ASIGNADA' | 'EN_DESARROLLO' | 'QA' | 'TERMINADA';
 
@@ -333,6 +334,14 @@ export class TasksService {
         `${API_BASE_URL}/projects/${projectId}/reviewers`,
       ),
     );
+  }
+
+  /** When the ledger says each task of the project was first started and last closed, by Roadmap ID (Roadmap TASK-23). */
+  async spans(projectId: string): Promise<LedgerSpans> {
+    const { spans } = await firstValueFrom(
+      this.http.get<{ spans: LedgerSpans }>(`${API_BASE_URL}/projects/${projectId}/metrics/spans`),
+    );
+    return spans;
   }
 
   /** Asks for one task's title to be normalized again; the work runs in the background and `processing` says whether the LLM is ready to do it now (Roadmap GAP-39). */

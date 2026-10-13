@@ -8,8 +8,8 @@ holds and how each filter works. It grows with the views next to the Kanban (`FE
 
 A switcher at the top of the page, a navigation landmark called "Vistas del tablero", offers the views
 that exist and only those: **Tablero** (`/projects/:id/kanban`, the board, whose address does not
-change), **Lista** (`/projects/:id/list`), **En revisión** (`/projects/:id/review`) and **Por agente**
-(`/projects/:id/agents`), each described below. Every link carries the filters of the view being
+change), **Lista** (`/projects/:id/list`), **En revisión** (`/projects/:id/review`), **Por agente**
+(`/projects/:id/agents`) and **Línea de tiempo** (`/projects/:id/timeline`), each described below. Every link carries the filters of the view being
 left in its address, so the next view shows the same tasks; what only one view has (the board's grouping
 and column order, the list's order and page) is not carried. A view that cannot use a filter that is on
 says so in words under the switcher (none does today). The current view is marked as the current page,
@@ -105,6 +105,34 @@ does or nobody does, are in no lane and are counted in words above them. Below t
 /projects/:id/unresolved-names`, Roadmap TASK-02), with how many entries carry each and why: no agent
 answers to it, or two do. If that list cannot be read, the view says so and keeps the lanes. It reads what
 the board and the workload read, and nothing more than that one list.
+
+## The timeline (Roadmap TASK-23)
+
+`/projects/:projectId/timeline` shows the tasks by phase, each as the stretch of time it was worked on, on one
+axis from the earliest start to now (marks every day, week or month, whichever keeps them to about eight).
+Phases are in their order, the tasks of no phase are a last group ("Sin fase"), and a phase none of the tasks
+the filters keep belongs to is left out. A phase's header says how many tasks it has, the days it covers and how
+many were never started ("sin iniciar"), and a thin bar shows that span. A phase opens and closes with its
+button; when more than 80 tasks are drawn only the phases with something open start open, and **Abrir todas** /
+**Cerrar todas** do the rest. It uses the same filters and address as the other views.
+
+A task is drawn when it was started, and a bar is:
+
+|                   | Starts                                                                                                                                  | Ends                                                                                      |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| In the ledger     | the first `IN_PROGRESS` entry (the agent's own clock)                                                                                   | the last `DONE` entry, if the task is done; otherwise it is **open** and fades out to now |
+| Not in the ledger | its creation, but only once it is in development, in QA or done (one still waiting has nothing to draw and is counted as "sin iniciar") | its completion time, if done; otherwise open                                              |
+
+A close dated before the start (a clock that was wrong) says nothing: the completion time of the task, or the
+time it last changed, ends the bar instead, and a done task with no usable date is a mark at its start. A task
+the ledger closed but the board does not show as done (it was reopened) is open: the board decides whether it
+is done. A task **closed instantly** (Roadmap TASK-12: under the project's threshold after its first
+`IN_PROGRESS`) is a **mark** at its close, not a bar of no width, and so is any close under a minute. Bars from
+the ledger are solid, bars whose dates come from the task itself (no ledger entry) are striped; the legend says
+so, and so does every row in words: its dates, how long it lasted and where they come from. The drawing is
+hidden from assistive technology; the words are the content. The ledger's dates come from `GET
+/projects/:id/metrics/spans`; if that cannot be read the view says so and draws from the tasks' own dates, with
+no instant closes marked. Nothing here is a plan: the documents carry no planned dates, so none is drawn.
 
 ## Advisory limits on the work in progress (Roadmap TASK-15)
 

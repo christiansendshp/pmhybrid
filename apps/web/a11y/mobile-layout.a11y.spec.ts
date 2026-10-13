@@ -17,6 +17,7 @@ const routes: { name: string; url: string }[] = [
   { name: 'task list', url: '/projects/pmhybrid-self/list' },
   { name: 'review queue', url: '/projects/pmhybrid-self/review' },
   { name: 'view by agent', url: '/projects/pmhybrid-self/agents' },
+  { name: 'timeline', url: '/projects/pmhybrid-self/timeline' },
   { name: 'progress', url: '/projects/pmhybrid-self/progress' },
   { name: 'documents', url: '/projects/pmhybrid-self/documents' },
   { name: 'conflicts', url: '/projects/pmhybrid-self/conflicts' },

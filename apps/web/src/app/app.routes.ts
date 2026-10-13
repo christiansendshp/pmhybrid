@@ -78,6 +78,12 @@ export const routes: Routes = [
             loadComponent: () => import('./features/kanban/kanban').then((m) => m.Kanban),
           },
           {
+            // The tasks by phase, as the time each was worked on (Roadmap TASK-23).
+            path: 'timeline',
+            data: { view: 'timeline' },
+            loadComponent: () => import('./features/kanban/kanban').then((m) => m.Kanban),
+          },
+          {
             path: 'progress',
             loadComponent: () =>
               import('./features/phases-progress/phases-progress').then((m) => m.PhasesProgress),

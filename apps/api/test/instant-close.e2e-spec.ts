@@ -221,6 +221,57 @@ describe('Instant closes (e2e, Roadmap TASK-12)', () => {
       .expect(201);
   });
 
+  it('hands out the first start and the last close of every task the ledger shows, as the agent wrote them (Roadmap TASK-23)', async () => {
+    const projectId = await projectWithLedger();
+
+    const res = await request(server())
+      .get(`/projects/${projectId}/metrics/spans`)
+      .set('Authorization', auth())
+      .expect(200);
+
+    expect(res.body.spans).toEqual({
+      'IC-1': {
+        startedAt: '2026-10-13T10:00:00.000Z',
+        doneAt: '2026-10-13T10:02:00.000Z',
+      },
+      'IC-2': {
+        startedAt: '2026-10-13T10:00:00.000Z',
+        doneAt: '2026-10-13T11:30:00.000Z',
+      },
+      // Not closed.
+      'IC-3': { startedAt: '2026-10-13T10:00:00.000Z', doneAt: null },
+      // A close dated before its start is handed out as written: the view decides what to draw.
+      'IC-4': {
+        startedAt: '2026-10-13T10:10:00.000Z',
+        doneAt: '2026-10-13T10:00:00.000Z',
+      },
+      'IC-5': {
+        startedAt: '2026-10-13T10:00:00.000Z',
+        doneAt: '2026-10-13T10:04:59.000Z',
+      },
+      // The first start counts, the last close.
+      'IC-6': {
+        startedAt: '2026-10-13T10:00:00.000Z',
+        doneAt: '2026-10-13T12:03:00.000Z',
+      },
+    });
+  });
+
+  it('hands out nothing for a project whose ledger is empty', async () => {
+    const created = await request(server())
+      .post('/projects')
+      .set('Authorization', auth())
+      .send({ name: unique('No spans'), docsPath: createScratchDocsPath() })
+      .expect(201);
+
+    const res = await request(server())
+      .get(`/projects/${created.body.id}/metrics/spans`)
+      .set('Authorization', auth())
+      .expect(200);
+
+    expect(res.body).toEqual({ spans: {} });
+  });
+
   describe('the threshold, a project setting', () => {
     it('is five minutes for a new project, can be changed by the people who edit the project, and recomputes the figures', async () => {
       const projectId = await projectWithLedger();
@@ -288,6 +339,13 @@ describe('Instant closes (e2e, Roadmap TASK-12)', () => {
     await request(server()).get(`/projects/${projectId}/metrics`).expect(401);
     await request(server())
       .get(`/projects/${projectId}/metrics`)
+      .set('Authorization', auth(outsider.body.accessToken))
+      .expect(403);
+    await request(server())
+      .get(`/projects/${projectId}/metrics/spans`)
+      .expect(401);
+    await request(server())
+      .get(`/projects/${projectId}/metrics/spans`)
       .set('Authorization', auth(outsider.body.accessToken))
       .expect(403);
   });

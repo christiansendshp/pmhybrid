@@ -7,7 +7,9 @@
           ? 'En revisión'
           : view() === 'agents'
             ? 'Por agente'
-            : 'Kanban'
+            : view() === 'timeline'
+              ? 'Línea de tiempo'
+              : 'Kanban'
     }}
   </h2>
   @if (!showCreateForm() && canWrite()) {
@@ -231,6 +233,16 @@
       [agentLimit]="wipAgentLimit()"
       [unregistered]="unregistered()"
       [unregisteredFailed]="unregisteredFailed()"
+    />
+  }
+} @else if (view() === 'timeline') {
+  @if (!loading()) {
+    <app-timeline
+      [cards]="visibleCards()"
+      [spans]="spans()"
+      [phases]="hierarchy().phases"
+      [instantMinutes]="instantMinutes()"
+      [spansFailed]="spansFailed()"
     />
   }
 } @else if (view() === 'list') {

@@ -1,0 +1,225 @@
+// One column for what a row says, one for where on the axis it sits; on a phone they stack.
+$text-column: minmax(13rem, 24rem);
+
+.timeline__note,
+.timeline__empty {
+  margin: 0 0 var(--space-3);
+}
+
+.timeline__empty {
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.timeline__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.timeline__key {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.timeline__actions {
+  display: inline-flex;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
+.timeline__link {
+  min-height: 1.5rem;
+  padding: 0 var(--space-1);
+  border: 0;
+  background: none;
+  color: var(--mat-sys-primary);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.timeline-axis,
+.timeline-phase__summary,
+.timeline-row {
+  display: grid;
+  grid-template-columns: $text-column 1fr;
+  column-gap: var(--space-4);
+  align-items: center;
+}
+
+.timeline-axis__ticks,
+.timeline-row__track {
+  position: relative;
+  min-width: 0;
+}
+
+.timeline-axis__ticks {
+  height: 1.25rem;
+  overflow: hidden;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.timeline-axis__tick {
+  position: absolute;
+  top: 0;
+  padding-left: var(--space-1);
+  border-left: 1px solid var(--mat-sys-outline-variant);
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+  white-space: nowrap;
+}
+
+.timeline-axis__tick--end {
+  padding-right: var(--space-1);
+  padding-left: 0;
+  border-right: 1px solid var(--mat-sys-outline-variant);
+  border-left: 0;
+  transform: translateX(-100%);
+}
+
+.timeline-phase {
+  margin-top: var(--space-4);
+}
+
+.timeline-phase__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+}
+
+.timeline-phase__toggle {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-height: 1.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-title-medium);
+  cursor: pointer;
+}
+
+.timeline-phase__summary {
+  margin: var(--space-1) 0;
+}
+
+.timeline-phase__none {
+  margin: var(--space-2) 0 0;
+}
+
+.timeline-rows {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline-row {
+  min-height: 2.5rem;
+  padding: var(--space-1) 0;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.timeline-row__text {
+  display: grid;
+  min-width: 0;
+}
+
+.timeline-row__task {
+  display: inline-block;
+  min-height: 1.5rem;
+  color: var(--mat-sys-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.timeline-row__id {
+  font-variant-numeric: tabular-nums;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.timeline-row__track {
+  height: 1.25rem;
+}
+
+// A bar is drawn by its colour, its shape and its edge: ledger dates are solid, dates taken from the task itself
+// are striped, an open task is cut off by a dashed edge. The words of the row say the same, so no one of the
+// three is the only way to tell.
+.timeline-bar {
+  position: absolute;
+  top: 0.25rem;
+  height: 0.75rem;
+  min-width: 0.25rem;
+  border-radius: var(--mat-sys-corner-extra-small);
+  background: var(--mat-sys-secondary);
+}
+
+.timeline-bar--record {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--mat-sys-secondary) 0 0.3rem,
+    var(--mat-sys-secondary-container) 0.3rem 0.6rem
+  );
+  outline: 1px solid var(--mat-sys-secondary);
+  outline-offset: -1px;
+}
+
+.timeline-bar--open {
+  background: linear-gradient(
+    90deg,
+    var(--mat-sys-secondary) 0,
+    var(--mat-sys-secondary) 55%,
+    transparent 100%
+  );
+}
+
+.timeline-bar--phase {
+  top: 0.4rem;
+  height: 0.4rem;
+  background: var(--mat-sys-outline);
+}
+
+.timeline-bar--sample {
+  position: static;
+  display: inline-block;
+  width: 1.5rem;
+  flex: none;
+}
+
+.timeline-mark {
+  position: absolute;
+  top: 0.15rem;
+  width: 0.9rem;
+  height: 0.9rem;
+  margin-left: -0.45rem;
+  background: var(--mat-sys-on-surface);
+  outline: 2px solid var(--mat-sys-surface);
+  transform: rotate(45deg);
+}
+
+.timeline-mark--sample {
+  position: static;
+  flex: none;
+  width: 0.75rem;
+  height: 0.75rem;
+  margin: 0 0.375rem;
+}
+
+@media (max-width: 720px) {
+  .timeline-axis,
+  .timeline-phase__summary,
+  .timeline-row {
+    grid-template-columns: 1fr;
+    row-gap: var(--space-1);
+  }
+
+  .timeline-axis__spacer,
+  .timeline-phase__spacer {
+    display: none;
+  }
+}

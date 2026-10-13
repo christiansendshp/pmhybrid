@@ -646,38 +646,6 @@ created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
 
-### TASK-23 — Timeline per phase
-
-```yaml
-id: TASK-23
-type: TASK
-title: Timeline per phase
-status: BACKLOG
-priority: P3
-parent: FEATURE-13
-description: >
-  Bars per task from its first IN_PROGRESS to its DONE (or created to completed when there is no ledger), grouped by phase, with instant closes marked. Its value depends on agents claiming at the start (DEPENDENCY-02).
-acceptance_criteria:
-  - id: AC-1
-    description: A task closed instantly is drawn as a mark, not as a bar of zero width.
-    status: pending
-  - id: AC-2
-    description: The phase header shows its span and the number of tasks.
-    status: pending
-definition_of_done:
-  - implementation_complete
-  - tests_green
-  - documentation_updated
-  - roadmap_updated
-depends_on:
-  - TASK-17
-  - TASK-12
-next_action: >
-  Refine once TASK-12 shows how many instant closes there are.
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-```
-
 ### TASK-24 — Register the agents of SMARTHR with their aliases
 
 ```yaml

@@ -107,6 +107,7 @@ test.describe('accessibility (Roadmap GAP-25)', () => {
     { name: 'task list (Roadmap TASK-18)', url: '/projects/pmhybrid-self/list', heading: 'Lista' },
     { name: 'review queue (Roadmap TASK-19)', url: '/projects/pmhybrid-self/review', heading: 'En revisión' },
     { name: 'view by agent (Roadmap TASK-20)', url: '/projects/pmhybrid-self/agents', heading: 'Por agente' },
+    { name: 'timeline (Roadmap TASK-23)', url: '/projects/pmhybrid-self/timeline', heading: 'Línea de tiempo' },
     { name: 'conflicts', url: '/projects/pmhybrid-self/conflicts', heading: 'Conflictos' },
     { name: 'audit', url: '/projects/pmhybrid-self/audit', heading: 'Auditoría' },
     { name: 'project settings', url: '/projects/pmhybrid-self/settings', heading: 'Configuración' },

@@ -16,6 +16,7 @@ const routes = [
   '/projects/pmhybrid-self/list',
   '/projects/pmhybrid-self/review',
   '/projects/pmhybrid-self/agents',
+  '/projects/pmhybrid-self/timeline',
   '/projects/pmhybrid-self/progress',
   '/projects/pmhybrid-self/documents',
   '/projects/pmhybrid-self/conflicts',

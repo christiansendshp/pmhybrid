@@ -667,3 +667,14 @@ segments live in `docs/history/`.
 - Summary: Five documents say what the system does again: the analysis names the v1 skill it describes, the parser doc says which Status words each kind of Roadmap gets, the reopen permission lists its three holders, BR-001 says the lock binds PM Hub and not the document, BR-002 is the old tables' rule, and ADR-022 records that the latest skill's Roadmaps hold the skill's word
 - Files: docs/skillProyectDocument-analysis.md, docs/roadmap-parser.md, docs/domain-model.md, docs/ProductDescription.md, docs/Stack_Tecnologies.md, docs/decisions/ADR-022-latest-skill-roadmaps-hold-the-skills-status-word.md, docs/decisions/README.md
 - Verify: api unit 719 passed (parses this repo's Roadmap), project_docs check ok; documents only, read against status-vocabulary.util.ts, roadmap-row-writer.util.ts and reconcileAssignee
+
+## [2026-10-13T20:56:23Z] | claude | TASK-23 | IN_PROGRESS
+
+- Summary: A timeline view per phase: bars from the ledger's first IN_PROGRESS to its DONE, instant closes as marks
+- Verify: pending
+
+## [2026-10-13T21:25:32Z] | claude | TASK-23 | DONE
+
+- Summary: A timeline view of the tasks by phase at /projects/:id/timeline: a bar per task from the ledger's first IN_PROGRESS to its DONE (or from creation to completion when the ledger says nothing), grouped by phase, whose header says how many tasks it has, the days it covers and how many were never started; a task closed instantly is a mark, not a bar of no width; every row says its dates, how long it lasted and where they come from in words, and the ledger's dates come from the new read-only GET /projects/:id/metrics/spans
+- Files: apps/api/src/modules/tasks/instant-close.service.ts, apps/api/src/modules/tasks/metrics.controller.ts, apps/web/src/app/core/timeline.ts, apps/web/src/app/features/timeline/, apps/web/src/app/features/kanban/, apps/web/src/app/shared/board-views/board-views.ts, apps/web/src/app/core/tasks.service.ts, docs/board-views.md, docs/api-reference.md
+- Verify: api unit 719 and lint ok, api e2e 467 with the coverage floor met (spans endpoint: values, empty ledger, members only), nest build ok, web unit 507, eslint and build ok, axe suite 83 passed with the timeline in the axe, mobile-layout and target-size suites

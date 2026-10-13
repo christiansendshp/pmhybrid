@@ -17,6 +17,7 @@ export const BOARD_VIEWS: readonly BoardViewLink[] = [
   { path: 'list', label: 'Lista' },
   { path: 'review', label: 'En revisión' },
   { path: 'agents', label: 'Por agente' },
+  { path: 'timeline', label: 'Línea de tiempo' },
 ];
 
 /**

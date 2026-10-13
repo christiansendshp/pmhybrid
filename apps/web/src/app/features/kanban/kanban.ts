@@ -5,6 +5,8 @@ import { BoardViews } from '../../shared/board-views/board-views.js';
 import { TaskTable } from '../task-table/task-table.js';
 import { ReviewQueue } from '../review-queue/review-queue.js';
 import { AgentLanes } from '../agent-lanes/agent-lanes.js';
+import { Timeline } from '../timeline/timeline.js';
+import type { LedgerSpans } from '../../core/timeline.js';
 import type { UnregisteredName } from '../../core/agent-lanes.js';
 import { SynchronizationService } from '../../core/synchronization.service.js';
 import { DatePipe, DecimalPipe } from '@angular/common';
@@ -104,6 +106,7 @@ export const COLUMN_CAP = 8;
     TaskTable,
     ReviewQueue,
     AgentLanes,
+    Timeline,
   ],
   templateUrl: './kanban.html',
   styleUrl: './kanban.scss',
@@ -123,7 +126,12 @@ export class Kanban implements OnInit {
    * Which of the views of the tasks this page shows (Roadmap TASK-17, TASK-18): the board, or the list
    * the route `list` names. They share the filters, their toolbar and their address; each has its own body.
    */
-  readonly view = signal<'board' | 'list' | 'review' | 'agents'>('board');
+  readonly view = signal<'board' | 'list' | 'review' | 'agents' | 'timeline'>('board');
+  /** When the ledger says each task was first started and last closed, for the timeline (Roadmap TASK-23). */
+  readonly spans = signal<LedgerSpans>({});
+  readonly spansFailed = signal(false);
+  /** The project's threshold for an instant close, as the timeline's legend says it. */
+  readonly instantMinutes = computed(() => this.context.project()?.instantCloseMinutes ?? 5);
   /** The names the documents carry that no registered agent answers to, for the view by agent (Roadmap TASK-20). */
   readonly unregistered = signal<UnregisteredName[]>([]);
   readonly unregisteredFailed = signal(false);
@@ -305,7 +313,11 @@ export class Kanban implements OnInit {
 
   async ngOnInit(): Promise<void> {
     const named = this.route.snapshot?.data?.['view'];
-    this.view.set(named === 'list' || named === 'review' || named === 'agents' ? named : 'board');
+    this.view.set(
+      named === 'list' || named === 'review' || named === 'agents' || named === 'timeline'
+        ? named
+        : 'board',
+    );
     this.readViewFromAddress();
     try {
       // The list reads its own page, so it does not load every task to show the first one.
@@ -319,6 +331,9 @@ export class Kanban implements OnInit {
       this.hierarchy.set(hierarchy);
       if (this.view() === 'agents') {
         await this.readUnregistered();
+      }
+      if (this.view() === 'timeline') {
+        await this.readSpans();
       }
     } catch (error) {
       this.boardError.set(describeHttpError(error, 'No se pudo cargar el tablero.'));
@@ -515,6 +530,15 @@ export class Kanban implements OnInit {
       );
     } catch {
       this.unregisteredFailed.set(true);
+    }
+  }
+
+  /** The ledger's spans; one that cannot be read leaves the timeline on the dates of the tasks, and says so. */
+  private async readSpans(): Promise<void> {
+    try {
+      this.spans.set(await this.tasksService.spans(this.projectId));
+    } catch {
+      this.spansFailed.set(true);
     }
   }
 

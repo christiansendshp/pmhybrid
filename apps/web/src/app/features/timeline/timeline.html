@@ -1,0 +1,125 @@
+@if (spansFailed()) {
+  <p class="meta-text timeline__note" role="status">
+    No se pudo leer el registro de agentes: las fechas salen solo de las tareas (creación y cierre),
+    y no se marcan los cierres inmediatos.
+  </p>
+}
+
+@if (timeline().phases.length === 0) {
+  <p class="timeline__empty" role="status">No hay tareas que dibujar con estos filtros.</p>
+} @else {
+  <div class="timeline__legend meta-text">
+    <span class="timeline__key"
+      ><span class="timeline-bar timeline-bar--sample" aria-hidden="true"></span> fechas del
+      registro de agentes</span
+    >
+    <span class="timeline__key"
+      ><span
+        class="timeline-bar timeline-bar--sample timeline-bar--record"
+        aria-hidden="true"
+      ></span>
+      fechas de la tarea, sin registro de agentes</span
+    >
+    <span class="timeline__key"
+      ><span class="timeline-bar timeline-bar--sample timeline-bar--open" aria-hidden="true"></span>
+      abierta: corre hasta ahora</span
+    >
+    <span class="timeline__key"
+      ><span class="timeline-mark timeline-mark--sample" aria-hidden="true"></span> cierre inmediato
+      (menos de {{ instantMinutes() }} min tras iniciar)</span
+    >
+    <span class="timeline__actions">
+      <button type="button" class="timeline__link" (click)="setAll(true)">Abrir todas</button>
+      <button type="button" class="timeline__link" (click)="setAll(false)">Cerrar todas</button>
+    </span>
+  </div>
+
+  @if (timeline().axis) {
+    <div class="timeline-axis" aria-hidden="true">
+      <div class="timeline-axis__spacer"></div>
+      <div class="timeline-axis__ticks">
+        @for (tick of ticks(); track tick.at) {
+          <span
+            class="timeline-axis__tick"
+            [class.timeline-axis__tick--end]="tick.percent > 88"
+            [style.left.%]="tick.percent"
+            >{{ tickLabel(tick.at) }}</span
+          >
+        }
+      </div>
+    </div>
+  }
+
+  @for (phase of timeline().phases; track trackPhase(phase)) {
+    <section class="timeline-phase" [attr.aria-labelledby]="'phase-' + phase.key">
+      <h3 class="timeline-phase__header" [id]="'phase-' + phase.key">
+        <button
+          type="button"
+          class="timeline-phase__toggle"
+          [attr.aria-expanded]="isOpen(phase)"
+          (click)="toggle(phase)"
+        >
+          <span class="timeline-phase__chevron" aria-hidden="true">{{
+            isOpen(phase) ? '▾' : '▸'
+          }}</span>
+          {{ phase.name }}
+        </button>
+        <span class="meta-text timeline-phase__facts">
+          {{ phase.total }} {{ phase.total === 1 ? 'tarea' : 'tareas' }} · {{ spanText(phase) }}
+          @if (phase.notStarted > 0) {
+            · {{ phase.notStarted }} sin iniciar
+          }
+        </span>
+      </h3>
+      @if (phase.span; as span) {
+        <div class="timeline-phase__summary" aria-hidden="true">
+          <div class="timeline-phase__spacer"></div>
+          <div class="timeline-row__track">
+            <span
+              class="timeline-bar timeline-bar--phase"
+              [style.left.%]="at(span.start)"
+              [style.width.%]="at(span.end) - at(span.start)"
+            ></span>
+          </div>
+        </div>
+      }
+      @if (isOpen(phase)) {
+        @if (phase.bars.length > 0) {
+          <ul class="timeline-rows">
+            @for (bar of phase.bars; track trackBar(bar)) {
+              <li class="timeline-row">
+                <div class="timeline-row__text">
+                  <a
+                    class="timeline-row__task"
+                    [routerLink]="['../tasks', bar.card.id]"
+                    [attr.title]="bar.card.title | shortTitle: 'hint'"
+                    ><span class="timeline-row__id">{{ bar.card.externalId ?? 'Sin ID' }}</span>
+                    {{ bar.card.title | shortTitle }}</a
+                  >
+                  <span class="meta-text timeline-row__when">{{ whenText(bar) }}</span>
+                </div>
+                <div class="timeline-row__track" aria-hidden="true">
+                  @if (bar.mark) {
+                    <span class="timeline-mark" [style.left.%]="at(bar.until)"></span>
+                  } @else {
+                    <span
+                      class="timeline-bar"
+                      [class.timeline-bar--record]="bar.basis === 'RECORD'"
+                      [class.timeline-bar--open]="bar.end === null"
+                      [style.left.%]="at(bar.start)"
+                      [style.width.%]="widthOf(bar)"
+                    ></span>
+                  }
+                </div>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="meta-text timeline-phase__none">
+            Ninguna de estas tareas se inició: no hay nada que dibujar.
+          </p>
+        }
+      }
+    </section>
+  }
+}
