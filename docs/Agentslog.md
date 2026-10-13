@@ -425,3 +425,47 @@ segments live in `docs/history/`.
 - Summary: A task records when it entered its current status: Task.statusChangedAt, written by statusStamp only when the status really changes, on every path that changes one (a transition, an assignment that promotes a task to ASIGNADA, a conflict resolution, a member leaving, and the sync for a row that changed or was completed by leaving the document), unchanged by an edit, a comment or a reassignment, backfilled by the migration from the latest STATUS_CHANGE audit event else the creation time, indexed with the project and status, and on the task and the board card
 - Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261013140000_add_task_status_changed_at/, apps/api/src/modules/tasks/status-change.util.ts, apps/api/src/modules/tasks/tasks.service.ts, apps/api/src/modules/conflicts/conflicts.service.ts, apps/api/src/modules/synchronization/synchronization.service.ts, apps/api/src/modules/project-members/project-members.service.ts, apps/api/test/task-status-changed-at.e2e-spec.ts, apps/web/src/app/core/tasks.service.ts, docs/domain-model.md
 - Verify: api unit 637 and lint ok, api e2e 372 with the coverage floor met (task-status-changed-at 6 new: creation, every change, no movement on an edit or comment, member removal, sync, and the migration's own backfill SQL run twice), web unit 344 and eslint ok, builds ok
+
+## [2026-10-13T16:53:22Z] | claude | TASK-02 | IN_PROGRESS
+
+- Summary: Resolve the owner and the ledger agent name through ledger names and aliases; link ledger events to actors; keep ownerClaimedAt current
+- Verify: pending
+
+## [2026-10-13T16:54:24Z] | claude | SUBTASK-02.1 | IN_PROGRESS
+
+- Summary: resolveOwner matches the display name, the ledger name and the aliases
+- Verify: pending
+
+## [2026-10-13T16:55:38Z] | claude | SUBTASK-02.2 | IN_PROGRESS
+
+- Summary: Link each ledger event to its agent actor, with an idempotent backfill
+- Verify: pending
+
+## [2026-10-13T16:55:39Z] | claude | SUBTASK-02.3 | IN_PROGRESS
+
+- Summary: ownerClaimedAt follows a re-claim
+- Verify: pending
+
+## [2026-10-13T17:16:46Z] | claude | SUBTASK-02.1 | DONE
+
+- Summary: resolveOwner matches an agent's display name, ledger name and aliases, one actor counted once, kind narrowing and accents unchanged
+- Files: apps/api/src/modules/roadmap/roadmap-owner.util.ts, apps/api/src/modules/roadmap/roadmap-owner.util.spec.ts
+- Verify: api unit 649 and lint ok, api e2e 380 with the coverage floor met, nest build ok (roadmap-owner.util.spec: 5 new cases)
+
+## [2026-10-13T17:16:47Z] | claude | SUBTASK-02.2 | DONE
+
+- Summary: Each ledger event is linked to its agent (AgentLogEvent.agentActorId, null for a name no one or two agents answer to), at ingestion, on every sync for what is still unlinked, and after any change to an agent's names; GET /projects/:id/unresolved-names lists the gaps
+- Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261013160000_add_agent_log_event_actor/, apps/api/src/modules/agents/agent-ledger-link.service.ts, apps/api/src/modules/agents/agents.service.ts, apps/api/src/modules/synchronization/agentslog-ingestion.service.ts, apps/api/src/modules/synchronization/synchronization.controller.ts, apps/api/test/agent-ledger-link.e2e-spec.ts
+- Verify: api unit 649 and lint ok, api e2e 380 with the coverage floor met, nest build ok (agent-ledger-link: 9 unit, 8 e2e incl. the per-sync backfill run twice)
+
+## [2026-10-13T17:16:48Z] | claude | SUBTASK-02.3 | DONE
+
+- Summary: ownerClaimedAt follows the owner cell: a changed cell moves rawOwner and the claim time together with one ROADMAP_FIELD_UPDATE audit event, a cell with no timestamp clears it, an unchanged row is untouched
+- Files: apps/api/src/modules/synchronization/synchronization.service.ts, apps/api/test/agent-ledger-link.e2e-spec.ts
+- Verify: api unit 649 and lint ok, api e2e 380 with the coverage floor met, nest build ok (e2e: re-claim, no-op sync, cleared claim)
+
+## [2026-10-13T17:16:54Z] | claude | TASK-02 | DONE
+
+- Summary: An owner in a document and an agent name in the ledger resolve through the display name, the ledger name and the aliases: an unknown or ambiguous name resolves to nobody and is listed with a count and a reason (GET /projects/:id/unresolved-names), each Agentslog event is linked to its agent and relinked when names change, and ownerClaimedAt follows a re-claim; resolving never writes to a document
+- Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261013160000_add_agent_log_event_actor/, apps/api/src/modules/agents/, apps/api/src/modules/roadmap/roadmap-owner.util.ts, apps/api/src/modules/synchronization/, apps/api/test/agent-ledger-link.e2e-spec.ts, docs/domain-model.md, docs/synchronization.md, docs/roadmap-parser.md, docs/api-reference.md
+- Verify: api unit 649 and lint ok, api e2e 380 with the coverage floor met, nest build ok; web untouched; registering SMARTHR's own agents is TASK-24 (live data); the Team page and the unresolved list have no UI yet (TASK-03)

@@ -44,6 +44,75 @@ describe('resolveOwner (Roadmap GAP-35a)', () => {
     ).toEqual({ status: 'MATCHED', actorId: 'a3' });
   });
 
+  describe('through the ledger name and the aliases of an agent (Roadmap TASK-02)', () => {
+    const sonnet: OwnerCandidate = {
+      actorId: 'a5',
+      displayName: 'Claude Sonnet',
+      kind: 'AI_AGENT',
+      names: ['claude-sonnet-5-5', 'claude', 'Claude Code'],
+    };
+
+    it('matches the name an agent writes in the document, whether it is the display name, the ledger name or an alias', () => {
+      for (const written of [
+        'Claude Sonnet',
+        'claude-sonnet-5-5',
+        'CLAUDE',
+        ' claude   code ',
+      ]) {
+        expect(resolveOwner([ana, sonnet], written, 'AI_AGENT')).toEqual({
+          status: 'MATCHED',
+          actorId: 'a5',
+        });
+      }
+    });
+
+    it('counts one actor once even when two of its names are the one written', () => {
+      const twice: OwnerCandidate = {
+        ...sonnet,
+        names: ['Claude Sonnet', 'claude sonnet'],
+      };
+      expect(resolveOwner([twice], 'claude sonnet')).toEqual({
+        status: 'MATCHED',
+        actorId: 'a5',
+      });
+    });
+
+    it('is ambiguous, and never a pick, when an alias is also the name of another candidate', () => {
+      const rival: OwnerCandidate = {
+        actorId: 'a6',
+        displayName: 'claude',
+        kind: 'AI_AGENT',
+      };
+      expect(resolveOwner([sonnet, rival], 'claude', 'AI_AGENT')).toEqual({
+        status: 'AMBIGUOUS',
+      });
+    });
+
+    it('keeps the kind narrowing and does not fold accents in an alias', () => {
+      const reviewer: OwnerCandidate = {
+        actorId: 'a7',
+        displayName: 'Revisor',
+        kind: 'AI_AGENT',
+        names: ['réviseur'],
+      };
+      expect(resolveOwner([reviewer], 'réviseur', 'HUMAN').status).toBe('NONE');
+      expect(resolveOwner([reviewer], 'reviseur', 'AI_AGENT').status).toBe(
+        'NONE',
+      );
+      expect(resolveOwner([reviewer], 'Réviseur', 'AI_AGENT').status).toBe(
+        'MATCHED',
+      );
+    });
+
+    it('is unchanged for a candidate that has no other names', () => {
+      expect(resolveOwner([ana, claude], 'Claude')).toEqual({
+        status: 'MATCHED',
+        actorId: 'a2',
+      });
+      expect(resolveOwner([ana, claude], 'nobody').status).toBe('NONE');
+    });
+  });
+
   it('is ambiguous — never an arbitrary pick — when several match', () => {
     const other: OwnerCandidate = { ...ana, actorId: 'a9' };
     expect(resolveOwner([ana, other], 'Ana García')).toEqual({

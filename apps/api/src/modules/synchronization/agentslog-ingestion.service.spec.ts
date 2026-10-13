@@ -51,6 +51,8 @@ function serviceWith(files: Record<string, string>) {
     service: new AgentslogIngestionService(
       new AgentslogParserService(),
       provider as never,
+      // These specs read archives; the links to agents are covered by the TASK-02 specs.
+      { resolve: vi.fn(async () => new Map()) } as never,
     ),
   };
 }

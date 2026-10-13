@@ -2,6 +2,7 @@ import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
 import { ProjectMemberGuard } from '../../common/guards/project-member.guard.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { AgentLedgerLinkService } from '../agents/agent-ledger-link.service.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { SynchronizationService } from './synchronization.service.js';
 
@@ -12,6 +13,7 @@ export class SynchronizationController {
   constructor(
     private readonly synchronizationService: SynchronizationService,
     private readonly prisma: PrismaService,
+    private readonly agentLinks: AgentLedgerLinkService,
   ) {}
 
   @Post('sync')
@@ -24,6 +26,15 @@ export class SynchronizationController {
       'MANUAL',
       requesterActorId,
     );
+  }
+
+  /**
+   * The names the documents carry that no agent answers to, or two do, with a count each
+   * (Roadmap TASK-02). Read-only.
+   */
+  @Get('unresolved-names')
+  unresolvedNames(@Param('projectId') projectId: string) {
+    return this.agentLinks.unresolved(projectId);
   }
 
   @Get('sync-runs')

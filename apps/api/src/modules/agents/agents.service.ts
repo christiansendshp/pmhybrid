@@ -2,12 +2,14 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { AuditOrigin, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService, diffFields } from '../audit/audit.service.js';
 import { findSecretLikeKeys } from './agent-config.util.js';
+import { AgentLedgerLinkService } from './agent-ledger-link.service.js';
 import { identifierKey, identifierProblem } from './agent-identity.util.js';
 import { CreateAgentDto } from './dto/create-agent.dto.js';
 import { UpdateAgentDto } from './dto/update-agent.dto.js';
@@ -85,9 +87,12 @@ type PresentedAgent = ReturnType<typeof present>;
  */
 @Injectable()
 export class AgentsService {
+  private readonly logger = new Logger(AgentsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly ledgerLinks: AgentLedgerLinkService,
   ) {}
 
   async findAll(): Promise<PresentedAgent[]> {
@@ -119,7 +124,7 @@ export class AgentsService {
     await this.assertEmailAvailable(dto.email);
     const identity = identityOf(dto, { ledgerName: null, aliases: [] });
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      const created = await this.prisma.$transaction(async (tx) => {
         await this.assertNamesFree(tx, {
           own: null,
           displayName: dto.displayName,
@@ -159,6 +164,8 @@ export class AgentsService {
         );
         return agent;
       });
+      await this.relinkLedger();
+      return created;
     } catch (error) {
       throw asNameConflict(error);
     }
@@ -204,7 +211,7 @@ export class AgentsService {
       dto.model !== undefined ||
       dto.stageRole !== undefined;
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      const result = await this.prisma.$transaction(async (tx) => {
         if (identity || dto.displayName !== undefined) {
           await this.assertNamesFree(tx, {
             own: id,
@@ -277,8 +284,27 @@ export class AgentsService {
         );
         return present(row);
       });
+      if (identity || dto.displayName !== undefined) {
+        await this.relinkLedger();
+      }
+      return result;
     } catch (error) {
       throw asNameConflict(error);
+    }
+  }
+
+  /**
+   * The ledger's names are linked to agents (Roadmap TASK-02), so a change to an agent's
+   * names moves some of those links. Best effort and after the change: a failure to
+   * relink never undoes the change, and the next sync links what is still unlinked.
+   */
+  private async relinkLedger(): Promise<void> {
+    try {
+      await this.ledgerLinks.relinkAll();
+    } catch (error) {
+      this.logger.warn(
+        `Could not relink the ledger to the agents: ${error instanceof Error ? error.name : 'unknown error'}`,
+      );
     }
   }
 

@@ -260,10 +260,18 @@ DocumentRevision(id, documentId, contentHash, rawContent, capturedAt, source: SY
 SyncRun(id, projectId, startedAt, finishedAt?, trigger: SCHEDULED|MANUAL,
   status: SUCCESS|PARTIAL|FAILED|RUNNING, summary jsonb?)
 
-AgentLogEvent(id, projectId, taskExternalId?, taskId?, agentName, timestampFromLog,
-  statusWord, summary, files, verify, followUp, rawEntryHash unique,
+AgentLogEvent(id, projectId, taskExternalId?, taskId?, agentName, agentActorId?,
+  timestampFromLog, statusWord, summary, files, verify, followUp, rawEntryHash unique,
   sourceDocumentRevisionId, createdAt)
 ```
+
+`agentName` is what the agent wrote, exactly. `agentActorId` is the agent it is (Roadmap
+TASK-02): the one AI agent whose display name, ledger name or alias the name is, folded
+like any identifier (case, spacing and Unicode composition ignored, accents kept). A name
+no agent answers to, or two do, leaves it null: the link is never a guess. It is filled at
+ingestion and again after every sync for the entries still unlinked, and every change to
+an agent's names relinks all the entries, so a name that was freed stops pointing at the
+agent that had it. The column is a read-side convenience; the document stays the truth.
 
 `rawEntryHash` is unique so re-ingesting an overlapping revision (e.g. after
 ledger rotation) is idempotent. `timestampFromLog` is an untrusted,

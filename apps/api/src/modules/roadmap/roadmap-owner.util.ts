@@ -55,6 +55,11 @@ export interface OwnerCandidate {
   actorId: string;
   displayName: string;
   kind: RoadmapOwnerKind;
+  /**
+   * The other strings the actor goes by in the documents: an agent's ledger name
+   * and aliases (Roadmap TASK-02). Matched like the display name.
+   */
+  names?: readonly string[];
 }
 
 export type OwnerResolution =
@@ -85,7 +90,9 @@ export function resolveOwner(
   const matches = candidates.filter(
     (candidate) =>
       (!kind || candidate.kind === kind) &&
-      normalizeOwnerName(candidate.displayName) === wanted,
+      [candidate.displayName, ...(candidate.names ?? [])].some(
+        (known) => normalizeOwnerName(known) === wanted,
+      ),
   );
   if (matches.length === 1) {
     return { status: 'MATCHED', actorId: matches[0].actorId };

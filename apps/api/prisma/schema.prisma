@@ -43,6 +43,7 @@ model Actor {
   taskComments      TaskComment[]    @relation("CommentAuthor")
   leadProjects      Project[]        @relation("ProjectLead")
   idempotencyKeys   IdempotencyKey[]
+  ledgerEvents      AgentLogEvent[]  @relation("LedgerAgent")
 }
 
 model UserCredential {
@@ -525,6 +526,10 @@ model AgentLogEvent {
   taskId                   String?
   task                     Task?    @relation(fields: [taskId], references: [id])
   agentName                String
+  // The agent that name is (Roadmap TASK-02), when it is exactly one; null for a name that is
+  // no agent's or is two agents'. `agentName` stays what was written.
+  agentActorId             String?
+  agentActor               Actor?   @relation("LedgerAgent", fields: [agentActorId], references: [id])
   timestampFromLog         DateTime
   statusWord               String
   summary                  String
@@ -540,6 +545,7 @@ model AgentLogEvent {
   // relative timestamp shape); a bare global unique would silently drop
   // the second project's entry as a "duplicate" of the first's.
   @@unique([projectId, rawEntryHash])
+  @@index([agentActorId])
 }
 
 model Conflict {

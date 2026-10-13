@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { AgentLedgerLinkService } from '../agents/agent-ledger-link.service.js';
 import {
   AgentslogParserService,
   ParsedAgentLogEntry,
@@ -37,6 +38,7 @@ export class AgentslogIngestionService {
     private readonly parser: AgentslogParserService,
     @Inject(PROJECT_REPOSITORY_PROVIDER)
     private readonly repositoryProvider: ProjectRepositoryProvider,
+    private readonly agentLinks: AgentLedgerLinkService,
   ) {}
 
   async parseWithArchive(
@@ -94,6 +96,11 @@ export class AgentslogIngestionService {
     entries: ParsedAgentLogEntry[],
     sourceDocumentRevisionId: string,
   ): Promise<void> {
+    // Which agent each name is (Roadmap TASK-02), decided once for the run.
+    const agents = await this.agentLinks.resolve(
+      entries.map((entry) => entry.agentName),
+      tx,
+    );
     for (const entry of entries) {
       const existing = await tx.agentLogEvent.findUnique({
         where: {
@@ -118,6 +125,7 @@ export class AgentslogIngestionService {
           taskExternalId: entry.taskExternalId,
           taskId: task?.id,
           agentName: entry.agentName,
+          agentActorId: agents.get(entry.agentName) ?? null,
           timestampFromLog: new Date(entry.timestampFromLog),
           statusWord: entry.statusWord,
           summary: entry.summary,

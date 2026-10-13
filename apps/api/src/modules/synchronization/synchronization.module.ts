@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AgentsModule } from '../agents/agents.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { RoadmapModule } from '../roadmap/roadmap.module.js';
 import { GitProvidersModule } from '../git-providers/git-providers.module.js';
@@ -11,7 +12,7 @@ import { SynchronizationService } from './synchronization.service.js';
 import { WriteBackService } from './write-back.service.js';
 
 @Module({
-  imports: [AuthModule, RoadmapModule, GitProvidersModule],
+  imports: [AuthModule, AgentsModule, RoadmapModule, GitProvidersModule],
   controllers: [SynchronizationController],
   providers: [
     SynchronizationService,

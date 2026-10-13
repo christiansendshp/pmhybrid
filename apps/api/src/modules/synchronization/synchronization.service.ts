@@ -41,6 +41,7 @@ import {
 } from '../title-normalization/title-state.util.js';
 import { needsNormalization } from '../title-normalization/word-count.util.js';
 import { isStructuralEntry } from '../roadmap/roadmap-hierarchy.util.js';
+import { AgentLedgerLinkService } from '../agents/agent-ledger-link.service.js';
 import { AgentslogIngestionService } from './agentslog-ingestion.service.js';
 import {
   HierarchySyncService,
@@ -139,6 +140,7 @@ export class SynchronizationService {
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly hierarchy: HierarchySyncService,
+    private readonly agentLinks: AgentLedgerLinkService,
   ) {}
 
   /**
@@ -323,6 +325,10 @@ export class SynchronizationService {
         agentslogRevisionId,
       );
     }
+    // Entries read before their agent was registered, or before agents were linked at all
+    // (Roadmap TASK-02): every run, whether or not the ledger changed, so it is also the
+    // backfill, and idempotent.
+    await this.agentLinks.linkUnlinked(tx, projectId);
 
     const roadmapContent = await this.repositoryProvider.readFile(
       project.docsPath,
@@ -480,7 +486,10 @@ export class SynchronizationService {
     // counting it as seen keeps its task out of the disappeared-row sweep
     // (which would otherwise complete it or raise a conflict for it).
     const seenExternalIds = new Set<string>(unreadableIds);
-    const ownerCandidates = await this.loadOwnerCandidates(tx, projectId);
+    const ownerCandidates = await this.agentLinks.ownerCandidates(
+      tx,
+      projectId,
+    );
     // The project's dependency edges, loaded once: cycle checks run against
     // this graph, which every link and removal below keeps current, instead
     // of one query per hop (Roadmap IMPROVEMENT-01a).
@@ -825,24 +834,6 @@ export class SynchronizationService {
       await this.recordDocumentAssignment(tx, task.id, assigneeActorId);
     }
     return task;
-  }
-
-  /** The people and agents a document's owner can name: the project's active members (Roadmap GAP-35a). */
-  private async loadOwnerCandidates(
-    tx: Prisma.TransactionClient,
-    projectId: string,
-  ): Promise<OwnerCandidate[]> {
-    const members = await tx.projectMember.findMany({
-      where: { projectId, isActive: true, actor: { isActive: true } },
-      select: {
-        actor: { select: { id: true, displayName: true, kind: true } },
-      },
-    });
-    return members.map(({ actor }) => ({
-      actorId: actor.id,
-      displayName: actor.displayName,
-      kind: actor.kind,
-    }));
   }
 
   /**
@@ -1369,13 +1360,26 @@ export class SynchronizationService {
       }
     }
 
+    // The owner cell changed, so the claim time changes with it (Roadmap TASK-02): a
+    // task taken over by another agent, or claimed again by the same one, keeps no
+    // claim time that belongs to the one before. A cell with no timestamp clears it.
+    const claimedAt =
+      'rawOwner' in updates
+        ? row.ownerClaimedAt
+          ? new Date(row.ownerClaimedAt)
+          : null
+        : undefined;
+
     // Table membership is already audited above; this records every other
     // field the document changed (brief §25 "cambios provenientes de documentos").
     const documentDiff = diffFields(
       task as unknown as Record<string, unknown>,
-      Object.fromEntries(
-        Object.entries(updates).filter(([field]) => field !== 'roadmapTable'),
-      ),
+      Object.fromEntries([
+        ...Object.entries(updates).filter(
+          ([field]) => field !== 'roadmapTable',
+        ),
+        ...(claimedAt !== undefined ? [['ownerClaimedAt', claimedAt]] : []),
+      ]),
     );
     if (documentDiff) {
       await this.audit.record(
@@ -1412,6 +1416,7 @@ export class SynchronizationService {
               ...statusStamp(task.status, updates.status),
             }
           : {}),
+        ...(claimedAt !== undefined ? { ownerClaimedAt: claimedAt } : {}),
         lastSyncedContentHash: incomingHash,
         ...(conflictRaised ? {} : { lastSyncedAt: new Date() }),
       },

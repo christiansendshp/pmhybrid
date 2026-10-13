@@ -194,15 +194,29 @@ assignee. `owner.type` (`HUMAN`, `AI`/`AI_AGENT`) narrows the match to a
 person or an agent; an `owner` with no type, and the old tables' Owner cell,
 search both.
 
-**Resolution.** By display name — case, surrounding and repeated whitespace
+**Resolution.** By display name — or, for an agent, by its ledger name or any of
+its aliases (Roadmap TASK-02) — case, surrounding and repeated whitespace
 and Unicode composition ignored; accents are _not_ folded — among the
-project's _active_ members with an active actor. Exactly one match resolves.
+project's _active_ members with an active actor. Exactly one actor matching
+(two names of one actor count once) resolves.
 None, or more than one, leaves the assignee alone and the raw owner intact:
 never an arbitrary pick, never an unassignment (a document that names nobody
 does not unassign either). Resolution runs on every sync for every row, not
 only when the row's content hash changed, because it also depends on who is a
 member _now_: an owner that named nobody at the last sync is picked up once
-that member is added.
+that member is added. Resolving never writes to a document.
+
+`GET /projects/:projectId/unresolved-names` lists what could not be resolved, with a
+count each and the reason (`UNKNOWN`: no one answers to it; `AMBIGUOUS`: two do): the
+owners of the Roadmap's rows that resolved to no member, and the names of the
+Agentslog's entries that no agent answers to. A name that does resolve but is not applied
+yet (the next sync does) is not listed.
+
+**The claim time follows the owner cell.** When a row's owner cell changes, `rawOwner`
+and `ownerClaimedAt` change with it in the same transaction, with the same
+`ROADMAP_FIELD_UPDATE` audit event: a task taken over by another agent, or claimed again
+by the same one, does not keep the claim time of the one before, and a cell with no
+timestamp clears it. A row whose owner cell did not change is not touched.
 
 **Applying it.** A task with no assignee gets the document's owner. A task
 with a _different_ assignee keeps it if the document's owner is what it was at

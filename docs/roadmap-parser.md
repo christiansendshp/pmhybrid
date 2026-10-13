@@ -158,10 +158,11 @@ more than one agent concurrently; a plain name is also valid.
 - Split the cell on the **last** `@` (agent display names/emails could
   theoretically contain `@`, though in practice they won't for this field —
   splitting on the last occurrence is the safer choice either way).
-- Left side → name to resolve against `Actor.displayName` (case-insensitive
-  match within the project's members).
+- Left side → name to resolve against `Actor.displayName`, or an agent's ledger name
+  or alias (case-insensitive match within the project's members).
 - Right side, if present → parsed as a timestamp into `Task.ownerClaimedAt`;
-  one that does not parse is dropped and the name still counts.
+  one that does not parse is dropped and the name still counts. A later change of the
+  cell moves `ownerClaimedAt` with it (Roadmap TASK-02).
 - An empty cell, `—` or `-` names nobody.
 - **Always** store the raw, unparsed cell value in `Task.rawOwner`,
   regardless of whether name resolution succeeds — an unresolved owner name

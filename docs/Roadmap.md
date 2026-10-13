@@ -350,119 +350,6 @@ created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
 
-### TASK-02 — Resolve the owner and the ledger's agent name through the aliases
-
-```yaml
-id: TASK-02
-type: TASK
-title: Resolve the owner and the ledger's agent name through the aliases
-status: READY
-priority: P1
-parent: FEATURE-10
-description: >
-  The owner cell (name@timestamp) resolves only by exact display name today, and the ledger's
-  agent name never feeds identity (AgentLogEvent.agentName is raw). Resolve both through the
-  display name, the ledger name and the aliases, link each ledger event to its actor, and keep the
-  claim time current.
-acceptance_criteria:
-  - id: AC-1
-    description: With the five agents of SMARTHR registered with their aliases, every task whose owner cell names one of them has that assignee after the next sync, and the Workload page lists them.
-    status: pending
-  - id: AC-2
-    description: An alias that is ambiguous (two actors) or unknown resolves to nothing and never guesses; the unresolved names are listed with a count.
-    status: pending
-  - id: AC-3
-    description: Existing AgentLogEvent rows are linked by a backfill that can be run twice with the same result; an event that cannot be linked keeps agentActorId null.
-    status: pending
-  - id: AC-4
-    description: 'Resolving an owner never writes to a document. A document owner change on a task in EN_DESARROLLO applies as it does today (reconcileAssignee: the lock restricts who may reassign in PM Hub, not the document, and a local assignee edit since the last sync raises a conflict); the first test pins that behavior.'
-    status: pending
-definition_of_done:
-  - implementation_complete
-  - tests_green
-  - documentation_updated
-  - roadmap_updated
-depends_on:
-  - TASK-01
-technical_context:
-  backend: apps/api/src/modules/roadmap/roadmap-owner.util.ts, apps/api/src/modules/synchronization, apps/api/src/modules/roadmap/agentslog-ingestion.service.ts
-next_action: >
-  Do the subtasks in order: SUBTASK-02.1, then 02.2 and 02.3.
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-```
-
-### SUBTASK-02.1 — resolveOwner and the ledger name match through the aliases
-
-```yaml
-id: SUBTASK-02.1
-type: SUBTASK
-title: resolveOwner and the ledger name match through the aliases
-status: READY
-parent: TASK-02
-description: >
-  Extend resolveOwner (display name today; case, spacing and NFC ignored, accents kept) to the aliases of the project's active members, narrowed by kind as now, and expose the same matcher for ledger names.
-acceptance_criteria:
-  - id: AC-1
-    description: 'Unit tests: alias match, display-name match, case and spacing, accents kept, ambiguity refused, inactive member ignored, kind narrowing unchanged.'
-    status: pending
-definition_of_done:
-  - implementation_complete
-  - tests_green
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-```
-
-### SUBTASK-02.2 — Link each ledger event to its actor and backfill
-
-```yaml
-id: SUBTASK-02.2
-type: SUBTASK
-title: Link each ledger event to its actor and backfill
-status: READY
-parent: TASK-02
-description: >
-  Nullable AgentLogEvent.agentActorId, filled at ingestion for new events and by an idempotent backfill for the existing ones (978 in SMARTHR on 2026-10-09), with an index.
-acceptance_criteria:
-  - id: AC-1
-    description: The backfill leaves unresolvable names null and a second run changes nothing.
-    status: pending
-  - id: AC-2
-    description: A migration with a default of null; ingestion stays idempotent on rawEntryHash.
-    status: pending
-definition_of_done:
-  - implementation_complete
-  - tests_green
-depends_on:
-  - SUBTASK-02.1
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-```
-
-### SUBTASK-02.3 — ownerClaimedAt follows a re-claim
-
-```yaml
-id: SUBTASK-02.3
-type: SUBTASK
-title: ownerClaimedAt follows a re-claim
-status: READY
-parent: TASK-02
-description: >
-  ownerClaimedAt is set only when a task is created and is not a reconcilable field (synchronization.service.ts:110-119, read, not run), so a task re-claimed by another agent keeps the first claim time.
-acceptance_criteria:
-  - id: AC-1
-    description: When the owner cell changes to another owner or timestamp, rawOwner and ownerClaimedAt change with it, in the same transaction, with an audit event.
-    status: pending
-  - id: AC-2
-    description: A row whose owner cell did not change is untouched (the row hash baseline still holds).
-    status: pending
-definition_of_done:
-  - implementation_complete
-  - tests_green
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-```
-
 ### TASK-03 — Suggest registering the agents seen in the log
 
 ```yaml
@@ -1327,6 +1214,35 @@ depends_on:
   - TASK-12
 next_action: >
   Refine once TASK-12 shows how many instant closes there are.
+created_at: 2026-10-13T00:00:00Z
+updated_at: 2026-10-13T00:00:00Z
+```
+
+### TASK-24 — Register the agents of SMARTHR with their aliases
+
+```yaml
+id: TASK-24
+type: TASK
+title: Register the agents of SMARTHR with their aliases
+status: BACKLOG
+priority: P1
+parent: FEATURE-10
+description: >
+  The data step TASK-01 and TASK-02 make possible: register each agent that works in SMARTHR as an agent of PM Hub with the ledger name it passes to the skill and the aliases it has written (the distinct names in the Agentslog and in the Roadmap's owner cells; GET /projects/:id/unresolved-names lists them with a count), add them to the project, and check the board. It is done on the live instance by a person or with their say-so; it is not code, and it changes the live data.
+acceptance_criteria:
+  - id: AC-1
+    description: Every agent name of SMARTHR's Agentslog that is one of its agents resolves to a registered agent, and the unresolved list holds only names that are not agents (a person, a typo, a retired agent).
+    status: pending
+  - id: AC-2
+    description: The Workload page lists the agents with their tasks, and the Kanban cards show their assignees.
+    status: pending
+definition_of_done:
+  - implementation_complete
+  - roadmap_updated
+depends_on:
+  - TASK-02
+next_action: >
+  Ask the person who runs SMARTHR which agents work there and what each one writes, or read the unresolved list once the stack is rebuilt with TASK-02; do not guess an alias.
 created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
