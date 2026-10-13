@@ -390,16 +390,16 @@ A code-level table (`apps/api/src/modules/tasks/task-status-policy.ts`), not
 admin-editable in MVP — same decoupling idiom as `ProjectRepositoryProvider`
 so it can move to DB-driven config later without touching callers.
 
-| From          | To                  | Required permission                      |
-| ------------- | ------------------- | ---------------------------------------- |
-| PENDIENTE     | ASIGNADA            | `task.assign` (requires assignee set)    |
-| ASIGNADA      | PENDIENTE           | `task.assign`                            |
-| ASIGNADA      | EN_DESARROLLO       | `task.status.transition`                 |
-| EN_DESARROLLO | QA                  | `task.status.transition`                 |
-| EN_DESARROLLO | ASIGNADA            | `task.status.transition`                 |
-| QA            | TERMINADA           | `task.qa.approve`                        |
-| QA            | EN_DESARROLLO       | `task.qa.reject`                         |
-| TERMINADA     | EN_DESARROLLO or QA | `task.reopen` (OWNER/PROJECT_ADMIN only) |
+| From          | To                  | Required permission                                   |
+| ------------- | ------------------- | ----------------------------------------------------- |
+| PENDIENTE     | ASIGNADA            | `task.assign` (requires assignee set)                 |
+| ASIGNADA      | PENDIENTE           | `task.assign`                                         |
+| ASIGNADA      | EN_DESARROLLO       | `task.status.transition`                              |
+| EN_DESARROLLO | QA                  | `task.status.transition`                              |
+| EN_DESARROLLO | ASIGNADA            | `task.status.transition`                              |
+| QA            | TERMINADA           | `task.qa.approve`                                     |
+| QA            | EN_DESARROLLO       | `task.qa.reject`                                      |
+| TERMINADA     | EN_DESARROLLO or QA | `task.reopen` (OWNER, PROJECT_ADMIN, PROJECT_MANAGER) |
 
 **Hard rule**: once `status = EN_DESARROLLO`, `assigneeActorId` is locked.
 Changing it requires `task.reassign.locked` and must, in one transaction,

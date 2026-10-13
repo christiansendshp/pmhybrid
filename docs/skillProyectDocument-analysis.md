@@ -5,6 +5,14 @@ Source: https://github.com/christiansendshp/skillProyectDocument, cloned and rea
 `evals/`, `scripts/`). This document is the functional source of truth for building the
 Project Management Hub parser/domain model, per the project's REGLA FUNDAMENTAL.
 
+> **Which skill this describes.** The v1 skill, as it was on 2026-09-14 when it was read in full.
+> The skill has changed since: a per-entry YAML Roadmap next to the tables, a ledger with more
+> fields, a base status vocabulary (`TODO`, `IN_PROGRESS`, `DONE`, `PAUSE`) and the `claim`,
+> `pause` and `done` commands. What the skill does today, and what the app does with it, is in
+> `docs/agent-stage-and-kanban-plan.md` (read at upstream `15805b1`), `docs/roadmap-parser.md` and
+> `docs/synchronization.md`. Read this document for where the model came from, not for the
+> skill's present behavior.
+
 **Top-line finding: this repository is NOT a project-management task/hierarchy schema.**
 It is a _skill for AI coding agents_ that maintains a compact, six-file "project memory"
 (functional truth, technical truth, active roadmap, verified features, and an append-only

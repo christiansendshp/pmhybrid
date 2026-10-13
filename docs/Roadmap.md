@@ -1010,38 +1010,6 @@ created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
 
-### DOC-01 — Documents that no longer say what the system does
-
-```yaml
-id: DOC-01
-type: DOC
-title: Documents that no longer say what the system does
-status: READY
-priority: P2
-description: >
-  Five documents are wrong or incomplete now, found while comparing the skill and the app.
-acceptance_criteria:
-  - id: AC-1
-    description: docs/skillProyectDocument-analysis.md says it describes the v1 skill (2026-09-14) and points to the plan for the current one, or is rewritten.
-    status: pending
-  - id: AC-2
-    description: docs/roadmap-parser.md (137-140) says that the QA and EN DESARROLLO words are written into the Status cell in the old tables and as IN_PROGRESS in latest-skill tables.
-    status: pending
-  - id: AC-3
-    description: docs/domain-model.md (357) says that reopen is held by the project owner, the project admin and the project manager; BR-002 in docs/ProductDescription.md says it is the old tables' rule and names the other two.
-    status: pending
-  - id: AC-4
-    description: The supersession of ADR-002 by the YAML translation is recorded in an ADR, not only in a code comment (roadmap-yaml-entry.util.ts, 317-319).
-    status: pending
-  - id: AC-5
-    description: 'BR-001 in docs/ProductDescription.md says that changing the assignee of a task in EN_DESARROLLO needs a special permission, and says nothing of the document, which does change it (reconcileAssignee); it says that the lock binds changes made in PM Hub.'
-    status: pending
-next_action: >
-  Edit the five documents; no code.
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-```
-
 ### DEC-004 — Which of the tracking plan product choices to take
 
 ```yaml

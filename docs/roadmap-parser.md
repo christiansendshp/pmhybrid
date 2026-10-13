@@ -139,6 +139,15 @@ verbatim into this same cell (ADR-002); without them, reading back a
 previously-written `QA` or `EN DESARROLLO` would have no mapping and would be
 mishandled.
 
+What PM Hub writes into the cell depends on the document. In the old tables it writes the
+Kanban word, `QA` and `EN_DESARROLLO` among them (BR-002). In the tables of the latest skill (the
+ones with a `Pause reason` column) and in the per-entry format it writes the skill's word: `TODO`
+for `PENDIENTE` and `ASIGNADA`, `IN_PROGRESS` for `EN_DESARROLLO` **and** `QA`, `DONE` for
+`TERMINADA` (ADR-022). The word cannot say QA from development, so the stage is read from the
+ledger (`docs/synchronization.md`), and a row that says its word while the task sits in the column
+that projects to it counts as agreeing (`rowStatusDiffers`): reading back what PM Hub wrote moves
+no card.
+
 **Any other token → leave `Task.status` unchanged, raise a `Conflict`** (kind
 `UNRECOGNIZED_STATUS`, Roadmap GAP-35b; the parser marks the row
 `statusUnrecognized`). In the per-entry format only a token outside the

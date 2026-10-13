@@ -656,3 +656,14 @@ segments live in `docs/history/`.
 - Summary: A change an API key causes is written back, audited and revised with the origin of the call and the agent as the actor: every write-back (creation, start, completion, reassignment, field edit, dependency, removal, conflict resolution) carries the origin of the request, and a document revision can say it came from the API; a person's change is recorded as before
 - Files: apps/api/src/modules/synchronization/write-back.service.ts, apps/api/src/modules/tasks/tasks.service.ts, apps/api/src/modules/conflicts/conflicts.service.ts, apps/api/prisma/schema.prisma, apps/api/test/write-back-origin.e2e-spec.ts, apps/web/src/app/core/labels.ts, docs/synchronization.md, docs/domain-model.md
 - Verify: api unit 719 and lint ok, api e2e 465 with the coverage floor met (new spec: API key creation and title edit audited and revised as API with the agent as actor, person's as UI), nest build ok, web unit 473, eslint and build ok
+
+## [2026-10-13T20:53:06Z] | claude | DOC-01 | IN_PROGRESS
+
+- Summary: Fix five documents that no longer say what the system does
+- Verify: pending
+
+## [2026-10-13T20:54:54Z] | claude | DOC-01 | DONE
+
+- Summary: Five documents say what the system does again: the analysis names the v1 skill it describes, the parser doc says which Status words each kind of Roadmap gets, the reopen permission lists its three holders, BR-001 says the lock binds PM Hub and not the document, BR-002 is the old tables' rule, and ADR-022 records that the latest skill's Roadmaps hold the skill's word
+- Files: docs/skillProyectDocument-analysis.md, docs/roadmap-parser.md, docs/domain-model.md, docs/ProductDescription.md, docs/Stack_Tecnologies.md, docs/decisions/ADR-022-latest-skill-roadmaps-hold-the-skills-status-word.md, docs/decisions/README.md
+- Verify: api unit 719 passed (parses this repo's Roadmap), project_docs check ok; documents only, read against status-vocabulary.util.ts, roadmap-row-writer.util.ts and reconcileAssignee

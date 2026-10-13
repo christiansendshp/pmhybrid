@@ -316,7 +316,7 @@ export function extractRoadmapYamlEntriesForWrite(
 
 // Base vocabulary (references/roadmap-schema.md §6) <-> TaskStatus. Boundary
 // translation, not verbatim (supersedes ADR-002 for the new format only —
-// see docs/decisions for the record). Only the five states with a real
+// ADR-022 in docs/decisions is the record). Only the five states with a real
 // Kanban equivalent map; IDEA/REVIEW/CANCELLED/DEFERRED have none and are
 // left unmapped (statusMapped: null) rather than guessed. BLOCKED doesn't
 // map here either — it's carried via RoadmapTable.BLOCKED, mirroring how the
