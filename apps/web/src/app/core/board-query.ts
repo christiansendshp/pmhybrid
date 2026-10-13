@@ -58,6 +58,21 @@ export function viewToParams(view: BoardView): Params {
   if (filters.blockedOnly) {
     params['blocked'] = '1';
   }
+  if (filters.staleHours !== null) {
+    params['stale'] = String(filters.staleHours);
+  }
+  if (filters.assigneeKind) {
+    params['kind'] = filters.assigneeKind;
+  }
+  if (filters.reviewerId) {
+    params['reviewer'] = filters.reviewerId;
+  }
+  if (filters.divergentOnly) {
+    params['divergent'] = '1';
+  }
+  if (filters.instantCloseOnly) {
+    params['instant'] = '1';
+  }
   if (view.groupBy !== DEFAULT_GROUP) {
     params['group'] = view.groupBy;
   }
@@ -70,6 +85,7 @@ export function viewToParams(view: BoardView): Params {
 /** The view a query string names; a value that is not one the board knows is left at its default. */
 export function paramsToView(get: (key: string) => string | null): BoardView {
   const priority = get('priority');
+  const kind = get('kind');
   const group = get('group');
   const sort = get('sort');
   return {
@@ -82,10 +98,24 @@ export function paramsToView(get: (key: string) => string | null): BoardView {
       phaseId: get('phase') || null,
       epicId: get('epic') || null,
       blockedOnly: get('blocked') === '1',
+      staleHours: staleHoursOf(get('stale')),
+      assigneeKind: kind === 'HUMAN' || kind === 'AI_AGENT' ? kind : null,
+      reviewerId: get('reviewer') || null,
+      divergentOnly: get('divergent') === '1',
+      instantCloseOnly: get('instant') === '1',
     },
     groupBy: GROUPS.includes(group as BoardGroupBy) ? (group as BoardGroupBy) : DEFAULT_GROUP,
     sortBy: SORTS.includes(sort as BoardSortBy) ? (sort as BoardSortBy) : DEFAULT_SORT,
   };
+}
+
+/** A whole number of hours between one and a year, or null: anything else in the address is ignored. */
+function staleHoursOf(value: string | null): number | null {
+  if (value === null || !/^\d+$/.test(value)) {
+    return null;
+  }
+  const hours = Number(value);
+  return hours >= 1 && hours <= 8760 ? hours : null;
 }
 
 /** Whether two queries say the same, whatever order their keys are in. */

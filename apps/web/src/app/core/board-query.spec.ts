@@ -46,6 +46,11 @@ describe('the board view in a query string (Roadmap UX-02b)', () => {
         phaseId: 'ph1',
         epicId: 'ep1',
         blockedOnly: true,
+        staleHours: 72,
+        assigneeKind: 'AI_AGENT',
+        reviewerId: 'ana',
+        divergentOnly: true,
+        instantCloseOnly: true,
       },
       groupBy: 'assignee',
       sortBy: 'progress',
@@ -54,6 +59,65 @@ describe('the board view in a query string (Roadmap UX-02b)', () => {
     const params = viewToParams(view);
 
     expect(paramsToView(fromRecord(params as Record<string, string>))).toEqual(view);
+  });
+
+  it('carries the filters of Roadmap TASK-16 in a short address, and gives them back', () => {
+    const view: BoardView = {
+      filters: {
+        ...NO_FILTERS,
+        staleHours: 72,
+        assigneeKind: 'AI_AGENT',
+        reviewerId: 'ana',
+        divergentOnly: true,
+        instantCloseOnly: true,
+      },
+      groupBy: 'none',
+      sortBy: 'created',
+    };
+
+    const params = viewToParams(view);
+
+    expect(params).toEqual({
+      stale: '72',
+      kind: 'AI_AGENT',
+      reviewer: 'ana',
+      divergent: '1',
+      instant: '1',
+    });
+    expect(paramsToView(fromRecord(params as Record<string, string>))).toEqual(view);
+  });
+
+  it('ignores, without failing, a value of those filters that makes no sense', () => {
+    for (const stale of ['0', '-3', '2.5', 'soon', '', '99999', ' 5']) {
+      expect(paramsToView(fromRecord({ stale })).filters.staleHours, stale).toBeNull();
+    }
+    const view = paramsToView(
+      fromRecord({ kind: 'ROBOT', divergent: 'yes', instant: 'true', reviewer: '' }),
+    );
+    expect(view.filters.assigneeKind).toBeNull();
+    expect(view.filters.divergentOnly).toBe(false);
+    expect(view.filters.instantCloseOnly).toBe(false);
+    expect(view.filters.reviewerId).toBeNull();
+  });
+
+  it('keeps the limits of the stale hours: an hour, and a year', () => {
+    expect(paramsToView(fromRecord({ stale: '1' })).filters.staleHours).toBe(1);
+    expect(paramsToView(fromRecord({ stale: '8760' })).filters.staleHours).toBe(8760);
+  });
+
+  it('remembers them with the rest of the board of a project', () => {
+    const memory = new BoardMemory();
+
+    memory.remember(
+      'p1',
+      viewToParams({
+        filters: { ...NO_FILTERS, staleHours: 24 },
+        groupBy: 'none',
+        sortBy: 'created',
+      }),
+    );
+
+    expect(memory.recall('p1')).toEqual({ stale: '24' });
   });
 
   it('reads an empty query as the default view', () => {

@@ -91,6 +91,123 @@ describe('board (brief §15)', () => {
     expect(filterCards(cards, { ...NO_FILTERS, search: 'api', priority: 'LOW' })).toEqual([]);
   });
 
+  describe('the filters of Roadmap TASK-16', () => {
+    const NOW = new Date('2026-10-14T12:00:00Z');
+    const hoursAgo = (hours: number) => new Date(NOW.getTime() - hours * 3_600_000).toISOString();
+    const ids = (cards: TaskCard[]) => cards.map((c) => c.externalId);
+
+    it('keeps the unfinished tasks that have not moved for longer than the hours asked, and not the finished', () => {
+      const old = card({
+        externalId: 'OLD',
+        status: 'EN_DESARROLLO',
+        statusChangedAt: hoursAgo(80),
+      });
+      const recent = card({ externalId: 'NEW', status: 'QA', statusChangedAt: hoursAgo(2) });
+      const done = card({
+        externalId: 'DONE',
+        status: 'TERMINADA',
+        statusChangedAt: hoursAgo(900),
+      });
+
+      expect(ids(filterCards([old, recent, done], { ...NO_FILTERS, staleHours: 72 }, NOW))).toEqual(
+        ['OLD'],
+      );
+      expect(ids(filterCards([old, recent, done], { ...NO_FILTERS, staleHours: 1 }, NOW))).toEqual([
+        'OLD',
+        'NEW',
+      ]);
+      expect(ids(filterCards([old, recent, done], NO_FILTERS, NOW))).toEqual([
+        'OLD',
+        'NEW',
+        'DONE',
+      ]);
+    });
+
+    it('is exact at the limit: a task that moved exactly that long ago is not yet stale', () => {
+      const edge = card({ externalId: 'EDGE', statusChangedAt: hoursAgo(24) });
+
+      expect(ids(filterCards([edge], { ...NO_FILTERS, staleHours: 24 }, NOW))).toEqual([]);
+      expect(ids(filterCards([edge], { ...NO_FILTERS, staleHours: 23 }, NOW))).toEqual(['EDGE']);
+    });
+
+    it('keeps the tasks whose assignee is a person or an agent, and none of the unassigned', () => {
+      const person = card({
+        externalId: 'H',
+        assignee: { id: 'a', displayName: 'Ana', kind: 'HUMAN' },
+      });
+      const agent = card({
+        externalId: 'A',
+        assignee: { id: 'b', displayName: 'Codex', kind: 'AI_AGENT' },
+      });
+      const nobody = card({ externalId: 'N', assignee: null });
+
+      expect(
+        ids(filterCards([person, agent, nobody], { ...NO_FILTERS, assigneeKind: 'AI_AGENT' })),
+      ).toEqual(['A']);
+      expect(
+        ids(filterCards([person, agent, nobody], { ...NO_FILTERS, assigneeKind: 'HUMAN' })),
+      ).toEqual(['H']);
+    });
+
+    it('keeps the tasks a reviewer was asked about', () => {
+      const asked = card({
+        externalId: 'R',
+        reviewer: { id: 'ana', displayName: 'Ana', kind: 'HUMAN' },
+      });
+      const other = card({
+        externalId: 'O',
+        reviewer: { id: 'bo', displayName: 'Bo', kind: 'HUMAN' },
+      });
+      const none = card({ externalId: 'X', reviewer: null });
+
+      expect(ids(filterCards([asked, other, none], { ...NO_FILTERS, reviewerId: 'ana' }))).toEqual([
+        'R',
+      ]);
+    });
+
+    it('keeps the tasks whose ledger and board disagree, with a start in the ledger agreeing with QA', () => {
+      const apart = card({ externalId: 'D', status: 'EN_DESARROLLO', ledgerStage: 'QA' });
+      const same = card({ externalId: 'S', status: 'QA', ledgerStage: 'QA' });
+      const coarse = card({ externalId: 'C', status: 'QA', ledgerStage: 'EN_DESARROLLO' });
+      const silent = card({ externalId: 'Z', status: 'QA', ledgerStage: null });
+
+      expect(
+        ids(filterCards([apart, same, coarse, silent], { ...NO_FILTERS, divergentOnly: true })),
+      ).toEqual(['D']);
+    });
+
+    it('keeps the tasks closed within minutes of starting', () => {
+      const instant = card({ externalId: 'I', instantClose: true });
+      const slow = card({ externalId: 'L', instantClose: false });
+
+      expect(ids(filterCards([instant, slow], { ...NO_FILTERS, instantCloseOnly: true }))).toEqual([
+        'I',
+      ]);
+    });
+
+    it('combines with the older filters', () => {
+      const match = card({
+        externalId: 'M',
+        priority: 'HIGH',
+        status: 'EN_DESARROLLO',
+        statusChangedAt: hoursAgo(100),
+        assignee: { id: 'b', displayName: 'Codex', kind: 'AI_AGENT' },
+      });
+      const wrongPriority = { ...match, externalId: 'P', priority: 'LOW' as const };
+      const tooRecent = { ...match, externalId: 'T', statusChangedAt: hoursAgo(1) };
+
+      expect(
+        ids(
+          filterCards(
+            [match, wrongPriority, tooRecent],
+            { ...NO_FILTERS, priority: 'HIGH', staleHours: 24, assigneeKind: 'AI_AGENT' },
+            NOW,
+          ),
+        ),
+      ).toEqual(['M']);
+    });
+  });
+
   it('sorts by priority, due date and Roadmap ID with missing values last', () => {
     const low = card({
       priority: 'LOW',

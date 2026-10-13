@@ -416,6 +416,74 @@ describe('Kanban (brief §15)', () => {
       expect(router.url).toBe('/projects/p1/kanban');
     });
 
+    it('reads the filters of Roadmap TASK-16 from a shared link and shows the same board', async () => {
+      const longAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+      const agent = { id: 'codex', displayName: 'Codex', kind: 'AI_AGENT' as const, model: null };
+      const { component, harness } = await render(
+        [
+          card({
+            id: 'a',
+            externalId: 'PMH-A',
+            status: 'EN_DESARROLLO',
+            statusChangedAt: longAgo,
+            assignee: agent,
+            ledgerStage: 'QA',
+          }),
+          card({
+            id: 'b',
+            externalId: 'PMH-B',
+            status: 'EN_DESARROLLO',
+            statusChangedAt: new Date().toISOString(),
+            assignee: agent,
+            ledgerStage: 'QA',
+          }),
+          card({
+            id: 'c',
+            externalId: 'PMH-C',
+            status: 'EN_DESARROLLO',
+            statusChangedAt: longAgo,
+            assignee: { ...agent, id: 'ana', kind: 'HUMAN' },
+            ledgerStage: 'QA',
+          }),
+        ],
+        ['task.write'],
+        '/projects/p1/kanban?stale=168&kind=AI_AGENT&divergent=1',
+      );
+
+      expect(component.filters()).toMatchObject({
+        staleHours: 168,
+        assigneeKind: 'AI_AGENT',
+        divergentOnly: true,
+      });
+      expect(
+        Array.from(harness.routeNativeElement!.querySelectorAll('.card__id')).map(
+          (id) => id.textContent,
+        ),
+      ).toEqual(['PMH-A']);
+    });
+
+    it('writes the filters of Roadmap TASK-16 into the address and remembers them with the board', async () => {
+      const { component, harness } = await render([card()]);
+      const router = TestBed.inject(Router);
+
+      component.patchFilters({ staleHours: 24, reviewerId: 'ana', instantCloseOnly: true });
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+
+      expect(router.url).toBe('/projects/p1/kanban?stale=24&reviewer=ana&instant=1');
+      expect(TestBed.inject(BoardMemory).recall('p1')).toEqual({
+        stale: '24',
+        reviewer: 'ana',
+        instant: '1',
+      });
+      expect(component.filtersActive()).toBe(true);
+      component.clearFilters();
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      expect(router.url).toBe('/projects/p1/kanban');
+      expect(component.filtersActive()).toBe(false);
+    });
+
     it('brings a board back to the view it was left with when the address says nothing', async () => {
       TestBed.inject(BoardMemory).remember('p1', { q: 'left', priority: 'LOW' });
 

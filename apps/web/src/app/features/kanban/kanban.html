@@ -108,6 +108,58 @@
       </mat-checkbox>
 
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Sin movimiento</mat-label>
+        <mat-select
+          [ngModel]="filters().staleHours"
+          (ngModelChange)="patchFilters({ staleHours: $event })"
+        >
+          <mat-option [value]="null">Cualquiera</mat-option>
+          @for (option of staleOptions; track option.hours) {
+            <mat-option [value]="option.hours">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Tipo de responsable</mat-label>
+        <mat-select
+          [ngModel]="filters().assigneeKind"
+          (ngModelChange)="patchFilters({ assigneeKind: $event })"
+        >
+          <mat-option [value]="null">Todos</mat-option>
+          <mat-option value="HUMAN">Humano</mat-option>
+          <mat-option value="AI_AGENT">Agente IA</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Revisor</mat-label>
+        <mat-select
+          [ngModel]="filters().reviewerId"
+          (ngModelChange)="patchFilters({ reviewerId: $event })"
+        >
+          <mat-option [value]="null">Cualquiera</mat-option>
+          @for (member of members(); track member.actorId) {
+            <mat-option [value]="member.actorId">{{ member.actor.displayName }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-checkbox
+        [ngModel]="filters().divergentOnly"
+        (ngModelChange)="patchFilters({ divergentOnly: $event })"
+      >
+        Registro y tablero no coinciden
+      </mat-checkbox>
+
+      <mat-checkbox
+        [ngModel]="filters().instantCloseOnly"
+        (ngModelChange)="patchFilters({ instantCloseOnly: $event })"
+      >
+        Solo cierres inmediatos
+      </mat-checkbox>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Agrupar por</mat-label>
         <mat-select [ngModel]="groupBy()" (ngModelChange)="groupBy.set($event)">
           <mat-option value="none">Sin agrupar</mat-option>

@@ -105,6 +105,13 @@ export class Kanban implements OnInit {
   readonly canWrite = computed(() => this.context.permissions().includes(TASK_WRITE));
 
   readonly statuses = KANBAN_STATUSES;
+  /** How long without a move makes a task stale, as the filter offers it (Roadmap TASK-16). */
+  readonly staleOptions = [
+    { hours: 24, label: 'Más de 1 día' },
+    { hours: 72, label: 'Más de 3 días' },
+    { hours: 168, label: 'Más de 7 días' },
+    { hours: 720, label: 'Más de 30 días' },
+  ] as const;
   readonly priorities = TASK_PRIORITIES;
   readonly unassigned = UNASSIGNED;
   readonly kindLabel = actorKindLabel;
@@ -199,7 +206,12 @@ export class Kanban implements OnInit {
       filters.priority !== null ||
       filters.phaseId !== null ||
       filters.epicId !== null ||
-      filters.blockedOnly
+      filters.blockedOnly ||
+      filters.staleHours !== null ||
+      filters.assigneeKind !== null ||
+      filters.reviewerId !== null ||
+      filters.divergentOnly ||
+      filters.instantCloseOnly
     );
   });
 

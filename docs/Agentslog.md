@@ -545,3 +545,14 @@ segments live in `docs/history/`.
 - Summary: A task can have a reviewer: the move to QA may ask an active member of the project (Task.reviewerActorId, reviewRequestedAt), whichever way the task leaves QA clears both, the task payload carries the reviewer's name and kind, the move is audited with it, and it changes neither the assignee, Workload nor the assignee lock; a task moved to QA with nobody named behaves as before
 - Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261013230000_add_task_reviewer/, apps/api/src/modules/tasks/tasks.service.ts, apps/api/src/modules/tasks/status-change.util.ts, apps/api/src/modules/tasks/dto/transition-task.dto.ts, apps/api/test/task-reviewer.e2e-spec.ts
 - Verify: api unit 711 and lint ok, api e2e 422 with the coverage floor met (task-reviewer 9 new: stored and shown, an agent as reviewer, cleared on leaving QA, nobody named, assignee untouched, not a member or inactive refused, only with the move to QA, the reviewers list, the agent's model), nest build ok
+
+## [2026-10-13T18:46:22Z] | claude | TASK-16 | IN_PROGRESS
+
+- Summary: Board filters: stale, agent kind, reviewer, divergence, instant close; each round-trips through the address and the project's memory
+- Verify: pending
+
+## [2026-10-13T18:48:27Z] | claude | TASK-16 | DONE
+
+- Summary: The board filters by tasks that have not moved for a number of hours (a finished one never is), kind of assignee, reviewer, ledger and board disagreeing and instant closes; each one is in the address and in the project's remembered board, combines with the older filters, and a value the board does not know is ignored without an error
+- Files: apps/web/src/app/core/board.ts, apps/web/src/app/core/board-query.ts, apps/web/src/app/features/kanban/kanban.ts, apps/web/src/app/features/kanban/kanban.html, docs/board-views.md
+- Verify: web unit 380 and eslint ok (board 6, board-query 4, kanban 2 new: a shared link shows the same board, the address and the memory); api untouched; the controls are not yet through the axe suite, which runs once at the end of wave 3

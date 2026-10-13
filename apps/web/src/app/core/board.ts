@@ -1,3 +1,4 @@
+import { ledgerDiverges } from './ledger-stage.js';
 import { ProjectHierarchy } from './hierarchy.service.js';
 import { TaskCard, TaskPriority, TaskStatus } from './tasks.service.js';
 
@@ -20,6 +21,16 @@ export interface BoardFilters {
   phaseId: string | null;
   epicId: string | null;
   blockedOnly: boolean;
+  /** Only the unfinished tasks that have been in their stage longer than this many hours (Roadmap TASK-16). */
+  staleHours: number | null;
+  /** Only the tasks whose assignee is a person or an agent. */
+  assigneeKind: 'HUMAN' | 'AI_AGENT' | null;
+  /** Only the tasks this actor was asked to review. */
+  reviewerId: string | null;
+  /** Only the tasks whose ledger and board disagree about the stage. */
+  divergentOnly: boolean;
+  /** Only the tasks closed within minutes of starting. */
+  instantCloseOnly: boolean;
 }
 
 export const NO_FILTERS: BoardFilters = {
@@ -29,6 +40,11 @@ export const NO_FILTERS: BoardFilters = {
   phaseId: null,
   epicId: null,
   blockedOnly: false,
+  staleHours: null,
+  assigneeKind: null,
+  reviewerId: null,
+  divergentOnly: false,
+  instantCloseOnly: false,
 };
 
 export interface BoardLane {
@@ -46,8 +62,14 @@ export function isBlocked(card: TaskCard): boolean {
   return card.roadmapTable === 'BLOCKED' || card.dependencyCounts.open > 0;
 }
 
-export function filterCards(cards: TaskCard[], filters: BoardFilters): TaskCard[] {
+export function filterCards(
+  cards: TaskCard[],
+  filters: BoardFilters,
+  now: Date = new Date(),
+): TaskCard[] {
   const search = filters.search.trim().toLowerCase();
+  const staleBefore =
+    filters.staleHours === null ? null : now.getTime() - filters.staleHours * 60 * 60 * 1000;
   return cards.filter((card) => {
     if (
       search &&
@@ -73,6 +95,24 @@ export function filterCards(cards: TaskCard[], filters: BoardFilters): TaskCard[
       return false;
     }
     if (filters.epicId && card.epicId !== filters.epicId) {
+      return false;
+    }
+    if (filters.assigneeKind && card.assignee?.kind !== filters.assigneeKind) {
+      return false;
+    }
+    if (filters.reviewerId && card.reviewer?.id !== filters.reviewerId) {
+      return false;
+    }
+    if (staleBefore !== null) {
+      // A finished task is not waiting for anything.
+      if (card.status === 'TERMINADA' || new Date(card.statusChangedAt).getTime() >= staleBefore) {
+        return false;
+      }
+    }
+    if (filters.divergentOnly && !ledgerDiverges(card.ledgerStage, card.status)) {
+      return false;
+    }
+    if (filters.instantCloseOnly && !card.instantClose) {
       return false;
     }
     return !filters.blockedOnly || isBlocked(card);

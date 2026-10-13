@@ -731,41 +731,6 @@ created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
 
-### TASK-16 — Board filters: stale, agent kind, reviewer, divergence
-
-```yaml
-id: TASK-16
-type: TASK
-title: 'Board filters: stale, agent kind, reviewer, divergence'
-status: READY
-priority: P2
-parent: FEATURE-12
-description: >
-  Extend the filter set (board.ts) and the URL state (board-query.ts) with: no activity for N hours in its state, agent kind, reviewer, ledger divergence, instant close.
-acceptance_criteria:
-  - id: AC-1
-    description: Each filter round-trips through the address and the per-project memory; a link shared with a filter shows the same board.
-    status: pending
-  - id: AC-2
-    description: Unknown or invalid parameters are ignored without an error, as today.
-    status: pending
-definition_of_done:
-  - implementation_complete
-  - tests_green
-  - documentation_updated
-  - roadmap_updated
-depends_on:
-  - TASK-11
-  - TASK-12
-  - TASK-14
-technical_context:
-  frontend: apps/web/src/app/core/board.ts, apps/web/src/app/core/board-query.ts, apps/web/src/app/features/kanban
-next_action: >
-  Wait for TASK-11, TASK-12 and TASK-14.
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-```
-
 ### TASK-17 — The view switcher over one set of filters
 
 ```yaml
