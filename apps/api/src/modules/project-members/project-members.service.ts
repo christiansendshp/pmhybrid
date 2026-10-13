@@ -6,6 +6,7 @@ import {
 import { TaskStatus, type AuditOrigin } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
+import { statusStamp } from '../tasks/status-change.util.js';
 
 /**
  * Adding an AI_AGENT actor as a member works identically to a HUMAN one
@@ -178,7 +179,11 @@ export class ProjectMembersService {
             : task.status;
         await tx.task.update({
           where: { id: task.id },
-          data: { assigneeActorId: null, status },
+          data: {
+            assigneeActorId: null,
+            status,
+            ...statusStamp(task.status, status),
+          },
         });
         await tx.taskAssignment.updateMany({
           where: { taskId: task.id, unassignedAt: null },

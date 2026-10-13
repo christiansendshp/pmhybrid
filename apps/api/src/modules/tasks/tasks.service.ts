@@ -24,6 +24,7 @@ import {
   pageOf,
 } from '../../common/pagination.js';
 import { completedAtFor } from './completion-date.util.js';
+import { statusStamp } from './status-change.util.js';
 import { buildDependencyGraph, wouldCloseCycle } from './dependency-graph.js';
 import { AddDependencyDto } from './dto/add-dependency.dto.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
@@ -534,7 +535,11 @@ export class TasksService {
             status: task.status,
             assigneeActorId: task.assigneeActorId,
           },
-          data: { assigneeActorId: actorId, status: nextStatus },
+          data: {
+            assigneeActorId: actorId,
+            status: nextStatus,
+            ...statusStamp(task.status, nextStatus),
+          },
         });
         if (count !== 1) {
           throw new ConflictException(STALE_TASK_MESSAGE);
@@ -654,6 +659,7 @@ export class TasksService {
             status: toStatus,
             assigneeLockedAt: isAssigneeLocked(toStatus) ? new Date() : null,
             completedAt: completedAtFor(task.status, toStatus),
+            ...statusStamp(task.status, toStatus),
           },
         });
         if (count !== 1) {

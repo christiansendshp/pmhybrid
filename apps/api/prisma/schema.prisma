@@ -293,6 +293,10 @@ model Task {
   title           String
   description     String?
   status          TaskStatus @default(PENDIENTE)
+  // When the task entered its current status (Roadmap TASK-11): set by every path that
+  // changes the status (`statusStamp`), so the time in a state can be read without the
+  // audit trail. It is the creation time for a task that has not moved.
+  statusChangedAt DateTime   @default(now())
   priority        String?
   progressPercent Int?
 
@@ -358,6 +362,7 @@ model Task {
   @@unique([projectId, externalId])
   @@index([projectId, status])
   @@index([projectId, titleNormalization])
+  @@index([projectId, status, statusChangedAt])
   @@index([parentTaskId])
   @@index([assigneeActorId])
 }

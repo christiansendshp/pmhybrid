@@ -21,6 +21,7 @@ import {
   WriteBackService,
 } from '../synchronization/write-back.service.js';
 import { completedAtFor } from '../tasks/completion-date.util.js';
+import { statusStamp } from '../tasks/status-change.util.js';
 import {
   documentTitleData,
   personTitleData,
@@ -208,6 +209,7 @@ export class ConflictsService {
                     task.status,
                     fieldsToApply.status,
                   ),
+                  ...statusStamp(task.status, fieldsToApply.status),
                 }
               : {}),
           },

@@ -143,7 +143,12 @@ describe('ConflictsService.resolve permissions (Roadmap SECURITY-02)', () => {
     expect(taskUpdate).toHaveBeenCalledWith({
       where: { id: 't1', deletedAt: null, status: 'ASIGNADA' },
       // Finishing it stamps the completion date (Roadmap GAP-36d).
-      data: { status: 'TERMINADA', completedAt: expect.any(Date) },
+      data: {
+        status: 'TERMINADA',
+        completedAt: expect.any(Date),
+        // The task entered a new state now (Roadmap TASK-11).
+        statusChangedAt: expect.any(Date),
+      },
     });
     const operations = record.mock.calls.map(([event]) => event.operation);
     expect(operations).toEqual(['STATUS_CHANGE', 'CONFLICT_RESOLVED']);
@@ -382,7 +387,7 @@ describe('ConflictsService.resolve unrecognized status (Roadmap GAP-35b)', () =>
     );
     expect(allowed.taskUpdate).toHaveBeenCalledWith({
       where: { id: 't1', deletedAt: null, status: 'ASIGNADA' },
-      data: { status: 'EN_DESARROLLO' },
+      data: { status: 'EN_DESARROLLO', statusChangedAt: expect.any(Date) },
     });
 
     const denied = setup({ held: [], taskStatus: 'ASIGNADA', ...unrecognized });

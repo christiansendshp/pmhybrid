@@ -34,6 +34,7 @@ import {
   type DependencyGraph,
 } from '../tasks/dependency-graph.js';
 import { completedAtFor } from '../tasks/completion-date.util.js';
+import { statusStamp } from '../tasks/status-change.util.js';
 import {
   documentTitleData,
   sourceTitleOf,
@@ -726,6 +727,7 @@ export class SynchronizationService {
             status: TaskStatus.TERMINADA,
             roadmapTable: null,
             completedAt: completedAtFor(task.status, TaskStatus.TERMINADA),
+            ...statusStamp(task.status, TaskStatus.TERMINADA),
           },
         });
         await this.audit.record(
@@ -1405,7 +1407,10 @@ export class SynchronizationService {
           ? documentTitleData(task, updates.title)
           : {}),
         ...(typeof updates.status === 'string'
-          ? { completedAt: completedAtFor(task.status, updates.status) }
+          ? {
+              completedAt: completedAtFor(task.status, updates.status),
+              ...statusStamp(task.status, updates.status),
+            }
           : {}),
         lastSyncedContentHash: incomingHash,
         ...(conflictRaised ? {} : { lastSyncedAt: new Date() }),

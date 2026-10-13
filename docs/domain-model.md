@@ -180,6 +180,7 @@ Task(
   progressPercent?,                      // explicit override; null = derive via rollup
   startDate?, estimatedDate?, dueDate?,
   completedAt?,                          // when it became TERMINADA; null otherwise (GAP-36d)
+  statusChangedAt,                       // when it entered its current status; its creation time if it has not moved (TASK-11)
   assigneeActorId?, assigneeLockedAt?,   // set when status becomes EN_DESARROLLO
   rawOwner?, ownerClaimedAt?,            // parsed "<agent>@<timestamp>" Owner cell
   acceptanceCriteria?,                   // required for app-created tasks (brief §9)
@@ -440,6 +441,17 @@ synchronisation — a row first read as done, a row whose status changed in
 entry. Tasks that were already done when the column was added were given the
 time of their last move to `TERMINADA` in the audit trail, else their last
 update. The web's task detail shows it under "Completada".
+
+**Time in the current status** (Roadmap TASK-11). `Task.statusChangedAt` is when the task
+entered its current status. `statusStamp` writes it, and only when the status really
+changes, on every path that changes one: a transition, an assignment that promotes
+a task from PENDIENTE to ASIGNADA, a conflict resolution, a member leaving (their
+ASIGNADA tasks go back to PENDIENTE), and the synchronisation (a row whose status
+changed in the document and a row completed by leaving it). An edit, a comment or
+a reassignment that keeps the status does not move it. A task that has not moved
+has its creation time; the migration filled the existing ones from the latest
+`STATUS_CHANGE` event of the audit trail, else the creation time. It is on the task
+and on the board card, and is what "how long in this state" is computed from.
 
 Computed on read; no persisted rollup columns, to avoid a stale-cache bug
 class at MVP data volumes.

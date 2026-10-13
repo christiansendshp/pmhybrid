@@ -44,6 +44,8 @@ export interface Task {
   dueDate: string | null;
   /** When the task became TERMINADA; null while it is not (Roadmap GAP-36d). */
   completedAt: string | null;
+  /** When the task entered its current status; its creation time for one that has not moved (Roadmap TASK-11). */
+  statusChangedAt: string;
   roadmapTable: 'ACTIVE' | 'NEAR_TERM' | 'BLOCKED' | null;
   createdAt: string;
   updatedAt: string;

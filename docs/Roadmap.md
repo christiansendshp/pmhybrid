@@ -861,41 +861,6 @@ created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
 
-### TASK-11 — When a task entered its state
-
-```yaml
-id: TASK-11
-type: TASK
-title: When a task entered its state
-status: READY
-priority: P1
-parent: FEATURE-11
-description: >
-  Only the current state is stored. Add Task.statusChangedAt, set by every path that changes the
-  status (transition, sync, conflict resolution), with an index, and backfill it from the audit trail.
-acceptance_criteria:
-  - id: AC-1
-    description: Every path that changes status sets it, including the ones that write no audit event.
-    status: pending
-  - id: AC-2
-    description: The backfill takes the latest STATUS_CHANGE audit event of each task and falls back to createdAt; for tasks with events it equals the audit value.
-    status: pending
-  - id: AC-3
-    description: It is on the task payload and the board card payload; a migration with a default makes existing rows valid.
-    status: pending
-definition_of_done:
-  - implementation_complete
-  - tests_green
-  - documentation_updated
-  - roadmap_updated
-technical_context:
-  backend: apps/api/src/modules/tasks, apps/api/src/modules/synchronization, apps/api/src/modules/conflicts, apps/api/prisma/schema.prisma
-next_action: >
-  Start with a failing test for the first acceptance criterion; the proposal is in docs/agent-stage-and-kanban-plan.md, section 4 (4.2).
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-```
-
 ### TASK-12 — Detect an instant close
 
 ```yaml

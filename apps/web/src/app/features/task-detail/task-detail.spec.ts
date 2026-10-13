@@ -33,6 +33,7 @@ function taskDetail(overrides: Partial<TaskDetailModel> = {}): TaskDetailModel {
     estimatedDate: null,
     dueDate: null,
     completedAt: null,
+    statusChangedAt: '2026-10-01T10:00:00.000Z',
     roadmapTable: 'ACTIVE',
     blockedReason: null,
     neededDecision: null,
