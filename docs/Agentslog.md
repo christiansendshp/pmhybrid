@@ -392,3 +392,14 @@ segments live in `docs/history/`.
 - Files: docs/agent-stage-and-kanban-plan.md, docs/Roadmap.md, docs/tracking-improvement-plan.md
 - Verify: Roadmap parses (api roadmap specs 160 pass), project_docs check OK; every figure comes from a query in the plan's appendix or from reading the code, marked as such; nothing built
 - Follow-up: none
+
+## [2026-10-13T15:31:17Z] | claude | DOC-02 | IN_PROGRESS
+
+- Summary: Write the prompt with the skill changes, anchored to upstream 15805b1
+- Verify: pending
+
+## [2026-10-13T15:33:11Z] | claude | DOC-02 | DONE
+
+- Summary: A prompt with the skill changes, ready to give to an agent in the skill repository: it asks the agent to confirm nine facts about upstream 15805b1 first, then to add the REVIEW ledger word with handoff and review commands, a done that checks who holds the task, a stable agent identity roster, a warning for work documented after the fact and optionally assign, all backward compatible and in sh and ps1, with smoke tests and evals, and states the contract PM Hub reads
+- Files: docs/prompts/skill-review-handoff-and-identity.md, docs/Roadmap.md
+- Verify: Facts F1 to F9 and the absence of a roster, handoff and REVIEW checked against a clone of christiansendshp/skillProyectDocument at 15805b1 (function names and lines recorded in the prompt); the Roadmap still parses (api roadmap specs 160 pass); the prompt was not run by an agent

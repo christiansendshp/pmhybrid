@@ -1492,7 +1492,7 @@ affects:
   - FEATURE-11
   - GAP-40
 next_action: >
-  Once DEC-005 is answered, open the proposal upstream with this text and the state machine of section 4.2 of the plan.
+  Once DEC-005 is answered, give docs/prompts/skill-review-handoff-and-identity.md to an agent in the skill repository (it carries this and DEPENDENCY-02, anchored to upstream 15805b1) or open the proposal upstream with this text and the state machine of section 4.2 of the plan.
 created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
@@ -1519,7 +1519,7 @@ affects:
   - TASK-05
   - TASK-12
 next_action: >
-  Once DEC-005 is answered, open the proposal upstream.
+  Once DEC-005 is answered, open the proposal upstream; changes 5 to 8 of docs/prompts/skill-review-handoff-and-identity.md carry it.
 created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
