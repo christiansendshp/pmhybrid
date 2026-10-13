@@ -273,6 +273,15 @@ ingestion and again after every sync for the entries still unlinked, and every c
 an agent's names relinks all the entries, so a name that was freed stops pointing at the
 agent that had it. The column is a read-side convenience; the document stays the truth.
 
+**Instant closes (Roadmap TASK-12).** A task whose first `IN_PROGRESS` ledger entry and its
+last `DONE` entry are less than `Project.instantCloseMinutes` apart (default 5, 1 to 1440,
+edited in the project's settings) was documented after the fact: the board could not show it
+in development. It is derived, never stored: from `AgentLogEvent` grouped by `taskExternalId`,
+the earliest `IN_PROGRESS*` and the latest `DONE` by `timestampFromLog` (the agent's own
+clock, as in the plan's appendix), a close before its start is no span, and exactly the
+threshold is not instant. It is a signal about the record, not about the agent: nothing is
+blocked, moved or changed because of it.
+
 `rawEntryHash` is unique so re-ingesting an overlapping revision (e.g. after
 ledger rotation) is idempotent. `timestampFromLog` is an untrusted,
 agent-authored clock; `createdAt` (our own ingestion time) is what
@@ -334,6 +343,7 @@ minted per this section, but not yet threaded into every service's
 
 ```
 Project(id, name, description?, repoUrl?, docsPath, syncIntervalMinutes default 5,
+  instantCloseMinutes default 5,   // Roadmap TASK-12 — see "Instant closes" below
   progressRollupStrategy: EQUAL_WEIGHT_AVERAGE|LEAF_EQUAL_WEIGHT default EQUAL_WEIGHT_AVERAGE,
   nextTaskSeq default 1,      // monotonic counter for minted externalIds, see below
   status: ACTIVE|PAUSED|ARCHIVED default ACTIVE,   // only ACTIVE projects sync on a schedule

@@ -33,6 +33,7 @@ function card(overrides: Partial<TaskCard> = {}): TaskCard {
     dueDate: '2099-10-10T00:00:00.000Z',
     completedAt: null,
     statusChangedAt: '2026-10-01T10:00:00.000Z',
+    instantClose: false,
     roadmapTable: 'BLOCKED',
     blockedReason: 'Waiting on credentials',
     createdAt: '2026-09-15T09:00:00.000Z',
@@ -127,6 +128,19 @@ describe('Kanban (brief §15)', () => {
     );
     expect(text()).toContain('EN DESARROLLO');
     expect(text()).toContain('1 de 1 tareas');
+  });
+
+  it('marks a card closed within minutes of starting with a text note, and no other (Roadmap TASK-12)', async () => {
+    const { harness } = await render([
+      card({ id: 't1', externalId: 'PMH-1', instantClose: true }),
+      card({ id: 't2', externalId: 'PMH-2', instantClose: false }),
+    ]);
+    const notes = Array.from(harness.routeNativeElement!.querySelectorAll('.card')).map((element) =>
+      Array.from(element.querySelectorAll('.card__note')).map((note) => note.textContent?.trim()),
+    );
+
+    // Words, not only a colour, and not in the alert colour: it says how the work was recorded.
+    expect(notes).toEqual([['Cierre inmediato'], []]);
   });
 
   it('shows a long title shortened, with the whole title as a tooltip, and a short one as it is (Roadmap UX-04)', async () => {

@@ -23,6 +23,8 @@ import { TasksService } from '../../core/tasks.service.js';
 import { FolderBrowserDialog } from '../../shared/folder-browser-dialog/folder-browser-dialog.js';
 
 const PROJECT_UPDATE = 'project.update';
+/** The API refuses a threshold above a day (Roadmap TASK-12). */
+const MAX_INSTANT_CLOSE_MINUTES = 1440;
 const NOT_BLANK = /\S/;
 
 const STATUS_LABELS: Record<ProjectStatus, string> = {
@@ -83,6 +85,15 @@ export class ProjectSettings {
     description: [''],
     status: ['ACTIVE' as ProjectStatus],
     syncIntervalMinutes: [5, [Validators.required, Validators.min(1), Validators.pattern(/^\d+$/)]],
+    instantCloseMinutes: [
+      5,
+      [
+        Validators.required,
+        Validators.min(1),
+        Validators.max(MAX_INSTANT_CLOSE_MINUTES),
+        Validators.pattern(/^\d+$/),
+      ],
+    ],
     docsPath: ['', [Validators.required, Validators.pattern(NOT_BLANK)]],
     repoUrl: [''],
     progressRollupStrategy: ['EQUAL_WEIGHT_AVERAGE' as ProgressRollupStrategy],
@@ -128,6 +139,7 @@ export class ProjectSettings {
         description: value.description.trim() || null,
         status: value.status,
         syncIntervalMinutes: Number(value.syncIntervalMinutes),
+        instantCloseMinutes: Number(value.instantCloseMinutes),
         docsPath: value.docsPath.trim(),
         repoUrl: value.repoUrl.trim() || null,
         progressRollupStrategy: value.progressRollupStrategy,
@@ -190,6 +202,7 @@ function toFormValue(project: Project) {
     description: project.description ?? '',
     status: project.status as ProjectStatus,
     syncIntervalMinutes: project.syncIntervalMinutes,
+    instantCloseMinutes: project.instantCloseMinutes,
     docsPath: project.docsPath,
     repoUrl: project.repoUrl ?? '',
     progressRollupStrategy: project.progressRollupStrategy as ProgressRollupStrategy,

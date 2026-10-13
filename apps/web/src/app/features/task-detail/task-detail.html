@@ -98,6 +98,14 @@
   <p>
     Estado: {{ statusLabel(t.status) }} — Progreso: {{ t.computedProgress | number: '1.0-0' }} %
   </p>
+  @if (t.instantClose) {
+    <p class="instant-close">
+      <strong class="instant-close__chip">Cierre inmediato</strong>
+      En el registro, esta tarea se cerró con menos de {{ instantCloseMinutes() }} minutos de
+      diferencia desde que se inició: el tablero no pudo mostrarla en desarrollo. Es solo un aviso
+      sobre el registro; no cambia nada de la tarea.
+    </p>
+  }
 
   @if (editing()) {
     <app-task-form

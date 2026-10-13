@@ -15,6 +15,7 @@ const PROJECT: Project = {
   repoUrl: 'https://example.test/site',
   docsPath: './site-docs',
   syncIntervalMinutes: 5,
+  instantCloseMinutes: 5,
   progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
   status: 'ACTIVE',
   createdAt: '2026-09-01T09:00:00.000Z',
@@ -94,6 +95,7 @@ describe('ProjectSettings', () => {
       description: null,
       status: 'PAUSED',
       syncIntervalMinutes: 5,
+      instantCloseMinutes: 5,
       docsPath: './site-docs',
       repoUrl: 'https://example.test/site',
       progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
@@ -144,6 +146,24 @@ describe('ProjectSettings', () => {
       expect.objectContaining({ progressRollupStrategy: 'LEAF_EQUAL_WEIGHT' }),
     );
     expect(context.project()?.progressRollupStrategy).toBe('LEAF_EQUAL_WEIGHT');
+  });
+
+  it('edits the threshold of an instant close, between one minute and a day (Roadmap TASK-12)', async () => {
+    update.mockResolvedValue({ ...PROJECT, instantCloseMinutes: 30 });
+    const { component, text } = render(['project.update']);
+
+    expect(component.form.getRawValue().instantCloseMinutes).toBe(5);
+    expect(text()).toContain('Cierre inmediato (minutos)');
+
+    for (const invalid of [0, 1441, 2.5]) {
+      component.form.patchValue({ instantCloseMinutes: invalid });
+      expect(component.form.controls.instantCloseMinutes.invalid).toBe(true);
+    }
+    component.form.patchValue({ instantCloseMinutes: 30 });
+    component.form.markAsDirty();
+    await component.save();
+
+    expect(update).toHaveBeenCalledWith('p1', expect.objectContaining({ instantCloseMinutes: 30 }));
   });
 
   it('refuses invalid settings and shows why a save failed', async () => {

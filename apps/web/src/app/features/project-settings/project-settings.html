@@ -41,6 +41,23 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Cierre inmediato (minutos)</mat-label>
+      <input
+        matInput
+        type="number"
+        min="1"
+        max="1440"
+        step="1"
+        formControlName="instantCloseMinutes"
+      />
+      <mat-hint
+        >Una tarea terminada con menos minutos que estos desde su primer «en progreso» en el
+        registro se marca como cierre inmediato. Es solo un aviso.</mat-hint
+      >
+      <mat-error>Un número entero entre 1 y 1440 minutos.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Cálculo de progreso</mat-label>
       <mat-select formControlName="progressRollupStrategy">
         @for (strategy of rollupStrategies; track strategy) {

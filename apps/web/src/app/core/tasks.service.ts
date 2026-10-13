@@ -46,6 +46,8 @@ export interface Task {
   completedAt: string | null;
   /** When the task entered its current status; its creation time for one that has not moved (Roadmap TASK-11). */
   statusChangedAt: string;
+  /** Closed within minutes of its first IN_PROGRESS in the ledger: the board could not show it in development (Roadmap TASK-12). */
+  instantClose: boolean;
   roadmapTable: 'ACTIVE' | 'NEAR_TERM' | 'BLOCKED' | null;
   createdAt: string;
   updatedAt: string;

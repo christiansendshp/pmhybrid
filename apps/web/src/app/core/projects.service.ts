@@ -17,6 +17,8 @@ export interface Project {
   repoUrl: string | null;
   docsPath: string;
   syncIntervalMinutes: number;
+  /** Minutes between a task's first IN_PROGRESS and its DONE under which it is an instant close (Roadmap TASK-12). */
+  instantCloseMinutes: number;
   progressRollupStrategy: string;
   status: string;
   createdAt: string;
@@ -79,6 +81,7 @@ export interface UpdateProjectInput {
   repoUrl?: string | null;
   docsPath?: string;
   syncIntervalMinutes?: number;
+  instantCloseMinutes?: number;
   status?: ProjectStatus;
   progressRollupStrategy?: ProgressRollupStrategy;
   leadActorId?: string | null;

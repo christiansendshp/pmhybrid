@@ -192,6 +192,14 @@
   color: var(--mat-sys-error);
 }
 
+// A note about how the work was recorded, not a problem with it: text on a quiet outline, so it
+// reads without colour and does not compete with the alerts (Roadmap TASK-12).
+.card__note {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-small);
+}
+
 // The reason a card is blocked, as text (a tooltip is unreachable on touch), kept to two lines.
 .card__alert-reason {
   display: -webkit-box;

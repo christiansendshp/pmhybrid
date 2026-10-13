@@ -255,6 +255,9 @@
                           {{ date.label }} {{ date.value | date: 'd MMM' : 'UTC' }}
                         </li>
                       }
+                      @if (card.instantClose) {
+                        <li class="card__note">Cierre inmediato</li>
+                      }
                       @if (card.roadmapTable === 'BLOCKED') {
                         <li class="card__alert" [attr.title]="card.blockedReason">
                           Bloqueada

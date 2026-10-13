@@ -26,6 +26,7 @@ function task(overrides: Partial<Task> = {}): Task {
     dueDate: null,
     completedAt: null,
     statusChangedAt: '2026-10-01T10:00:00.000Z',
+    instantClose: false,
     roadmapTable: 'ACTIVE',
     createdAt: '2026-09-15T09:00:00.000Z',
     updatedAt: '2026-09-15T09:00:00.000Z',

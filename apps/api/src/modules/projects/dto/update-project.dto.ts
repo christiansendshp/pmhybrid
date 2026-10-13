@@ -5,12 +5,14 @@ import {
   IsOptional,
   IsString,
   Matches,
+  Max,
   MaxLength,
   Min,
   ValidateIf,
 } from 'class-validator';
 import { CreateProjectDto, ROLLUP_STRATEGIES } from './create-project.dto.js';
 import { LIMITS } from '../../../common/dto-limits.js';
+import { MAX_INSTANT_CLOSE_MINUTES } from '../../tasks/instant-close.util.js';
 
 /** ACTIVE projects are synced on their schedule; PAUSED and ARCHIVED ones are not. */
 export const PROJECT_STATUSES = ['ACTIVE', 'PAUSED', 'ARCHIVED'] as const;
@@ -53,6 +55,13 @@ export class UpdateProjectDto extends PartialType(
   @IsInt()
   @Min(1)
   syncIntervalMinutes?: number;
+
+  /** Minutes between a task's first IN_PROGRESS and its DONE under which it is an instant close (Roadmap TASK-12). */
+  @ValidateIf(provided)
+  @IsInt()
+  @Min(1)
+  @Max(MAX_INSTANT_CLOSE_MINUTES)
+  instantCloseMinutes?: number;
 
   @ValidateIf(provided)
   @IsIn(ROLLUP_STRATEGIES)

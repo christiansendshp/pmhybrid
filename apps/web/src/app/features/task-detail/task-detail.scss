@@ -33,6 +33,19 @@
   margin: 0;
 }
 
+.instant-close {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.instant-close__chip {
+  display: inline-block;
+  margin-right: var(--space-2);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-small);
+  color: var(--mat-sys-on-surface);
+}
+
 .danger-button {
   --mat-button-filled-container-color: var(--mat-sys-error);
   --mat-button-filled-label-text-color: var(--mat-sys-on-error);

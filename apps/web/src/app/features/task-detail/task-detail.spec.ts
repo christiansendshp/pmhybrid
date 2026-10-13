@@ -7,7 +7,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuditEvent, AuditService } from '../../core/audit.service.js';
 import { BoardMemory } from '../../core/board-query.js';
 import { HierarchyService, ProjectHierarchy } from '../../core/hierarchy.service.js';
-import { ProjectsService } from '../../core/projects.service.js';
+import { ProjectContext } from '../../core/project-context.js';
+import { Project, ProjectsService } from '../../core/projects.service.js';
 import { TaskDetail as TaskDetailModel, TasksService } from '../../core/tasks.service.js';
 import { TaskFormValue } from '../../shared/task-form/task-form.js';
 import { TaskDetail } from './task-detail.js';
@@ -34,6 +35,7 @@ function taskDetail(overrides: Partial<TaskDetailModel> = {}): TaskDetailModel {
     dueDate: null,
     completedAt: null,
     statusChangedAt: '2026-10-01T10:00:00.000Z',
+    instantClose: false,
     roadmapTable: 'ACTIVE',
     blockedReason: null,
     neededDecision: null,
@@ -120,6 +122,7 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     listForProject = vi.fn().mockResolvedValue([]);
     TestBed.configureTestingModule({
       providers: [
+        ProjectContext,
         provideRouter([
           {
             path: 'projects/:projectId',
@@ -211,6 +214,28 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     expect(callout?.textContent).toContain('Necesita: Sign-off from legal');
     expect(text()).toContain('Ubicación');
     expect(text()).not.toContain('Depende de Fase');
+  });
+
+  it('says when the task was closed within minutes of starting, with the threshold of the project (Roadmap TASK-12)', async () => {
+    TestBed.inject(ProjectContext).project.set({ instantCloseMinutes: 15 } as Project);
+    getById.mockResolvedValue(taskDetail({ instantClose: true }));
+    listAudit.mockResolvedValue([]);
+
+    const { harness } = await render();
+    const note = harness.routeNativeElement!.querySelector('.instant-close');
+
+    expect(note?.textContent).toContain('Cierre inmediato');
+    expect(note?.textContent?.replace(/\s+/g, ' ')).toContain('menos de 15 minutos');
+    expect(note?.textContent).toContain('no cambia nada de la tarea');
+  });
+
+  it('says nothing about an instant close for a task that was not closed that way (Roadmap TASK-12)', async () => {
+    getById.mockResolvedValue(taskDetail({ instantClose: false }));
+    listAudit.mockResolvedValue([]);
+
+    const { harness } = await render();
+
+    expect(harness.routeNativeElement!.querySelector('.instant-close')).toBeNull();
   });
 
   it('shows no block callout for a task that is not blocked', async () => {

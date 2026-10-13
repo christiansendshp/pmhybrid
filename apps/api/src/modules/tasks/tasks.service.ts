@@ -24,6 +24,7 @@ import {
   pageOf,
 } from '../../common/pagination.js';
 import { completedAtFor } from './completion-date.util.js';
+import { InstantCloseService } from './instant-close.service.js';
 import { statusStamp } from './status-change.util.js';
 import { buildDependencyGraph, wouldCloseCycle } from './dependency-graph.js';
 import { AddDependencyDto } from './dto/add-dependency.dto.js';
@@ -97,6 +98,7 @@ export class TasksService {
     private readonly writeBack: WriteBackService,
     private readonly audit: AuditService,
     private readonly events: EventEmitter2,
+    private readonly instantCloses: InstantCloseService,
   ) {}
 
   /**
@@ -144,10 +146,19 @@ export class TasksService {
   private async cardsOf(tasks: CardRow[]) {
     // Progress for the whole list from one batch of reads, not a query per task.
     const progress = await this.progressRollup.computeTasksProgress(tasks);
+    // Closed within minutes of starting, in the ledger (Roadmap TASK-12): one read for the list.
+    const instant =
+      tasks.length > 0
+        ? await this.instantCloses.flagged(
+            tasks[0].projectId,
+            tasks.map((task) => task.externalId),
+          )
+        : new Set<string>();
     return Promise.all(
       tasks.map(async ({ subtasks, dependencies, ...task }) => ({
         ...task,
         computedProgress: progress.get(task.id) ?? 0,
+        instantClose: task.externalId !== null && instant.has(task.externalId),
         subtaskCounts: {
           total: subtasks.length,
           done: subtasks.filter(
@@ -166,8 +177,8 @@ export class TasksService {
   }
 
   async findById(projectId: string, taskId: string) {
-    await this.getOwned(projectId, taskId);
-    const [full, computedProgress] = await Promise.all([
+    const owned = await this.getOwned(projectId, taskId);
+    const [full, computedProgress, instant] = await Promise.all([
       this.prisma.task.findUniqueOrThrow({
         where: { id: taskId },
         include: {
@@ -201,8 +212,13 @@ export class TasksService {
         },
       }),
       this.progressRollup.computeTaskProgress(taskId),
+      this.instantCloses.flagged(projectId, [owned.externalId]),
     ]);
-    return { ...full, computedProgress };
+    return {
+      ...full,
+      computedProgress,
+      instantClose: full.externalId !== null && instant.has(full.externalId),
+    };
   }
 
   /**

@@ -748,47 +748,6 @@ created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
 
-### TASK-12 — Detect an instant close
-
-```yaml
-id: TASK-12
-type: TASK
-title: Detect an instant close
-status: READY
-priority: P1
-parent: FEATURE-11
-description: >
-  In SMARTHR a third of the tasks are documented after the fact: 117 of the 358 tasks that have both an IN_PROGRESS and a DONE entry were closed within 5 minutes of starting (91 within one minute) and 56 took an hour or more. The
-  board cannot show that work in development. Flag a task whose first IN_PROGRESS
-  and its DONE are less than N minutes apart (default 5, a project setting). A signal, not an accusation:
-  closing a batch after the fact is legitimate, it just means the board could not show the work.
-acceptance_criteria:
-  - id: AC-1
-    description: GET /projects/:id/metrics (or the task payload) carries instantClose per task and the project's share of instant closes; the figure for SMARTHR matches the query in the appendix of docs/agent-stage-and-kanban-plan.md (117 of 358 under 5 minutes on 2026-10-13).
-    status: pending
-  - id: AC-2
-    description: The task page and the card show a text chip, not only a color; nothing is blocked or changed by the flag.
-    status: pending
-  - id: AC-3
-    description: The threshold is a validated project setting with the default stated in docs.
-    status: pending
-definition_of_done:
-  - implementation_complete
-  - tests_green
-  - documentation_updated
-  - roadmap_updated
-affects:
-  - DEPENDENCY-02
-  - DEC-004
-technical_context:
-  backend: apps/api/src/modules/projects, apps/api/src/modules/dashboard
-  frontend: apps/web/src/app/features/task-detail
-next_action: >
-  Start with a failing test for the first acceptance criterion; the proposal is in docs/agent-stage-and-kanban-plan.md, section 4 (4.2).
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-```
-
 ### TASK-13 — The card shows the agent, the age in the stage and the reviewer
 
 ```yaml
@@ -1229,6 +1188,7 @@ priority: P1
 parent: FEATURE-10
 description: >
   The data step TASK-01 and TASK-02 make possible: register each agent that works in SMARTHR as an agent of PM Hub with the ledger name it passes to the skill and the aliases it has written (the distinct names in the Agentslog and in the Roadmap's owner cells; GET /projects/:id/unresolved-names lists them with a count), add them to the project, and check the board. It is done on the live instance by a person or with their say-so; it is not code, and it changes the live data.
+  What the live instance showed on 2026-10-13, read only, with no agent registered yet (1240 events, none linked): ledger names claude-sonnet-5-5 (731 events), claude-sonnet-5 (352), claude-opus-5-5 (122), claude-opus-5 (31) and gemini-3.7-flash (4); owner names claude-sonnet-5-5 (143 tasks), claude-opus-5-5 (23), claude-sonnet-5 (17) and TODO (1, a placeholder that is no agent).
 acceptance_criteria:
   - id: AC-1
     description: Every agent name of SMARTHR's Agentslog that is one of its agents resolves to a registered agent, and the unresolved list holds only names that are not agents (a person, a typo, a retired agent).
@@ -1242,7 +1202,7 @@ definition_of_done:
 depends_on:
   - TASK-02
 next_action: >
-  Ask the person who runs SMARTHR which agents work there and what each one writes, or read the unresolved list once the stack is rebuilt with TASK-02; do not guess an alias.
+  Ask the person who runs SMARTHR whether claude-sonnet-5 and claude-sonnet-5-5 (and claude-opus-5 and claude-opus-5-5) are one agent each, with the other name as an alias, or four agents, and which display names to give them; then register them in the Team page. Do not guess an alias.
 created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```

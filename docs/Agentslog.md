@@ -469,3 +469,14 @@ segments live in `docs/history/`.
 - Summary: An owner in a document and an agent name in the ledger resolve through the display name, the ledger name and the aliases: an unknown or ambiguous name resolves to nobody and is listed with a count and a reason (GET /projects/:id/unresolved-names), each Agentslog event is linked to its agent and relinked when names change, and ownerClaimedAt follows a re-claim; resolving never writes to a document
 - Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261013160000_add_agent_log_event_actor/, apps/api/src/modules/agents/, apps/api/src/modules/roadmap/roadmap-owner.util.ts, apps/api/src/modules/synchronization/, apps/api/test/agent-ledger-link.e2e-spec.ts, docs/domain-model.md, docs/synchronization.md, docs/roadmap-parser.md, docs/api-reference.md
 - Verify: api unit 649 and lint ok, api e2e 380 with the coverage floor met, nest build ok; web untouched; registering SMARTHR's own agents is TASK-24 (live data); the Team page and the unresolved list have no UI yet (TASK-03)
+
+## [2026-10-13T17:17:58Z] | claude | TASK-12 | IN_PROGRESS
+
+- Summary: Flag a task closed within N minutes of its first IN_PROGRESS (project setting, default 5): metrics endpoint, per-task flag, chip on card and task page
+- Verify: pending
+
+## [2026-10-13T17:42:27Z] | claude | TASK-12 | DONE
+
+- Summary: A task closed less than N minutes after its first IN_PROGRESS in the Agentslog (N a project setting, 1 to 1440, default 5) is flagged as an instant close: GET /projects/:id/metrics gives the closed tasks, the instant ones and the share, every task card and the task carry instantClose, the card and the task page say it in words, the settings page edits the threshold, and nothing is blocked or changed by the flag
+- Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261013180000_add_project_instant_close_minutes/, apps/api/src/modules/tasks/instant-close.util.ts, apps/api/src/modules/tasks/instant-close.service.ts, apps/api/src/modules/tasks/metrics.controller.ts, apps/api/src/modules/tasks/tasks.service.ts, apps/api/src/modules/projects/dto/update-project.dto.ts, apps/api/test/instant-close.e2e-spec.ts, apps/web/src/app/features/kanban/, apps/web/src/app/features/task-detail/, apps/web/src/app/features/project-settings/, docs/domain-model.md, docs/api-reference.md
+- Verify: api unit 656 and lint ok, api e2e 393 with the coverage floor met (instant-close 13 new), nest build ok, web unit 348, eslint and build ok, a11y suite 67 passed; on the rebuilt persistent stack the compiled service, run read-only against the live SMARTHR ledger, gives 420 closed tasks and 179 instant closes at 5 minutes (42.6 %), the same as the appendix SQL (the plan's 117 of 358 was the morning's snapshot of a ledger that keeps growing)

@@ -18,6 +18,7 @@ import {
 } from '../../core/hierarchy.service.js';
 import { describeHttpError } from '../../core/http-error.js';
 import { newIdempotencyKey } from '../../core/idempotency-key.js';
+import { ProjectContext } from '../../core/project-context.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { LEGAL_NEXT_STATUSES, statusLabel } from '../../core/task-status-policy.js';
 import {
@@ -65,10 +66,15 @@ export class TaskDetail implements OnInit {
   private readonly projectsService = inject(ProjectsService);
   private readonly auditService = inject(AuditService);
   private readonly hierarchyService = inject(HierarchyService);
+  private readonly projectContext = inject(ProjectContext, { optional: true });
 
   private destroyed = false;
 
   readonly task = signal<TaskDetailModel | null>(null);
+  /** The project's threshold for an instant close, in minutes (Roadmap TASK-12); the default until the project is known. */
+  readonly instantCloseMinutes = computed(
+    () => this.projectContext?.project()?.instantCloseMinutes ?? 5,
+  );
   readonly history = signal<AuditEvent[]>([]);
   readonly members = signal<ProjectMember[]>([]);
   readonly allTasks = signal<Task[]>([]);
