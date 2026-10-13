@@ -7,6 +7,50 @@ import { TaskCard, TasksService } from './tasks.service.js';
 
 const card = (id: string) => ({ id, title: `Task ${id}` }) as unknown as TaskCard;
 
+describe('TasksService: what the review queue needs (Roadmap TASK-19)', () => {
+  let service: TasksService;
+  let backend: HttpTestingController;
+  const url = `${API_BASE_URL}/projects/p1/tasks`;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(TasksService);
+    backend = TestBed.inject(HttpTestingController);
+  });
+
+  it('asks only for the tasks in a status, on every page it follows', async () => {
+    const result = service.listForProject('p1', { status: 'QA' });
+
+    backend
+      .expectOne(
+        (req) => req.url === url && req.params.get('status') === 'QA' && !req.params.has('cursor'),
+      )
+      .flush([card('a')], { headers: { 'X-Next-Cursor': 'c1' } });
+    await Promise.resolve();
+    backend
+      .expectOne(
+        (req) =>
+          req.url === url && req.params.get('status') === 'QA' && req.params.get('cursor') === 'c1',
+      )
+      .flush([card('b')]);
+
+    expect((await result).map((task) => task.id)).toEqual(['a', 'b']);
+    backend.verify();
+  });
+
+  it('adds a comment to a task with the text it was given', async () => {
+    const result = service.addComment('p1', 't1', 'Rechazada en revisión: why');
+
+    const request = backend.expectOne(`${url}/t1/comments`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ body: 'Rechazada en revisión: why' });
+    request.flush({ id: 'c1' });
+    await result;
+  });
+});
+
 describe('TasksService.table (Roadmap TASK-18)', () => {
   let service: TasksService;
   let backend: HttpTestingController;

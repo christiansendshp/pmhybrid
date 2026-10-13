@@ -3,6 +3,10 @@ import { LabelPipe } from '../../shared/label.pipe.js';
 import { ShortTitlePipe } from '../../shared/short-title.pipe.js';
 import { BoardViews } from '../../shared/board-views/board-views.js';
 import { TaskTable } from '../task-table/task-table.js';
+import { ReviewQueue } from '../review-queue/review-queue.js';
+import { AgentLanes } from '../agent-lanes/agent-lanes.js';
+import type { UnregisteredName } from '../../core/agent-lanes.js';
+import { SynchronizationService } from '../../core/synchronization.service.js';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -48,6 +52,7 @@ import { newIdempotencyKey } from '../../core/idempotency-key.js';
 import { ledgerDivergenceText, ledgerDiverges } from '../../core/ledger-stage.js';
 import { ProjectContext } from '../../core/project-context.js';
 import { stageAgeText } from '../../core/stage-age.js';
+import { WipState, countAgentWip, countInStatus, wipRatio, wipState } from '../../core/wip.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { Viewport } from '../../core/viewport.js';
 import {
@@ -97,6 +102,8 @@ export const COLUMN_CAP = 8;
     TaskForm,
     BoardViews,
     TaskTable,
+    ReviewQueue,
+    AgentLanes,
   ],
   templateUrl: './kanban.html',
   styleUrl: './kanban.scss',
@@ -105,6 +112,7 @@ export class Kanban implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly tasksService = inject(TasksService);
   private readonly projectsService = inject(ProjectsService);
+  private readonly synchronization = inject(SynchronizationService);
   private readonly hierarchyService = inject(HierarchyService);
   private readonly context = inject(ProjectContext);
   private readonly router = inject(Router);
@@ -115,7 +123,12 @@ export class Kanban implements OnInit {
    * Which of the views of the tasks this page shows (Roadmap TASK-17, TASK-18): the board, or the list
    * the route `list` names. They share the filters, their toolbar and their address; each has its own body.
    */
-  readonly view = signal<'board' | 'list'>('board');
+  readonly view = signal<'board' | 'list' | 'review' | 'agents'>('board');
+  /** The names the documents carry that no registered agent answers to, for the view by agent (Roadmap TASK-20). */
+  readonly unregistered = signal<UnregisteredName[]>([]);
+  readonly unregisteredFailed = signal(false);
+  /** The limit of work in development per agent, for the lanes of the view by agent. */
+  readonly wipAgentLimit = computed(() => this.context.project()?.wipLimitAgent ?? null);
   /** How the list is ordered and which page it is on; only the list has them. */
   readonly list = signal<ListState>(DEFAULT_LIST);
   /** How many tasks the filters keep, as the list last read it. */
@@ -141,6 +154,36 @@ export class Kanban implements OnInit {
   readonly ledgerDiverges = ledgerDiverges;
   readonly divergenceText = ledgerDivergenceText;
   readonly stageAge = (card: TaskCard) => stageAgeText(card.status, card.statusChangedAt);
+  readonly wipRatio = wipRatio;
+
+  /** What the last move into a column said about its limit, so a move that fills it past the limit is never silent (Roadmap TASK-15). */
+  readonly wipNotice = signal<string | null>(null);
+
+  /**
+   * How a column stands against its advisory limit: the project's whole count in the status, not what the
+   * filters leave. Only the board without swimlanes has whole columns to say it on.
+   */
+  columnWip(status: TaskStatus): WipState | null {
+    const project = this.context.project();
+    const limit =
+      status === 'EN_DESARROLLO'
+        ? project?.wipLimitDevelopment
+        : status === 'QA'
+          ? project?.wipLimitQa
+          : null;
+    return this.groupBy() === 'none' ? wipState(countInStatus(this.cards(), status), limit) : null;
+  }
+
+  /** How an agent stands against the limit of work in development per agent: on its lane, when the board is grouped by assignee. */
+  agentWip(laneKey: string): WipState | null {
+    const limit = this.context.project()?.wipLimitAgent;
+    const isAgent = this.cards().some(
+      (card) => card.assignee?.id === laneKey && card.assignee.kind === 'AI_AGENT',
+    );
+    return this.groupBy() === 'assignee' && isAgent
+      ? wipState(countAgentWip(this.cards(), laneKey), limit)
+      : null;
+  }
 
   readonly cards = signal<TaskCard[]>([]);
   readonly members = signal<ProjectMember[]>([]);
@@ -202,9 +245,12 @@ export class Kanban implements OnInit {
   );
 
   private readonly viewParams = computed(() =>
-    this.view() === 'list'
-      ? { ...this.carriedParams(), ...listToParams(this.list()) }
-      : viewToParams({ filters: this.filters(), groupBy: this.groupBy(), sortBy: this.sortBy() }),
+    this.view() === 'board'
+      ? viewToParams({ filters: this.filters(), groupBy: this.groupBy(), sortBy: this.sortBy() })
+      : {
+          ...this.carriedParams(),
+          ...(this.view() === 'list' ? listToParams(this.list()) : {}),
+        },
   );
 
   /** Set once the view has been read from the address: before that the defaults are not what the address says. */
@@ -258,20 +304,22 @@ export class Kanban implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    this.view.set(this.route.snapshot?.data?.['view'] === 'list' ? 'list' : 'board');
+    const named = this.route.snapshot?.data?.['view'];
+    this.view.set(named === 'list' || named === 'review' || named === 'agents' ? named : 'board');
     this.readViewFromAddress();
     try {
       // The list reads its own page, so it does not load every task to show the first one.
       const [cards, members, hierarchy] = await Promise.all([
-        this.view() === 'list'
-          ? Promise.resolve([])
-          : this.tasksService.listForProject(this.projectId),
+        this.view() === 'list' ? Promise.resolve([]) : this.fetchCards(),
         this.projectsService.listMembers(this.projectId),
         this.hierarchyService.load(this.projectId),
       ]);
       this.cards.set(cards);
       this.members.set(members);
       this.hierarchy.set(hierarchy);
+      if (this.view() === 'agents') {
+        await this.readUnregistered();
+      }
     } catch (error) {
       this.boardError.set(describeHttpError(error, 'No se pudo cargar el tablero.'));
     } finally {
@@ -416,6 +464,17 @@ export class Kanban implements OnInit {
       this.boardError.set(describeHttpError(error, 'No se pudo mover la tarea.'));
     }
     await this.reloadCards();
+    this.sayIfOverLimit(toStatus);
+  }
+
+  /** A move into a full column goes through, and says that the column is now past its limit. */
+  private sayIfOverLimit(status: TaskStatus): void {
+    const wip = status === 'EN_DESARROLLO' || status === 'QA' ? this.columnWip(status) : null;
+    this.wipNotice.set(
+      wip?.exceeded
+        ? `${statusLabel(status)} queda en ${wipRatio(wip)}: excedido. El límite avisa, no impide mover tareas.`
+        : null,
+    );
   }
 
   openCreateForm(): void {
@@ -448,10 +507,34 @@ export class Kanban implements OnInit {
     }
   }
 
+  /** The names no agent answers to; a list that cannot be read leaves the lanes as they are and says so. */
+  private async readUnregistered(): Promise<void> {
+    try {
+      this.unregistered.set(
+        (await this.synchronization.unresolvedNames(this.projectId)).ledgerNames,
+      );
+    } catch {
+      this.unregisteredFailed.set(true);
+    }
+  }
+
+  /** The tasks this view needs: all of them, or only those in QA for the queue of reviews. */
+  private fetchCards(): Promise<TaskCard[]> {
+    return this.tasksService.listForProject(
+      this.projectId,
+      this.view() === 'review' ? { status: 'QA' } : {},
+    );
+  }
+
+  /** A review was approved or rejected: the queue is read again. */
+  onReviewed(): void {
+    void this.reloadCards();
+  }
+
   private async reloadCards(): Promise<void> {
     this.listVersion.update((version) => version + 1);
     try {
-      this.cards.set(await this.tasksService.listForProject(this.projectId));
+      this.cards.set(await this.fetchCards());
     } catch (error) {
       this.boardError.set(describeHttpError(error, 'No se pudo actualizar el tablero.'));
     }

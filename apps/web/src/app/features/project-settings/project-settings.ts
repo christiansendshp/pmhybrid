@@ -25,6 +25,14 @@ import { FolderBrowserDialog } from '../../shared/folder-browser-dialog/folder-b
 const PROJECT_UPDATE = 'project.update';
 /** The API refuses a threshold above a day (Roadmap TASK-12). */
 const MAX_INSTANT_CLOSE_MINUTES = 1440;
+
+/** A limit on the work in progress: empty, or a whole number from 1 to 999 (Roadmap TASK-15). */
+const WIP_LIMIT_VALIDATORS = [Validators.min(1), Validators.max(999), Validators.pattern(/^\d+$/)];
+
+/** What a limit field sends: its number, or null to clear it. */
+function limitOf(value: number | string | null): number | null {
+  return value === null || value === '' ? null : Number(value);
+}
 const NOT_BLANK = /\S/;
 
 const STATUS_LABELS: Record<ProjectStatus, string> = {
@@ -94,6 +102,10 @@ export class ProjectSettings {
         Validators.pattern(/^\d+$/),
       ],
     ],
+    // Advisory limits (Roadmap TASK-15): a whole number from 1 to 999, or empty for none.
+    wipLimitDevelopment: [null as number | null, WIP_LIMIT_VALIDATORS],
+    wipLimitQa: [null as number | null, WIP_LIMIT_VALIDATORS],
+    wipLimitAgent: [null as number | null, WIP_LIMIT_VALIDATORS],
     docsPath: ['', [Validators.required, Validators.pattern(NOT_BLANK)]],
     repoUrl: [''],
     progressRollupStrategy: ['EQUAL_WEIGHT_AVERAGE' as ProgressRollupStrategy],
@@ -140,6 +152,9 @@ export class ProjectSettings {
         status: value.status,
         syncIntervalMinutes: Number(value.syncIntervalMinutes),
         instantCloseMinutes: Number(value.instantCloseMinutes),
+        wipLimitDevelopment: limitOf(value.wipLimitDevelopment),
+        wipLimitQa: limitOf(value.wipLimitQa),
+        wipLimitAgent: limitOf(value.wipLimitAgent),
         docsPath: value.docsPath.trim(),
         repoUrl: value.repoUrl.trim() || null,
         progressRollupStrategy: value.progressRollupStrategy,
@@ -203,6 +218,9 @@ function toFormValue(project: Project) {
     status: project.status as ProjectStatus,
     syncIntervalMinutes: project.syncIntervalMinutes,
     instantCloseMinutes: project.instantCloseMinutes,
+    wipLimitDevelopment: project.wipLimitDevelopment ?? null,
+    wipLimitQa: project.wipLimitQa ?? null,
+    wipLimitAgent: project.wipLimitAgent ?? null,
     docsPath: project.docsPath,
     repoUrl: project.repoUrl ?? '',
     progressRollupStrategy: project.progressRollupStrategy as ProgressRollupStrategy,

@@ -19,6 +19,10 @@ export interface Project {
   syncIntervalMinutes: number;
   /** Minutes between a task's first IN_PROGRESS and its DONE under which it is an instant close (Roadmap TASK-12). */
   instantCloseMinutes: number;
+  /** Advisory limits on the work in progress; null is none (Roadmap TASK-15). */
+  wipLimitDevelopment: number | null;
+  wipLimitQa: number | null;
+  wipLimitAgent: number | null;
   progressRollupStrategy: string;
   status: string;
   createdAt: string;
@@ -82,6 +86,9 @@ export interface UpdateProjectInput {
   docsPath?: string;
   syncIntervalMinutes?: number;
   instantCloseMinutes?: number;
+  wipLimitDevelopment?: number | null;
+  wipLimitQa?: number | null;
+  wipLimitAgent?: number | null;
   status?: ProjectStatus;
   progressRollupStrategy?: ProgressRollupStrategy;
   leadActorId?: string | null;

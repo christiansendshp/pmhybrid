@@ -209,6 +209,11 @@
   display: block;
 }
 
+.wip-notice {
+  margin: 0 0 var(--space-3);
+  color: var(--mat-sys-on-surface-variant);
+}
+
 .card__model {
   font: var(--mat-sys-body-small);
   color: var(--mat-sys-on-surface-variant);

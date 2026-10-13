@@ -1,0 +1,72 @@
+.agent-lanes__note,
+.agent-lanes__empty {
+  margin: 0 0 var(--space-3);
+}
+
+.agent-lanes__empty {
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.agent-lane {
+  margin-bottom: var(--space-5);
+  padding: var(--space-3);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-surface-container-low);
+}
+
+// A lane for a name nobody answers to is marked by its dashed edge as well as by its words.
+.agent-lane--unregistered {
+  border-style: dashed;
+}
+
+.agent-lane__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  margin: 0 0 var(--space-2);
+}
+
+.agent-lane__idle {
+  margin: 0;
+}
+
+.agent-lane__columns {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(10rem, 1fr));
+  gap: var(--space-3);
+  overflow-x: auto;
+}
+
+.agent-lane__stage {
+  margin: 0 0 var(--space-1);
+  font: var(--mat-sys-label-large);
+}
+
+.agent-lane__list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-lane__task {
+  display: inline-block;
+  min-height: 1.5rem;
+  color: var(--mat-sys-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.agent-lane__id {
+  font-variant-numeric: tabular-nums;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+@media (max-width: 720px) {
+  .agent-lane__columns {
+    grid-template-columns: 1fr;
+  }
+}

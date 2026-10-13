@@ -226,14 +226,21 @@ export class TasksService {
    * API returns at most a page and says in `X-Next-Cursor` where the next starts, so a
    * board of any size is whole here and never silently cut.
    */
-  async listForProject(projectId: string): Promise<TaskCard[]> {
+  async listForProject(
+    projectId: string,
+    filters: { status?: TaskStatus } = {},
+  ): Promise<TaskCard[]> {
     const cards: TaskCard[] = [];
     let cursor: string | null = null;
     do {
+      const params: Record<string, string> = {
+        ...(filters.status ? { status: filters.status } : {}),
+        ...(cursor ? { cursor } : {}),
+      };
       const response: HttpResponse<TaskCard[]> = await firstValueFrom(
         this.http.get<TaskCard[]>(`${API_BASE_URL}/projects/${projectId}/tasks`, {
           observe: 'response',
-          ...(cursor ? { params: { cursor } } : {}),
+          ...(Object.keys(params).length > 0 ? { params } : {}),
         }),
       );
       cards.push(...(response.body ?? []));
@@ -285,6 +292,13 @@ export class TasksService {
       this.http.post<Task>(`${API_BASE_URL}/projects/${projectId}/tasks/${taskId}/assign`, {
         actorId,
       }),
+    );
+  }
+
+  /** A comment on a task, by the person who is signed in (Roadmap TASK-19: the reason a review was rejected). */
+  addComment(projectId: string, taskId: string, body: string): Promise<unknown> {
+    return firstValueFrom(
+      this.http.post(`${API_BASE_URL}/projects/${projectId}/tasks/${taskId}/comments`, { body }),
     );
   }
 

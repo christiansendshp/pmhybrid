@@ -1,0 +1,98 @@
+@if (error()) {
+  <p role="alert">{{ error() }}</p>
+}
+
+@if (groups().length === 0) {
+  <p class="review-empty" role="status">No hay tareas esperando revisión.</p>
+}
+
+@for (group of groups(); track group.key) {
+  <section class="review-group" [attr.aria-labelledby]="'review-' + group.key">
+    <h3 class="review-group__title" [id]="'review-' + group.key">
+      {{ group.label }}
+      <span class="meta-text">{{ group.cards.length }}</span>
+      @if (group.mine) {
+        <span class="review-group__mine">Tu cola</span>
+      }
+    </h3>
+    <ul class="review-list">
+      @for (card of group.cards; track card.id) {
+        <li class="review-item">
+          <div class="review-item__head">
+            <span class="review-item__id">{{ card.externalId ?? 'Sin ID de Roadmap' }}</span>
+            <a
+              class="review-item__title"
+              [routerLink]="['../tasks', card.id]"
+              [attr.title]="card.title | shortTitle: 'hint'"
+              >{{ card.title | shortTitle }}</a
+            >
+          </div>
+          <p class="review-item__facts meta-text">
+            Desarrollada por
+            @if (card.assignee; as assignee) {
+              {{ assignee.displayName }} ({{ kindLabel(assignee.kind) }})
+            } @else {
+              nadie
+            }
+            · en QA {{ waited(card) }}
+          </p>
+          <p class="review-item__note">
+            @if (card.ledgerNote) {
+              <span class="review-item__label">Última nota del registro:</span>
+              {{ card.ledgerNote }}
+            } @else {
+              <span class="meta-text">Sin nota en el registro.</span>
+            }
+          </p>
+
+          @if (canApprove() || canReject()) {
+            @if (rejecting() === card.id) {
+              <form class="review-item__reject" (ngSubmit)="confirmReject(card)">
+                <label class="review-item__label" [for]="'reason-' + card.id"
+                  >Motivo del rechazo (obligatorio)</label
+                >
+                <textarea
+                  [id]="'reason-' + card.id"
+                  name="reason"
+                  rows="3"
+                  required
+                  [ngModel]="reason()"
+                  (ngModelChange)="reason.set($event)"
+                ></textarea>
+                <div class="review-item__actions">
+                  <button mat-flat-button type="submit" [disabled]="acting() !== null">
+                    Rechazar y devolver a desarrollo
+                  </button>
+                  <button mat-button type="button" (click)="cancelReject()">Cancelar</button>
+                </div>
+              </form>
+            } @else {
+              <div class="review-item__actions">
+                @if (canApprove()) {
+                  <button
+                    mat-flat-button
+                    type="button"
+                    [disabled]="acting() !== null"
+                    (click)="approve(card)"
+                  >
+                    Aprobar
+                  </button>
+                }
+                @if (canReject()) {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="acting() !== null"
+                    (click)="startReject(card)"
+                  >
+                    Rechazar
+                  </button>
+                }
+              </div>
+            }
+          }
+        </li>
+      }
+    </ul>
+  </section>
+}

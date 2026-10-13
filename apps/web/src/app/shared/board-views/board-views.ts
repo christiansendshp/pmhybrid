@@ -15,6 +15,8 @@ export interface BoardViewLink {
 export const BOARD_VIEWS: readonly BoardViewLink[] = [
   { path: 'kanban', label: 'Tablero' },
   { path: 'list', label: 'Lista' },
+  { path: 'review', label: 'En revisión' },
+  { path: 'agents', label: 'Por agente' },
 ];
 
 /**

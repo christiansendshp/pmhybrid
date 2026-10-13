@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HierarchyService, ProjectHierarchy } from '../../core/hierarchy.service.js';
 import { ProjectContext } from '../../core/project-context.js';
 import { ProjectsService } from '../../core/projects.service.js';
+import { SynchronizationService } from '../../core/synchronization.service.js';
 import { TaskCard, TasksService } from '../../core/tasks.service.js';
 import { BoardMemory } from '../../core/board-query.js';
 import { Viewport } from '../../core/viewport.js';
@@ -73,8 +74,12 @@ describe('Kanban (brief §15)', () => {
   let listForProject: ReturnType<typeof vi.fn>;
   let transition: ReturnType<typeof vi.fn>;
   let table: ReturnType<typeof vi.fn>;
+  let listMembers: ReturnType<typeof vi.fn>;
+  let unresolvedNames: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    listMembers = vi.fn().mockResolvedValue([]);
+    unresolvedNames = vi.fn().mockResolvedValue({ ledgerNames: [], ownerNames: [] });
     listForProject = vi.fn();
     transition = vi.fn().mockResolvedValue({});
     table = vi.fn().mockResolvedValue({
@@ -94,11 +99,14 @@ describe('Kanban (brief §15)', () => {
             children: [
               { path: 'kanban', component: Kanban },
               { path: 'list', component: Kanban, data: { view: 'list' } },
+              { path: 'review', component: Kanban, data: { view: 'review' } },
+              { path: 'agents', component: Kanban, data: { view: 'agents' } },
             ],
           },
         ]),
         { provide: TasksService, useValue: { listForProject, transition, table } },
-        { provide: ProjectsService, useValue: { listMembers: vi.fn().mockResolvedValue([]) } },
+        { provide: ProjectsService, useValue: { listMembers } },
+        { provide: SynchronizationService, useValue: { unresolvedNames } },
         { provide: HierarchyService, useValue: { load: vi.fn().mockResolvedValue(HIERARCHY) } },
       ],
     });
@@ -575,7 +583,7 @@ describe('Kanban (brief §15)', () => {
       const root = harness.routeNativeElement!;
 
       expect(component.view()).toBe('board');
-      expect(root.querySelector('h2')?.textContent).toBe('Kanban');
+      expect(root.querySelector('h2')?.textContent?.trim()).toBe('Kanban');
       expect(root.querySelector('nav[aria-label="Vistas del tablero"]')).not.toBeNull();
       expect(root.querySelector('app-task-table')).toBeNull();
       expect(root.textContent).toContain('Agrupar por');
@@ -589,7 +597,7 @@ describe('Kanban (brief §15)', () => {
 
       expect(component.view()).toBe('list');
       expect(listForProject).not.toHaveBeenCalled();
-      expect(root.querySelector('h2')?.textContent).toBe('Lista');
+      expect(root.querySelector('h2')?.textContent?.trim()).toBe('Lista');
       expect(root.querySelector('app-task-table')).not.toBeNull();
       expect(root.querySelector('.board')).toBeNull();
       expect(root.textContent).not.toContain('Agrupar por');
@@ -679,6 +687,8 @@ describe('Kanban (brief §15)', () => {
       expect(hrefsOnBoard).toEqual([
         '/projects/p1/kanban?q=api&stale=72',
         '/projects/p1/list?q=api&stale=72',
+        '/projects/p1/review?q=api&stale=72',
+        '/projects/p1/agents?q=api&stale=72',
       ]);
     });
 
@@ -696,6 +706,8 @@ describe('Kanban (brief §15)', () => {
       expect(hrefs).toEqual([
         '/projects/p1/kanban?q=api&divergent=1',
         '/projects/p1/list?q=api&divergent=1',
+        '/projects/p1/review?q=api&divergent=1',
+        '/projects/p1/agents?q=api&divergent=1',
       ]);
     });
 
@@ -714,6 +726,322 @@ describe('Kanban (brief §15)', () => {
       expect(
         harness.routeNativeElement!.querySelector('.board-toolbar__count')?.textContent,
       ).toContain('7 tareas');
+    });
+  });
+
+  describe('the advisory limits (Roadmap TASK-15)', () => {
+    const agent = { id: 'codex', displayName: 'Codex', kind: 'AI_AGENT' as const, model: null };
+    const person = { id: 'ana', displayName: 'Ana', kind: 'HUMAN' as const, model: null };
+    const withLimits = (
+      limits: Partial<Record<'wipLimitDevelopment' | 'wipLimitQa' | 'wipLimitAgent', number>>,
+    ) =>
+      TestBed.inject(ProjectContext).project.set({
+        wipLimitDevelopment: null,
+        wipLimitQa: null,
+        wipLimitAgent: null,
+        ...limits,
+      } as never);
+    const developing = (n: number, assignee: TaskCard['assignee'] & object = agent) =>
+      Array.from({ length: n }, (_, i) =>
+        card({
+          id: `dev${assignee.id}${i}`,
+          externalId: `D-${assignee.id}-${i}`,
+          status: 'EN_DESARROLLO',
+          assignee,
+        }),
+      );
+    const headers = (root: HTMLElement) =>
+      Array.from(root.querySelectorAll('.column__title')).map((h) =>
+        (h.textContent ?? '').replace(/\s+/g, ' ').trim(),
+      );
+
+    it('says how full a column is against its limit, and that it is exceeded, in words and with a mark', async () => {
+      withLimits({ wipLimitDevelopment: 2, wipLimitQa: 3 });
+      const { harness } = await render([
+        ...developing(3),
+        card({ id: 'q', externalId: 'Q-1', status: 'QA' }),
+      ]);
+
+      const [, , dev, qa] = headers(harness.routeNativeElement!);
+
+      expect(dev).toBe('EN DESARROLLO 3/2 ! excedido');
+      expect(qa).toBe('QA 1/3');
+      const mark = harness.routeNativeElement!.querySelector('.wip--over .wip__mark');
+      expect(mark?.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('writes the plain count of a column that has no limit, as it always did', async () => {
+      withLimits({ wipLimitDevelopment: 2 });
+      const { harness } = await render([
+        ...developing(1),
+        card({ id: 'q', externalId: 'Q-1', status: 'QA' }),
+      ]);
+
+      const [pending, assigned, dev, qa, done] = headers(harness.routeNativeElement!);
+
+      expect(pending).toBe('PENDIENTE0');
+      expect(assigned).toBe('ASIGNADA0');
+      expect(dev).toBe('EN DESARROLLO 1/2');
+      expect(qa).toBe('QA1');
+      expect(done).toBe('TERMINADA0');
+    });
+
+    it('counts the whole project against the limit, not only what the filters leave', async () => {
+      withLimits({ wipLimitDevelopment: 2 });
+      const { harness, component } = await render(developing(3));
+
+      component.patchFilters({ search: 'no task has this' });
+      harness.detectChanges();
+
+      expect(component.columnWip('EN_DESARROLLO')).toEqual({ count: 3, limit: 2, exceeded: true });
+    });
+
+    it('says nothing without limits: nothing about them appears on the board', async () => {
+      withLimits({});
+      const { harness } = await render(developing(5));
+
+      expect(harness.routeNativeElement!.querySelector('.wip')).toBeNull();
+      expect(headers(harness.routeNativeElement!)[2]).toBe('EN DESARROLLO5');
+    });
+
+    it('shows the limit per agent on the lane of an agent, and not on that of a person, when grouped by assignee', async () => {
+      withLimits({ wipLimitAgent: 1 });
+      const { harness, component } = await render([
+        ...developing(2, agent),
+        ...developing(3, person),
+      ]);
+
+      component.groupBy.set('assignee');
+      harness.detectChanges();
+      const lanes = Array.from(harness.routeNativeElement!.querySelectorAll('.lane__title')).map(
+        (h) => (h.textContent ?? '').replace(/\s+/g, ' ').trim(),
+      );
+
+      expect(lanes.find((lane) => lane.startsWith('Codex'))).toContain(
+        'en desarrollo 2/1 ! excedido',
+      );
+      expect(lanes.find((lane) => lane.startsWith('Ana'))).not.toContain('en desarrollo');
+      // The columns inside lanes are the lane's own, so they carry no project limit.
+      expect(headers(harness.routeNativeElement!).every((header) => !header.includes('/'))).toBe(
+        true,
+      );
+    });
+
+    it('lets a move into a full column through and says the column is now past its limit', async () => {
+      withLimits({ wipLimitDevelopment: 1 });
+      const moving = card({ id: 'moving', externalId: 'M-1', status: 'ASIGNADA' });
+      const inDevelopment = developing(1);
+      const { component } = await render([moving, ...inDevelopment]);
+      // After the move the board is read again: the moved task is in development too.
+      listForProject.mockResolvedValue([{ ...moving, status: 'EN_DESARROLLO' }, ...inDevelopment]);
+
+      await component.onDrop(
+        {
+          item: { data: moving },
+          previousContainer: { id: component.listId('none', 'ASIGNADA') },
+          container: { id: component.listId('none', 'EN_DESARROLLO') },
+        } as unknown as CdkDragDrop<TaskCard[]>,
+        'EN_DESARROLLO',
+      );
+
+      expect(transition).toHaveBeenCalledWith('p1', 'moving', 'EN_DESARROLLO');
+      expect(component.boardError()).toBeNull();
+      expect(component.wipNotice()).toBe(
+        'EN DESARROLLO queda en 2/1: excedido. El límite avisa, no impide mover tareas.',
+      );
+    });
+
+    it('says nothing after a move that leaves the column within its limit', async () => {
+      withLimits({ wipLimitDevelopment: 3 });
+      const moving = card({ id: 'moving', externalId: 'M-1', status: 'ASIGNADA' });
+      const { component } = await render([moving]);
+      listForProject.mockResolvedValue([{ ...moving, status: 'EN_DESARROLLO' }]);
+
+      await component.onDrop(
+        {
+          item: { data: moving },
+          previousContainer: { id: component.listId('none', 'ASIGNADA') },
+          container: { id: component.listId('none', 'EN_DESARROLLO') },
+        } as unknown as CdkDragDrop<TaskCard[]>,
+        'EN_DESARROLLO',
+      );
+
+      expect(component.wipNotice()).toBeNull();
+    });
+  });
+
+  describe('the review queue view (Roadmap TASK-19)', () => {
+    it('reads only the tasks in QA and shows them as a queue, without the columns of the board', async () => {
+      const waiting = card({ id: 'w', externalId: 'W-1', status: 'QA' });
+      const { harness, component } = await render([waiting], ['task.write'], '/projects/p1/review');
+      const root = harness.routeNativeElement!;
+
+      expect(component.view()).toBe('review');
+      expect(listForProject).toHaveBeenCalledWith('p1', { status: 'QA' });
+      expect(table).not.toHaveBeenCalled();
+      expect(root.querySelector('h2')?.textContent?.trim()).toBe('En revisión');
+      expect(root.querySelector('app-review-queue')).not.toBeNull();
+      expect(root.querySelector('.board')).toBeNull();
+      expect(root.querySelector('.review-item__id')?.textContent).toBe('W-1');
+      expect(root.textContent).not.toContain('Agrupar por');
+    });
+
+    it('keeps the board loading every task, as before', async () => {
+      await render([card()]);
+
+      expect(listForProject).toHaveBeenCalledWith('p1', {});
+    });
+
+    it('narrows the queue with the same filters as the board', async () => {
+      const mine = card({ id: 'm', externalId: 'M-1', status: 'QA', priority: 'HIGH' });
+      const other = card({ id: 'o', externalId: 'O-1', status: 'QA', priority: 'LOW' });
+      const { harness } = await render(
+        [mine, other],
+        ['task.write'],
+        '/projects/p1/review?priority=HIGH',
+      );
+
+      const ids = Array.from(harness.routeNativeElement!.querySelectorAll('.review-item__id')).map(
+        (id) => id.textContent,
+      );
+
+      expect(ids).toEqual(['M-1']);
+    });
+
+    it('writes only the filters into its address, never the grouping or the order of the board', async () => {
+      TestBed.inject(BoardMemory).remember('p1', { group: 'epic', sort: 'priority', q: 'left' });
+
+      const { harness } = await render([], ['task.write'], '/projects/p1/review');
+      await harness.fixture.whenStable();
+
+      expect(TestBed.inject(Router).url).toBe('/projects/p1/review?q=left');
+    });
+  });
+
+  describe('the view by agent (Roadmap TASK-20)', () => {
+    const agentMember = (id: string, name: string) => ({
+      id: `m-${id}`,
+      projectId: 'p1',
+      actorId: id,
+      joinedAt: '2026-09-01T00:00:00.000Z',
+      isActive: true,
+      actor: { id, displayName: name, kind: 'AI_AGENT' as const, email: null },
+    });
+    const held = (id: string, name: string, status: TaskCard['status'], externalId: string) =>
+      card({
+        id: externalId,
+        externalId,
+        status,
+        assignee: { id, displayName: name, kind: 'AI_AGENT', model: null },
+      });
+
+    it('makes a lane for every agent of the project, the idle one too, with its tasks by stage', async () => {
+      listMembers.mockResolvedValue([
+        agentMember('codex', 'Codex'),
+        agentMember('idle', 'Idle Bot'),
+      ]);
+      const { harness, component } = await render(
+        [held('codex', 'Codex', 'QA', 'C-1'), held('codex', 'Codex', 'EN_DESARROLLO', 'C-2')],
+        ['task.write'],
+        '/projects/p1/agents',
+      );
+      const root = harness.routeNativeElement!;
+
+      expect(component.view()).toBe('agents');
+      expect(root.querySelector('h2')?.textContent?.trim()).toBe('Por agente');
+      const lanes = Array.from(root.querySelectorAll('.agent-lane__title')).map((h) =>
+        (h.textContent ?? '').replace(/\s+/g, ' ').trim(),
+      );
+      expect(lanes[0]).toContain('Codex');
+      expect(lanes[0]).toContain('2 tareas');
+      expect(lanes[1]).toContain('Idle Bot');
+      expect(root.textContent).toContain('Sin tareas: este agente está libre.');
+      expect(root.querySelector('.board')).toBeNull();
+    });
+
+    it('lists the names no registered agent answers to as a lane of their own, with how often and why', async () => {
+      listMembers.mockResolvedValue([agentMember('codex', 'Codex')]);
+      unresolvedNames.mockResolvedValue({
+        ledgerNames: [
+          { name: 'claude-sonnet-5-5', events: 731, reason: 'UNKNOWN' },
+          { name: 'claude', events: 1, reason: 'AMBIGUOUS' },
+        ],
+        ownerNames: [],
+      });
+      const { harness } = await render([], ['task.write'], '/projects/p1/agents');
+      const lane = harness.routeNativeElement!.querySelector('.agent-lane--unregistered')!;
+      const text = (lane.textContent ?? '').replace(/\s+/g, ' ');
+
+      expect(text).toContain('Sin registrar');
+      expect(text).toContain(
+        'claude-sonnet-5-5 — 731 entradas; ningún agente responde a este nombre',
+      );
+      expect(text).toContain('claude — 1 entrada; dos agentes responden a este nombre');
+      expect(unresolvedNames).toHaveBeenCalledWith('p1');
+    });
+
+    it('shows no lane for names when there are none, and says so when the list could not be read', async () => {
+      listMembers.mockResolvedValue([agentMember('codex', 'Codex')]);
+      const quiet = await render([], ['task.write'], '/projects/p1/agents');
+      expect(
+        quiet.harness.routeNativeElement!.querySelector('.agent-lane--unregistered'),
+      ).toBeNull();
+      expect(quiet.component.unregisteredFailed()).toBe(false);
+    });
+
+    it('says the list of names could not be read, without losing the lanes', async () => {
+      listMembers.mockResolvedValue([agentMember('codex', 'Codex')]);
+      unresolvedNames.mockRejectedValue(new Error('boom'));
+
+      const { harness, component } = await render([], ['task.write'], '/projects/p1/agents');
+
+      expect(component.unregisteredFailed()).toBe(true);
+      expect(harness.routeNativeElement!.textContent).toContain(
+        'No se pudo leer la lista de nombres sin registrar',
+      );
+      expect(
+        harness.routeNativeElement!.querySelector('.agent-lane__title')?.textContent,
+      ).toContain('Codex');
+    });
+
+    it('says the work in development of an agent against the limit per agent, from every task of the project', async () => {
+      TestBed.inject(ProjectContext).project.set({ wipLimitAgent: 1 } as never);
+      listMembers.mockResolvedValue([agentMember('codex', 'Codex')]);
+      const { harness } = await render(
+        [
+          held('codex', 'Codex', 'EN_DESARROLLO', 'C-1'),
+          held('codex', 'Codex', 'EN_DESARROLLO', 'C-2'),
+        ],
+        ['task.write'],
+        '/projects/p1/agents?q=C-1',
+      );
+
+      const title = (
+        harness.routeNativeElement!.querySelector('.agent-lane__title')?.textContent ?? ''
+      ).replace(/\s+/g, ' ');
+
+      // The filter keeps one task in the lane; the limit is read against the two the agent really has.
+      expect(title).toContain('1 tarea');
+      expect(title).toContain('en desarrollo 2/1 ! excedido');
+    });
+
+    it('counts the tasks no agent holds instead of hiding them', async () => {
+      listMembers.mockResolvedValue([agentMember('codex', 'Codex')]);
+      const { harness } = await render(
+        [held('codex', 'Codex', 'QA', 'C-1'), card({ id: 'x', externalId: 'X-1', assignee: null })],
+        ['task.write'],
+        '/projects/p1/agents',
+      );
+
+      expect(
+        harness.routeNativeElement!.querySelector('.agent-lanes__note')?.textContent,
+      ).toContain('1 tarea sin agente');
+    });
+
+    it('does not ask for the names on the board', async () => {
+      await render([card()]);
+
+      expect(unresolvedNames).not.toHaveBeenCalled();
     });
   });
 });

@@ -57,6 +57,35 @@
       <mat-error>Un número entero entre 1 y 1440 minutos.</mat-error>
     </mat-form-field>
 
+    <fieldset class="settings-limits">
+      <legend>Límites de trabajo en curso</legend>
+      <p class="meta-text">
+        Avisan en el tablero cuando se pasan; nunca impiden mover una tarea. Vacío es sin límite.
+      </p>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>En desarrollo</mat-label>
+        <input
+          matInput
+          type="number"
+          min="1"
+          max="999"
+          step="1"
+          formControlName="wipLimitDevelopment"
+        />
+        <mat-error>Un número entero entre 1 y 999, o vacío.</mat-error>
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>En QA</mat-label>
+        <input matInput type="number" min="1" max="999" step="1" formControlName="wipLimitQa" />
+        <mat-error>Un número entero entre 1 y 999, o vacío.</mat-error>
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Por agente en desarrollo</mat-label>
+        <input matInput type="number" min="1" max="999" step="1" formControlName="wipLimitAgent" />
+        <mat-error>Un número entero entre 1 y 999, o vacío.</mat-error>
+      </mat-form-field>
+    </fieldset>
+
     <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Cálculo de progreso</mat-label>
       <mat-select formControlName="progressRollupStrategy">

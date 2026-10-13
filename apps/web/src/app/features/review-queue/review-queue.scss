@@ -1,0 +1,90 @@
+.review-empty {
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.review-group {
+  margin-bottom: var(--space-5);
+}
+
+.review-group__title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+}
+
+// The viewer's own queue is named, not only placed first.
+.review-group__mine {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--mat-sys-primary);
+  border-radius: var(--mat-sys-corner-small);
+  color: var(--mat-sys-primary);
+  font: var(--mat-sys-label-medium);
+}
+
+.review-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-item {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-surface-container-low);
+}
+
+.review-item__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.review-item__id {
+  font-variant-numeric: tabular-nums;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.review-item__title {
+  display: inline-block;
+  min-height: 1.5rem;
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-title-small);
+}
+
+.review-item__facts,
+.review-item__note {
+  margin: 0;
+}
+
+.review-item__label {
+  font-weight: 600;
+}
+
+.review-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.review-item__reject {
+  display: grid;
+  gap: var(--space-2);
+
+  textarea {
+    width: 100%;
+    padding: var(--space-2);
+    border: 1px solid var(--mat-sys-outline);
+    border-radius: var(--mat-sys-corner-small);
+    background: var(--mat-sys-surface);
+    color: var(--mat-sys-on-surface);
+    font: inherit;
+  }
+}

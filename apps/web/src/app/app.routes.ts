@@ -66,6 +66,18 @@ export const routes: Routes = [
             loadComponent: () => import('./features/kanban/kanban').then((m) => m.Kanban),
           },
           {
+            // The tasks waiting for review, as a queue per reviewer (Roadmap TASK-19).
+            path: 'review',
+            data: { view: 'review' },
+            loadComponent: () => import('./features/kanban/kanban').then((m) => m.Kanban),
+          },
+          {
+            // The tasks by agent, with the names no agent answers to (Roadmap TASK-20).
+            path: 'agents',
+            data: { view: 'agents' },
+            loadComponent: () => import('./features/kanban/kanban').then((m) => m.Kanban),
+          },
+          {
             path: 'progress',
             loadComponent: () =>
               import('./features/phases-progress/phases-progress').then((m) => m.PhasesProgress),

@@ -3,6 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE_URL } from './api-base-url.js';
 
+/** What the documents name that no registered agent answers to, and why (Roadmap TASK-02). */
+export interface UnresolvedNames {
+  ledgerNames: { name: string; events: number; reason: 'UNKNOWN' | 'AMBIGUOUS' }[];
+  ownerNames: { name: string; tasks: number; reason: 'UNKNOWN' | 'AMBIGUOUS' }[];
+}
+
 /** A Roadmap entry the run could not read (Roadmap BUG-05): which one, where in the file, and why. */
 export interface SyncEntryError {
   id: string;
@@ -79,6 +85,13 @@ export class SynchronizationService {
   triggerSync(projectId: string): Promise<SyncRun> {
     return firstValueFrom(
       this.http.post<SyncRun>(`${API_BASE_URL}/projects/${projectId}/sync`, {}),
+    );
+  }
+
+  /** The names the project's documents carry that no agent answers to, with a count each (Roadmap TASK-02). */
+  unresolvedNames(projectId: string): Promise<UnresolvedNames> {
+    return firstValueFrom(
+      this.http.get<UnresolvedNames>(`${API_BASE_URL}/projects/${projectId}/unresolved-names`),
     );
   }
 

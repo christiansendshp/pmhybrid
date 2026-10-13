@@ -19,6 +19,11 @@ export const PROJECT_STATUSES = ['ACTIVE', 'PAUSED', 'ARCHIVED'] as const;
 
 const NOT_BLANK = /\S/;
 const provided = (_: UpdateProjectDto, value: unknown) => value !== undefined;
+/** A limit is validated when it is given, and `null` (or nothing) is allowed: it clears it. */
+const limitGiven = (_: UpdateProjectDto, value: unknown) =>
+  value !== undefined && value !== null;
+/** The most a limit can be. */
+export const MAX_WIP_LIMIT = 999;
 
 /**
  * Project settings. Description, repository URL and leadActorId (Roadmap
@@ -62,6 +67,25 @@ export class UpdateProjectDto extends PartialType(
   @Min(1)
   @Max(MAX_INSTANT_CLOSE_MINUTES)
   instantCloseMinutes?: number;
+
+  /** Advisory limits on the work in progress, 1 to 999; null clears one (Roadmap TASK-15). */
+  @ValidateIf(limitGiven)
+  @IsInt()
+  @Min(1)
+  @Max(MAX_WIP_LIMIT)
+  wipLimitDevelopment?: number | null;
+
+  @ValidateIf(limitGiven)
+  @IsInt()
+  @Min(1)
+  @Max(MAX_WIP_LIMIT)
+  wipLimitQa?: number | null;
+
+  @ValidateIf(limitGiven)
+  @IsInt()
+  @Min(1)
+  @Max(MAX_WIP_LIMIT)
+  wipLimitAgent?: number | null;
 
   @ValidateIf(provided)
   @IsIn(ROLLUP_STRATEGIES)

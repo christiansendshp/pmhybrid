@@ -302,3 +302,27 @@ th {
     color: var(--mat-sys-on-surface-variant);
   }
 }
+
+// A counter against an advisory limit (Roadmap TASK-15). Past the limit it says so in words and with a mark,
+// not by colour alone; it never stops anything.
+.wip {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.wip--over {
+  color: var(--mat-sys-error);
+  font-weight: 600;
+}
+
+.wip__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1em;
+  height: 1.1em;
+  border: 1.5px solid currentcolor;
+  border-radius: 50%;
+  font-size: 0.85em;
+  line-height: 1;
+}

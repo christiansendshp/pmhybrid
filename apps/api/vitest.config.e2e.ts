@@ -43,8 +43,11 @@ export default defineConfig({
       ...(process.env.CI ? {} : { DATABASE_URL: LOCAL_TEST_DATABASE_URL }),
     },
     // Multi-request scenarios hold advisory locks for write-back; the 5s
-    // default is too tight for them on a busy machine.
-    testTimeout: 20_000,
+    // default is too tight for them on a busy machine. Twice that again for the
+    // run with coverage, where more than sixty files boot the whole app at once
+    // and a test that waits for background work (the title queue) was measured
+    // at 22s against its 20s with nothing wrong with it.
+    testTimeout: 40_000,
     hookTimeout: 30_000,
     // Only when run with --coverage (`pnpm test:e2e:cov`, CI). The floor sits
     // just under what the e2e suite measured on 2026-09-21 (86.2 statements,

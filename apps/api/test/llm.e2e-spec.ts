@@ -443,7 +443,8 @@ describe('Title normalization of long Roadmap titles (Roadmap GAP-39d — e2e)',
     prisma.task.findFirstOrThrow({ where: { projectId, externalId } });
 
   async function until(condition: () => Promise<boolean>) {
-    for (let attempt = 0; attempt < 200; attempt += 1) {
+    // 15 seconds, not 5: the queue is worked in the background and the suite runs on a loaded machine.
+    for (let attempt = 0; attempt < 600; attempt += 1) {
       if (await condition()) {
         return;
       }

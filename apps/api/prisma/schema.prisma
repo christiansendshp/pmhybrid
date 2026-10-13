@@ -648,6 +648,11 @@ model Project {
   // A task closed less than this many minutes after its first IN_PROGRESS in the ledger is
   // flagged as an instant close (Roadmap TASK-12).
   instantCloseMinutes    Int                    @default(5)
+  // Advisory limits on the work in progress (Roadmap TASK-15): tasks EN_DESARROLLO, tasks in QA, and tasks
+  // EN_DESARROLLO of one agent. Null is no limit. They warn on the board and never block a move.
+  wipLimitDevelopment    Int?
+  wipLimitQa             Int?
+  wipLimitAgent          Int?
   progressRollupStrategy ProgressRollupStrategy @default(EQUAL_WEIGHT_AVERAGE)
   nextTaskSeq            Int                    @default(1)
   status                 String                 @default("ACTIVE")

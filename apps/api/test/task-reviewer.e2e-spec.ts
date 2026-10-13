@@ -47,6 +47,15 @@ describe('Task reviewer (e2e, Roadmap SUBTASK-09.1)', () => {
   const auth = () => `Bearer ${ownerToken}`;
   const unique = (label: string) =>
     `${label}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  /** A person to name in a role, who never signs in: no password, so no hash (this spec runs beside the whole suite). */
+  const person = (displayName: string) =>
+    prisma.actor.create({
+      data: {
+        kind: 'HUMAN',
+        displayName,
+        email: `${unique('p')}@pmhybrid.local`,
+      },
+    });
 
   async function project() {
     const created = await request(server())
@@ -63,15 +72,7 @@ describe('Task reviewer (e2e, Roadmap SUBTASK-09.1)', () => {
   ) {
     const created =
       kind === 'person'
-        ? await request(server())
-            .post('/users')
-            .set('Authorization', auth())
-            .send({
-              displayName: unique('Reviewer'),
-              email: `${unique('reviewer')}@pmhybrid.local`,
-              password: 'password123',
-            })
-            .expect(201)
+        ? { body: await person(unique('Reviewer')) }
         : await request(server())
             .post('/agents')
             .set('Authorization', auth())
@@ -246,15 +247,7 @@ describe('Task reviewer (e2e, Roadmap SUBTASK-09.1)', () => {
   it('refuses a reviewer who is not an active member of the project, or who is inactive', async () => {
     const projectId = await project();
     const taskId = await developing(projectId);
-    const outsider = await request(server())
-      .post('/users')
-      .set('Authorization', auth())
-      .send({
-        displayName: unique('Outsider'),
-        email: `${unique('outsider')}@pmhybrid.local`,
-        password: 'password123',
-      })
-      .expect(201);
+    const outsider = { body: await person(unique('Outsider')) };
     const gone = await member(projectId);
     await prisma.actor.update({
       where: { id: gone.id },
@@ -300,6 +293,7 @@ describe('Task reviewer (e2e, Roadmap SUBTASK-09.1)', () => {
 
 describe('Reviewers of a project and the agent on a card (e2e, Roadmap SUBTASK-09.3, TASK-13)', () => {
   let app: INestApplication<App>;
+  let prisma: PrismaService;
   let ownerToken: string;
 
   beforeEach(async () => {
@@ -311,6 +305,7 @@ describe('Reviewers of a project and the agent on a card (e2e, Roadmap SUBTASK-0
       new ValidationPipe({ whitelist: true, transform: true }),
     );
     await app.init();
+    prisma = moduleFixture.get(PrismaService);
     const login = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: DEMO_EMAIL, password: DEMO_PASSWORD })
@@ -338,15 +333,15 @@ describe('Reviewers of a project and the agent on a card (e2e, Roadmap SUBTASK-0
       .expect(201);
     const projectId = created.body.id as string;
     const member = async (roleName: string | null) => {
-      const user = await request(server())
-        .post('/users')
-        .set('Authorization', auth())
-        .send({
-          displayName: unique(roleName ?? 'No role'),
-          email: `${unique('member')}@pmhybrid.local`,
-          password: 'password123',
-        })
-        .expect(201);
+      const user = {
+        body: await prisma.actor.create({
+          data: {
+            kind: 'HUMAN',
+            displayName: unique(roleName ?? 'No role'),
+            email: `${unique('member')}@pmhybrid.local`,
+          },
+        }),
+      };
       await request(server())
         .post(`/projects/${projectId}/members`)
         .set('Authorization', auth())

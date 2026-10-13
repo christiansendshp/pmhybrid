@@ -1,0 +1,90 @@
+@if (result().withoutAgent > 0) {
+  <p class="meta-text agent-lanes__note">
+    {{ result().withoutAgent }}
+    {{ result().withoutAgent === 1 ? 'tarea' : 'tareas' }} sin agente (de una persona o sin
+    asignar): no están en ningún carril.
+  </p>
+}
+
+@if (result().lanes.length === 0) {
+  <p class="agent-lanes__empty" role="status">Ningún agente es miembro de este proyecto.</p>
+}
+
+@for (lane of result().lanes; track trackLane(lane)) {
+  <section class="agent-lane" [attr.aria-labelledby]="'agent-' + lane.actorId">
+    <h3 class="agent-lane__title" [id]="'agent-' + lane.actorId">
+      {{ lane.name }}
+      <span class="kind-badge" data-kind="AI_AGENT">Agente IA</span>
+      @if (lane.model) {
+        <span class="meta-text">{{ lane.model }}</span>
+      }
+      <span class="meta-text">{{ lane.total }} {{ lane.total === 1 ? 'tarea' : 'tareas' }}</span>
+      @if (lane.wip; as wip) {
+        <span class="wip" [class.wip--over]="wip.exceeded">
+          en desarrollo {{ wipRatio(wip) }}
+          @if (wip.exceeded) {
+            <span class="wip__mark" aria-hidden="true">!</span> excedido
+          }
+        </span>
+      }
+    </h3>
+    @if (lane.total === 0) {
+      <p class="meta-text agent-lane__idle">Sin tareas: este agente está libre.</p>
+    } @else {
+      <div class="agent-lane__columns">
+        @for (status of statuses; track status) {
+          <div class="agent-lane__column">
+            <h4 class="agent-lane__stage">
+              {{ statusLabel(status) }}
+              <span class="meta-text">{{ lane.columns[status].length }}</span>
+            </h4>
+            <ul class="agent-lane__list">
+              @for (card of lane.columns[status]; track card.id) {
+                <li>
+                  <a
+                    class="agent-lane__task"
+                    [routerLink]="['../tasks', card.id]"
+                    [attr.title]="card.title | shortTitle: 'hint'"
+                    ><span class="agent-lane__id">{{ card.externalId ?? 'Sin ID' }}</span>
+                    {{ card.title | shortTitle }}</a
+                  >
+                  @if (status !== 'TERMINADA') {
+                    <span class="meta-text"> · {{ waited(card) }}</span>
+                  }
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+    }
+  </section>
+}
+
+@if (unregisteredFailed()) {
+  <p class="meta-text" role="status">
+    No se pudo leer la lista de nombres sin registrar; los carriles de arriba están completos.
+  </p>
+}
+
+@if (unregistered().length > 0) {
+  <section class="agent-lane agent-lane--unregistered" aria-labelledby="unregistered-heading">
+    <h3 class="agent-lane__title" id="unregistered-heading">
+      Sin registrar
+      <span class="meta-text">{{ unregistered().length }}</span>
+    </h3>
+    <p class="meta-text">
+      Nombres que el registro de agentes usa y que ningún agente registrado responde: su trabajo no
+      se atribuye a nadie. Se registran en la página Equipo, con el nombre o el alias que escribe
+      cada agente.
+    </p>
+    <ul class="agent-lane__list">
+      @for (item of unregistered(); track item.name) {
+        <li>
+          <code>{{ item.name }}</code> — {{ item.events }}
+          {{ item.events === 1 ? 'entrada' : 'entradas' }}; {{ reasonText(item.reason) }}
+        </li>
+      }
+    </ul>
+  </section>
+}

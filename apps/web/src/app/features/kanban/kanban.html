@@ -1,5 +1,15 @@
 <div class="board-header">
-  <h2 class="board-header__title">{{ view() === 'list' ? 'Lista' : 'Kanban' }}</h2>
+  <h2 class="board-header__title">
+    {{
+      view() === 'list'
+        ? 'Lista'
+        : view() === 'review'
+          ? 'En revisión'
+          : view() === 'agents'
+            ? 'Por agente'
+            : 'Kanban'
+    }}
+  </h2>
   @if (!showCreateForm() && canWrite()) {
     <button mat-flat-button type="button" (click)="openCreateForm()">Nueva tarea</button>
   }
@@ -204,7 +214,26 @@
   <p role="alert">{{ boardError() }}</p>
 }
 
-@if (view() === 'list') {
+@if (wipNotice(); as notice) {
+  <p role="status" class="wip-notice">{{ notice }}</p>
+}
+
+@if (view() === 'review') {
+  @if (!loading()) {
+    <app-review-queue [projectId]="projectId" [cards]="visibleCards()" (changed)="onReviewed()" />
+  }
+} @else if (view() === 'agents') {
+  @if (!loading()) {
+    <app-agent-lanes
+      [cards]="visibleCards()"
+      [allCards]="cards()"
+      [members]="members()"
+      [agentLimit]="wipAgentLimit()"
+      [unregistered]="unregistered()"
+      [unregisteredFailed]="unregisteredFailed()"
+    />
+  }
+} @else if (view() === 'list') {
   @if (!loading()) {
     <app-task-table
       [projectId]="projectId"
@@ -231,6 +260,14 @@
         @if (groupBy() !== 'none') {
           <h3 class="lane__title">
             {{ lane.label }} <span class="meta-text">{{ lane.count }}</span>
+            @if (agentWip(lane.key); as wip) {
+              <span class="wip" [class.wip--over]="wip.exceeded">
+                en desarrollo {{ wipRatio(wip) }}
+                @if (wip.exceeded) {
+                  <span class="wip__mark" aria-hidden="true">!</span> excedido
+                }
+              </span>
+            }
           </h3>
         }
         <div class="lane__columns">
@@ -238,7 +275,16 @@
             <div class="column">
               <h4 class="column__title">
                 <span>{{ statusLabel(status) }}</span>
-                <span class="meta-text">{{ lane.columns[status].length }}</span>
+                @if (columnWip(status); as wip) {
+                  <span class="wip" [class.wip--over]="wip.exceeded">
+                    {{ wipRatio(wip) }}
+                    @if (wip.exceeded) {
+                      <span class="wip__mark" aria-hidden="true">!</span> excedido
+                    }
+                  </span>
+                } @else {
+                  <span class="meta-text">{{ lane.columns[status].length }}</span>
+                }
               </h4>
               <div
                 class="column__cards"

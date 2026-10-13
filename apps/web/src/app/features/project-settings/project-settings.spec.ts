@@ -16,6 +16,9 @@ const PROJECT: Project = {
   docsPath: './site-docs',
   syncIntervalMinutes: 5,
   instantCloseMinutes: 5,
+  wipLimitDevelopment: null,
+  wipLimitQa: null,
+  wipLimitAgent: null,
   progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
   status: 'ACTIVE',
   createdAt: '2026-09-01T09:00:00.000Z',
@@ -96,6 +99,9 @@ describe('ProjectSettings', () => {
       status: 'PAUSED',
       syncIntervalMinutes: 5,
       instantCloseMinutes: 5,
+      wipLimitDevelopment: null,
+      wipLimitQa: null,
+      wipLimitAgent: null,
       docsPath: './site-docs',
       repoUrl: 'https://example.test/site',
       progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
@@ -104,6 +110,73 @@ describe('ProjectSettings', () => {
     expect(context.project()?.name).toBe('Site 2.0');
     expect(component.form.pristine).toBe(true);
     expect(text()).toContain('Configuración guardada.');
+  });
+
+  describe('the advisory limits on the work in progress (Roadmap TASK-15)', () => {
+    it('starts with no limit, says they never block a move, and saves the ones set', async () => {
+      update.mockResolvedValue({ ...PROJECT, wipLimitDevelopment: 3, wipLimitQa: 2 });
+      const { component, text } = render(['project.update']);
+
+      expect(component.form.getRawValue()).toMatchObject({
+        wipLimitDevelopment: null,
+        wipLimitQa: null,
+        wipLimitAgent: null,
+      });
+      expect(text()).toContain('Límites de trabajo en curso');
+      expect(text()).toContain('nunca impiden mover una tarea');
+
+      component.form.patchValue({ wipLimitDevelopment: 3, wipLimitQa: 2 });
+      component.form.markAsDirty();
+      await component.save();
+
+      expect(update).toHaveBeenCalledWith(
+        'p1',
+        expect.objectContaining({ wipLimitDevelopment: 3, wipLimitQa: 2, wipLimitAgent: null }),
+      );
+    });
+
+    it('clears a limit that was set when its field is emptied', async () => {
+      update.mockResolvedValue(PROJECT);
+      const { component } = render(['project.update']);
+      component.form.patchValue({ wipLimitAgent: 4 });
+      component.form.patchValue({ wipLimitAgent: null });
+      component.form.markAsDirty();
+
+      await component.save();
+
+      expect(update).toHaveBeenCalledWith('p1', expect.objectContaining({ wipLimitAgent: null }));
+    });
+
+    it('refuses a limit that is not a whole number from 1 to 999', async () => {
+      const { component } = render(['project.update']);
+
+      for (const value of [0, 1000, 2.5, -3]) {
+        component.form.patchValue({ wipLimitDevelopment: value });
+        expect(component.form.controls.wipLimitDevelopment.invalid, String(value)).toBe(true);
+      }
+      for (const value of [1, 999, null]) {
+        component.form.patchValue({ wipLimitDevelopment: value });
+        expect(component.form.controls.wipLimitDevelopment.invalid, String(value)).toBe(false);
+      }
+      component.form.patchValue({ wipLimitDevelopment: 0 });
+      component.form.markAsDirty();
+      await component.save();
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('shows the limits the project has', () => {
+      const context = TestBed.inject(ProjectContext);
+      context.project.set({ ...PROJECT, wipLimitDevelopment: 5, wipLimitQa: 2, wipLimitAgent: 1 });
+      context.permissions.set(['project.update']);
+      const fixture = TestBed.createComponent(ProjectSettings);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.form.getRawValue()).toMatchObject({
+        wipLimitDevelopment: 5,
+        wipLimitQa: 2,
+        wipLimitAgent: 1,
+      });
+    });
   });
 
   it('offers project members (human and AI agent) as lead candidates and saves the choice (Roadmap GAP-32)', async () => {

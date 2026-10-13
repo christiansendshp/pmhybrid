@@ -8,7 +8,8 @@ holds and how each filter works. It grows with the views next to the Kanban (`FE
 
 A switcher at the top of the page, a navigation landmark called "Vistas del tablero", offers the views
 that exist and only those: **Tablero** (`/projects/:id/kanban`, the board, whose address does not
-change) and **Lista** (`/projects/:id/list`, below). Every link carries the filters of the view being
+change), **Lista** (`/projects/:id/list`), **En revisión** (`/projects/:id/review`) and **Por agente**
+(`/projects/:id/agents`), each described below. Every link carries the filters of the view being
 left in its address, so the next view shows the same tasks; what only one view has (the board's grouping
 and column order, the list's order and page) is not carried. A view that cannot use a filter that is on
 says so in words under the switcher (none does today). The current view is marked as the current page,
@@ -79,6 +80,45 @@ filters.
   disagreement. A task whose ledger says nothing about its stage never disagrees.
 - **Instant closes** (`instant`): the task was closed within the project's threshold of its first
   start in the ledger (Roadmap TASK-12).
+
+## The review queue (Roadmap TASK-19)
+
+`/projects/:projectId/review` shows only the tasks in QA, as a queue per reviewer (Roadmap SUBTASK-09.1):
+the queue of whoever looks at it first and named "Tu cola", then the tasks nobody was asked to review ("Sin
+revisor"), then the other reviewers by name; in each one the task that has been in QA longest comes first.
+Each task shows who developed it, how long it has waited in QA and the start of the last thing the ledger said
+about it. **Aprobar** and **Rechazar** are the transitions the board already has (QA to TERMINADA, QA back to
+EN_DESARROLLO) with the permissions they already need, `task.qa.approve` and `task.qa.reject`: a person who does
+not hold one does not see its button, and the API refuses regardless. Rejecting asks for the reason (it is
+required), keeps it as a comment on the task ("Rechazada en revisión: …") before the task goes back, and does
+not send the task back if the comment could not be kept. When nothing waits it says so in words. It uses the
+same filters and address as the other views.
+
+## The view by agent (Roadmap TASK-20)
+
+`/projects/:projectId/agents` has a lane for every agent that is an active member of the project, **the idle
+ones too**, with its tasks by stage (the one that has waited longest first in each), how many it has and, when
+the project sets a limit per agent, its work in development against it ("en desarrollo 2/1 ! excedido"; read
+against every task of the project, not what the filters leave). The tasks no agent holds, because a person
+does or nobody does, are in no lane and are counted in words above them. Below the lanes, a lane marked as
+"Sin registrar" lists the names the ledger carries that no registered agent answers to (`GET
+/projects/:id/unresolved-names`, Roadmap TASK-02), with how many entries carry each and why: no agent
+answers to it, or two do. If that list cannot be read, the view says so and keeps the lanes. It reads what
+the board and the workload read, and nothing more than that one list.
+
+## Advisory limits on the work in progress (Roadmap TASK-15)
+
+A project may set three limits in its settings (`project.update`): tasks in development, tasks in QA and
+tasks in development **per agent**, each a whole number from 1 to 999, or empty for none (every project
+starts with none). They warn and never block: a move into a full column goes through.
+
+On the board without swimlanes a column with a limit reads "EN DESARROLLO 4/3 ! excedido" when it is
+past the limit, and "EN DESARROLLO 3/3" when it is full without being past it; the counter is the whole
+project's count in that status, not what the filters leave. Grouped by assignee, the lane of an agent
+reads "en desarrollo 4/3 ! excedido" against the per-agent limit (the tasks of that agent in
+development; people have no limit). The excess is a word and a mark, never colour alone. After a move
+that leaves a column past its limit the board says so in a status line ("El límite avisa, no impide
+mover tareas"). A project with no limit shows none of this.
 
 ## The card
 

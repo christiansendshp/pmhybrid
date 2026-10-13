@@ -590,3 +590,58 @@ segments live in `docs/history/`.
 - Summary: The tasks as a table at /projects/:id/list: ID, short title, state with its notes, agent, reviewer, priority, time in the stage, due and updated, with the board's filters; GET /projects/:id/task-table filters, orders over everything the filters keep and cuts pages on the server (the same order on every page, nulls last, IDs in natural order), a page of 50 is all a project of 300 tasks sends, headers are buttons with aria-sort and the page and the order are in the address
 - Files: apps/api/src/modules/tasks/task-table.service.ts, apps/api/src/modules/tasks/task-table.util.ts, apps/api/src/modules/tasks/task-table.controller.ts, apps/api/src/modules/tasks/dto/list-task-table-query.dto.ts, apps/api/test/task-table.e2e-spec.ts, apps/web/src/app/features/task-table/, apps/web/src/app/features/kanban/, docs/board-views.md, docs/api-reference.md
 - Verify: api unit 718 and lint ok, api e2e 450 with the coverage floor met, nest build ok, web unit 416, eslint and build ok, axe suite 71 passed (the list page is in the axe, mobile-layout and target-size suites; the card title and the sort header were under 24px and are fixed)
+
+## [2026-10-13T19:25:14Z] | claude | TASK-15 | IN_PROGRESS
+
+- Summary: Advisory WIP limits: per column and per agent, stored in the project settings, shown on the board, never blocking a move
+- Verify: pending
+
+## [2026-10-13T19:25:15Z] | claude | SUBTASK-15.1 | IN_PROGRESS
+
+- Summary: Store the limits in the project settings
+- Verify: pending
+
+## [2026-10-13T19:25:17Z] | claude | SUBTASK-15.2 | IN_PROGRESS
+
+- Summary: Show the counter and the excess
+- Verify: pending
+
+## [2026-10-13T20:39:28Z] | claude | TASK-19 | IN_PROGRESS
+
+- Summary: Review queue view: the tasks in QA per reviewer with approve and reject
+- Verify: pending
+
+## [2026-10-13T20:39:29Z] | claude | TASK-20 | IN_PROGRESS
+
+- Summary: By-agent view: a lane per agent with its WIP, and a lane for the names no agent answers to
+- Verify: pending
+
+## [2026-10-13T20:39:31Z] | claude | SUBTASK-15.1 | DONE
+
+- Summary: A project stores advisory limits on the work in development, in QA and per agent in development (Project.wipLimitDevelopment, wipLimitQa, wipLimitAgent), edited in the project settings with project.update, each a whole number from 1 to 999 or empty to clear it, audited as any change of the project
+- Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261014000000_add_project_wip_limits/, apps/api/src/modules/projects/dto/update-project.dto.ts, apps/api/test/project-wip-limits.e2e-spec.ts, apps/web/src/app/features/project-settings/
+- Verify: api unit 718 and lint ok, api e2e 462 with the coverage floor met, nest build ok, web unit 473, eslint and build ok, axe suite 79 passed with the limits of the project on (the new views are in the axe, mobile-layout and target-size suites) (project-wip-limits 12 e2e: set, keep, clear, the range, the audit, who may)
+
+## [2026-10-13T20:39:31Z] | claude | SUBTASK-15.2 | DONE
+
+- Summary: The board shows how full a column is against its limit (EN DESARROLLO 4/3 ! excedido) over the whole project, and an agent's lane the same against the limit per agent, with a word and a mark and not colour alone; a move into a full column goes through and the board says the column is past its limit
+- Files: apps/web/src/app/core/wip.ts, apps/web/src/app/features/kanban/, apps/web/src/styles.scss, docs/board-views.md
+- Verify: api unit 718 and lint ok, api e2e 462 with the coverage floor met, nest build ok, web unit 473, eslint and build ok, axe suite 79 passed with the limits of the project on (the new views are in the axe, mobile-layout and target-size suites)
+
+## [2026-10-13T20:39:32Z] | claude | TASK-15 | DONE
+
+- Summary: Advisory work-in-progress limits per column and per agent: set in the project settings, shown on the board and on the agent's lane in words and with a mark, never blocking a move; a project that sets none shows nothing
+- Files: apps/api/src/modules/projects/dto/update-project.dto.ts, apps/web/src/app/core/wip.ts, apps/web/src/app/features/kanban/, apps/web/src/app/features/project-settings/, docs/board-views.md, docs/domain-model.md
+- Verify: api unit 718 and lint ok, api e2e 462 with the coverage floor met, nest build ok, web unit 473, eslint and build ok, axe suite 79 passed with the limits of the project on (the new views are in the axe, mobile-layout and target-size suites)
+
+## [2026-10-13T20:39:33Z] | claude | TASK-19 | DONE
+
+- Summary: The tasks in QA as a queue per reviewer at /projects/:id/review: the viewer's own queue first and named, then the tasks nobody was asked about, the one that has waited longest first, with the developer, the time waited and the last ledger line; Aprobar and Rechazar are the transitions the board already has with the permissions they need (absent without them), and a rejection asks for its reason and keeps it as a comment before the task goes back
+- Files: apps/web/src/app/core/review-queue.ts, apps/web/src/app/features/review-queue/, apps/web/src/app/features/kanban/, apps/web/src/app/core/tasks.service.ts, docs/board-views.md
+- Verify: api unit 718 and lint ok, api e2e 462 with the coverage floor met, nest build ok, web unit 473, eslint and build ok, axe suite 79 passed with the limits of the project on (the new views are in the axe, mobile-layout and target-size suites)
+
+## [2026-10-13T20:39:34Z] | claude | TASK-20 | DONE
+
+- Summary: The view by agent at /projects/:id/agents: a lane for every agent of the project, the idle ones too, with its tasks by stage and its work in development against the limit per agent, the tasks no agent holds counted, and a lane marked as unregistered for the names the ledger carries that no agent answers to, with how often and why (the one list it adds to what the board and the workload read)
+- Files: apps/web/src/app/core/agent-lanes.ts, apps/web/src/app/features/agent-lanes/, apps/web/src/app/features/kanban/, apps/web/src/app/core/synchronization.service.ts, docs/board-views.md
+- Verify: api unit 718 and lint ok, api e2e 462 with the coverage floor met, nest build ok, web unit 473, eslint and build ok, axe suite 79 passed with the limits of the project on (the new views are in the axe, mobile-layout and target-size suites)

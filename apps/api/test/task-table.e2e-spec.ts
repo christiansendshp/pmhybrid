@@ -121,15 +121,17 @@ describe('Task table (e2e, Roadmap TASK-18)', () => {
       .set('Authorization', auth())
       .expect(201);
 
-    const person = await request(server())
-      .post('/users')
-      .set('Authorization', auth())
-      .send({
-        displayName: 'Zoe Person',
-        email: `${unique('zoe')}@pmhybrid.local`,
-        password: 'password123',
-      })
-      .expect(201);
+    // A person to assign to needs no password, so no (slow, CPU-hungry) hash: this runs for each of 28 tests,
+    // beside every other spec of the suite.
+    const person = {
+      body: await prisma.actor.create({
+        data: {
+          kind: 'HUMAN',
+          displayName: 'Zoe Person',
+          email: `${unique('zoe')}@pmhybrid.local`,
+        },
+      }),
+    };
     const agent = await request(server())
       .post('/agents')
       .set('Authorization', auth())
