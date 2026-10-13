@@ -98,6 +98,15 @@
   <p>
     Estado: {{ statusLabel(t.status) }} — Progreso: {{ t.computedProgress | number: '1.0-0' }} %
   </p>
+  @if (t.ledgerStage && ledgerDiverges(t.ledgerStage, t.status)) {
+    <p class="ledger-note">
+      <strong class="ledger-note__chip">{{ divergenceText(t.ledgerStage, t.status) }}</strong>
+      La última entrada del registro de los agentes y el tablero no coinciden: el registro puede ir
+      por delante de la sincronización, alguien pudo mover la tarea aquí sin que los documentos lo
+      digan, o el registro la cerró y la fila sigue abierta. Es solo un aviso; no cambia nada de la
+      tarea.
+    </p>
+  }
   @if (t.instantClose) {
     <p class="instant-close">
       <strong class="instant-close__chip">Cierre inmediato</strong>

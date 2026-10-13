@@ -4,6 +4,7 @@ import {
   classifyLedgerWord,
   derivedStage,
   latestEntryByTask,
+  ledgerStageOf,
   reviewResultOf,
   stageOfEntry,
 } from './ledger-status.util.js';
@@ -236,6 +237,35 @@ describe('derivedStage (Roadmap TASK-07)', () => {
         word,
       ).toBeNull();
       expect(derivedStage('TODO', { statusWord: word }), word).toBeNull();
+    }
+  });
+});
+
+describe('ledgerStageOf (Roadmap TASK-14)', () => {
+  it('is the stage of the word, and TERMINADA for the exact closing word', () => {
+    expect(ledgerStageOf({ statusWord: 'REVIEW' })).toBe(TaskStatus.QA);
+    expect(ledgerStageOf({ statusWord: 'REVIEW', review: 'FAIL' })).toBe(
+      TaskStatus.EN_DESARROLLO,
+    );
+    expect(ledgerStageOf({ statusWord: 'IN_PROGRESS (impacto wireado)' })).toBe(
+      TaskStatus.EN_DESARROLLO,
+    );
+    expect(ledgerStageOf({ statusWord: 'ASSIGNED' })).toBe(TaskStatus.ASIGNADA);
+    expect(ledgerStageOf({ statusWord: 'DONE' })).toBe(TaskStatus.TERMINADA);
+    expect(ledgerStageOf({ statusWord: 'DONE (hallazgo, sin codigo)' })).toBe(
+      TaskStatus.TERMINADA,
+    );
+  });
+
+  it('says nothing for a partial close, a pause, a to-do or a word it does not know', () => {
+    for (const word of [
+      'DONE parcial',
+      'DONE (2 de 3 partes)',
+      'PAUSE',
+      'TODO',
+      'HALLAZGO',
+    ]) {
+      expect(ledgerStageOf({ statusWord: word }), word).toBeNull();
     }
   });
 });

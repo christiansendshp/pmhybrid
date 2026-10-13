@@ -34,6 +34,7 @@ function card(overrides: Partial<TaskCard> = {}): TaskCard {
     completedAt: null,
     statusChangedAt: '2026-10-01T10:00:00.000Z',
     instantClose: false,
+    ledgerStage: null,
     roadmapTable: 'BLOCKED',
     blockedReason: 'Waiting on credentials',
     createdAt: '2026-09-15T09:00:00.000Z',
@@ -141,6 +142,21 @@ describe('Kanban (brief §15)', () => {
 
     // Words, not only a colour, and not in the alert colour: it says how the work was recorded.
     expect(notes).toEqual([['Cierre inmediato'], []]);
+  });
+
+  it('says both stages on a card whose status and ledger disagree, and nothing when they agree or the ledger is silent (Roadmap TASK-14)', async () => {
+    const { harness } = await render([
+      card({ id: 't1', externalId: 'PMH-1', status: 'EN_DESARROLLO', ledgerStage: 'QA' }),
+      // A start in the ledger is development or QA alike.
+      card({ id: 't2', externalId: 'PMH-2', status: 'QA', ledgerStage: 'EN_DESARROLLO' }),
+      card({ id: 't3', externalId: 'PMH-3', status: 'QA', ledgerStage: 'QA' }),
+      card({ id: 't4', externalId: 'PMH-4', status: 'QA', ledgerStage: null }),
+    ]);
+    const notes = Array.from(harness.routeNativeElement!.querySelectorAll('.card')).map((element) =>
+      Array.from(element.querySelectorAll('.card__note')).map((note) => note.textContent?.trim()),
+    );
+
+    expect(notes).toEqual([['Registro: QA · PM Hub: EN DESARROLLO'], [], [], []]);
   });
 
   it('shows a long title shortened, with the whole title as a tooltip, and a short one as it is (Roadmap UX-04)', async () => {

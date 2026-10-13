@@ -33,11 +33,13 @@
   margin: 0;
 }
 
-.instant-close {
+.instant-close,
+.ledger-note {
   color: var(--mat-sys-on-surface-variant);
 }
 
-.instant-close__chip {
+.instant-close__chip,
+.ledger-note__chip {
   display: inline-block;
   margin-right: var(--space-2);
   padding: 0 var(--space-2);

@@ -460,7 +460,15 @@ A change made in PM Hub stands over an older entry: the entry must have been **r
 the task's last change of status (the time PM Hub ingested it, not the clock in its header),
 unless that change was made by this very run from the document, which protects nothing. So a
 person who sends a task back from QA is not overridden by the entry that put it there, and the
-next entry is followed. Until agents write `REVIEW` and `ASSIGNED` (the skill rejects both
+next entry is followed.
+
+The same step keeps on each task **the stage its latest entry gives it** (`Task.ledgerStage`:
+the stage of the word, `TERMINADA` for the exact closing word, null for a pause, a partial close or
+a word it does not know; Roadmap TASK-14). It is derived data, written only when it changes and
+without moving `updatedAt`, and it moves nothing: the card and the task page use it to say, in
+words, "Registro: QA · PM Hub: EN DESARROLLO" when the two differ. A start in the ledger
+(`IN_PROGRESS`) agrees with development and with QA alike; every other pair that differs is a
+disagreement. Until agents write `REVIEW` and `ASSIGNED` (the skill rejects both
 today, Roadmap DEPENDENCY-01) nothing changes on any board.
 
 ## Write-back (Postgres → Documents)

@@ -258,6 +258,11 @@
                       @if (card.instantClose) {
                         <li class="card__note">Cierre inmediato</li>
                       }
+                      @if (card.ledgerStage && ledgerDiverges(card.ledgerStage, card.status)) {
+                        <li class="card__note">
+                          {{ divergenceText(card.ledgerStage, card.status) }}
+                        </li>
+                      }
                       @if (card.roadmapTable === 'BLOCKED') {
                         <li class="card__alert" [attr.title]="card.blockedReason">
                           Bloqueada

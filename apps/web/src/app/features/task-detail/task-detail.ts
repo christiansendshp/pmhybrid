@@ -20,6 +20,7 @@ import { describeHttpError } from '../../core/http-error.js';
 import { newIdempotencyKey } from '../../core/idempotency-key.js';
 import { ProjectContext } from '../../core/project-context.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
+import { ledgerDivergenceText, ledgerDiverges } from '../../core/ledger-stage.js';
 import { LEGAL_NEXT_STATUSES, statusLabel } from '../../core/task-status-policy.js';
 import {
   Task,
@@ -67,6 +68,8 @@ export class TaskDetail implements OnInit {
   private readonly auditService = inject(AuditService);
   private readonly hierarchyService = inject(HierarchyService);
   private readonly projectContext = inject(ProjectContext, { optional: true });
+  readonly ledgerDiverges = ledgerDiverges;
+  readonly divergenceText = ledgerDivergenceText;
 
   private destroyed = false;
 

@@ -672,40 +672,6 @@ created_at: 2026-10-13T00:00:00Z
 updated_at: 2026-10-13T00:00:00Z
 ```
 
-### TASK-14 — A badge when the ledger and the board disagree
-
-```yaml
-id: TASK-14
-type: TASK
-title: A badge when the ledger and the board disagree
-status: READY
-priority: P2
-parent: FEATURE-12
-description: >
-  Say "Registro: EN QA · PM Hub: EN DESARROLLO" when the latest ledger stage differs from the task's status (the ledger is ahead of the sync, a UI move the documents lack, or a ledger DONE with the row still open).
-acceptance_criteria:
-  - id: AC-1
-    description: The server returns ledgerStage on the card payload; the card shows the badge only when it differs and says both words.
-    status: pending
-  - id: AC-2
-    description: A coarse equivalence (ledger IN_PROGRESS against EN_DESARROLLO or QA, as rowStatusDiffers treats it) is not a divergence.
-    status: pending
-definition_of_done:
-  - implementation_complete
-  - tests_green
-  - documentation_updated
-  - roadmap_updated
-depends_on:
-  - TASK-06
-technical_context:
-  frontend: apps/web/src/app/features/kanban
-  backend: apps/api/src/modules/tasks, apps/api/src/modules/roadmap/status-vocabulary.util.ts
-next_action: >
-  Start with a failing test for the first acceptance criterion; the proposal is in docs/agent-stage-and-kanban-plan.md, section 4 (4.3).
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-```
-
 ### TASK-15 — Advisory WIP limits
 
 ```yaml

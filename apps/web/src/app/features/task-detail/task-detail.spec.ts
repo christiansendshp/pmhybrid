@@ -36,6 +36,7 @@ function taskDetail(overrides: Partial<TaskDetailModel> = {}): TaskDetailModel {
     completedAt: null,
     statusChangedAt: '2026-10-01T10:00:00.000Z',
     instantClose: false,
+    ledgerStage: null,
     roadmapTable: 'ACTIVE',
     blockedReason: null,
     neededDecision: null,
@@ -227,6 +228,26 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     expect(note?.textContent).toContain('Cierre inmediato');
     expect(note?.textContent?.replace(/\s+/g, ' ')).toContain('menos de 15 minutos');
     expect(note?.textContent).toContain('no cambia nada de la tarea');
+  });
+
+  it('says both stages when the ledger and the board disagree about the task (Roadmap TASK-14)', async () => {
+    getById.mockResolvedValue(taskDetail({ status: 'EN_DESARROLLO', ledgerStage: 'QA' }));
+    listAudit.mockResolvedValue([]);
+
+    const { harness } = await render();
+    const note = harness.routeNativeElement!.querySelector('.ledger-note');
+
+    expect(note?.textContent).toContain('Registro: QA · PM Hub: EN DESARROLLO');
+    expect(note?.textContent).toContain('no cambia nada de la tarea');
+  });
+
+  it('says nothing when the ledger agrees with the board or says nothing of the stage (Roadmap TASK-14)', async () => {
+    getById.mockResolvedValue(taskDetail({ status: 'QA', ledgerStage: 'EN_DESARROLLO' }));
+    listAudit.mockResolvedValue([]);
+
+    const { harness } = await render();
+
+    expect(harness.routeNativeElement!.querySelector('.ledger-note')).toBeNull();
   });
 
   it('says nothing about an instant close for a task that was not closed that way (Roadmap TASK-12)', async () => {

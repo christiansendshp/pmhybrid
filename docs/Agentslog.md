@@ -513,3 +513,14 @@ segments live in `docs/history/`.
 - Summary: A task whose Roadmap row only says IN_PROGRESS or TODO takes the stage of the latest ledger entry for it: QA after a REVIEW, development again after a failed review or a start, ASIGNADA after an ASSIGNED; read only (nothing written to a document, no conflict), audited as a STATUS_CHANGE with origin SYNC and counted in summary.stagesDerived, never out of TERMINADA, and a change made in PM Hub after the entry stands
 - Files: apps/api/src/modules/synchronization/synchronization.service.ts, apps/api/src/modules/roadmap/ledger-status.util.ts, apps/api/src/modules/roadmap/status-vocabulary.util.ts, apps/api/test/ledger-stage-derivation.e2e-spec.ts, docs/synchronization.md
 - Verify: api unit 704 and lint ok, api e2e 410 with the coverage floor met, nest build ok, web unit 348 and eslint ok (ledger-status derivedStage and latestEntryByTask unit, e2e 7: every row and entry pair of the criteria, the YAML format and untouched documents, a newer entry followed and idempotent, a person's move kept, a review arriving with its row, no conflict while in QA, a finished task never moved); nothing changes on any board until agents write REVIEW and ASSIGNED (DEPENDENCY-01)
+
+## [2026-10-13T18:17:37Z] | claude | TASK-14 | IN_PROGRESS
+
+- Summary: A badge when the latest ledger stage and the task's status disagree: ledgerStage on the card payload, both words on the card
+- Verify: pending
+
+## [2026-10-13T18:26:51Z] | claude | TASK-14 | DONE
+
+- Summary: A card and the task page say, in words, when the latest ledger stage and the task's status disagree (Registro: QA · PM Hub: EN DESARROLLO): the sync keeps Task.ledgerStage (the stage of the latest entry, TERMINADA for the exact closing word, null when it says nothing) without moving updatedAt, the card payload carries it, and a start in the ledger agrees with development and with QA alike
+- Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261013220000_add_task_ledger_stage/, apps/api/src/modules/roadmap/ledger-status.util.ts, apps/api/src/modules/synchronization/synchronization.service.ts, apps/api/test/ledger-stage-derivation.e2e-spec.ts, apps/web/src/app/core/ledger-stage.ts, apps/web/src/app/features/kanban/, apps/web/src/app/features/task-detail/, docs/synchronization.md, docs/api-reference.md, docs/domain-model.md
+- Verify: api unit 706 and lint ok, api e2e 412 with the coverage floor met (2 new: the stage on card and task page, and rewritten without touching updatedAt), web unit 356 and eslint ok; the badge is not yet through the axe suite, which runs once at the end of wave 3

@@ -130,6 +130,20 @@ export function derivedStage(
   return null;
 }
 
+/**
+ * The stage the ledger's latest entry gives a task, to compare with the board (Roadmap TASK-14):
+ * the stage of its word, or TERMINADA for the exact closing word. A partial close, a pause and a
+ * word the skill does not know give nothing.
+ */
+export function ledgerStageOf(entry: {
+  statusWord: string;
+  review?: 'PASS' | 'FAIL';
+}): TaskStatus | null {
+  return classifyLedgerWord(entry.statusWord).canonicalStatus === 'DONE'
+    ? TaskStatus.TERMINADA
+    : stageOfEntry(entry);
+}
+
 export function stageOfEntry(entry: {
   statusWord: string;
   review?: 'PASS' | 'FAIL';

@@ -37,6 +37,7 @@ import {
 } from '../../core/hierarchy.service.js';
 import { describeHttpError } from '../../core/http-error.js';
 import { newIdempotencyKey } from '../../core/idempotency-key.js';
+import { ledgerDivergenceText, ledgerDiverges } from '../../core/ledger-stage.js';
 import { ProjectContext } from '../../core/project-context.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { Viewport } from '../../core/viewport.js';
@@ -107,6 +108,8 @@ export class Kanban implements OnInit {
   readonly unassigned = UNASSIGNED;
   readonly kindLabel = actorKindLabel;
   readonly isBlocked = isBlocked;
+  readonly ledgerDiverges = ledgerDiverges;
+  readonly divergenceText = ledgerDivergenceText;
 
   readonly cards = signal<TaskCard[]>([]);
   readonly members = signal<ProjectMember[]>([]);

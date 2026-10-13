@@ -421,3 +421,134 @@ describe('Stage derived from the ledger (e2e, Roadmap TASK-07)', () => {
     });
   });
 });
+
+/** What the ledger says about a task is kept on it, to show when the board disagrees (Roadmap TASK-14). */
+describe('Ledger stage of a task (e2e, Roadmap TASK-14)', () => {
+  let app: INestApplication<App>;
+  let prisma: PrismaService;
+  let ownerToken: string;
+
+  beforeEach(async () => {
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+    app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
+    await app.init();
+    prisma = moduleFixture.get(PrismaService);
+    const login = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: DEMO_EMAIL, password: DEMO_PASSWORD })
+      .expect(200);
+    ownerToken = login.body.accessToken;
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  const auth = () => `Bearer ${ownerToken}`;
+
+  async function syncedProject() {
+    const docsPath = createScratchDocsPath();
+    writeFileSync(
+      path.join(docsPath, 'Roadmap.md'),
+      roadmap({
+        'LS-1': 'IN_PROGRESS',
+        'LS-2': 'IN_PROGRESS',
+        'LS-3': 'IN_PROGRESS',
+        'LS-4': 'TODO',
+        'LS-5': 'TODO',
+      }),
+      'utf-8',
+    );
+    writeFileSync(
+      path.join(docsPath, 'Agentslog.md'),
+      ledger(
+        { task: 'LS-1', word: 'IN_PROGRESS' },
+        { task: 'LS-2', word: 'REVIEW' },
+        // The ledger closed it; the row still says it is open.
+        { task: 'LS-3', word: 'DONE' },
+        { task: 'LS-4', word: 'ASSIGNED' },
+        { task: 'LS-5', word: 'PAUSE', lines: ['- Pause: OTRO - x'] },
+      ),
+      'utf-8',
+    );
+    const created = await request(app.getHttpServer())
+      .post('/projects')
+      .set('Authorization', auth())
+      .send({
+        name: `Ledger stage E2E ${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+        docsPath,
+      })
+      .expect(201);
+    const projectId = created.body.id as string;
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth())
+      .expect(201);
+    return projectId;
+  }
+
+  const cards = async (projectId: string) =>
+    Object.fromEntries(
+      (
+        (
+          await request(app.getHttpServer())
+            .get(`/projects/${projectId}/tasks`)
+            .set('Authorization', auth())
+            .expect(200)
+        ).body as {
+          externalId: string;
+          status: string;
+          ledgerStage: string | null;
+        }[]
+      ).map((card) => [card.externalId, [card.status, card.ledgerStage]]),
+    );
+
+  it('puts the stage of the latest entry on the card, next to the status, and null when it says nothing', async () => {
+    const projectId = await syncedProject();
+
+    expect(await cards(projectId)).toEqual({
+      'LS-1': ['EN_DESARROLLO', 'EN_DESARROLLO'],
+      'LS-2': ['QA', 'QA'],
+      'LS-3': ['EN_DESARROLLO', 'TERMINADA'],
+      'LS-4': ['ASIGNADA', 'ASIGNADA'],
+      'LS-5': ['PENDIENTE', null],
+    });
+  });
+
+  it('is on the task page too, and follows the ledger on the next sync without touching updatedAt', async () => {
+    const projectId = await syncedProject();
+    const before = await prisma.task.findFirstOrThrow({
+      where: { projectId, externalId: 'LS-1' },
+    });
+    await prisma.task.updateMany({
+      where: { projectId },
+      data: { ledgerStage: null },
+    });
+    const cleared = await prisma.task.findFirstOrThrow({
+      where: { projectId, externalId: 'LS-1' },
+    });
+
+    await request(app.getHttpServer())
+      .post(`/projects/${projectId}/sync`)
+      .set('Authorization', auth())
+      .expect(201);
+
+    const after = await prisma.task.findFirstOrThrow({
+      where: { projectId, externalId: 'LS-1' },
+    });
+    expect(after.ledgerStage).toBe('EN_DESARROLLO');
+    // Derived data, written without moving the time the board sorts "recently updated" by.
+    expect(after.updatedAt.getTime()).toBe(cleared.updatedAt.getTime());
+    expect(before.ledgerStage).toBe('EN_DESARROLLO');
+    const detail = await request(app.getHttpServer())
+      .get(`/projects/${projectId}/tasks/${after.id}`)
+      .set('Authorization', auth())
+      .expect(200);
+    expect(detail.body.ledgerStage).toBe('EN_DESARROLLO');
+  });
+});

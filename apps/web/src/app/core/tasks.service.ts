@@ -48,6 +48,8 @@ export interface Task {
   statusChangedAt: string;
   /** Closed within minutes of its first IN_PROGRESS in the ledger: the board could not show it in development (Roadmap TASK-12). */
   instantClose: boolean;
+  /** The stage the ledger's latest entry gives the task, as of the last sync; null when it says nothing (Roadmap TASK-14). */
+  ledgerStage: TaskStatus | null;
   roadmapTable: 'ACTIVE' | 'NEAR_TERM' | 'BLOCKED' | null;
   createdAt: string;
   updatedAt: string;

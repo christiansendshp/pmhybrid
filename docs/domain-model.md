@@ -182,6 +182,7 @@ Task(
   startDate?, estimatedDate?, dueDate?,
   completedAt?,                          // when it became TERMINADA; null otherwise (GAP-36d)
   statusChangedAt,                       // when it entered its current status; its creation time if it has not moved (TASK-11)
+  ledgerStage?,                          // the stage the ledger's latest entry gives it, as of the last sync; derived, moves nothing (TASK-14)
   assigneeActorId?, assigneeLockedAt?,   // set when status becomes EN_DESARROLLO
   rawOwner?, ownerClaimedAt?,            // parsed "<agent>@<timestamp>" Owner cell
   acceptanceCriteria?,                   // required for app-created tasks (brief §9)

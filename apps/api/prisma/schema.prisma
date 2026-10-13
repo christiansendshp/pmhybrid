@@ -298,6 +298,10 @@ model Task {
   // changes the status (`statusStamp`), so the time in a state can be read without the
   // audit trail. It is the creation time for a task that has not moved.
   statusChangedAt DateTime   @default(now())
+  // The stage the ledger's latest entry for the task gives (Roadmap TASK-14), as of the last sync:
+  // null when the task has no entry or its latest says nothing of the stage. Only read, to show
+  // when the ledger and the board disagree; it never moves the task.
+  ledgerStage     TaskStatus?
   priority        String?
   progressPercent Int?
 

@@ -19,6 +19,7 @@ import type { ParsedAgentLogEntry } from '../roadmap/agentslog-parser.service.js
 import {
   derivedStage,
   latestEntryByTask,
+  ledgerStageOf,
 } from '../roadmap/ledger-status.util.js';
 import {
   rowStatusDiffers,
@@ -716,6 +717,7 @@ export class SynchronizationService {
       runStartedAt,
       summary,
     );
+    await this.recordLedgerStages(tx, projectId, latestByTask);
 
     // Phases, epics and where every task sits, once every task of the run
     // exists (Roadmap GAP-35d).
@@ -1537,6 +1539,41 @@ export class SynchronizationService {
         tx,
       );
       summary.stagesDerived += 1;
+    }
+  }
+
+  /**
+   * Keeps on each task the stage its latest ledger entry gives (Roadmap TASK-14), so the board can
+   * say when the ledger and the task disagree. Only the tasks whose value changed are written, so a
+   * run that finds nothing new writes nothing.
+   */
+  private async recordLedgerStages(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    latestByTask: ReadonlyMap<string, ParsedAgentLogEntry>,
+  ): Promise<void> {
+    if (latestByTask.size === 0) {
+      return;
+    }
+    const tasks = await tx.task.findMany({
+      where: {
+        projectId,
+        deletedAt: null,
+        externalId: { in: [...latestByTask.keys()] },
+      },
+      select: { id: true, externalId: true, ledgerStage: true },
+    });
+    const changed = new Map<TaskStatus | null, string[]>();
+    for (const task of tasks) {
+      const stage = ledgerStageOf(latestByTask.get(task.externalId!)!);
+      if (stage !== task.ledgerStage) {
+        changed.set(stage, [...(changed.get(stage) ?? []), task.id]);
+      }
+    }
+    // Raw, not `update`: this is derived data, and a write through Prisma would also move
+    // `updatedAt`, which the board sorts by, for every task at once the first time it runs.
+    for (const [stage, ids] of changed) {
+      await tx.$executeRaw`UPDATE "Task" SET "ledgerStage" = ${stage}::"TaskStatus" WHERE "id" IN (${Prisma.join(ids)})`;
     }
   }
 
