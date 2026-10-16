@@ -24,29 +24,19 @@ const SKILL = path
   .replace(/\\/g, '/');
 const HAS_SH = spawnSync('sh', ['-c', 'true']).status === 0;
 
-const ROADMAP = (id: string) => `# Roadmap
-
-## Plan
-
-### ${id} — Work
-
-\`\`\`yaml
-id: ${id}
-type: TASK
-title: Work
-status: READY
-description: >
-  Work to do.
-acceptance_criteria:
-  - id: AC-1
-    description: It works.
-    status: pending
-created_at: 2026-10-13T00:00:00Z
-updated_at: 2026-10-13T00:00:00Z
-\`\`\`
-
-## Cross-cutting
-`;
+/**
+ * The skill's own Roadmap template with one task ready to take in Active work, so the skill's check passes
+ * on what it leaves (Roadmap TASK-26: the skill is the tables-only line, with a Name on every row).
+ */
+const TEMPLATE_ROADMAP = readFileSync(
+  path.resolve(path.dirname(SKILL), '../templates/Roadmap.md'),
+  'utf-8',
+).replace(/\r\n/g, '\n');
+const ROADMAP = (id: string) =>
+  TEMPLATE_ROADMAP.replace(
+    '| — | — | — | — | — | — | — | — |',
+    `| ${id} | Work | Work to do. | It works. | TODO | — | — | — |`,
+  );
 
 const LEDGER = `# Agents log
 

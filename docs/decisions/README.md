@@ -28,3 +28,4 @@ and documents cite them by id (`ADR-002`).
 | [ADR-020](ADR-020-llm-normalization-of-long-roadmap-titles.md)           | 2026-10-05 | CONFIRMED | LLM normalization of long Roadmap titles                                                |
 | [ADR-021](ADR-021-docspath-picker-explorer-over-documents.md)            | 2026-10-08 | CONFIRMED | The docsPath picker is a folder explorer over the user's Documents                      |
 | [ADR-022](ADR-022-latest-skill-roadmaps-hold-the-skills-status-word.md)  | 2026-09-17 | CONFIRMED | A Roadmap of the latest skill holds the skill's status word (supersedes ADR-002 there)  |
+| [ADR-023](ADR-023-the-skills-tables-and-prettier-skips-them.md)          | 2026-10-16 | CONFIRMED | This repo's own documents follow the latest skill's tables, and prettier skips them     |

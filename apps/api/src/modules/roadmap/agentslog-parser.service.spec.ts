@@ -263,3 +263,49 @@ describe('AgentslogParserService: the lines a handoff and a review add (Roadmap 
     );
   });
 });
+
+describe('AgentslogParserService: the Name the latest skill writes after the status (Roadmap TASK-26)', () => {
+  const parse = (header: string) =>
+    new AgentslogParserService().parse(
+      [
+        '# Agents log',
+        '',
+        '## Entries',
+        '',
+        header,
+        '- Summary: s',
+        '- Verify: v',
+      ].join('\n'),
+    ).entries[0];
+
+  it('reads the status word without the Name, so a DONE | Name is still the terminal word', () => {
+    const done = parse(
+      '## [2026-10-16T10:00:00Z] | claude-sonnet-5-5 | TASK-26 | DONE | Adopt the latest skill',
+    );
+
+    expect(done).toMatchObject({
+      taskExternalId: 'TASK-26',
+      statusWord: 'DONE',
+    });
+  });
+
+  it('reads an empty Name, and an entry with no Name at all, the same way', () => {
+    expect(
+      parse(
+        '## [2026-10-16T10:00:00Z] | claude-sonnet-5-5 | TASK-26 | IN_PROGRESS | ',
+      ).statusWord,
+    ).toBe('IN_PROGRESS');
+    expect(
+      parse('## [2026-10-16T10:00:00Z] | claude-sonnet-5-5 | TASK-26 | PAUSE')
+        .statusWord,
+    ).toBe('PAUSE');
+  });
+
+  it('keeps a qualifier of the status word, as before', () => {
+    expect(
+      parse(
+        '## [2026-10-16T10:00:00Z] | claude | TASK-26 | DONE (partial) | A name',
+      ).statusWord,
+    ).toBe('DONE (partial)');
+  });
+});

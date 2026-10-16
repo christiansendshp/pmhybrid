@@ -96,8 +96,13 @@ export class AgentslogParserService {
         continue;
       }
 
-      const [, timestampFromLog, agentName, taskExternalId, statusWord] =
+      const [, timestampFromLog, agentName, taskExternalId, statusAndName] =
         headerMatch;
+      // The latest skill's commands write the task's Name after the status
+      // (`... | DONE | Name`): the status word is what comes before it, or
+      // a `DONE | Name` would not be the terminal word BR-003 looks for
+      // (Roadmap TASK-26).
+      const statusWord = statusAndName.split(' | ')[0].trim();
       const bullets: Record<string, string> = {};
       const entryLines = [line];
       let j = i + 1;

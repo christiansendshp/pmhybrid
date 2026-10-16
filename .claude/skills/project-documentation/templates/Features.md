@@ -15,6 +15,6 @@ Use one row per stable capability. Link long specifications or runbooks from
 = `log:TASK-ID`) and, once every task under an Epic is `DONE`, one row for
 the Epic itself.
 
-| ID  | Capability | Verification | Source or detail | Updated |
-| --- | ---------- | ------------ | ---------------- | ------- |
-| —   | —          | —            | —                | —       |
+| ID | Capability | Verification | Source or detail | Updated |
+|---|---|---|---|---|
+| — | — | — | — | — |

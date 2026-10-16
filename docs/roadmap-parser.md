@@ -48,8 +48,18 @@ The current project-documentation skill went back to Markdown tables only
   `roadmapTable` keeps only the shapes that change behaviour (blocked, near
   term, anything else); a `PLAN` or `GAPS` value would cost a migration and
   every consumer with no behavioural difference.
-- `Description` is the row's text when there is no `Outcome` column.
-  `Severity` is not imported (the task model has no field it maps to);
+- **The title of a row is its `Name`** where the table has one (Roadmap TASK-26,
+  GAP-43). The skill's version of 2026-10 gave every row a `Name` of at most
+  10 words, with the detail in a `Description`: the tables are then `ID | Name |
+Description | Acceptance check | Status | Owner | Depends on | Pause reason`
+  (Active work and Plan), `ID | Name | Acceptance check | Status | Depends on`
+  (Near term) and `ID | Name | Severity | Phase | Description | Status | Owner |
+Depends on | Pause reason` (Gaps). The title is `Outcome`, else `Name`, else
+  `Description` (the Gaps table of the version before it had no `Name`). A `Name` is
+  at most 10 words, so such a row is never queued for title normalization
+  (`docs/title-normalization.md`), and the `Description` is not read into the task:
+  it stays in the document, which is the truth for it.
+- `Severity` is not imported (the task model has no field it maps to);
   `Phase` places a Gaps row (see below).
 - `Status` is `TODO`, `IN_PROGRESS`, `PAUSE` or `DONE`. `PAUSE` is a valid
   state with no Kanban column: the task keeps the column it has and no
@@ -157,6 +167,14 @@ stay unmapped without a conflict.
 Never default an unrecognized token to `PENDIENTE` — that would silently
 overwrite a known-good local status, which brief §12 explicitly forbids
 ("no sobrescribir silenciosamente cambios externos").
+
+## The ledger's Name
+
+The same skill writes the task's Name after the status in a ledger entry:
+`## [timestamp] | agent | TASK-ID | DONE | Name`. The status word is what comes
+before the Name (`AgentslogParserService`), so a `DONE | Name` is the terminal
+word BR-003 looks for; the Name itself is not stored. An entry with no Name (every
+entry PM Hub writes, and every entry of an older skill) reads as before.
 
 ## Owner cell parsing
 

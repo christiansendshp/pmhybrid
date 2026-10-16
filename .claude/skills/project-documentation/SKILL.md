@@ -19,19 +19,42 @@ every agent turn, and let every agent take tasks without overlapping.
 
 ## Contract
 
-Keep these exact files:
+Every contract file is plain, structured Markdown — tables and bulleted
+lists, never YAML or JSON — so line-based tools (`sed`, `awk`, diff/patch)
+never misparse an indentation-sensitive block. Keep these exact files:
 
 - `AGENTS.md` (project root): repository rules, context-loading policy, and
   the task-taking protocol. The single rules source every runtime reads.
 - `docs/Agentslog.md`: append-only ledger and source of truth for task
-  ownership.
-- `docs/ProductDescription.md`: current functional truth.
-- `docs/Stack_Tecnologies.md`: current technical truth. The misspelling is
-  retained for backward compatibility.
-- `docs/Roadmap.md`: hierarchical plan and cross-cutting work (gaps, bugs,
-  decisions, blockers) as per-entry `yaml` blocks — see
-  `references/roadmap-schema.md` for the full schema.
+  ownership and stage (`IN_PROGRESS`, `PAUSE`, `REVIEW`, `ASSIGNED`, `DONE`).
+  The Roadmap `Status` values never change for review: the stage lives only
+  in the ledger.
+- `docs/ProductDescription.md`: current functional truth, `BR-xxx` business
+  rules, and an explicit `## Out of scope` list.
+- `docs/Stack_Tecnologies.md`: current technical truth, `ADR-xxx` decisions,
+  and critical commands. The misspelling is retained for backward
+  compatibility.
+- `docs/Roadmap.md`: `## Active work`/`## Near term`/`## Plan` (hierarchical
+  work: PHASE -> EPIC -> TASK -> SUBTASK, with optional THEME/FEATURE
+  heading levels) and `## Gaps, Bugs & Technical Debt` (unforeseen work,
+  IDs `Fxx-GAP-xx`/`Fxx-BUG-xx`/`Fxx-DEBT-xx`) as Markdown tables — see
+  `references/workflow.md`.
 - `docs/Features.md`: compact index of verified capabilities.
+
+`ProductDescription.md`, `Stack_Tecnologies.md`, and `Roadmap.md` each carry
+a dense `## Operational summary`/`## Active work` block closed by
+`<!-- context:end -->`; only that block is hot context. Every fact-table
+`Status` column in Product/Stack is epistemic — exactly `CONFIRMED`,
+`HYPOTHESIS`, or `UNKNOWN` — a different axis from the workflow `Status`
+(`TODO`/`IN_PROGRESS`/`PAUSE`/`DONE`) in Roadmap's work-item tables. Every
+Roadmap row's `Name` is a short, descriptive title of 10 words or fewer; the
+rest of the detail goes in `Description` (or the row's own free-text
+column). `claim`/`pause`/`done` refuse a row whose Name is missing or too
+long, and copy it verbatim into the matching Agentslog entry, so the log
+always names a task the same way the Roadmap does.
+
+**No agent writes a single line of code before checking the `BR-xxx` rules
+in `ProductDescription.md` and the constraints in `Stack_Tecnologies.md`.**
 
 Projects may contain any additional files. Put cold history under
 `docs/history/` and detailed feature material under `docs/features/`; do not
@@ -42,19 +65,22 @@ load those folders unless the current task needs them.
 1. Locate the project root. Prefer the runtime-native launcher:
    - POSIX: `sh <skill>/scripts/project_docs.sh init <project>`
    - PowerShell: `& <skill>/scripts/project_docs.ps1 init <project>`
-     `init` also runs `link`, which points other agent files (`CLAUDE.md`,
-     `.cursorrules`, etc.) at `AGENTS.md` without overwriting their content. If
-     the project still has `docs/Agents.md`, run `migrate` first.
+   `init` also runs `link`, which points other agent files (`CLAUDE.md`,
+   `.cursorrules`, etc.) at `AGENTS.md` without overwriting their content. If
+   the project still has `docs/Agents.md` or a Roadmap in the old per-entry
+   YAML format, run `migrate` first.
 2. Run `context` with the same launcher. Keep its output at or below 8 KiB.
-3. Read the complete `AGENTS.md`, the active Roadmap rows, every open task
+3. Read the complete `AGENTS.md`, the `## Active work` table, every open task
    (`IN_PROGRESS`/`PAUSE`), and the five latest log entries — all included by
    `context`.
-4. Read Product, Stack, `Roadmap.md`'s `## Plan`, or Features beyond their
-   short summaries only when the task changes or depends on functional,
-   technical, or verification details.
-5. Add any new user-requested task to the Roadmap with an ID before executing
-   it, then `claim <agent> <task-id> <summary>`. It fails if another agent
-   already owns the task.
+4. `claim <agent> <task-id> <summary>` the task before your first edit, so the
+   board can show the work while it happens (documenting afterwards is
+   allowed, it just cannot). It fails if another agent already owns the task.
+5. Develop, reading full Product, Stack, `Roadmap.md`'s `## Plan`, or
+   Features beyond their short summaries only when the task changes or
+   depends on functional, technical, or verification details.
+6. Validate with `check`; close with `done` (see below). Do not report
+   completion while `check` fails.
 
 Never block an unrelated small task merely to fill unknown documentation.
 Represent missing knowledge explicitly as `UNKNOWN` or `HYPOTHESIS`, including
@@ -75,10 +101,16 @@ for the detailed flow.
    - technical truth or decision -> `Stack_Tecnologies.md`
    - verified capability -> `Features.md` (via `done`)
 2. If you must stop before finishing, `pause <agent> <task-id> <category>
-<detail>` (category: `LIMITE`, `ESPERA_RESPUESTA`, `BLOQUEO`, or `OTRO`).
-   Otherwise `done <agent> <task-id> <summary> <files> <verify>` — it records
-   the capability and clears the task from the Roadmap. Use `append-log` only
-   for entries outside the claim lifecycle.
+   <detail>` (category: `LIMITE`, `ESPERA_RESPUESTA`, `BLOQUEO`, or `OTRO`).
+   If the project has a reviewer, `handoff <agent> <task-id> <summary>
+   <verify> [reviewer]` once the code is complete and your own verification
+   passed; the reviewer answers `review <agent> <task-id> PASS|FAIL <note>
+   [verify]` and after FAIL the developer retakes the task with `claim`.
+   Otherwise `done <agent> <task-id> <summary> <files> <verify>` — only after
+   verification, and only by the holder or the reviewer who passed it; it
+   records the capability and clears the task from the Roadmap.
+   `assign <agent> <task-id> <to-agent>` hands a task out without starting
+   it. Use `append-log` only for entries outside the lifecycle.
 3. Run `rotate`. It archives and verifies an oversized ledger before resetting
    the hot log, carrying forward any still-open task.
 4. Run `check`. Do not report completion while it fails.
@@ -87,6 +119,19 @@ Do not duplicate implementation detail already discoverable in code, tests,
 commits, or issues. Record stable facts, decisions, verification commands,
 task state, and pointers to authoritative artifacts.
 
+## Agent identity
+
+Use one stable id per agent, always the same text, as the `<agent>` argument
+of every command. A project can list them (with aliases) in the optional
+`## Agent identity` table of `AGENTS.md`; claim, pause, handoff, review,
+assign and done then normalise an alias to the id and warn about unknown
+names. Without the table nothing changes. See `references/workflow.md`.
+
+Optional environment variables: `PROJECT_DOCS_STALE_HOURS` (default 24),
+`PROJECT_DOCS_MIN_WORK_MINUTES` (default 5, 0 silences the instant-close
+warning), `PROJECT_DOCS_REQUIRE_INDEPENDENT_REVIEW=1` (reviewing your own
+handoff becomes an error) and `PROJECT_DOCS_FORCE=1` (anyone may close).
+
 ## Compatibility
 
 The canonical skill name is `project-documentation`. Accept the legacy
@@ -94,6 +139,5 @@ installation folder `skillProyectDocument` during transition. Do not create two
 active copies of the skill.
 
 Use `references/workflow.md` for edge cases and command details,
-`references/roadmap-schema.md` for the full Roadmap type taxonomy and field
-reference, `references/intake.md` when starting a new app or product, and
+`references/intake.md` when starting a new app or product, and
 `references/adapters.md` only when installing or updating a runtime adapter.

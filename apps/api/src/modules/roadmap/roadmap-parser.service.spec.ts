@@ -405,3 +405,54 @@ describe('RoadmapParserService phases and epics of the Plan headings (Roadmap GA
     ).toEqual([]);
   });
 });
+
+describe('RoadmapParserService: the Name and Description columns of the latest skill (Roadmap TASK-26, GAP-43)', () => {
+  const NAMED = [
+    '# Roadmap',
+    '',
+    '## Active work',
+    '',
+    '| ID | Name | Description | Acceptance check | Status | Owner | Depends on | Pause reason |',
+    '|---|---|---|---|---|---|---|---|',
+    '| T-1 | Short name | A long description that says much more than the name does | it works | TODO | — | — | — |',
+    '',
+    '## Near term',
+    '',
+    '| ID | Name | Acceptance check | Status | Depends on |',
+    '|---|---|---|---|---|',
+    '| T-2 | Later name | later | TODO | — |',
+    '',
+    '## Gaps, Bugs & Technical Debt',
+    '',
+    '| ID | Name | Severity | Phase | Description | Status | Owner | Depends on | Pause reason |',
+    '|---|---|---|---|---|---|---|---|---|',
+    '| GAP-1 | Gap name | P2 | — | The gap in full | TODO | — | — | — |',
+    '',
+  ].join('\n');
+
+  it('takes the Name as the title, never the Description', () => {
+    const { rows } = new RoadmapParserService().parseTolerant(NAMED);
+
+    expect(
+      Object.fromEntries(rows.map((row) => [row.externalId, row.outcome])),
+    ).toEqual({
+      'T-1': 'Short name',
+      'T-2': 'Later name',
+      'GAP-1': 'Gap name',
+    });
+  });
+
+  it('still takes the Description as the title of a Gaps table that has no Name', () => {
+    const { rows } = new RoadmapParserService().parseTolerant(
+      [
+        '## Gaps, Bugs & Technical Debt',
+        '',
+        '| ID | Severity | Phase | Description | Status | Owner | Depends on | Pause reason |',
+        '|---|---|---|---|---|---|---|---|',
+        '| GAP-1 | P2 | — | The gap in full | TODO | — | — | — |',
+      ].join('\n'),
+    );
+
+    expect(rows[0].outcome).toBe('The gap in full');
+  });
+});

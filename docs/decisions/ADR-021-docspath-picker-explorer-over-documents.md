@@ -6,7 +6,7 @@
 
 ## Decision
 
-Roadmap UX-05 (DEC-003: the docsPath folder picker as a normal explorer over the user's Documents): the API container mounts the user's Documents folder (`DOCUMENTS_DIR`) read-write at `/data/documents`, a third allowed root next to `/data/projects` and `/data/extra-docs`; the picker browses it freely as a folder explorer (quick access to each root, the way from the root as clickable steps, a path field, a filter) with every path shown as the user knows it through a `PROJECT_DOCS_HOST_MOUNTS` map of `container|host` pairs, and a path typed the Windows way is read through the same map; the allowed roots remain the only confinement of the browser and of every stored `docsPath`, and the stored value stays the container path
+Roadmap UX-05 (DEC-003: the docsPath folder picker as a normal explorer over the user's Documents): the API container mounts the user's Documents folder (`DOCUMENTS_DIR`) read-write at `/data/documents`, a third allowed root next to `/data/projects` and `/data/extra-docs`; the picker browses it freely as a folder explorer (quick access to each root, the way from the root as clickable steps, a path field, a filter) with every path shown as the user knows it through a `PROJECT_DOCS_HOST_MOUNTS` map of pairs, each a container path and a host path, and a path typed the Windows way is read through the same map; the allowed roots remain the only confinement of the browser and of every stored `docsPath`, and the stored value stays the container path
 
 ## Reason
 

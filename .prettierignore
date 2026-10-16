@@ -5,3 +5,14 @@ coverage
 .angular
 pnpm-lock.yaml
 docs/history
+
+# The project-documentation skill's contract files: its check matches table headers
+# as plain text and its commands write rows unpadded, so prettier's column padding
+# breaks the check and rewrites every row (Roadmap TASK-26).
+AGENTS.md
+docs/Agentslog.md
+docs/Features.md
+docs/ProductDescription.md
+docs/Roadmap.md
+docs/Stack_Tecnologies.md
+.claude/skills/project-documentation

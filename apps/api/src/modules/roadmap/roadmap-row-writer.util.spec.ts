@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { TaskStatus } from '@pmhybrid/shared-types';
 import {
+  nameOf,
   removeRoadmapRow,
   replaceRoadmapOwner,
   replaceRoadmapRowCells,
@@ -649,5 +651,112 @@ priority: LOW
     );
     expect('priority' in withNeither).toBe(false);
     expect('progress' in withNeither).toBe(false);
+  });
+});
+
+describe('a table with the Name and Description of the latest skill (Roadmap TASK-26)', () => {
+  const NAMED = `# Roadmap
+
+## Active work
+
+| ID | Name | Description | Acceptance check | Status | Owner | Depends on | Pause reason |
+|---|---|---|---|---|---|---|---|
+| PMH-1 | First task | The long text of the first task | check it | TODO | — | — | — |
+
+## Near term
+
+| ID | Name | Acceptance check | Status | Depends on |
+|---|---|---|---|---|
+| PMH-2 | Later | later check | TODO | — |
+`;
+  const fields = {
+    outcome: 'One two three four five six seven eight nine ten eleven twelve',
+    acceptanceCheck: 'it is done',
+    status: TaskStatus.EN_DESARROLLO,
+    owner: null,
+    dependsOn: '—',
+  };
+  const rowOf = (markdown: string, id: string) =>
+    markdown
+      .split('\n')
+      .find((line) => line.startsWith(`| ${id} |`))!
+      .split('|')
+      .map((cell) => cell.trim())
+      .slice(1, -1);
+
+  it('names a new row by the first 10 words of the title and keeps the whole title as its Description', () => {
+    const written = upsertLifecycleRoadmapRow(NAMED, 'PMH-9', fields);
+
+    expect(rowOf(written, 'PMH-9').slice(0, 3)).toEqual([
+      'PMH-9',
+      'One two three four five six seven eight nine ten',
+      'One two three four five six seven eight nine ten eleven twelve',
+    ]);
+  });
+
+  it('keeps a short title whole as the Name', () => {
+    const written = upsertLifecycleRoadmapRow(NAMED, 'PMH-9', {
+      ...fields,
+      outcome: 'Fix the login',
+    });
+
+    expect(rowOf(written, 'PMH-9').slice(1, 3)).toEqual([
+      'Fix the login',
+      'Fix the login',
+    ]);
+  });
+
+  it('updates an existing row in place: the Name follows the title, the Description is left as the document has it', () => {
+    const written = upsertLifecycleRoadmapRow(NAMED, 'PMH-1', {
+      ...fields,
+      outcome: 'Renamed task',
+    });
+
+    expect(rowOf(written, 'PMH-1').slice(0, 3)).toEqual([
+      'PMH-1',
+      'Renamed task',
+      'The long text of the first task',
+    ]);
+  });
+
+  it('writes a title edit into the Name only, in whichever table holds the row', () => {
+    const edited = replaceRoadmapRowCells(NAMED, 'PMH-2', {
+      Outcome: 'A different later name',
+    })!;
+
+    expect(edited.replaced).toEqual(['Outcome']);
+    expect(rowOf(edited.markdown, 'PMH-2')).toEqual([
+      'PMH-2',
+      'A different later name',
+      'later check',
+      'TODO',
+      '—',
+    ]);
+    const long = replaceRoadmapRowCells(NAMED, 'PMH-1', {
+      Outcome: fields.outcome,
+    })!;
+    expect(rowOf(long.markdown, 'PMH-1').slice(1, 3)).toEqual([
+      'One two three four five six seven eight nine ten',
+      'The long text of the first task',
+    ]);
+  });
+
+  it('writes a row the skill check accepts: a Name that is never empty and never over 10 words', () => {
+    for (const outcome of ['x', 'a b c d e f g h i j k l m n o p']) {
+      const name = rowOf(
+        upsertLifecycleRoadmapRow(NAMED, 'PMH-9', { ...fields, outcome }),
+        'PMH-9',
+      )[1];
+      expect(name.split(/\s+/).length).toBeLessThanOrEqual(10);
+      expect(name).not.toBe('');
+    }
+  });
+});
+
+describe('nameOf (Roadmap TASK-26)', () => {
+  it('is the title up to 10 words, and its first 10 beyond that', () => {
+    expect(nameOf('  Fix   the login ')).toBe('Fix the login');
+    expect(nameOf('1 2 3 4 5 6 7 8 9 10 11')).toBe('1 2 3 4 5 6 7 8 9 10');
+    expect(nameOf('   ')).toBe('—');
   });
 });

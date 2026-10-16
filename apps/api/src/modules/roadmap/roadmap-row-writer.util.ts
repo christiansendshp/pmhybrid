@@ -116,7 +116,10 @@ export function upsertLifecycleRoadmapRow(
   if (!activeRange) {
     throw new Error('Roadmap.md has no Active work table to write into');
   }
-  const newLine = renderRow(activeRange.headers, cellByHeader);
+  const newLine = renderRow(
+    activeRange.headers,
+    newRowCells(activeRange.headers, cellByHeader),
+  );
   lines.splice(activeRange.rowsEnd, 0, newLine);
   return lines.join(eol);
 }
@@ -161,7 +164,7 @@ export function replaceRoadmapRowCells(
         values[header] =
           skill && key === 'Status'
             ? workflowStatusFor(cellsByHeader[key])
-            : cellsByHeader[key];
+            : valueFor(header, key, cellsByHeader[key]);
       }
       if (skill && 'Status' in values) {
         keepPauseUnlessDone(range.headers, cells, values);
@@ -252,13 +255,37 @@ export function removeRoadmapRow(
   return null;
 }
 
-/** The header a key names in this table: `Outcome` is `Description` where the table has no Outcome column. */
+/** The words of the skill's `Name`: at most this many, the rest of a longer title stays in `Description`. */
+const NAME_WORD_LIMIT = 10;
+
+/**
+ * The skill's `Name` for a title: the title itself when it is 10 words or fewer, else its first 10
+ * (the skill's own `migrate` derives it the same way). The skill's `check` refuses a longer Name or an
+ * empty one, so a row PM Hub writes must always have one that passes (Roadmap TASK-26).
+ */
+export function nameOf(title: string): string {
+  const words = title.trim().split(/\s+/).filter(Boolean);
+  return words.length === 0 ? '—' : words.slice(0, NAME_WORD_LIMIT).join(' ');
+}
+
+/**
+ * The header a key names in this table. A row's title is `Outcome` in the old tables and `Name` in the
+ * latest skill's (its `Description` holds the rest); the skill's Gaps table of an earlier version
+ * called the text `Description`.
+ */
 function targetHeader(headers: string[], key: string): string {
-  return key === 'Outcome' &&
-    !headers.includes('Outcome') &&
-    headers.includes('Description')
-    ? 'Description'
-    : key;
+  if (key !== 'Outcome' || headers.includes('Outcome')) {
+    return key;
+  }
+  if (headers.includes('Name')) {
+    return 'Name';
+  }
+  return headers.includes('Description') ? 'Description' : key;
+}
+
+/** What goes in the cell a key names: the title is shortened to a Name where the table has one. */
+function valueFor(header: string, key: string, value: string): string {
+  return key === 'Outcome' && header === 'Name' ? nameOf(value) : value;
 }
 
 function withHeaderAliases(
@@ -266,11 +293,30 @@ function withHeaderAliases(
   cellByHeader: Record<string, string>,
 ): Record<string, string> {
   return Object.fromEntries(
-    Object.entries(cellByHeader).map(([key, value]) => [
-      targetHeader(headers, key),
-      value,
-    ]),
+    Object.entries(cellByHeader).map(([key, value]) => {
+      const header = targetHeader(headers, key);
+      return [header, valueFor(header, key, value)];
+    }),
   );
+}
+
+/**
+ * A new row for this table: where it has a Name, that is the title's first 10 words and the full title
+ * is its Description, as the skill's `migrate` makes them.
+ */
+function newRowCells(
+  headers: string[],
+  cellByHeader: Record<string, string>,
+): Record<string, string> {
+  if (headers.includes('Outcome') || !headers.includes('Name')) {
+    return cellByHeader;
+  }
+  const { Outcome: title = '', ...rest } = cellByHeader;
+  return {
+    ...rest,
+    Name: nameOf(title),
+    ...(headers.includes('Description') ? { Description: title || '—' } : {}),
+  };
 }
 
 /**

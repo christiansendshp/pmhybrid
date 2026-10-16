@@ -4,6 +4,10 @@
   `EPIC-02` (features `FEATURE-10` to `FEATURE-13`, tasks `TASK-01` to `TASK-23`, subtasks,
   `GAP-40` to `GAP-44`, `BUG-17`, `DOC-01`, `DEPENDENCY-01` and `DEPENDENCY-02`, and the
   decisions `DEC-005` and `DEC-006`).
+- **Update 2026-10-16:** DEC-005 was decided by the user (TASK-26): this repo adopted upstream
+  `9302b58`, whose skill ships `handoff`, `review`, `assign`, the `REVIEW` and `ASSIGNED` states
+  and the Agent identity table, so `DEPENDENCY-01` and `DEPENDENCY-02` are met and the YAML fork is
+  gone. What the plan proposes for the app (`TASK-08`, `GAP-40`) is no longer waiting for the skill.
 - **Requested:** 2026-10-13. Analyze the system and the skill together; propose that agents
   identify themselves better and that the Kanban shows when a task is in development and when
   it is in QA; add views next to the Kanban; improve tracking; compare with what is built and

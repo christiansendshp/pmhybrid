@@ -30,8 +30,8 @@ describe("this repository's docs/decisions", () => {
         .split('\n')
         .find((line) => line.startsWith(`| ${id} `))!;
       const record = readFileSync(new URL(`decisions/${name}`, docs), 'utf-8');
-      // The decision is the third cell of the row, verbatim.
-      const decision = row.split('|')[3].trim();
+      // The decision is the second cell of the row (after the ID), verbatim.
+      const decision = row.split('|')[2].trim();
       expect(record, name).toContain(decision.replace(/\s+/g, ' '));
       expect(record.split('\n')[0], name).toMatch(new RegExp(`^# ${id} — `));
     }

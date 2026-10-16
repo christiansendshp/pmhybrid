@@ -41,10 +41,10 @@ describe('Documents (roadmap parser, e2e)', () => {
       .expect(200);
 
     expect(res.body.kind).toBe('roadmap');
-    // docs/Roadmap.md converted to the new per-entry schema (Roadmap
-    // GAP-28) -- '## Cross-cutting' is a stable structural heading the
-    // schema always has, unlike specific entry content that comes and goes.
-    expect(res.body.content).toContain('## Cross-cutting');
+    // docs/Roadmap.md is the latest skill's tables (Roadmap TASK-26) --
+    // '## Gaps, Bugs & Technical Debt' is a stable structural heading the
+    // skill always has, unlike specific rows that come and go.
+    expect(res.body.content).toContain('## Gaps, Bugs & Technical Debt');
   });
 
   it('returns 404 for an unknown document kind', () => {

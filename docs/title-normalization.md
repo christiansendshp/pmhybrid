@@ -15,6 +15,12 @@ untouched and the LLM is never called for it.
   row whose title the document changes to a long one. A title a person types in PM
   Hub is theirs and is never normalized. Tasks read before the feature existed are
   queued the moment the configuration is ready, or by an explicit action (below).
+- **A document that already has a short name needs none.** In the tables of the
+  latest skill a row's title is its `Name`, which the skill's own check keeps at 10
+  words or fewer, so such a row is never queued; the detail it moved out of the
+  title is the `Description` cell, which PM Hub does not read (Roadmap TASK-26,
+  GAP-43; `docs/roadmap-parser.md`). Only a project still on the older tables or
+  the YAML entries has long titles to normalize.
 - **Nothing is lost.** The title the document holds is kept in `Task.originalTitle`
   and `Roadmap.md` is never written by normalization. `docs/synchronization.md`
   ("Long titles") says how sync treats the pair.

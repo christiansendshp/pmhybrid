@@ -669,8 +669,12 @@ written exactly as before.
 - **A row is found wherever it is.** Active work, Near term, every Plan table
   and the Gaps table are searched in order for the ID, so editing a Plan or
   Gaps row edits it in place instead of appending a duplicate to Active work.
-  `Outcome` is written to `Description` in a table that has no `Outcome`
-  column. A new task's first row still goes to Active work.
+  The title (`Outcome`) is written to the `Name` cell in a table that has one,
+  shortened to its first 10 words (the skill's `check` refuses a longer or an
+  empty Name), and a new row also gets the whole title as its `Description`; an
+  existing row's `Description` is never touched. Where a table has neither, the
+  title goes to `Description`. A new task's first row still goes to Active work
+  (Roadmap TASK-26).
 - **Status is the skill's word.** Every Status cell of the file must be `TODO`,
   `IN_PROGRESS`, `PAUSE` or `DONE`, so `PENDIENTE`/`ASIGNADA` are written
   `TODO`, `EN_DESARROLLO`/`QA` `IN_PROGRESS`, `TERMINADA` `DONE`. The

@@ -264,8 +264,10 @@ export class RoadmapParserService {
             Object.assign(row, parseOwnerCell(ownerCell));
           }
         } else {
-          // The skill's Gaps table names the row's text `Description`.
-          row.outcome = get('Outcome') ?? get('Description');
+          // The title is the `Outcome` of the old tables, the `Name` of the latest skill's (at most 10
+          // words, so never one to normalize; its `Description` holds the rest and is not read), and the
+          // `Description` of the skill's Gaps table before it had a Name (Roadmap TASK-26, GAP-43).
+          row.outcome = get('Outcome') ?? get('Name') ?? get('Description');
           row.acceptanceCheck = get('Acceptance check');
           const statusCell = get('Status');
           if (statusCell) {
