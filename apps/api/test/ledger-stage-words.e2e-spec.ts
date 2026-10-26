@@ -146,11 +146,12 @@ describe('Stage words of the ledger (e2e, Roadmap TASK-06)', () => {
     },
     { at: '2026-10-13T10:00:00Z', task: 'SW-3', word: 'DONE (2 de 3 partes)' },
     { at: '2026-10-13T10:00:00Z', task: 'SW-4', word: 'HALLAZGO' },
+    { at: '2026-10-13T10:00:00Z', task: 'SW-8', word: 'EN CURSO' },
   ];
 
-  it('stores what each word says, its qualifier and the handoff and review lines, and nothing for a word it does not know', async () => {
+  it('stores what each word says, its qualifier and the handoff and review lines, and OTHER for a word it does not know', async () => {
     const { projectId } = await project({
-      roadmap: roadmap('SW-1', 'SW-2', 'SW-3', 'SW-4', 'SW-7'),
+      roadmap: roadmap('SW-1', 'SW-2', 'SW-3', 'SW-4', 'SW-7', 'SW-8'),
       entries,
     });
 
@@ -188,7 +189,13 @@ describe('Stage words of the ledger (e2e, Roadmap TASK-06)', () => {
         reviewResult: null,
       },
       'SW-4|HALLAZGO': {
-        canonicalStatus: null,
+        canonicalStatus: 'FINDING',
+        statusQualifier: null,
+        handoffTo: null,
+        reviewResult: null,
+      },
+      'SW-8|EN CURSO': {
+        canonicalStatus: 'OTHER',
         statusQualifier: null,
         handoffTo: null,
         reviewResult: null,
@@ -218,7 +225,7 @@ describe('Stage words of the ledger (e2e, Roadmap TASK-06)', () => {
 
   it('classifies the entries that were read before, on the next sync, and a third sync changes nothing', async () => {
     const { projectId } = await project({
-      roadmap: roadmap('SW-1', 'SW-2', 'SW-3', 'SW-4', 'SW-7'),
+      roadmap: roadmap('SW-1', 'SW-2', 'SW-3', 'SW-4', 'SW-7', 'SW-8'),
       entries,
     });
     await sync(projectId).expect(201);

@@ -81,26 +81,71 @@ describe('classifyLedgerWord (Roadmap TASK-06)', () => {
       'PAUSED',
       'INPROGRESS',
       'READYMADE',
+      'BLOCKEDX',
+      'FINDINGS',
     ]) {
-      expect(classifyLedgerWord(word).canonicalStatus, word).toBeNull();
+      expect(classifyLedgerWord(word).canonicalStatus, word).toBe('OTHER');
     }
   });
 
-  it('leaves the words it does not know exactly as they are today: no canonical status, no qualifier', () => {
+  it.each([
+    ['BLOCKED', 'BLOCKED', null],
+    ['BLOQUEADO', 'BLOCKED', null],
+    ['bloqueada', 'BLOCKED', null],
+    ['BLOQUEADO_PO', 'BLOCKED', 'PO'],
+    [
+      'BLOQUEADO (espera la decisión del PO)',
+      'BLOCKED',
+      'espera la decisión del PO',
+    ],
+    ['DESCARTADA', 'DROPPED', null],
+    ['DESCARTADO — ya no aplica', 'DROPPED', 'ya no aplica'],
+    ['DROPPED', 'DROPPED', null],
+    ['SUPERADO', 'SUPERSEDED', null],
+    ['SUPERADO (sin cambios de código)', 'SUPERSEDED', 'sin cambios de código'],
+    ['SUPERSEDED', 'SUPERSEDED', null],
+    ['HALLAZGO', 'FINDING', null],
+    ['FINDING', 'FINDING', null],
+  ])(
+    'reads %j as %s, the word real ledgers use besides the skill’s (Roadmap TASK-29)',
+    (word, canonical, qualifier) => {
+      expect(classifyLedgerWord(word)).toEqual({
+        canonicalStatus: canonical,
+        qualifier,
+      });
+    },
+  );
+
+  it('reads a word it does not know as OTHER, with no qualifier, so it can be listed', () => {
     for (const word of [
-      'HALLAZGO',
-      'SUPERADO (sin cambios de código)',
-      'DESCARTADA',
-      'BLOQUEADO_PO',
       'N/A',
       'EN CURSO — corrección sobre la marcha',
       'intento revertido, sin commitear (hipótesis falsa)',
-      '',
     ]) {
       expect(classifyLedgerWord(word), word).toEqual({
-        canonicalStatus: null,
+        canonicalStatus: 'OTHER',
         qualifier: null,
       });
+    }
+  });
+
+  it('gives an empty word no canonical status at all: there is nothing to classify', () => {
+    expect(classifyLedgerWord('   ')).toEqual({
+      canonicalStatus: null,
+      qualifier: null,
+    });
+  });
+
+  it('keeps the exact DONE the only terminal one: a blocked, dropped or other word is none', () => {
+    for (const word of [
+      'BLOQUEADO_PO',
+      'DESCARTADA',
+      'SUPERADO',
+      'HALLAZGO',
+      'N/A',
+    ]) {
+      expect(classifyLedgerWord(word).canonicalStatus, word).not.toBe('DONE');
+      expect(ledgerStageOf({ statusWord: word }), word).toBeNull();
     }
   });
 

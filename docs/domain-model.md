@@ -300,7 +300,7 @@ what follows it, `handoffTo` and `reviewResult` the optional `Handoff` and `Revi
 handoff and a review (Roadmap TASK-06; the word and its rules are in `docs/roadmap-parser.md`).
 They are filled at ingestion and, for an entry read before they existed, by the sync that
 follows (a word is looked at once, so a second pass changes nothing); null means "no such
-word or line". Nothing is derived from them without saying so: the stage of a task is
+word or line" (a word the table does not know is `OTHER`, Roadmap TASK-29). Nothing is derived from them without saying so: the stage of a task is
 described in `docs/synchronization.md`.
 
 `rawEntryHash` is unique so re-ingesting an overlapping revision (e.g. after

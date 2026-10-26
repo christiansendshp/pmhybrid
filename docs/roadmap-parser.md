@@ -249,9 +249,14 @@ on `|`.
   `DONE` whose qualifier says it is a part (`parcial`, `2 de 3 partes`, `chunk 1/2`). The
   qualifier is what follows the word, without its parentheses or separator
   (`IN_PROGRESS (revisión, 3 correcciones)` gives `IN_PROGRESS` and `revisión, 3
-correcciones`). A word that starts with none of them (`HALLAZGO`, `EN CURSO — …`) has no
-  canonical status and is read as before. **BR-003's terminal check is still the exact word
-  `DONE`**: a `DONE parcial`, or any `DONE (…)`, never closes a task whose row left.
+correcciones`). The words real ledgers use besides the skill's are read too (Roadmap TASK-29), in
+  Spanish and in English: `BLOCKED` (`BLOQUEADO`, `BLOQUEADA`, `BLOQUEADO_PO`, whose qualifier is `PO`),
+  `DROPPED` (`DESCARTADO`, `DESCARTADA`), `SUPERSEDED` (`SUPERADO`, `SUPERADA`) and `FINDING`
+  (`HALLAZGO`). A word that starts with none of them (`EN CURSO — …`, `N/A`) is `OTHER`, with no
+  qualifier: it is listed so the table can grow (Roadmap TASK-30), and nothing reads it differently
+  from before. Only an empty word has no canonical status. **BR-003's terminal check is still the
+  exact word `DONE`**: a `DONE parcial`, or any `DONE (…)`, never closes a task whose row left, and
+  none of the new statuses has a stage.
 - `timestampFromLog` is parsed but **never trusted** as an ordering signal
   for reconciliation (it's agent-authored and can be wrong or backdated) —
   only used for display. The parser's own ingestion time (`createdAt`) is

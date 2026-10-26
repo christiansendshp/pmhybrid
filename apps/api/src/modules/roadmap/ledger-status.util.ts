@@ -5,7 +5,8 @@ import { TaskStatus } from '@pmhybrid/shared-types';
  * skill (Roadmap TASK-06). The words are free text in practice (`DONE (2 de 3 partes)`,
  * `IN_PROGRESS (revisión, 3 correcciones)`), so the canonical status is read from the start of
  * the word and the rest is kept as the qualifier. A word that starts with none of the known
- * ones has no canonical status, and nothing reads it differently from before.
+ * ones is `OTHER` (Roadmap TASK-29): it is listed so the vocabulary can grow, and nothing reads it
+ * differently from before. Only an empty word has no canonical status.
  */
 export type LedgerCanonicalStatus =
   | 'TODO'
@@ -15,7 +16,15 @@ export type LedgerCanonicalStatus =
   | 'PAUSE'
   | 'DONE'
   /** A close of part of the work: not the terminal `DONE` of BR-003, which stays the exact word. */
-  | 'DONE_PARTIAL';
+  | 'DONE_PARTIAL'
+  /** Stopped on someone's answer or on a decision: `BLOQUEADO_PO` (Roadmap TASK-29). */
+  | 'BLOCKED'
+  | 'DROPPED'
+  | 'SUPERSEDED'
+  /** A finding with no code: `HALLAZGO`. */
+  | 'FINDING'
+  /** A word the table does not know yet. */
+  | 'OTHER';
 
 export interface LedgerWord {
   canonicalStatus: LedgerCanonicalStatus | null;
@@ -26,7 +35,7 @@ export interface LedgerWord {
 /** Longest first, so `QA REVIEW` is read as a whole and not as `QA`. Compared upper-cased with `_` as a space. */
 const KNOWN_WORDS: readonly [
   string,
-  Exclude<LedgerCanonicalStatus, 'DONE_PARTIAL'>,
+  Exclude<LedgerCanonicalStatus, 'DONE_PARTIAL' | 'OTHER'>,
 ][] = [
   ['IN PROGRESS', 'IN_PROGRESS'],
   ['QA REVIEW', 'REVIEW'],
@@ -37,6 +46,18 @@ const KNOWN_WORDS: readonly [
   ['PAUSE', 'PAUSE'],
   ['DONE', 'DONE'],
   ['TODO', 'TODO'],
+  // The words real ledgers use besides the skill's (Roadmap TASK-29), in Spanish and in English.
+  ['BLOQUEADO', 'BLOCKED'],
+  ['BLOQUEADA', 'BLOCKED'],
+  ['BLOCKED', 'BLOCKED'],
+  ['DESCARTADO', 'DROPPED'],
+  ['DESCARTADA', 'DROPPED'],
+  ['DROPPED', 'DROPPED'],
+  ['SUPERADO', 'SUPERSEDED'],
+  ['SUPERADA', 'SUPERSEDED'],
+  ['SUPERSEDED', 'SUPERSEDED'],
+  ['HALLAZGO', 'FINDING'],
+  ['FINDING', 'FINDING'],
 ];
 
 /** What may follow a status word: the end, a space, a bracket or a separator, never another letter. */
@@ -66,11 +87,11 @@ export function classifyLedgerWord(raw: string): LedgerWord {
       qualifier,
     };
   }
-  return { canonicalStatus: null, qualifier: null };
+  return { canonicalStatus: text === '' ? null : 'OTHER', qualifier: null };
 }
 
 function qualifierOf(rest: string): string | null {
-  let text = rest.trim().replace(/^[—–:,;-]\s*/, '');
+  let text = rest.trim().replace(/^[_—–:,;-]\s*/, '');
   const wrapped = /^\((.*)\)$/s.exec(text);
   if (wrapped) {
     text = wrapped[1];

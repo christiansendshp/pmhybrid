@@ -187,7 +187,8 @@ export class AgentslogIngestionService {
    * Gives the entries that were read before their word was classified, or whose word was not known
    * then, the canonical status and qualifier of their word (Roadmap TASK-06). It looks at each
    * distinct word once, so it costs a handful of statements however long the ledger is, and a
-   * second run changes nothing; a word that is still unknown stays null. Returns how many it set.
+   * second run changes nothing; a word the table does not know is `OTHER` (Roadmap TASK-29), so
+   * none is left null but an empty one. Returns how many it set.
    */
   async classifyUnclassified(
     tx: Prisma.TransactionClient,

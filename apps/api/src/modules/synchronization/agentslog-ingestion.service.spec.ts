@@ -207,7 +207,7 @@ describe('AgentslogIngestionService: the stage of an entry (Roadmap TASK-06)', (
       };
     }
 
-    it('classifies the words it knows, leaves the others null, and a second run changes nothing', async () => {
+    it('classifies the words it knows, gives the others OTHER, leaves an empty one alone, and a second run changes nothing', async () => {
       const { service } = serviceWith({});
       const { tx, rows } = fakeTx([
         'DONE',
@@ -215,12 +215,14 @@ describe('AgentslogIngestionService: the stage of an entry (Roadmap TASK-06)', (
         'DONE (2 de 3 partes)',
         'IN_PROGRESS (impacto wireado)',
         'HALLAZGO',
+        'EN CURSO',
+        '',
       ]);
 
       const first = await service.classifyUnclassified(tx, 'p1');
       const second = await service.classifyUnclassified(tx, 'p1');
 
-      expect(first).toBe(4);
+      expect(first).toBe(6);
       expect(second).toBe(0);
       expect(
         rows.map((row) => [
@@ -233,7 +235,9 @@ describe('AgentslogIngestionService: the stage of an entry (Roadmap TASK-06)', (
         ['DONE', 'DONE', null],
         ['DONE (2 de 3 partes)', 'DONE_PARTIAL', '2 de 3 partes'],
         ['IN_PROGRESS (impacto wireado)', 'IN_PROGRESS', 'impacto wireado'],
-        ['HALLAZGO', null, null],
+        ['HALLAZGO', 'FINDING', null],
+        ['EN CURSO', 'OTHER', null],
+        ['', null, null],
       ]);
     });
   });
