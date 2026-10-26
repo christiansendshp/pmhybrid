@@ -58,6 +58,19 @@ export interface LedgerWord {
   qualifier: string | null;
 }
 
+/** An ID the ledger works on that is no task of the project (Roadmap TASK-33). */
+export interface UntrackedWork {
+  externalId: string;
+  entries: number;
+  agents: string[];
+  firstSeen: string;
+  lastSeen: string;
+  /** The status word of its latest entry, as written. */
+  lastWord: string;
+  /** Whether that entry is the exact DONE. */
+  closed: boolean;
+}
+
 export type RevisionSource = 'SYNC' | 'UI' | 'API';
 
 export interface DocumentRevisionSummary {
@@ -107,6 +120,15 @@ export class DocumentsService {
     return firstValueFrom(
       this.http.get<LedgerWord[]>(
         `${API_BASE_URL}/projects/${projectId}/documents/agentslog/words`,
+      ),
+    );
+  }
+
+  /** The IDs the ledger carries that are no task of the project, the open ones first (Roadmap TASK-33). */
+  getUntrackedWork(projectId: string): Promise<UntrackedWork[]> {
+    return firstValueFrom(
+      this.http.get<UntrackedWork[]>(
+        `${API_BASE_URL}/projects/${projectId}/documents/agentslog/untracked`,
       ),
     );
   }

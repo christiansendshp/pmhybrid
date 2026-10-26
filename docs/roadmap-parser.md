@@ -261,6 +261,14 @@ correcciones`). The words real ledgers use besides the skill's are read too (Roa
   is read as, how many entries carry it and one example qualifier, the `OTHER` ones first, so the table
   can grow where agents write new words. The structured view of the Agentslog in the Documents page says
   how many words are in use and how many it does not know.
+- **Work the ledger carries that is no task** (Roadmap TASK-33, DEC-004 D1: shown first, counted later).
+  `GET /projects/:projectId/documents/agentslog/untracked` lists each ID with entries and no `Task` of that
+  `externalId` in the project (a soft-deleted task is still a task, so it is not listed, and an entry read
+  before its task existed, which keeps a null `taskId`, stops being listed once the task does): its entries, the
+  agents that wrote them, when it was first and last seen (the agent's own clock, which here orders the latest
+  entry because the rotated archive is no longer in the file), its last word and whether that is the exact
+  `DONE` (BR-003; a partial close is open). Open ones come first. Nothing counts it in the progress: it is
+  read-only, and the Documents page shows it in the structured view of the Agentslog.
 - `timestampFromLog` is parsed but **never trusted** as an ordering signal
   for reconciliation (it's agent-authored and can be wrong or backdated) —
   only used for display. The parser's own ingestion time (`createdAt`) is

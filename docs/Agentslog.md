@@ -22,3 +22,12 @@ segments live in `docs/history/`.
 - SHA-256: `265d4bced43003a20c533aa12dab520dd3460d0c9cd995ca3e46dd6738a24a43`
 
 ## Entries
+
+## [2026-10-26T17:54:43Z] | claude-sonnet-5-5 | TASK-33 | IN_PROGRESS | List the ledger's work that has no task
+- Summary: List the ledger's work that has no task
+- Verify: pending
+
+## [2026-10-26T18:02:10Z] | claude-sonnet-5-5 | TASK-33 | DONE | List the ledger's work that has no task
+- Summary: GET /projects/:id/documents/agentslog/untracked lists the ledger IDs that are no task of the project (deleted tasks and entries read before their task existed excluded), with entries, agents, dates, last word and whether it closed with the exact DONE, open first; the structured Agentslog view lists them and shows the entries of one ID; nothing counts them in the progress
+- Files: apps/api/src/modules/roadmap/untracked-work.util.ts, apps/api/src/modules/roadmap/roadmap.controller.ts, apps/api/test/untracked-work.e2e-spec.ts, apps/web/src/app/features/documents-viewer, docs/roadmap-parser.md
+- Verify: VALIDAR green in 217 s: api unit 837, web 597, e2e 575

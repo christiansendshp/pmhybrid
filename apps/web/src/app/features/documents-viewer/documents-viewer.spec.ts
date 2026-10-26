@@ -16,6 +16,7 @@ describe('DocumentsViewer (brief §10)', () => {
   let getStructuredRoadmap: ReturnType<typeof vi.fn>;
   let getStructuredAgentslog: ReturnType<typeof vi.fn>;
   let getLedgerWords: ReturnType<typeof vi.fn>;
+  let getUntrackedWork: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     getRaw = vi.fn().mockResolvedValue({ kind: 'roadmap', content: '# Roadmap\n\nSome text' });
@@ -24,6 +25,7 @@ describe('DocumentsViewer (brief §10)', () => {
     getStructuredRoadmap = vi.fn().mockResolvedValue([]);
     getStructuredAgentslog = vi.fn().mockResolvedValue({ entries: [] });
     getLedgerWords = vi.fn().mockResolvedValue([]);
+    getUntrackedWork = vi.fn().mockResolvedValue([]);
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -41,6 +43,7 @@ describe('DocumentsViewer (brief §10)', () => {
             getStructuredRoadmap,
             getStructuredAgentslog,
             getLedgerWords,
+            getUntrackedWork,
           },
         },
       ],
@@ -224,6 +227,91 @@ describe('DocumentsViewer (brief §10)', () => {
       await component.onKindChange('features');
 
       expect(getLedgerWords).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('the ledger work that is no task (Roadmap TASK-33)', () => {
+    const work = (externalId: string, overrides: Record<string, unknown> = {}) => ({
+      externalId,
+      entries: 3,
+      agents: ['claude', 'codex'],
+      firstSeen: '2026-10-01T10:00:00.000Z',
+      lastSeen: '2026-10-05T10:00:00.000Z',
+      lastWord: 'DONE',
+      closed: true,
+      ...overrides,
+    });
+    const openStructuredLedger = async () => {
+      const view = await render();
+      await view.component.onViewModeChange('structured');
+      await view.component.onKindChange('agentslog');
+      view.harness.detectChanges();
+      return view;
+    };
+
+    it('says how many IDs the ledger works on that are no task, and how many of them closed', async () => {
+      getUntrackedWork.mockResolvedValue([
+        work('X-1', { closed: false, lastWord: 'PAUSE' }),
+        work('X-2'),
+        work('X-3'),
+      ]);
+
+      const { text } = await openStructuredLedger();
+
+      expect(text()).toContain(
+        'Registro sin tarea: 3 IDs que no son tareas del proyecto (2 cerrados)',
+      );
+    });
+
+    it('lists each ID with its entries, agents and last word, saying in words whether it closed', async () => {
+      getUntrackedWork.mockResolvedValue([
+        work('X-1', { closed: false, lastWord: 'PAUSE' }),
+        work('X-2'),
+      ]);
+
+      const { harness } = await openStructuredLedger();
+
+      const rows = Array.from(
+        harness.routeNativeElement!.querySelectorAll('.untracked-work tbody tr'),
+      ).map((row) =>
+        Array.from(row.querySelectorAll('td'))
+          .slice(0, 6)
+          .map((cell) => (cell.textContent ?? '').replace(/\s+/g, ' ').trim()),
+      );
+      expect(rows).toEqual([
+        ['X-1', '3', 'claude, codex', '1 Oct 2026', '5 Oct 2026', 'PAUSE (sigue abierto)'],
+        ['X-2', '3', 'claude, codex', '1 Oct 2026', '5 Oct 2026', 'DONE (cerrado)'],
+      ]);
+    });
+
+    it('shows the entries of one ID when asked, by searching the list for it', async () => {
+      getUntrackedWork.mockResolvedValue([work('X-1')]);
+      const { harness, component } = await openStructuredLedger();
+
+      harness
+        .routeNativeElement!.querySelector<HTMLButtonElement>(
+          'button[aria-label="Ver las entradas de X-1"]',
+        )!
+        .click();
+
+      expect(component.searchQuery()).toBe('X-1');
+    });
+
+    it('shows nothing when the ledger has no work without a task', async () => {
+      getUntrackedWork.mockResolvedValue([]);
+
+      const { harness } = await openStructuredLedger();
+
+      expect(harness.routeNativeElement!.querySelector('.untracked-work')).toBeNull();
+    });
+
+    it('still shows the entries when the list could not be read', async () => {
+      getUntrackedWork.mockRejectedValue(new Error('boom'));
+
+      const { text, component } = await openStructuredLedger();
+
+      expect(component.untrackedWork()).toBeNull();
+      expect(text()).toContain('Todavía no hay entradas de Agentslog.');
     });
   });
 

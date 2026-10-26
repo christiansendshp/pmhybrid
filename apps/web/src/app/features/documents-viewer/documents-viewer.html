@@ -205,6 +205,62 @@
     </details>
   }
 
+  @if (untrackedWork(); as untracked) {
+    @if (untracked.length > 0) {
+      <details class="untracked-work">
+        <summary>
+          Registro sin tarea: {{ untracked.length }} {{ untracked.length === 1 ? 'ID' : 'IDs' }} que
+          no son tareas del proyecto ({{ untrackedClosed() }}
+          {{ untrackedClosed() === 1 ? 'cerrado' : 'cerrados' }})
+        </summary>
+        <p class="meta-text">
+          Trabajo que el registro cuenta y que no está en el Roadmap del proyecto. No cuenta en el
+          avance. Primero las que siguen abiertas.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Entradas</th>
+              <th>Agentes</th>
+              <th>Primera</th>
+              <th>Última</th>
+              <th>Última palabra</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (work of untracked; track work.externalId) {
+              <tr>
+                <td>
+                  <code>{{ work.externalId }}</code>
+                </td>
+                <td>{{ work.entries }}</td>
+                <td>{{ work.agents.join(', ') }}</td>
+                <td>{{ work.firstSeen | date: 'd MMM y' }}</td>
+                <td>{{ work.lastSeen | date: 'd MMM y' }}</td>
+                <td>
+                  {{ work.lastWord }}
+                  {{ work.closed ? '(cerrado)' : '(sigue abierto)' }}
+                </td>
+                <td>
+                  <button
+                    mat-button
+                    type="button"
+                    [attr.aria-label]="'Ver las entradas de ' + work.externalId"
+                    (click)="showEntriesOf(work.externalId)"
+                  >
+                    Ver entradas
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </details>
+    }
+  }
+
   @if (filteredAgentslogEntries(); as entries) {
     <ul>
       @for (entry of entries; track entry.rawEntryHash) {

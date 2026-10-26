@@ -22,6 +22,7 @@ import {
   LedgerWord,
   ParsedAgentslog,
   ParsedRoadmapRow,
+  UntrackedWork,
 } from '../../core/documents.service.js';
 import { describeHttpError } from '../../core/http-error.js';
 
@@ -63,6 +64,11 @@ export class DocumentsViewer implements OnInit {
   readonly ledgerWords = signal<LedgerWord[] | null>(null);
   readonly unknownWords = computed(() =>
     (this.ledgerWords() ?? []).filter((word) => word.canonicalStatus === 'OTHER'),
+  );
+  /** The IDs the ledger works on that are no task of the project (Roadmap TASK-33); null until read or when it could not be. */
+  readonly untrackedWork = signal<UntrackedWork[] | null>(null);
+  readonly untrackedClosed = computed(
+    () => (this.untrackedWork() ?? []).filter((work) => work.closed).length,
   );
   readonly unknownWordEntries = computed(() =>
     this.unknownWords().reduce((total, word) => total + word.entries, 0),
@@ -153,6 +159,11 @@ export class DocumentsViewer implements OnInit {
     }
   }
 
+  /** Shows the entries of one ID: the search of the list is set to it (Roadmap TASK-33). */
+  showEntriesOf(externalId: string): void {
+    this.searchQuery.set(externalId);
+  }
+
   viewCurrent(): void {
     this.viewingRevisionId.set(null);
     this.revisionContent.set(null);
@@ -166,6 +177,7 @@ export class DocumentsViewer implements OnInit {
     this.roadmapRows.set(null);
     this.agentslog.set(null);
     this.ledgerWords.set(null);
+    this.untrackedWork.set(null);
     this.revisions.set([]);
     this.viewCurrent();
     try {
@@ -185,6 +197,9 @@ export class DocumentsViewer implements OnInit {
         // The list of words is a help, not the document: without it the entries still show.
         this.ledgerWords.set(
           await this.documentsService.getLedgerWords(this.projectId).catch(() => null),
+        );
+        this.untrackedWork.set(
+          await this.documentsService.getUntrackedWork(this.projectId).catch(() => null),
         );
       }
     } catch (error) {
