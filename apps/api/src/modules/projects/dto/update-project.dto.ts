@@ -13,6 +13,7 @@ import {
 } from 'class-validator';
 import { CreateProjectDto, ROLLUP_STRATEGIES } from './create-project.dto.js';
 import { LIMITS } from '../../../common/dto-limits.js';
+import { MAX_STALE_AFTER_HOURS } from '../../risks/risks.util.js';
 import { MAX_INSTANT_CLOSE_MINUTES } from '../../tasks/instant-close.util.js';
 
 /** ACTIVE projects are synced on their schedule; PAUSED and ARCHIVED ones are not. */
@@ -68,6 +69,13 @@ export class UpdateProjectDto extends PartialType(
   @Min(1)
   @Max(MAX_INSTANT_CLOSE_MINUTES)
   instantCloseMinutes?: number;
+
+  /** Hours without activity after which a task in development is stale (Roadmap TASK-44). */
+  @ValidateIf(provided)
+  @IsInt()
+  @Min(1)
+  @Max(MAX_STALE_AFTER_HOURS)
+  staleAfterHours?: number;
 
   /** Whether a move to QA needs an independent reviewer who can approve, and a document cannot close a task in QA (Roadmap SUBTASK-09.2). */
   @ValidateIf(provided)

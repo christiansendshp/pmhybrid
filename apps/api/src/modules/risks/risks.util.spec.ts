@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  holdsTask,
   risksOf,
   type RiskDependency,
   type RiskKind,
@@ -404,4 +405,24 @@ describe('an empty project', () => {
       byEpic: [],
     });
   });
+});
+
+describe('holdsTask (Roadmap TASK-44)', () => {
+  it('is true for a task with an assignee, whatever its row says', () => {
+    expect(holdsTask('actor-1', null)).toBe(true);
+  });
+
+  it.each([['a person'], ['Some Agent@2026-10-01T10:00:00Z']])(
+    'is true for a task with no assignee and an owner written in the row: %s',
+    (owner) => {
+      expect(holdsTask(null, owner)).toBe(true);
+    },
+  );
+
+  it.each([[null], [''], ['   '], ['—'], ['-'], [' — ']])(
+    'is false for a task with no assignee and %j in the row',
+    (owner) => {
+      expect(holdsTask(null, owner)).toBe(false);
+    },
+  );
 });

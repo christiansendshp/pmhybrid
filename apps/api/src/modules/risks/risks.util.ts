@@ -1,3 +1,24 @@
+/** Hours without activity after which a task in development is stale, until the project says otherwise (Roadmap TASK-44). */
+export const DEFAULT_STALE_AFTER_HOURS = 72;
+
+/** A year: far more than any threshold worth setting, and a bound on what the project can ask for. */
+export const MAX_STALE_AFTER_HOURS = 8760;
+
+/**
+ * Whether somebody holds a task: an assignee, or an owner written in its row (an agent's `Name@claimed-at` or a
+ * person's name). Nothing there, or the placeholder of a table with no owner, is nobody.
+ */
+export function holdsTask(
+  assigneeActorId: string | null,
+  rawOwner: string | null,
+): boolean {
+  if (assigneeActorId) {
+    return true;
+  }
+  const owner = rawOwner?.trim();
+  return owner !== undefined && owner !== '' && owner !== '—' && owner !== '-';
+}
+
 /** The signals a project can show about its open work (Roadmap TASK-43). */
 export type RiskKind =
   | 'UNOWNED_IN_DEVELOPMENT'

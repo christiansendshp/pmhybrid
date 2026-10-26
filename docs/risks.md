@@ -1,7 +1,7 @@
 # Risks: signals, critical path and semaphore
 
-Status: the calculator exists (Roadmap TASK-43); the endpoint (TASK-44) and the Riesgos page (TASK-45) build on it
-and add their parts here. The idea is FEATURE-07 of `docs/tracking-improvement-plan.md`: say what is going wrong
+Status: the calculator (Roadmap TASK-43) and the endpoint (TASK-44) exist; the Riesgos page (TASK-45) builds on
+them and adds its part here. The idea is FEATURE-07 of `docs/tracking-improvement-plan.md`: say what is going wrong
 before someone looks, with signals that **cannot be wrong about the data the app holds**, each saying why. False
 positives erode trust faster than missing signals, so a signal that needs a guess is not here.
 
@@ -49,3 +49,25 @@ open tasks:
 
 Each carries the counts that say why (`open`, `blocked` and the count of each signal), because a light alone says
 nothing: the page says it in words (BR-019).
+
+## The endpoint (`GET /projects/:projectId/risks`)
+
+Any member of the project can read it (`ProjectMemberGuard`); it only reads. It gives the calculator's answer for the
+project, with what a page needs to say it:
+
+- `signals`, `criticalPath` and `project` (the semaphore of the whole project), as the calculator gives them.
+- `phases`: **every phase of the project, in its own order**, each with its name and semaphore; a phase with nothing
+  open (or no task) has the semaphore with no light. `epics`, the same by name.
+- `staleAfterHours`: the threshold used, so the page can say "más de 72 h sin actividad".
+
+What it reads, from what the database already holds:
+
+- The tasks **that count towards the progress** (alive, and work; the same filter as the progress and the pace) that are
+  not finished. A dependency counts when both tasks are among them.
+- A task is **held** (`holdsTask`) with an assignee, or with an owner written in its row; `—` or nothing is nobody.
+- A task's **last activity** is the latest of its status change (`statusChangedAt`), the ledger entries about it
+  (`AgentLogEvent.timestampFromLog`) and its comments. `updatedAt` is not used: it moves whenever a sync touches the
+  row, which says nothing about whether anyone worked on it.
+- `Project.staleAfterHours` (72 by default, 1 to 8760, hand-written migration `add_project_stale_after_hours`) is
+  changed through `PATCH /projects/:id` like the other project settings, audited, and a value outside the range or not
+  a whole number is a 400.
