@@ -84,6 +84,19 @@ Re-run `test:e2e:db:setup` after adding a new Prisma migration.
   is fire-and-forget and does not await listeners (`emitAsync()` does) — a
   race there passed standalone but failed intermittently under the full
   suite's parallel load, and only running it more than once surfaced it.
+- **What makes the suite fast, so a new spec keeps it so** (Roadmap TASK-27: from 330–440 s to about
+  170 s for the e2e, and under five minutes for `VALIDAR` as a whole). The applications a file boots in
+  its tests share **one `PrismaService`** (`test/setup-shared-prisma.ts`, registered in
+  `vitest.config.e2e.ts`): starting a Prisma query engine cost about two seconds in every test, measured
+  at 20 ms once shared. It is connected by the first query, capped at 6 connections
+  (`test/e2e-limits.ts`) and ended when the file is done; the suite runs at most 12 files at once, so it
+  asks Postgres for at most 72 of its 100 connections (`too many clients already` is what a larger pool or
+  more workers produces). Do not call `PrismaService` lifecycle methods in a spec, and do not make one
+  of your own with `new PrismaService()`. The other costs to remember: a test that starts the skill's
+  `init` pays a shell start (a few seconds on Windows), so use it only when the test runs the skill
+  (`ledger-name` and `ledger-qa-handoff` write the two files they need otherwise); and what a test does
+  to **every** project in the shared database (the LLM queue did) grows with the rest of the suite, so it
+  has to cost nothing for the projects that have nothing to do.
 
 ## Coverage floor (Roadmap TEST-01b)
 

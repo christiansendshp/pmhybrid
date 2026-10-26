@@ -183,7 +183,15 @@ export class TitleNormalizationService {
             where: { status: { not: 'ARCHIVED' } },
             select: { id: true },
           });
+          // Only the projects with something to do: going through every project costs several queries
+          // each, however long ago it was settled (Roadmap TASK-27).
+          const withWork = await this.projectsWithWork(
+            projects.map((project) => project.id),
+          );
           for (const project of projects) {
+            if (!withWork.has(project.id)) {
+              continue;
+            }
             await this.queueTasks(project.id);
             await this.drain(project.id);
           }
@@ -246,6 +254,36 @@ export class TitleNormalizationService {
     }
 
     return { retried, queued: ids.length };
+  }
+
+  /**
+   * Which of these projects have a task that `queueTasks` or `drain` would act on: one that failed or waits, or
+   * a long title never queued. One read for all of them (Roadmap TASK-27).
+   */
+  private async projectsWithWork(projectIds: string[]): Promise<Set<string>> {
+    const candidates = await this.prisma.task.findMany({
+      where: {
+        projectId: { in: projectIds },
+        deletedAt: null,
+        OR: [
+          { titleNormalization: { in: ['FAILED', 'PENDING'] } },
+          {
+            sourceOrigin: 'ROADMAP',
+            titleNormalization: null,
+            originalTitle: null,
+          },
+        ],
+      },
+      select: { projectId: true, titleNormalization: true, title: true },
+    });
+    return new Set(
+      candidates
+        .filter(
+          (task) =>
+            task.titleNormalization !== null || needsNormalization(task.title),
+        )
+        .map((task) => task.projectId),
+    );
   }
 
   /** Asks for one task's normalization again (a failed one, or a long title never queued). A normalized task is left as it is. */

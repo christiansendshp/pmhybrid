@@ -244,9 +244,31 @@ describe('working every project once the configuration is ready (Roadmap BUG-13)
           async ({
             where,
           }: {
-            where: { projectId: string; titleNormalization: string | null };
-          }) =>
-            rows
+            where: {
+              projectId: string | { in: string[] };
+              titleNormalization?: string | null;
+              OR?: unknown[];
+            };
+          }) => {
+            // The one read that tells which projects have something to do (Roadmap TASK-27): every task
+            // that failed, waits or was never queued, of the projects it is given.
+            if (where.OR && typeof where.projectId === 'object') {
+              const wanted = where.projectId.in;
+              return rows
+                .filter(
+                  (row) =>
+                    wanted.includes(row.projectId) &&
+                    (row.state === null ||
+                      row.state === 'FAILED' ||
+                      row.state === 'PENDING'),
+                )
+                .map((row) => ({
+                  projectId: row.projectId,
+                  title: row.title,
+                  titleNormalization: row.state,
+                }));
+            }
+            return rows
               .filter(
                 (row) =>
                   row.projectId === where.projectId &&
@@ -256,7 +278,8 @@ describe('working every project once the configuration is ready (Roadmap BUG-13)
                 ...task(row.id),
                 projectId: row.projectId,
                 title: row.title,
-              })),
+              }));
+          },
         ),
       },
     };
@@ -340,6 +363,27 @@ describe('working every project once the configuration is ready (Roadmap BUG-13)
 
     expect(normalized).toEqual([]);
     expect(rows[0].state).toBe('PENDING');
+  });
+
+  it('goes through only the projects that have something to do', async () => {
+    const rows: Row[] = [
+      { id: 'a', projectId: 'p1', title: LONG, state: null },
+      { id: 'b', projectId: 'p2', title: 'corto', state: null },
+      { id: 'c', projectId: 'p3', title: LONG, state: 'NORMALIZED' },
+    ];
+    const { service, prisma } = world(rows);
+    prisma.project.findMany.mockResolvedValue([
+      { id: 'p1' },
+      { id: 'p2' },
+      { id: 'p3' },
+    ]);
+
+    await service.queueEveryProject();
+
+    const worked = prisma.task.updateMany.mock.calls.map(
+      ([args]) => (args as { where: { projectId?: string } }).where.projectId,
+    );
+    expect(new Set(worked.filter(Boolean))).toEqual(new Set(['p1']));
   });
 
   it('goes one project after another, never all at once', async () => {

@@ -18,15 +18,15 @@ segments live in `docs/history/`.
 
 ## Previous segment
 
-- Archive: `docs/history/Agentslog-20261026-012.md`
-- SHA-256: `eee41bd562d2e174f8b83b21c38a4b6da09e8e970e781e31c6079778e19e9681`
+- Archive: `docs/history/Agentslog-20261026-013.md`
+- SHA-256: `8250abb73759dda71811b73001e5298beec22d0adbff938f35cb4e0477d4229b`
 
 ## Entries
 
-## [2026-10-26T16:13:27Z] | claude-sonnet-5-5 | TASK-30 | IN_PROGRESS | List the ledger's status words and what they map to
-- Summary: carried forward from docs/history/Agentslog-20261026-012.md at rotation
+## [2026-10-26T16:46:12Z] | claude-sonnet-5-5 | TASK-27 | IN_PROGRESS | Cut VALIDAR below five minutes
+- Summary: carried forward from docs/history/Agentslog-20261026-013.md at rotation
 
-## [2026-10-26T16:25:39Z] | claude-sonnet-5-5 | TASK-30 | DONE | List the ledger's status words and what they map to
-- Summary: GET /projects/:id/documents/agentslog/words lists the ledger's distinct status words with the status each is read as, its entries and an example qualifier, unknown words first; the structured Agentslog view says how many words are in use and how many it does not know (path kept under /documents with the other ledger views)
-- Files: apps/api/src/modules/roadmap/ledger-words.util.ts, apps/api/src/modules/roadmap/roadmap.controller.ts, apps/web/src/app/features/documents-viewer, docs/roadmap-parser.md
-- Verify: VALIDAR green: check, lint, build, api unit 802, web 568, e2e 551
+## [2026-10-26T17:15:25Z] | claude-sonnet-5-5 | TASK-27 | DONE | Cut VALIDAR below five minutes
+- Summary: VALIDAR cut from 437 s to 299 s with the same tests: the e2e files share one capped Prisma connection (starting an engine cost 2 s per test), the LLM queue skips projects with nothing to do, and the skill's init runs only where a test uses the skill; remaining time: skill check ~25 s, web unit ~40 s
+- Files: apps/api/test/setup-shared-prisma.ts, apps/api/test/e2e-limits.ts, apps/api/vitest.config.e2e.ts, apps/api/src/modules/title-normalization/title-normalization.service.ts, apps/api/test/ledger-qa-handoff.e2e-spec.ts, docs/testing.md
+- Verify: VALIDAR green in 299 s (check 30, lint 9, build 20, unit 56, e2e 184): api unit 803, web 568, e2e 551

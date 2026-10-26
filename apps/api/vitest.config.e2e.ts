@@ -4,6 +4,7 @@ import { defineConfig } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import swc from 'unplugin-swc';
 import { HOST_MOUNTS_ENV } from './test/helpers/host-mounts.js';
+import { E2E_MAX_WORKERS } from './test/e2e-limits.js';
 import { LOCAL_TEST_DATABASE_URL } from './test/test-database.js';
 
 export default defineConfig({
@@ -14,6 +15,10 @@ export default defineConfig({
     include: ['**/*.e2e-spec.ts'],
     // Local runs start from a freshly reset test database (Roadmap TEST-01a).
     globalSetup: ['./test/global-setup.ts'],
+    // One shared Prisma connection for the applications a file boots (Roadmap TASK-27).
+    setupFiles: ['./test/setup-shared-prisma.ts'],
+    // Files in parallel, bounded by the connections each holds (see e2e-limits.ts).
+    maxWorkers: E2E_MAX_WORKERS,
     env: {
       // Every e2e worker boots the whole app; a scheduler in each one would
       // keep syncing every project in the shared database (including ones

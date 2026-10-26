@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 175
-- Latest verification: `VALIDAR green: check, lint, build, api unit 802, web 568, e2e 551` (2026-10-26)
+- Verified capabilities: 177
+- Latest verification: `VALIDAR green in 299 s (check 30, lint 9, build 20, unit 56, e2e 184): api unit 803, web 568, e2e 551` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -190,3 +190,5 @@ Use one row per stable capability. Link long specifications or runbooks from
 | FEATURE-03 | Agents as the responsible actors, absorbed by FEATURE-10: the log's agents are suggested and registered on one click (TASK-03), agent@time owners resolve to assignee and claim time (TASK-02), aliases and ledger names identify them (TASK-01); registering SMARTHR's own agents is the live-data TASK-24 | TASK-01, TASK-02, TASK-03 and TASK-25 are in Features.md with VALIDAR green on aa6a45d and 785423a | log:FEATURE-03 | 2026-10-26 |
 | TASK-29 | Ledger status words map to the plan's canonical statuses: BLOCKED, DROPPED, SUPERSEDED and FINDING (Spanish and English words, BLOQUEADO_PO keeps PO as qualifier) and OTHER for an unknown word; the exact DONE stays the only terminal; obsolete 'unknown word is null' tests replaced | VALIDAR green: check, lint, build, api unit 797, web 563, e2e 548 | log:TASK-29 | 2026-10-26 |
 | TASK-30 | GET /projects/:id/documents/agentslog/words lists the ledger's distinct status words with the status each is read as, its entries and an example qualifier, unknown words first; the structured Agentslog view says how many words are in use and how many it does not know (path kept under /documents with the other ledger views) | VALIDAR green: check, lint, build, api unit 802, web 568, e2e 551 | log:TASK-30 | 2026-10-26 |
+| FEATURE-04 | A normalized status for each log entry: every entry stores the canonical status of its word (the skill's, BLOCKED, DROPPED, SUPERSEDED, FINDING, OTHER) with the qualifier, backfilled by the sync, and the words in use are listed with the ones PM Hub does not know first | TASK-06, TASK-29 and TASK-30 are in Features.md with VALIDAR green on b7875d9 and 1644c51 | log:FEATURE-04 | 2026-10-26 |
+| TASK-27 | VALIDAR cut from 437 s to 299 s with the same tests: the e2e files share one capped Prisma connection (starting an engine cost 2 s per test), the LLM queue skips projects with nothing to do, and the skill's init runs only where a test uses the skill; remaining time: skill check ~25 s, web unit ~40 s | VALIDAR green in 299 s (check 30, lint 9, build 20, unit 56, e2e 184): api unit 803, web 568, e2e 551 | log:TASK-27 | 2026-10-26 |

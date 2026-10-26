@@ -107,7 +107,7 @@ describe('The QA handoff in the ledger (e2e, Roadmap TASK-08)', () => {
     spawnSync('sh', [SKILL, ...args], { encoding: 'utf-8' });
 
   /** <tmp>/repo/{AGENTS.md, docs/...}: the layout the skill makes, with one task ready to take. */
-  function createRepo(roadmap: string, withSkill = true) {
+  function createRepo(roadmap: string, withSkill = false) {
     const repo = mkdtempSync(path.join(tmpdir(), 'pmhybrid-e2e-qa-'));
     const docs = path.join(repo, 'docs');
     mkdirSync(docs);
@@ -218,8 +218,8 @@ describe('The QA handoff in the ledger (e2e, Roadmap TASK-08)', () => {
     (await prisma.task.findUniqueOrThrow({ where: { id: taskId } })).title;
 
   /** A task a developer holds, in development, in a project over the skill's repo. */
-  async function developing(handoff: boolean) {
-    const { repo, docs } = createRepo(ROADMAP(TASK));
+  async function developing(handoff: boolean, withSkill = false) {
+    const { repo, docs } = createRepo(ROADMAP(TASK), withSkill);
     const { projectId, developer, reviewer } = await projectOver(docs, {
       handoff,
     });
@@ -313,7 +313,7 @@ describe('The QA handoff in the ledger (e2e, Roadmap TASK-08)', () => {
       'leaves a ledger the skill check accepts, and that the skill reads as a task waiting for its reviewer',
       async () => {
         const { repo, projectId, taskId, developer, reviewer } =
-          await developing(true);
+          await developing(true, true);
 
         await move(projectId, taskId, {
           status: 'QA',
@@ -346,7 +346,7 @@ describe('The QA handoff in the ledger (e2e, Roadmap TASK-08)', () => {
       'passes the review in the approver name and closes the task, and the skill check accepts it',
       async () => {
         const { repo, docs, projectId, taskId, developer, reviewer } =
-          await developing(true);
+          await developing(true, true);
         await move(projectId, taskId, {
           status: 'QA',
           reviewerActorId: reviewer.id,
@@ -373,7 +373,7 @@ describe('The QA handoff in the ledger (e2e, Roadmap TASK-08)', () => {
       'sends the task back as a failed review in the sender name with the reason, and the holder carries on with the skill',
       async () => {
         const { repo, docs, projectId, taskId, developer, reviewer } =
-          await developing(true);
+          await developing(true, true);
         await move(projectId, taskId, {
           status: 'QA',
           reviewerActorId: reviewer.id,

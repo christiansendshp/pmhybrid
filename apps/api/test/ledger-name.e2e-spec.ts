@@ -209,14 +209,15 @@ describe('The ledger name and whoami (e2e, Roadmap TASK-04)', () => {
       spawnSync('sh', [SKILL, ...args], { encoding: 'utf-8' });
 
     /** <tmp>/repo/{AGENTS.md, docs/...}: the layout the skill makes, with one task ready to take. */
-    function createRepo(taskId: string) {
+    function createRepo(taskId: string, withSkill = false) {
       const repo = mkdtempSync(path.join(tmpdir(), 'pmhybrid-e2e-repo-'));
       const docs = path.join(repo, 'docs');
       mkdirSync(docs);
       writeFileSync(path.join(docs, 'Roadmap.md'), ROADMAP(taskId), 'utf-8');
       const repoPath = repo.replace(/\\/g, '/');
-      if (HAS_SH) {
-        // The skill's own init makes the ledger and the rest of its files around the Roadmap.
+      if (HAS_SH && withSkill) {
+        // The skill's own init makes the ledger and the rest of its files around the Roadmap; only the
+        // test that runs the skill needs them (Roadmap TASK-27).
         expect(run('init', repoPath).status).toBe(0);
       } else {
         writeFileSync(path.join(docs, 'Agentslog.md'), LEDGER, 'utf-8');
@@ -227,9 +228,12 @@ describe('The ledger name and whoami (e2e, Roadmap TASK-04)', () => {
     const ledgerOf = (docs: string) =>
       readFileSync(path.join(docs, 'Agentslog.md'), 'utf-8');
 
-    async function startedByPmHub(ledgerName: string | null) {
+    async function startedByPmHub(
+      ledgerName: string | null,
+      withSkill = false,
+    ) {
       const taskId = 'TASK-01';
-      const { repo, docs } = createRepo(taskId);
+      const { repo, docs } = createRepo(taskId, withSkill);
       const agent = await createAgent(ledgerName ? { ledgerName } : {});
       const projectId = await createProject(docs);
       await addMember(projectId, agent.id);
@@ -277,7 +281,10 @@ describe('The ledger name and whoami (e2e, Roadmap TASK-04)', () => {
       'lets the agent pause, resume and finish what PM Hub started for it with the skill, and its check passes; the display name would have been refused',
       async () => {
         const ledgerName = unique('claude-sonnet-5-5');
-        const { repo, docs, agent, taskId } = await startedByPmHub(ledgerName);
+        const { repo, docs, agent, taskId } = await startedByPmHub(
+          ledgerName,
+          true,
+        );
 
         // What the old behaviour would have left: the agent cannot act as the name PM Hub wrote then.
         const refused = run(
