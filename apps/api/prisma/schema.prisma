@@ -660,6 +660,10 @@ model Project {
   // A move to QA needs a reviewer who can approve and is not the assignee, and a document cannot close a
   // task in QA by itself (Roadmap SUBTASK-09.2, GAP-41, DEC-006). Off: nothing is asked.
   qaApprovalRequired     Boolean  @default(false)
+  // A move to QA, its approval and its return are written into the ledger as the skill's review stage
+  // (REVIEW entries with Handoff and Review), for a project whose skill version accepts them (Roadmap
+  // TASK-08, GAP-40). Off: a move to QA writes nothing, as before.
+  ledgerQaHandoff        Boolean  @default(false)
   progressRollupStrategy ProgressRollupStrategy @default(EQUAL_WEIGHT_AVERAGE)
   nextTaskSeq            Int                    @default(1)
   status                 String                 @default("ACTIVE")

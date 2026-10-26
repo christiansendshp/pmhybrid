@@ -25,6 +25,8 @@ export interface Project {
   wipLimitAgent: number | null;
   /** A move to QA needs a reviewer who can approve and is not the assignee (Roadmap SUBTASK-09.2). */
   qaApprovalRequired: boolean;
+  /** A move to QA, its approval and its return are written into the ledger as the skill's review stage (Roadmap TASK-08). */
+  ledgerQaHandoff: boolean;
   progressRollupStrategy: string;
   status: string;
   createdAt: string;
@@ -92,6 +94,7 @@ export interface UpdateProjectInput {
   wipLimitQa?: number | null;
   wipLimitAgent?: number | null;
   qaApprovalRequired?: boolean;
+  ledgerQaHandoff?: boolean;
   status?: ProjectStatus;
   progressRollupStrategy?: ProgressRollupStrategy;
   leadActorId?: string | null;

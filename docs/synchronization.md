@@ -489,8 +489,9 @@ a word it does not know; Roadmap TASK-14). It is derived data, written only when
 without moving `updatedAt`, and it moves nothing: the card and the task page use it to say, in
 words, "Registro: QA · PM Hub: EN DESARROLLO" when the two differ. A start in the ledger
 (`IN_PROGRESS`) agrees with development and with QA alike; every other pair that differs is a
-disagreement. Until agents write `REVIEW` and `ASSIGNED` (the skill rejects both
-today, Roadmap DEPENDENCY-01) nothing changes on any board.
+disagreement. The skill has accepted `REVIEW` and `ASSIGNED` since its 9302b58 (Roadmap
+DEPENDENCY-01): on a board where no agent writes them, and no project turned on the QA handoff,
+nothing changes.
 
 ## Write-back (Postgres → Documents)
 
@@ -510,8 +511,9 @@ dependency added or removed, a removal and a conflict resolution write the row
    depends on ("a terminal log entry exists before a row can vanish") even if
    the process crashes mid-write-back. Only a curated subset of transitions
    auto-appends an entry: task created, status → `EN_DESARROLLO`, status →
-   `TERMINADA`, and locked reassignment — not every field edit, to avoid
-   ledger-rotation churn from fine-grained UI activity. In a document of the
+   `TERMINADA`, and locked reassignment — and, in a project that turned on the
+   QA handoff, status → `QA` (Roadmap TASK-08) — not every field edit, to
+   avoid ledger-rotation churn from fine-grained UI activity. In a document of the
    older format the entries are `CREATED`, `IN_PROGRESS`, `DONE` and
    `REASSIGNED`; the latest skill's format has its own (see "Documents in the
    latest skill's format"). Apply the skill's own field sanitization (strip
@@ -735,6 +737,43 @@ written exactly as before.
 Checked with the upstream skill's own script: a project made by its `init`,
 its `claim`, and PM Hub's create, start, reassign, edit, complete and remove all
 leave `check` passing (a `CREATED` entry, by contrast, fails it).
+
+### The QA handoff in the ledger (Roadmap TASK-08, GAP-40)
+
+A move to QA, by the board or by an agent through MCP, used to write nothing: the ledger, which
+is the source of truth for ownership, did not know the handoff. A project can now ask for it
+(`Project.ledgerQaHandoff`, off for every project, set in the project settings). The switch is the
+project's word that its copy of the skill accepts `REVIEW` (the skill's 9302b58 does; an older
+copy rejects it, which is why nothing is written until it is on). With it off the board writes
+exactly what it did before, and a `REVIEW` entry an agent wrote reads as no state of its own.
+
+With it on, in a Roadmap of the skill's tables (a `Pause reason` column) the three moves around
+QA write the review stage as the skill's own `handoff` and `review` commands do, in the **same
+transaction** as the move (a ledger that cannot be written rolls the move back, Roadmap BUG-07):
+
+| Move                                  | Ledger shows                                | Entries                                                                                                             |
+| ------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| → `QA`                                | held, or a returned review                  | `REVIEW` in the holder's name (`Handoff:` the reviewer asked for, if any; Verify says it was moved in PM Hub)       |
+| → `QA`                                | nobody holds it                             | `IN_PROGRESS` then `REVIEW`, both in the assignee's name (the skill only hands over what is held)                   |
+| → `QA`                                | a handoff already waiting                   | none                                                                                                                |
+| `QA` → `TERMINADA`                    | a handoff waiting                           | `REVIEW` with `Review: PASS` in the approver's name, then `DONE` (the reviewer who passes a task may close it)      |
+| `QA` → `EN_DESARROLLO`                | a handoff waiting, sent back by another     | `REVIEW` with `Review: FAIL - <note>` in the sender's name, then `IN_PROGRESS` in the holder's name with the reason |
+| `QA` → `EN_DESARROLLO`                | a handoff waiting, taken back by the holder | `IN_PROGRESS` in the holder's name, "Handoff withdrawn"                                                             |
+| `QA` → `EN_DESARROLLO` or `TERMINADA` | no handoff in the ledger                    | what the move wrote before the switch: `IN_PROGRESS` (none if held) or `DONE`                                       |
+
+The **holder** is the agent of the task's latest `IN_PROGRESS` entry (a review is not the holder's),
+so the `IN_PROGRESS` after a failed review is the holder's, as the skill's `check` requires of a
+claim that follows a review. Names are the actors' ledger names, compared without regard to case.
+The optional `note` of the transition request is the handoff's or the rejection's text (400 with any
+other move); it is kept in the audit of the move whether or not the ledger takes it. The older document
+formats and the YAML entries have no review state: there the move writes the row's Status (`QA`, or
+`TESTING` in the YAML format) and no ledger entry. A person-typed note on the board and the MCP
+`handoff_task` tool are Roadmap TASK-10.
+
+Decision (Roadmap TASK-08): an opt-in switch rather than detecting the skill's version, because a
+document cannot say which skill wrote it, and a wrong guess would fill the ledger with entries
+the project's own `check` rejects. Alternative rejected: writing `REVIEW` always (breaks SMARTHR,
+the one real project, on the older skill).
 
 ### Onboarding an empty project (Roadmap GAP-36a)
 

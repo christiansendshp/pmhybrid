@@ -22,6 +22,7 @@ const PROJECT: Project = {
   wipLimitQa: null,
   wipLimitAgent: null,
   qaApprovalRequired: false,
+  ledgerQaHandoff: false,
   progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
   status: 'ACTIVE',
   createdAt: '2026-09-01T09:00:00.000Z',

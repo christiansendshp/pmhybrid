@@ -165,6 +165,7 @@ export class TasksController {
       requesterActorId,
       origin,
       dto.reviewerActorId,
+      dto.note,
     );
   }
 

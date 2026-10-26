@@ -357,6 +357,7 @@ Project(id, name, description?, repoUrl?, docsPath, syncIntervalMinutes default 
   instantCloseMinutes default 5,   // Roadmap TASK-12 — see "Instant closes" below
   wipLimitDevelopment?, wipLimitQa?, wipLimitAgent?,  // advisory limits on the work in progress, 1 to 999, null = none (TASK-15; docs/board-views.md)
   qaApprovalRequired default false,  // a move to QA needs a reviewer who can approve and is not the assignee (SUBTASK-09.2; docs/permissions.md)
+  ledgerQaHandoff default false,     // a move to QA, its approval and its return are written into the ledger as REVIEW entries (TASK-08; docs/synchronization.md)
   progressRollupStrategy: EQUAL_WEIGHT_AVERAGE|LEAF_EQUAL_WEIGHT default EQUAL_WEIGHT_AVERAGE,
   nextTaskSeq default 1,      // monotonic counter for minted externalIds, see below
   status: ACTIVE|PAUSED|ARCHIVED default ACTIVE,   // only ACTIVE projects sync on a schedule

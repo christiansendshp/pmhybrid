@@ -15,6 +15,10 @@ export interface AgentslogEntryInput {
   followUp?: string;
   /** Skill v2's "CATEGORY - detail" bullet, required for a PAUSE entry (references/workflow.md); omit otherwise. */
   pause?: string;
+  /** Skill's `- Handoff:` bullet: the reviewer a REVIEW entry hands the task to; omit for nobody (Roadmap TASK-08). */
+  handoff?: string;
+  /** Skill's `- Review: PASS|FAIL - detail` bullet, the answer a reviewer gives on a REVIEW entry (Roadmap TASK-08). */
+  review?: string;
 }
 
 /**
@@ -46,6 +50,12 @@ export function appendAgentslogEntry(
   }
   if (entry.pause !== undefined) {
     lines.push(`- Pause: ${sanitizeField(entry.pause)}`);
+  }
+  if (entry.handoff !== undefined) {
+    lines.push(`- Handoff: ${sanitizeField(entry.handoff)}`);
+  }
+  if (entry.review !== undefined) {
+    lines.push(`- Review: ${sanitizeField(entry.review)}`);
   }
 
   const eol = detectLineEnding(markdown);

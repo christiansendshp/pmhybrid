@@ -74,6 +74,11 @@ export class UpdateProjectDto extends PartialType(
   @IsBoolean()
   qaApprovalRequired?: boolean;
 
+  /** Whether a move to QA, its approval and its return are written into the ledger as the skill's review stage (Roadmap TASK-08). */
+  @ValidateIf(provided)
+  @IsBoolean()
+  ledgerQaHandoff?: boolean;
+
   /** Advisory limits on the work in progress, 1 to 999; null clears one (Roadmap TASK-15). */
   @ValidateIf(limitGiven)
   @IsInt()

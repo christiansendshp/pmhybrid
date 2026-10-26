@@ -96,6 +96,15 @@
         desarrolló, y un documento que dé por cerrada una tarea en QA no la cierra: queda un
         conflicto para quien pueda aprobar. Apagado, nada de esto se pide.
       </p>
+      <mat-checkbox formControlName="ledgerQaHandoff">
+        Escribir el paso a QA en el Agentslog del proyecto
+      </mat-checkbox>
+      <p class="meta-text">
+        Encendido: pasar una tarea a QA agrega al Agentslog una entrada REVIEW con el revisor
+        elegido; aprobarla agrega la aprobación y el cierre, y devolverla a desarrollo agrega el
+        rechazo con su motivo. Actívalo solo si la versión de la skill del proyecto admite el estado
+        REVIEW. Apagado, pasar a QA no escribe nada en los documentos.
+      </p>
     </fieldset>
 
     <mat-form-field appearance="outline" subscriptSizing="dynamic">

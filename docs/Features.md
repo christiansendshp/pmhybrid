@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 163
-- Latest verification: `VALIDAR green: unit api 739 web 522, e2e 510, 412s` (2026-10-26)
+- Verified capabilities: 165
+- Latest verification: `ledger-qa-handoff.e2e-spec.ts: handoff, approval and return pass the skill check` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -178,3 +178,5 @@ Use one row per stable capability. Link long specifications or runbooks from
 | TASK-09 | A task in QA has a reviewer, stored apart from the assignee (Workload and the lock untouched), chosen from the members who can approve, and a project can require that reviewer to be independent | subtasks 09.1, 09.2, 09.3 done; VALIDAR green | log:TASK-09 | 2026-10-26 |
 | GAP-42 | The question who reviews a task has an answer: the reviewer field, shown on the card and the task, with the independence rule a project can turn on | closed by TASK-09 | log:GAP-42 | 2026-10-26 |
 | GAP-41 | In a project that requires QA approval a document cannot close a task that is in QA: a row that says DONE, or one that left with a DONE entry, raises a QA_APPROVAL_REQUIRED conflict that someone with task.qa.approve resolves; it closes itself if the document backs off; off by default | VALIDAR green: unit api 739 web 522, e2e 510, 412s | log:GAP-41 | 2026-10-26 |
+| TASK-08 | Project switch ledgerQaHandoff (off by default): a move to QA, its approval and its return append the skill's REVIEW, PASS/FAIL and IN_PROGRESS entries in the same transaction, only in skill-table Roadmaps; optional transition note; settings checkbox; BR-014 | VALIDAR green: check, lint, build, api unit 761, web 525, e2e 523 incl. the skill check and status on the ledger written | log:TASK-08 | 2026-10-26 |
+| GAP-40 | A move to QA now leaves its trace in the ledger when the project turns on ledgerQaHandoff (TASK-08) | ledger-qa-handoff.e2e-spec.ts: handoff, approval and return pass the skill check | log:GAP-40 | 2026-10-26 |

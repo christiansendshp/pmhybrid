@@ -18,6 +18,7 @@ import {
 } from '../agents/agent-identity.util.js';
 import { appendAgentslogEntry } from '../roadmap/agentslog-writer.util.js';
 import {
+  acceptsReviewEntries,
   skillLedgerEntries,
   usesSkillLedger,
 } from '../roadmap/skill-ledger.util.js';
@@ -51,6 +52,8 @@ export interface ResolvedTaskFields {
 export type WriteBackTrigger =
   | 'CREATED'
   | 'STATUS_EN_DESARROLLO'
+  // A move to QA, written into the ledger only by a project that opted in (Roadmap TASK-08).
+  | 'STATUS_QA'
   | 'STATUS_TERMINADA'
   | 'LOCKED_REASSIGN'
   // The row of a task whose row left the Roadmap, written back (Roadmap GAP-46): the task's history is
@@ -161,6 +164,8 @@ export class WriteBackService {
     requesterActorId: string,
     tx?: Prisma.TransactionClient,
     origin: AuditOrigin = 'UI',
+    /** What the person said with a move to QA or back from it, for the ledger entry (Roadmap TASK-08). */
+    note?: string,
   ) {
     return this.within(projectId, tx, (client) =>
       this.writeBackLocked(
@@ -170,6 +175,7 @@ export class WriteBackService {
         trigger,
         requesterActorId,
         origin,
+        note,
       ),
     );
   }
@@ -971,6 +977,7 @@ export class WriteBackService {
     trigger: WriteBackTrigger,
     requesterActorId: string,
     origin: AuditOrigin,
+    note?: string,
   ) {
     const project = await tx.project.findUniqueOrThrow({
       where: { id: projectId },
@@ -1021,6 +1028,17 @@ export class WriteBackService {
             include: LEDGER_NAME_INCLUDE,
           })
         : null;
+      // The review stage goes into the ledger only for a project that asked for it and whose skill
+      // accepts it (Roadmap TASK-08); the reviewer it names is whoever the move to QA asked.
+      const qaHandoff =
+        project.ledgerQaHandoff && acceptsReviewEntries(roadmapContent);
+      const reviewer =
+        qaHandoff && task.reviewerActorId
+          ? await tx.actor.findUnique({
+              where: { id: task.reviewerActorId },
+              include: LEDGER_NAME_INCLUDE,
+            })
+          : null;
       const entries = skillLedgerEntries({
         trigger,
         timestampIso,
@@ -1031,6 +1049,9 @@ export class WriteBackService {
         history: this.agentslogParser
           .parse(agentslogContent)
           .entries.filter((entry) => entry.taskExternalId === externalId),
+        qaHandoff,
+        reviewerName: reviewer ? ledgerNameOf(reviewer) : null,
+        note,
       });
       updatedAgentslog = entries.length
         ? entries.reduce(
@@ -1038,7 +1059,8 @@ export class WriteBackService {
             agentslogContent,
           )
         : null;
-    } else if (trigger === 'RESTORED') {
+    } else if (trigger === 'RESTORED' || trigger === 'STATUS_QA') {
+      // Neither has a state in these documents: the row carries a move to QA, and a restored one has its history.
       updatedAgentslog = null;
     } else {
       updatedAgentslog = appendAgentslogEntry(agentslogContent, {
@@ -1233,7 +1255,9 @@ function revisionSourceOf(origin: AuditOrigin): 'UI' | 'API' {
   return origin === 'API' ? 'API' : 'UI';
 }
 
-function statusWordFor(trigger: WriteBackTrigger): string {
+type LegacyLedgerTrigger = Exclude<WriteBackTrigger, 'RESTORED' | 'STATUS_QA'>;
+
+function statusWordFor(trigger: LegacyLedgerTrigger): string {
   switch (trigger) {
     case 'CREATED':
       return 'CREATED';
@@ -1243,12 +1267,10 @@ function statusWordFor(trigger: WriteBackTrigger): string {
       return 'DONE';
     case 'LOCKED_REASSIGN':
       return 'REASSIGNED';
-    case 'RESTORED':
-      return 'RESTORED';
   }
 }
 
-function summaryFor(trigger: WriteBackTrigger, title: string): string {
+function summaryFor(trigger: LegacyLedgerTrigger, title: string): string {
   switch (trigger) {
     case 'CREATED':
       return `Created: ${title}`;
@@ -1258,8 +1280,6 @@ function summaryFor(trigger: WriteBackTrigger, title: string): string {
       return `Completed: ${title}`;
     case 'LOCKED_REASSIGN':
       return `Reassigned while in progress: ${title}`;
-    case 'RESTORED':
-      return `Row restored: ${title}`;
   }
 }
 

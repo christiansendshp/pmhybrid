@@ -20,6 +20,7 @@ const PROJECT: Project = {
   wipLimitQa: null,
   wipLimitAgent: null,
   qaApprovalRequired: false,
+  ledgerQaHandoff: false,
   progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
   status: 'ACTIVE',
   createdAt: '2026-09-01T09:00:00.000Z',
@@ -104,6 +105,7 @@ describe('ProjectSettings', () => {
       wipLimitQa: null,
       wipLimitAgent: null,
       qaApprovalRequired: false,
+      ledgerQaHandoff: false,
       docsPath: './site-docs',
       repoUrl: 'https://example.test/site',
       progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
@@ -368,6 +370,37 @@ describe('ProjectSettings', () => {
       fixture.detectChanges();
 
       expect(fixture.componentInstance.form.getRawValue().qaApprovalRequired).toBe(true);
+    });
+  });
+
+  describe('the QA handoff in the ledger (Roadmap TASK-08)', () => {
+    it('starts off, and says what it writes and which skill it needs', () => {
+      const { component, text } = render(['project.update']);
+
+      expect(component.form.getRawValue().ledgerQaHandoff).toBe(false);
+      expect(text()).toContain('Escribir el paso a QA en el Agentslog del proyecto');
+      expect(text()).toContain('admite el estado REVIEW');
+    });
+
+    it('saves it turned on', async () => {
+      update.mockResolvedValue({ ...PROJECT, ledgerQaHandoff: true });
+      const { component } = render(['project.update']);
+
+      component.form.patchValue({ ledgerQaHandoff: true });
+      component.form.markAsDirty();
+      await component.save();
+
+      expect(update).toHaveBeenCalledWith('p1', expect.objectContaining({ ledgerQaHandoff: true }));
+    });
+
+    it('shows a project that has it on as on', () => {
+      const context = TestBed.inject(ProjectContext);
+      context.project.set({ ...PROJECT, ledgerQaHandoff: true });
+      context.permissions.set(['project.update']);
+      const fixture = TestBed.createComponent(ProjectSettings);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.form.getRawValue().ledgerQaHandoff).toBe(true);
     });
   });
 });

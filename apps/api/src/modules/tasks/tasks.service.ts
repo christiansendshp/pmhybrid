@@ -772,6 +772,18 @@ export class TasksService {
     }
   }
 
+  /** Whether the project writes a move to QA into its ledger (Roadmap TASK-08): off for every project until it opts in. */
+  private async recordsQaHandoff(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ): Promise<boolean> {
+    const project = await tx.project.findUnique({
+      where: { id: projectId },
+      select: { ledgerQaHandoff: true },
+    });
+    return project?.ledgerQaHandoff ?? false;
+  }
+
   /** An actor named for a role on a task must be an active member of the project, and active itself. */
   private async assertActiveMember(
     projectId: string,
@@ -798,12 +810,21 @@ export class TasksService {
     requesterActorId: string,
     origin: AuditOrigin = 'UI',
     reviewerActorId?: string | null,
+    note?: string,
   ) {
     const task = await this.getOwned(projectId, taskId);
     // A reviewer goes with the move to QA and nowhere else (Roadmap SUBTASK-09.1).
     if (reviewerActorId && toStatus !== TaskStatus.QA) {
       throw new BadRequestException(
         'A reviewer can only be asked for with the move to QA',
+      );
+    }
+    // A note goes with the handoff to QA or with the return from it: the two moves a reviewer reads (Roadmap TASK-08).
+    const returnsFromQa =
+      task.status === TaskStatus.QA && toStatus === TaskStatus.EN_DESARROLLO;
+    if (note && toStatus !== TaskStatus.QA && !returnsFromQa) {
+      throw new BadRequestException(
+        'A note can only go with the move to QA or the move back from it',
       );
     }
 
@@ -875,15 +896,30 @@ export class TasksService {
               ...(toStatus === TaskStatus.QA && reviewerActorId
                 ? { reviewerActorId }
                 : {}),
+              ...(note ? { note } : {}),
             },
             origin,
           },
           tx,
         );
 
-        // Only these two transitions are write-back triggers
+        // Only these transitions are write-back triggers
         // (docs/synchronization.md step 3) — every other status change stays
         // UI-only. The document is written in the same transaction.
+        if (toStatus === TaskStatus.QA) {
+          // The handoff reaches the ledger only in a project that asked for it (Roadmap TASK-08, GAP-40).
+          return (await this.recordsQaHandoff(tx, projectId))
+            ? this.writeBack.recordTaskEvent(
+                projectId,
+                taskId,
+                'STATUS_QA',
+                requesterActorId,
+                tx,
+                origin,
+                note,
+              )
+            : null;
+        }
         if (toStatus === TaskStatus.EN_DESARROLLO) {
           return this.writeBack.recordTaskEvent(
             projectId,
@@ -892,6 +928,7 @@ export class TasksService {
             requesterActorId,
             tx,
             origin,
+            note,
           );
         }
         if (toStatus === TaskStatus.TERMINADA) {

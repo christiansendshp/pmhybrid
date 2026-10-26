@@ -15,6 +15,8 @@ export const LIMITS = {
   CRITERIA: 5_000,
   /** A comment. */
   COMMENT: 5_000,
+  /** The note on a move to QA or back from it: it becomes one line of the ledger, which the skill asks to keep short. */
+  NOTE: 400,
   /** A folder path or a repository path. */
   PATH: 1_024,
   /** A URL. */
