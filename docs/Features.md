@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 208
-- Latest verification: `check, lint, build, unit green; e2e 746 green (one run under a concurrent run failed on timing, alone it passes in 165 s); pnpm test:backup 47 cases on a throwaway container, two mutations caught; run by hand on pmhybrid_test: 30 tables, 15208 rows equal under --strict, scratch database gone` (2026-10-26)
+- Verified capabilities: 209
+- Latest verification: `TASK-50, TASK-51 and TASK-52 are in Features.md with VALIDAR green on 762276b, 8eb24b4 and 369c450` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -223,3 +223,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | TASK-50 | SYNC_RUN_RETENTION (default 500, 0 keeps all, invalid stops the start) and a daily job at 03:30 UTC that keeps, per project, the newest runs and deletes the older ones except the FAILED ones, which stay; the boundary is the start time of the last run kept so ties are kept; one project's failure is logged and stops no other | check, lint, build, unit and e2e green (sync-run-retention 8 e2e: newest kept, failed kept, under the limit, 0, per project, only the named, ties; env validation unit) | log:TASK-50 | 2026-10-26 |
 | TASK-51 | NOTIFICATION_RETENTION_DAYS (default 90, 0 keeps all, invalid stops the start) and a daily job at 03:40 UTC that deletes the notifications read more than that many days ago, counted from readAt, and never an unread one | check, lint, build, unit and e2e green (notification-retention 8 e2e: past the limit, within it, unread never, from readAt, the boundary, 0, only the named; env validation unit) | log:TASK-51 | 2026-10-26 |
 | TASK-52 | deploy/backup/backup-postgres.sh (pg_dump -Fc inside a named container over its socket, no password, read back with pg_restore --list before it is kept, keeps the newest N, a failed run deletes nothing) and restore-check.sh (restores the newest dump into a scratch database, compares the rows of every table with the live one, --strict, drops the scratch database and looks for it again); docs/deployment.md Backups section (what is irreplaceable, schedule, restore, how it was tested) | check, lint, build, unit green; e2e 746 green (one run under a concurrent run failed on timing, alone it passes in 165 s); pnpm test:backup 47 cases on a throwaway container, two mutations caught; run by hand on pmhybrid_test: 30 tables, 15208 rows equal under --strict, scratch database gone | log:TASK-52 | 2026-10-26 |
+| FEATURE-09 | Operational hygiene: the old sync runs of a project are trimmed but every failed one stays (TASK-50), read notifications older than N days are deleted and the unread never (TASK-51), and a documented pg_dump backup with a restore check on a scratch database (TASK-52) | TASK-50, TASK-51 and TASK-52 are in Features.md with VALIDAR green on 762276b, 8eb24b4 and 369c450 | log:FEATURE-09 | 2026-10-26 |
