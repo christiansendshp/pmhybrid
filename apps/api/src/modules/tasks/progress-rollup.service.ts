@@ -65,7 +65,7 @@ const ID_CHUNK = 5000;
  * is not a share of the project (Roadmap GAP-35c). Written as an OR because
  * `notIn` alone drops the tasks with no entry type, which is most of them.
  */
-const COUNTS_TOWARDS_PROGRESS = {
+export const COUNTS_TOWARDS_PROGRESS = {
   deletedAt: null,
   OR: [
     { entryType: null },

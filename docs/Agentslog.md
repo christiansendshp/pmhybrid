@@ -18,16 +18,15 @@ segments live in `docs/history/`.
 
 ## Previous segment
 
-- Archive: `docs/history/Agentslog-20261026-018.md`
-- SHA-256: `6298df8b4775631da732ac51552dcba345e03ff88d753d9f783ad507490d70cd`
+- Archive: `docs/history/Agentslog-20261026-019.md`
+- SHA-256: `2bb9c71be948d1aeefda11b1a4a9af779e10e10983a887f490ab733eb97ba643`
 
 ## Entries
 
-## [2026-10-26T18:16:33Z] | claude-sonnet-5-5 | TASK-35 | IN_PROGRESS | Pace and forecast calculator
-- Summary: Pace and forecast calculator
-- Verify: pending
+## [2026-10-26T18:27:19Z] | claude-sonnet-5-5 | TASK-36 | IN_PROGRESS | Metrics endpoint for the pace and the forecast
+- Summary: carried forward from docs/history/Agentslog-20261026-019.md at rotation
 
-## [2026-10-26T18:25:41Z] | claude-sonnet-5-5 | TASK-35 | DONE | Pace and forecast calculator
-- Summary: Pure pace calculator: UTC Monday weeks, cumulative scope/done, burn-up per phase and a forecast range from the 2- and 4-week paces that declines (NOT_ENOUGH_HISTORY, NOTHING_OPEN, NO_RECENT_COMPLETIONS, NOT_CONVERGING); BR-016, docs/metrics.md
-- Files: apps/api/src/modules/metrics/pace.util.ts, apps/api/src/modules/metrics/pace.util.spec.ts, apps/api/test/pace-weeks.e2e-spec.ts, docs/metrics.md, docs/ProductDescription.md
-- Verify: check, lint, build, unit (pace.util.spec 22 tests) and e2e (pace-weeks vs date_trunc) green
+## [2026-10-26T18:36:59Z] | claude-sonnet-5-5 | TASK-36 | DONE | Metrics endpoint for the pace and the forecast
+- Summary: GET /projects/:id/metrics/pace?weeks= (2-52, default 12) gives the weekly pace, burn-up by phase with names and the forecast over the tasks that count towards the progress; sibling of the instant-close /metrics, no migration
+- Files: apps/api/src/modules/metrics/pace.controller.ts, pace.service.ts, pace.module.ts, dto/pace-query.dto.ts, apps/api/src/app.module.ts, apps/api/src/modules/tasks/progress-rollup.service.ts, apps/api/test/pace-endpoint.e2e-spec.ts, docs/metrics.md, docs/api-reference.md
+- Verify: check, lint, build, unit and e2e green (pace-endpoint 17 tests incl. SQL equality, 400s, member-only)

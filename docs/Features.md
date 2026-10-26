@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 185
-- Latest verification: `check, lint, build, unit (pace.util.spec 22 tests) and e2e (pace-weeks vs date_trunc) green` (2026-10-26)
+- Verified capabilities: 186
+- Latest verification: `check, lint, build, unit and e2e green (pace-endpoint 17 tests incl. SQL equality, 400s, member-only)` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -200,3 +200,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | TASK-34 | POST /projects/:id/documents/agentslog/untracked/import (task.write) turns the listed IDs whose latest entry is the exact DONE into done tasks (sourceOrigin AGENTSLOG, titled by the closing entry, dated by the ledger, no Roadmap row, entries linked, audited), skipping open work and unlisted IDs, once; the Documents page asks first with the count it adds | VALIDAR green in 229 s: api unit 842, web 604, e2e 589 | log:TASK-34 | 2026-10-26 |
 | FEATURE-02 | Work logged without a task: the ledger IDs that are no task are listed per project (open first, with entries, agents, dates and last word) and a person with task.write can import the closed ones as done tasks, saying first how many they add | TASK-33 and TASK-34 are in Features.md with VALIDAR green on 9177da3 and 1217bbc | log:FEATURE-02 | 2026-10-26 |
 | TASK-35 | Pure pace calculator: UTC Monday weeks, cumulative scope/done, burn-up per phase and a forecast range from the 2- and 4-week paces that declines (NOT_ENOUGH_HISTORY, NOTHING_OPEN, NO_RECENT_COMPLETIONS, NOT_CONVERGING); BR-016, docs/metrics.md | check, lint, build, unit (pace.util.spec 22 tests) and e2e (pace-weeks vs date_trunc) green | log:TASK-35 | 2026-10-26 |
+| TASK-36 | GET /projects/:id/metrics/pace?weeks= (2-52, default 12) gives the weekly pace, burn-up by phase with names and the forecast over the tasks that count towards the progress; sibling of the instant-close /metrics, no migration | check, lint, build, unit and e2e green (pace-endpoint 17 tests incl. SQL equality, 400s, member-only) | log:TASK-36 | 2026-10-26 |
