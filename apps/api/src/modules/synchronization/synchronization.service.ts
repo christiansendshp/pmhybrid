@@ -508,6 +508,8 @@ export class SynchronizationService {
     // counting it as seen keeps its task out of the disappeared-row sweep
     // (which would otherwise complete it or raise a conflict for it).
     const seenExternalIds = new Set<string>(unreadableIds);
+    // Whether a document may close a task that is in QA (Roadmap GAP-41, DEC-006): read once for the run.
+    const requireQaApproval = await this.requiresQaApproval(tx, projectId);
     const ownerCandidates = await this.agentLinks.ownerCandidates(
       tx,
       projectId,
@@ -533,6 +535,7 @@ export class SynchronizationService {
           in: [
             'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG',
             'CONCURRENT_FIELD_EDIT',
+            'QA_APPROVAL_REQUIRED',
           ],
         },
       },
@@ -640,6 +643,24 @@ export class SynchronizationService {
             summary,
           );
         }
+        // The document no longer closes the task, or the task is no longer in QA: the question is gone.
+        if (!(
+          requireQaApproval &&
+          existing.status === TaskStatus.QA &&
+          row.statusMapped === TaskStatus.TERMINADA
+        )) {
+          for (const conflict of openForTask.filter(
+            (candidate) => candidate.kind === 'QA_APPROVAL_REQUIRED',
+          )) {
+            await this.closeConflictAutomatically(
+              tx,
+              conflict,
+              openForTask,
+              'the document no longer closes the task while it is in QA',
+              summary,
+            );
+          }
+        }
         // A status the sync knows closes the "unrecognized status" conflicts the
         // token had raised — whether the document fixed it or the sync learned
         // it — even when the row itself did not change (Roadmap BUG-08).
@@ -669,6 +690,7 @@ export class SynchronizationService {
           row,
           openForTask,
           summary,
+          requireQaApproval,
         );
         if (changed) {
           summary.tasksUpdated += 1;
@@ -792,6 +814,18 @@ export class SynchronizationService {
       );
       if (asked.length > 0 && !hasTerminal) {
         continue; // already asked, and still open
+      }
+      if (hasTerminal && requireQaApproval && task.status === TaskStatus.QA) {
+        // The entry says it is done, and the QA role has not approved it: nobody is asked twice, and the
+        // task is not closed behind the approval (Roadmap GAP-41).
+        await this.raiseQaApproval(
+          tx,
+          task,
+          openByTask.get(task.id) ?? [],
+          summary,
+          true,
+        );
+        continue;
       }
       if (hasTerminal) {
         // A conflict raised while the entry that closes the task was not written yet (the row goes
@@ -1224,6 +1258,53 @@ export class SynchronizationService {
     summary.conflictsClosed += 1;
   }
 
+  /** Whether the project requires QA approval (Roadmap SUBTASK-09.2): a document cannot then close a task in QA. */
+  private async requiresQaApproval(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ): Promise<boolean> {
+    const project = await tx.project.findUnique({
+      where: { id: projectId },
+      select: { qaApprovalRequired: true },
+    });
+    return project?.qaApprovalRequired ?? false;
+  }
+
+  /**
+   * Raises the conflict that asks someone who can approve QA to decide on a task the document closes
+   * (Roadmap GAP-41): once while it is open. It shows the task's status against the document's, and, when
+   * the row has left the Roadmap, the table it was in, which is how resolving it knows to settle the missing row.
+   */
+  private async raiseQaApproval(
+    tx: Prisma.TransactionClient,
+    task: Prisma.TaskGetPayload<object>,
+    open: OpenConflict[],
+    summary: SyncSummary,
+    rowGone: boolean,
+  ): Promise<void> {
+    if (open.some((conflict) => conflict.kind === 'QA_APPROVAL_REQUIRED')) {
+      return;
+    }
+    const conflict = await tx.conflict.create({
+      data: {
+        projectId: task.projectId,
+        kind: 'QA_APPROVAL_REQUIRED',
+        entityType: 'Task',
+        entityId: task.id,
+        localVersion: {
+          status: task.status,
+          ...(rowGone ? { roadmapTable: task.roadmapTable } : {}),
+        } as Prisma.InputJsonValue,
+        externalVersion: {
+          status: TaskStatus.TERMINADA,
+        } as Prisma.InputJsonValue,
+      },
+    });
+    await this.audit.recordConflictDetected(conflict, 'SYNC', tx);
+    open.push(conflict);
+    summary.conflictsRaised += 1;
+  }
+
   /** Closes the open field conflicts whose every contested field now holds the same value in the document and in PM Hub. */
   private async closeAgreedFieldConflicts(
     tx: Prisma.TransactionClient,
@@ -1286,6 +1367,7 @@ export class SynchronizationService {
     row: ParsedRoadmapRow,
     open: OpenConflict[],
     summary: SyncSummary,
+    requireQaApproval = false,
   ): Promise<boolean> {
     // The row is exactly what was last reconciled (or last written back):
     // the document side did not change, so any difference from the task is
@@ -1339,7 +1421,17 @@ export class SynchronizationService {
     // A coarse word of the skill's (TODO, IN_PROGRESS, DONE) that the task's
     // column already projects to is the same state, not a change.
     if (row.statusMapped && rowStatusDiffers(row, task.status)) {
-      candidates.status = row.statusMapped;
+      if (
+        requireQaApproval &&
+        task.status === TaskStatus.QA &&
+        row.statusMapped === TaskStatus.TERMINADA
+      ) {
+        // Approving is the QA role's word, and a file is not it: the task stays in QA and someone who can
+        // approve decides (Roadmap GAP-41, DEC-006).
+        await this.raiseQaApproval(tx, task, open, summary, false);
+      } else {
+        candidates.status = row.statusMapped;
+      }
     }
     // The document's title is compared with the one it held when the task was
     // normalized (Roadmap GAP-39d): a row that changed for another reason must

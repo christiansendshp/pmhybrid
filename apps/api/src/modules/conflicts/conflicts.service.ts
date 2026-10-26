@@ -35,6 +35,15 @@ import {
 import { ResolveConflictDto } from './dto/resolve-conflict.dto.js';
 
 const TASK_STATUSES = new Set<string>(Object.values(TaskStatus));
+
+/** Whether a conflict's PM Hub side names the table the task's row was in: the row has left the Roadmap. */
+function hasRoadmapTable(localVersion: unknown): boolean {
+  return (
+    typeof localVersion === 'object' &&
+    localVersion !== null &&
+    (localVersion as Record<string, unknown>).roadmapTable != null
+  );
+}
 const PRIORITIES = new Set<string>(Object.values(TaskPriority));
 
 /**
@@ -281,8 +290,11 @@ export class ConflictsService {
       // would raise the same conflict again straight away (Roadmap BUG-06a).
       // The row coming back sets the table and re-arms it. Not an edit of the
       // task's content, so it needs no task permission.
+      // (or a task the document closed while it was in QA, whose row had left the Roadmap too)
       if (
-        conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG' &&
+        (conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG' ||
+          (conflict.kind === 'QA_APPROVAL_REQUIRED' &&
+            hasRoadmapTable(conflict.localVersion))) &&
         (dto.strategy === ConflictResolutionKind.KEEP_LOCAL ||
           dto.strategy === ConflictResolutionKind.DISMISSED)
       ) {
@@ -354,7 +366,8 @@ export class ConflictsService {
     if (
       conflict.entityType !== 'Task' ||
       (conflict.kind !== 'CONCURRENT_FIELD_EDIT' &&
-        conflict.kind !== 'WRITE_BACK_COLLISION')
+        conflict.kind !== 'WRITE_BACK_COLLISION' &&
+        conflict.kind !== 'QA_APPROVAL_REQUIRED')
     ) {
       return;
     }

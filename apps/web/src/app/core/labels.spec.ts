@@ -42,6 +42,7 @@ describe('label (Roadmap UX-03a)', () => {
       ['operation', 'WRITE_BACK_DEFERRED'],
       ['operation', 'ROLE_PERMISSIONS_UPDATE'],
       ['conflictKind', 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG'],
+      ['conflictKind', 'QA_APPROVAL_REQUIRED'],
       ['ledgerState', 'REASSIGNED'],
     ];
     for (const [kind, code] of samples) {

@@ -212,4 +212,38 @@ describe('Conflicts (brief §26 — resolution UI)', () => {
       expect(text()).toContain('restaura la fila');
     });
   });
+
+  describe('a document that closes a task in QA (Roadmap GAP-41)', () => {
+    const closesQa = conflict({
+      id: 'c4',
+      kind: 'QA_APPROVAL_REQUIRED',
+      localVersion: { status: 'QA' },
+      externalVersion: { status: 'TERMINADA' },
+    });
+
+    it('explains it and offers to approve it, to whoever can approve QA', async () => {
+      const { text, buttons } = await render([closesQa], ['conflict.resolve', 'task.qa.approve']);
+
+      expect(text()).toContain('exige que alguien con permiso de aprobar QA');
+      expect(buttons()).toContain('Aprobar y dar por terminada');
+      expect(buttons()).toContain('Dejar en QA');
+    });
+
+    it('does not offer to approve it to someone who cannot, but still offers to leave it in QA', async () => {
+      const { buttons } = await render([closesQa], ['conflict.resolve']);
+
+      expect(buttons()).not.toContain('Aprobar y dar por terminada');
+      expect(buttons()).toContain('Dejar en QA');
+    });
+
+    it('approves with the document’s side and leaves it in QA with PM Hub’s', async () => {
+      const { component } = await render([closesQa], ['conflict.resolve', 'task.qa.approve']);
+
+      await component.resolve(closesQa, 'KEEP_EXTERNAL');
+      await component.resolve(closesQa, 'KEEP_LOCAL');
+
+      expect(resolveConflict).toHaveBeenNthCalledWith(1, 'p1', 'c4', 'KEEP_EXTERNAL', undefined);
+      expect(resolveConflict).toHaveBeenNthCalledWith(2, 'p1', 'c4', 'KEEP_LOCAL', undefined);
+    });
+  });
 });

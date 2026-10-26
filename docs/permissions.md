@@ -271,7 +271,9 @@ Now:
   off, which every project starts, nothing is asked and a reviewer, when named,
   is any active member. The rules bind moves made in PM Hub: a ledger entry that
   puts a task in QA (the skill's `handoff`) is the document's own word, read as
-  such. What a document cannot do either, close a task in QA, is GAP-41.
+  such. What a document cannot do either is close a task that is in QA: sync raises a
+  `QA_APPROVAL_REQUIRED` conflict instead (Roadmap GAP-41), which needs `task.qa.approve`
+  to approve and nothing to leave the task in QA.
 - Existing databases pick the new keys up by re-running `prisma db seed`
   (it only adds); roles edited via `PATCH /roles/:id/permissions` are not
   touched, so grant `task.write`/`conflict.resolve` to any custom-edited role

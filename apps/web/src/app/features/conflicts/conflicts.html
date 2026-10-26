@@ -144,11 +144,16 @@
             [disabled]="resolvingId() === conflict.id"
             (click)="resolve(conflict, 'KEEP_LOCAL')"
           >
-            Conservar versión de la app
+            {{
+              conflict.kind === 'QA_APPROVAL_REQUIRED'
+                ? 'Dejar en QA'
+                : 'Conservar versión de la app'
+            }}
           </button>
           @if (
-            (conflict.externalVersion && conflict.kind !== 'UNRECOGNIZED_STATUS') ||
-            conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG'
+            ((conflict.externalVersion && conflict.kind !== 'UNRECOGNIZED_STATUS') ||
+              conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG') &&
+            (conflict.kind !== 'QA_APPROVAL_REQUIRED' || canApprove())
           ) {
             <button
               mat-stroked-button
@@ -156,7 +161,11 @@
               [disabled]="resolvingId() === conflict.id"
               (click)="resolve(conflict, 'KEEP_EXTERNAL')"
             >
-              Conservar versión del documento
+              {{
+                conflict.kind === 'QA_APPROVAL_REQUIRED'
+                  ? 'Aprobar y dar por terminada'
+                  : 'Conservar versión del documento'
+              }}
             </button>
           }
           @if (conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG' && canRestoreRow()) {

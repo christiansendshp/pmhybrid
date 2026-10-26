@@ -485,6 +485,8 @@ enum ConflictKind {
   WRITE_BACK_COLLISION
   // The document gives a status that is in neither vocabulary (Roadmap GAP-35b).
   UNRECOGNIZED_STATUS
+  // The document closes a task that is in QA in a project that requires approval (Roadmap GAP-41, DEC-006).
+  QA_APPROVAL_REQUIRED
 }
 
 enum ConflictResolutionKind {

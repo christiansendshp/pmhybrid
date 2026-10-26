@@ -42,6 +42,8 @@ const KIND_EXPLANATIONS: Record<ConflictKind, string> = {
     'Guardar este cambio coincidió con una edición del documento sobre el mismo campo, así que no se escribió de vuelta.',
   UNRECOGNIZED_STATUS:
     'El documento da un estado que la app no reconoce, así que la tarea conserva el suyo. Elige un estado válido o descarta el aviso.',
+  QA_APPROVAL_REQUIRED:
+    'El documento da esta tarea por terminada, pero está en QA y este proyecto exige que alguien con permiso de aprobar QA la apruebe. Aprobar la da por terminada; dejarla en QA conserva el estado de la app y lo escribe en el documento.',
   ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG:
     'La fila de esta tarea ya no está en el Roadmap, y no se encontró una entrada DONE para ella en el Agentslog — puede haberse quitado de otra forma, o puede ser un error. Si el trabajo sigue pendiente, restaura la fila: se escribe de nuevo con los datos de la tarea.',
 };
@@ -60,6 +62,7 @@ interface ManualField {
  */
 const CONFLICT_RESOLVE = 'conflict.resolve';
 const TASK_WRITE = 'task.write';
+const TASK_QA_APPROVE = 'task.qa.approve';
 
 @Component({
   selector: 'app-conflicts',
@@ -83,6 +86,8 @@ export class Conflicts implements OnInit {
 
   /** Resolving needs `conflict.resolve`; the API enforces it regardless (Roadmap SECURITY-02). */
   readonly canResolve = computed(() => this.context.permissions().includes(CONFLICT_RESOLVE));
+  /** Closing a task that is in QA is the QA role's word: it needs `task.qa.approve` (Roadmap GAP-41). */
+  readonly canApprove = computed(() => this.context.permissions().includes(TASK_QA_APPROVE));
   /** Writing a row back into the Roadmap is writing a task: it needs `task.write` too (Roadmap GAP-46). */
   readonly canRestoreRow = computed(() => this.context.permissions().includes(TASK_WRITE));
 

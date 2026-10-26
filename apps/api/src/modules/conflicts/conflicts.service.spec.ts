@@ -691,3 +691,92 @@ describe('ConflictsService.resolve RESTORE_ROW (Roadmap GAP-46)', () => {
     expect(conflictUpdate).not.toHaveBeenCalled();
   });
 });
+
+describe('ConflictsService.resolve QA_APPROVAL_REQUIRED (Roadmap GAP-41)', () => {
+  const closesQa = {
+    kind: 'QA_APPROVAL_REQUIRED',
+    localVersion: { status: 'QA' },
+    externalVersion: { status: 'TERMINADA' },
+  };
+  const rowGone = {
+    ...closesQa,
+    localVersion: { status: 'QA', roadmapTable: 'ACTIVE' },
+  };
+
+  it('refuses to close the task for someone who cannot approve QA', async () => {
+    const { service, taskUpdate } = setup({
+      held: ['task.write'],
+      taskStatus: 'QA',
+      ...closesQa,
+    });
+
+    await expect(
+      service.resolve(
+        'p1',
+        'c1',
+        { strategy: 'KEEP_EXTERNAL' } as never,
+        'actor-1',
+      ),
+    ).rejects.toThrow('Missing permission: task.qa.approve');
+    expect(taskUpdate).not.toHaveBeenCalled();
+  });
+
+  it('closes the task for someone who can', async () => {
+    const { service, taskUpdate } = setup({
+      held: ['task.qa.approve'],
+      taskStatus: 'QA',
+      ...closesQa,
+    });
+
+    await service.resolve(
+      'p1',
+      'c1',
+      { strategy: 'KEEP_EXTERNAL' } as never,
+      'actor-1',
+    );
+
+    expect(taskUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'TERMINADA' }),
+      }),
+    );
+  });
+
+  it('leaves the task as it is when PM Hub’s side is kept, and needs no permission to say so', async () => {
+    const { service, taskUpdate, conflictUpdate } = setup({
+      held: [],
+      taskStatus: 'QA',
+      ...closesQa,
+    });
+
+    await service.resolve(
+      'p1',
+      'c1',
+      { strategy: 'KEEP_LOCAL' } as never,
+      'actor-1',
+    );
+
+    expect(taskUpdate).not.toHaveBeenCalled();
+    expect(conflictUpdate).toHaveBeenCalled();
+  });
+
+  it('records that the task has no row when PM Hub’s side is kept and the row had left, so it is not asked again', async () => {
+    const { service, taskUpdate } = setup({
+      held: [],
+      taskStatus: 'QA',
+      ...rowGone,
+    });
+
+    await service.resolve(
+      'p1',
+      'c1',
+      { strategy: 'KEEP_LOCAL' } as never,
+      'actor-1',
+    );
+
+    expect(taskUpdate).toHaveBeenCalledWith({
+      where: { id: 't1', deletedAt: null },
+      data: { roadmapTable: null },
+    });
+  });
+});

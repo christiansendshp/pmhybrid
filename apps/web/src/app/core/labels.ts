@@ -78,6 +78,7 @@ const DICTIONARIES: Record<LabelKind, Record<string, string>> = {
     CONCURRENT_FIELD_EDIT: 'Edición simultánea',
     WRITE_BACK_COLLISION: 'Colisión al escribir en el documento',
     UNRECOGNIZED_STATUS: 'Estado no reconocido',
+    QA_APPROVAL_REQUIRED: 'Aprobación de QA pendiente',
   },
   resolution: {
     KEEP_LOCAL: 'se conservó el valor de PM Hub',

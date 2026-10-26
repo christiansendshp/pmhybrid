@@ -152,6 +152,13 @@ segment` section with an archive path + SHA-256), ingest the referenced
      `done` takes the row out and writes the entry, and a sync between the two
      asks; the entry that follows closes that conflict by itself (reason "the
      ledger now confirms the task is done").
+   - **A task in QA, in a project that requires QA approval** (Roadmap GAP-41,
+     DEC-006; `Project.qaApprovalRequired`) is **not** completed by a `DONE` entry or
+     by a row that says `DONE`: a `QA_APPROVAL_REQUIRED` conflict is raised once, and
+     the task stays in QA until someone who holds `task.qa.approve` resolves it. The
+     conflict closes itself if the document stops saying the task is done or the
+     task leaves QA. With the switch off, which every project starts, the
+     document's word closes the task as before.
    - **Already done** → a task that is `TERMINADA` when its row goes (the
      document said `DONE`, or it was approved here) has nothing to confirm: its
      `roadmapTable` is cleared with an `ROADMAP_TABLE_CHANGE` audit event and no
@@ -764,12 +771,13 @@ and, if the resolution changes stored data, may trigger a normal write-back.
 
 ### Kinds, and what each resolution does
 
-| Kind                                      | Raised when                                                                               | `KEEP_LOCAL`                                               | `KEEP_EXTERNAL`                                                                  | `MANUAL_EDIT`                                          |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `CONCURRENT_FIELD_EDIT`                   | a field was edited in PM Hub (UI or API) and in the document since the last sync (step 5) | the task stays; the document gets the task's value         | the task takes the document's value; nothing is written                          | the task and the document take the person's value      |
-| `WRITE_BACK_COLLISION`                    | a write-back finds the row's status no longer agrees with the task's (step 6)             | as above                                                   | as above                                                                         | as above                                               |
-| `ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG` | a task's row is gone and no `DONE` entry explains it (step 6)                             | the task stays, recorded as having no row; nothing written | the task moves to `TERMINADA` and has no row (needs the permission of that move) | the person picks the status (and table) the task keeps |
-| `UNRECOGNIZED_STATUS`                     | the document's status word is in neither vocabulary ("Unrecognized statuses…")            | the task keeps its status                                  | refused (400): there is no value to keep                                         | the person picks a status                              |
+| Kind                                      | Raised when                                                                                                                                       | `KEEP_LOCAL`                                                                                         | `KEEP_EXTERNAL`                                                                  | `MANUAL_EDIT`                                          |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `CONCURRENT_FIELD_EDIT`                   | a field was edited in PM Hub (UI or API) and in the document since the last sync (step 5)                                                         | the task stays; the document gets the task's value                                                   | the task takes the document's value; nothing is written                          | the task and the document take the person's value      |
+| `WRITE_BACK_COLLISION`                    | a write-back finds the row's status no longer agrees with the task's (step 6)                                                                     | as above                                                                                             | as above                                                                         | as above                                               |
+| `ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG` | a task's row is gone and no `DONE` entry explains it (step 6)                                                                                     | the task stays, recorded as having no row; nothing written                                           | the task moves to `TERMINADA` and has no row (needs the permission of that move) | the person picks the status (and table) the task keeps |
+| `QA_APPROVAL_REQUIRED`                    | the document closes a task that is in QA (its row says `DONE`, or it left the Roadmap with a `DONE` entry) in a project that requires QA approval | the task stays in QA; the document gets QA written back (a row that had left is recorded as missing) | the task moves to `TERMINADA`; needs `task.qa.approve`                           | the person picks a status                              |
+| `UNRECOGNIZED_STATUS`                     | the document's status word is in neither vocabulary ("Unrecognized statuses…")                                                                    | the task keeps its status                                                                            | refused (400): there is no value to keep                                         | the person picks a status                              |
 
 `DISMISSED` settles any of them without choosing a value; for a disappeared row it
 records the missing row the same way `KEEP_LOCAL` does.

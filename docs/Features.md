@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 162
-- Latest verification: `closed by TASK-09` (2026-10-26)
+- Verified capabilities: 163
+- Latest verification: `VALIDAR green: unit api 739 web 522, e2e 510, 412s` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -177,3 +177,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | SUBTASK-09.2 | Project switch qaApprovalRequired (off by default): a move to QA needs a reviewer who holds task.qa.approve and is not the assignee, refused in the API with its own message; settings page checkbox; BR-013 | VALIDAR green: unit api 735 web 519, e2e 499, 381s | log:SUBTASK-09.2 | 2026-10-26 |
 | TASK-09 | A task in QA has a reviewer, stored apart from the assignee (Workload and the lock untouched), chosen from the members who can approve, and a project can require that reviewer to be independent | subtasks 09.1, 09.2, 09.3 done; VALIDAR green | log:TASK-09 | 2026-10-26 |
 | GAP-42 | The question who reviews a task has an answer: the reviewer field, shown on the card and the task, with the independence rule a project can turn on | closed by TASK-09 | log:GAP-42 | 2026-10-26 |
+| GAP-41 | In a project that requires QA approval a document cannot close a task that is in QA: a row that says DONE, or one that left with a DONE entry, raises a QA_APPROVAL_REQUIRED conflict that someone with task.qa.approve resolves; it closes itself if the document backs off; off by default | VALIDAR green: unit api 739 web 522, e2e 510, 412s | log:GAP-41 | 2026-10-26 |
