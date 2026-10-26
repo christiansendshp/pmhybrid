@@ -1,0 +1,86 @@
+<header class="page-header">
+  <div>
+    <h2>Informe</h2>
+    <p class="page-header__description">
+      El estado del proyecto en la última semana, para copiar, descargar o imprimir, y cómo era cada
+      día.
+    </p>
+  </div>
+</header>
+
+@if (loading()) {
+  <p class="meta-text">Cargando…</p>
+} @else {
+  <section class="report-section" aria-labelledby="report-heading">
+    <h3 id="report-heading" class="report-section__title">Informe de la semana</h3>
+    @if (reportFailed()) {
+      <p class="callout" role="alert">No se pudo generar el informe. Reintenta en un momento.</p>
+    } @else if (parts(); as informe) {
+      <div class="report__actions">
+        <button type="button" class="report__button" (click)="copy()">Copiar Markdown</button>
+        <button type="button" class="report__button" (click)="download()">Descargar .md</button>
+        <button type="button" class="report__button" (click)="print()">
+          Imprimir o guardar como PDF
+        </button>
+        <span class="meta-text" role="status">{{ copyNote() }}</span>
+      </div>
+
+      <article class="report-print" aria-label="Informe de estado">
+        <h4 class="report__title">{{ informe.title }}</h4>
+        @if (informe.intro) {
+          <p class="report__intro">{{ informe.intro }}</p>
+        }
+        @for (section of informe.sections; track section.heading) {
+          <section class="report__part">
+            <h5 class="report__heading">{{ section.heading }}</h5>
+            <pre class="report__body">{{ section.body }}</pre>
+          </section>
+        }
+      </article>
+    }
+  </section>
+
+  <section class="report-section" aria-labelledby="history-heading">
+    <h3 id="history-heading" class="report-section__title">Historial</h3>
+    @if (historyFailed()) {
+      <p class="callout" role="alert">No se pudo leer el historial. Reintenta en un momento.</p>
+    } @else if (rows().length === 0) {
+      <p class="meta-text" role="status">Todavía no hay días registrados.</p>
+    } @else {
+      <div
+        class="table-scroll history-scroll"
+        appScrollCue
+        tabindex="0"
+        role="region"
+        aria-label="Historial de los últimos días"
+      >
+        <table class="history-table">
+          <caption class="history-table__caption">
+            Cómo estaba el proyecto cada día: las filas aproximadas se reconstruyeron de las fechas
+            de las tareas y no saben lo que no pueden saber.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Día</th>
+              <th scope="col">Origen</th>
+              <th scope="col" class="history-table__num">Tareas</th>
+              <th scope="col" class="history-table__num">Terminadas</th>
+              <th scope="col" class="history-table__num">Progreso</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.day) {
+              <tr>
+                <th scope="row">{{ row.day }}</th>
+                <td>{{ row.origin }}</td>
+                <td class="history-table__num">{{ row.total }}</td>
+                <td class="history-table__num">{{ row.done }}</td>
+                <td class="history-table__num">{{ row.progress }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+}

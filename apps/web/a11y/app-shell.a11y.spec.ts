@@ -109,6 +109,15 @@ test.describe('accessibility (Roadmap GAP-25)', () => {
     await checkA11y(page, 'risks');
   });
 
+  test('project report (sections, actions and the history table, Roadmap TASK-49)', async ({ page }) => {
+    await page.goto('/projects');
+    await page.locator('.projects__name').first().click();
+    await page.getByRole('link', { name: 'Informe' }).click();
+    await expect(page.getByRole('heading', { name: 'Informe', exact: true, level: 2 })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Copiar Markdown' })).toBeVisible();
+    await checkA11y(page, 'report');
+  });
+
   test('task detail (styled sections, breadcrumb, Roadmap UX-03c1)', async ({ page }) => {
     // This repository's own project is the seeded one that has tasks.
     await page.goto('/projects/pmhybrid-self/kanban');

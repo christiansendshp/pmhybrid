@@ -1,7 +1,7 @@
 # Status report and history
 
-Status: the daily snapshot (Roadmap TASK-46), the rebuilding of past days (TASK-47) and the weekly report in
-Markdown (TASK-48) exist. The Informe tab (TASK-49) adds its part here. The idea is FEATURE-08 of
+Status: all of FEATURE-08 exists: the daily snapshot (Roadmap TASK-46), the rebuilding of past days (TASK-47), the
+weekly report in Markdown (TASK-48) and the Informe tab (TASK-49). The idea is FEATURE-08 of
 `docs/tracking-improvement-plan.md`: the state of a project should be readable without logging in, and the past state
 should be a number and not a reconstruction.
 
@@ -75,3 +75,26 @@ out).
 **Markdown, not HTML** (BR-021): a task title is data, so `escapeMarkdown` puts a backslash before `\`, `*`, `_`,
 `{ } [ ]`, `< >`, `#`, `|` and `~`, turns line breaks into spaces, and the report has no raw HTML tag whatever the
 titles say. `apps/api/src/modules/report/report.util.spec.ts` and `apps/api/test/report.e2e-spec.ts` check it.
+
+## The Informe tab (`/projects/:projectId/report`)
+
+A tab of the project, after Riesgos (`apps/web/src/app/features/report`). It reads `GET …/report` and
+`GET …/snapshots?days=30` **once per visit**, in parallel, and **each failure says so without hiding the other part**
+(an alert in its own section).
+
+- **Informe de la semana**: the report cut at its headings (`core/report.ts`, `reportSections`): the title, the week it
+  covers and each section under a heading a person can navigate by, with its text exactly as the API wrote it, in a
+  `<pre>`, so **what is read is what is copied**. Three buttons: **Copiar Markdown** (the clipboard, saying "Copiado." or,
+  when the browser refuses, "No se pudo copiar. Selecciona el texto y cópialo a mano."), **Descargar .md** (a file named
+  `informe-<project>-<day>.md`, the name made safe by `slug`) and **Imprimir o guardar como PDF**.
+- **The PDF is the browser's own**: no rendering library is added (the decision of FEATURE-08). `window.print()` goes through
+  a print stylesheet (`styles.scss`) that, while the class `printing-report` is on `<body>`, hides everything but
+  `.report-print` (the report: neither the buttons nor the history, nor the navigation). The class is set by the page on
+  `beforeprint` (so Ctrl+P works too) and removed on `afterprint`, and only while the Informe page is open, so no other
+  page is ever affected.
+- **Historial**: a table of the last 30 days that have a snapshot: the day, the origin (**Registrado**, or **Aproximado**
+  for a rebuilt day), the tasks, the done ones and the progress, with **"—" for what a rebuilt day cannot know**. It scrolls
+  inside its own focusable region when it is wider than the screen. With none it says "Todavía no hay días registrados."
+
+The pure part (the sections, the file name, the rows) is `core/report.ts`, with its own tests; the page has a component
+spec, and it is in the accessibility, mobile-layout and target-size suites.

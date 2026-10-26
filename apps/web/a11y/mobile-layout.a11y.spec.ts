@@ -22,6 +22,7 @@ const routes: { name: string; url: string }[] = [
   { name: 'progress', url: '/projects/pmhybrid-self/progress' },
   { name: 'pace', url: '/projects/pmhybrid-self/pace' },
   { name: 'risks', url: '/projects/pmhybrid-self/risks' },
+  { name: 'report', url: '/projects/pmhybrid-self/report' },
   { name: 'documents', url: '/projects/pmhybrid-self/documents' },
   { name: 'conflicts', url: '/projects/pmhybrid-self/conflicts' },
   { name: 'audit', url: '/projects/pmhybrid-self/audit' },

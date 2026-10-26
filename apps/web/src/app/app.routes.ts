@@ -111,6 +111,11 @@ export const routes: Routes = [
             loadComponent: () => import('./features/risks/risks').then((m) => m.Risks),
           },
           {
+            // The weekly status report and the history of the project (Roadmap TASK-49).
+            path: 'report',
+            loadComponent: () => import('./features/report/report').then((m) => m.Report),
+          },
+          {
             path: 'tasks/:taskId',
             loadComponent: () =>
               import('./features/task-detail/task-detail').then((m) => m.TaskDetail),

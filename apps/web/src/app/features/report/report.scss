@@ -1,0 +1,100 @@
+.report-section {
+  margin-bottom: var(--space-8);
+}
+
+.report-section__title {
+  margin-top: 0;
+}
+
+.report__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.report__button {
+  min-height: 2rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--mat-sys-outline);
+  border-radius: var(--radius-sm);
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface);
+  font: inherit;
+  cursor: pointer;
+}
+
+.report-print {
+  max-width: 52rem;
+  padding: var(--space-4);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-surface-container-low);
+}
+
+.report__title {
+  margin: 0 0 var(--space-1);
+}
+
+.report__intro {
+  margin: 0 0 var(--space-3);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.report__part {
+  margin-top: var(--space-3);
+}
+
+.report__heading {
+  margin: 0 0 var(--space-1);
+}
+
+// The text as the API wrote it, kept as it is: what is read is what is copied.
+.report__body {
+  margin: 0;
+  font: var(--mat-sys-body-small);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.history-scroll {
+  max-width: 40rem;
+}
+
+.history-table {
+  width: 100%;
+  min-width: 26rem;
+  border-collapse: collapse;
+  font: var(--mat-sys-body-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.history-table__caption {
+  padding: var(--space-1) 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-medium);
+  text-align: left;
+}
+
+.history-table th,
+.history-table td {
+  padding: var(--space-1) var(--space-3);
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  text-align: left;
+  font-weight: normal;
+}
+
+.history-table thead th {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-medium);
+}
+
+.history-table tbody th {
+  text-transform: none;
+}
+
+.history-table th.history-table__num,
+.history-table td.history-table__num {
+  text-align: right;
+}

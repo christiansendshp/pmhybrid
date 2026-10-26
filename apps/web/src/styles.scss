@@ -326,3 +326,26 @@ th {
   font-size: 0.85em;
   line-height: 1;
 }
+
+// Printing the status report (Roadmap TASK-49): only the report is left on the page, so "Imprimir o guardar como PDF"
+// needs no rendering library. The class is set only while the Informe page is open and the browser is about to
+// print, and removed after, so no other page is ever affected.
+@media print {
+  body.printing-report * {
+    visibility: hidden;
+  }
+
+  body.printing-report .report-print,
+  body.printing-report .report-print * {
+    visibility: visible;
+  }
+
+  body.printing-report .report-print {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    border: 0;
+    background: none;
+  }
+}

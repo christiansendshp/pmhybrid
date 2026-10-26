@@ -45,6 +45,7 @@ export class ProjectDashboard implements OnInit {
     { label: 'Progreso', path: 'progress' },
     { label: 'Seguimiento', path: 'pace' },
     { label: 'Riesgos', path: 'risks' },
+    { label: 'Informe', path: 'report' },
     { label: 'Documentos', path: 'documents' },
     { label: 'Conflictos', path: 'conflicts' },
     { label: 'Auditoría', path: 'audit' },
