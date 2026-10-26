@@ -325,6 +325,11 @@ AuditEvent(id, projectId?, actorId?, entityType, entityId, operation,
   @@index([entityType, entityId, occurredAt])
   @@index([projectId, occurredAt])   // a project's whole history in one query
 
+ProjectSnapshot(id, projectId, day: date (UTC), source: RECORDED|RECONSTRUCTED, total, done, byStatus? jsonb, blocked?,
+  openConflicts?, progress?, createdAt)   // @@unique([projectId, day]); Roadmap TASK-46: one row a project and day,
+  // the counts of the tasks that count towards the progress. A rebuilt row leaves null what it cannot know.
+  // See docs/status-report.md.
+
 ProjectSeen(actorId, projectId, seenAt)      // @@id([actorId, projectId]); until when a person has seen the news
   // of a project (Roadmap TASK-38). Only the person moves it, with an explicit call; no row = read from 7 days back.
   // Cascades with the actor and the project. See docs/what-changed.md.

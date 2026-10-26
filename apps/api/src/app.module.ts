@@ -34,6 +34,7 @@ import { WorkloadModule } from './modules/workload/workload.module.js';
 import { WaitingModule } from './modules/waiting/waiting.module.js';
 import { PaceModule } from './modules/metrics/pace.module.js';
 import { RisksModule } from './modules/risks/risks.module.js';
+import { SnapshotsModule } from './modules/snapshots/snapshots.module.js';
 import { UntrackedWorkModule } from './modules/untracked-work/untracked-work.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { SettingsModule } from './modules/settings/settings.module.js';
@@ -72,6 +73,7 @@ import { TitleNormalizationModule } from './modules/title-normalization/title-no
     WaitingModule,
     PaceModule,
     RisksModule,
+    SnapshotsModule,
     UntrackedWorkModule,
     HealthModule,
     SettingsModule,
