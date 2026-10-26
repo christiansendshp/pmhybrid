@@ -287,6 +287,65 @@ describe('the critical path', () => {
   });
 });
 
+describe('what blocks what (Roadmap TASK-22)', () => {
+  const waiting = (tasks: RiskTask[], dependencies: RiskDependency[]) =>
+    read(tasks, dependencies).waiting.map((entry) => [
+      entry.task.id,
+      entry.waitsOn.map((dependency) => dependency.task.id),
+    ]);
+
+  it('lists each open task that depends on other open tasks, with those', () => {
+    expect(
+      waiting(
+        [task('a'), task('b'), task('c')],
+        [dep('b', 'a'), dep('c', 'b')],
+      ),
+    ).toEqual([
+      ['b', ['a']],
+      ['c', ['b']],
+    ]);
+  });
+
+  it('puts the task that waits for the most first, then by name', () => {
+    expect(
+      waiting(
+        [task('a'), task('b'), task('c'), task('d')],
+        [dep('d', 'a'), dep('c', 'a'), dep('c', 'b')],
+      ),
+    ).toEqual([
+      ['c', ['a', 'b']],
+      ['d', ['a']],
+    ]);
+  });
+
+  it('says where each dependency stands and whether it is blocked', () => {
+    const { waiting: entries } = read(
+      [task('a'), developing('b', { blocked: true })],
+      [dep('a', 'b')],
+    );
+
+    expect(entries[0].waitsOn).toEqual([
+      {
+        task: { id: 'b', externalId: 'B', title: 'Task b' },
+        status: 'EN_DESARROLLO',
+        blocked: true,
+      },
+    ]);
+  });
+
+  it('does not wait for a finished task', () => {
+    expect(waiting([task('a'), done('b')], [dep('a', 'b')])).toEqual([]);
+  });
+
+  it('does not list a finished task, whatever it depended on', () => {
+    expect(waiting([done('a'), task('b')], [dep('a', 'b')])).toEqual([]);
+  });
+
+  it('does not list a task that waits for nothing', () => {
+    expect(waiting([task('a'), task('b')], [])).toEqual([]);
+  });
+});
+
 describe('the semaphore', () => {
   const lights = (tasks: RiskTask[], dependencies: RiskDependency[] = []) =>
     read(tasks, dependencies).project.light;
@@ -390,6 +449,7 @@ describe('an empty project', () => {
     expect(read([])).toEqual({
       signals: [],
       criticalPath: [],
+      waiting: [],
       project: {
         light: null,
         open: 0,

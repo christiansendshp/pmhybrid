@@ -9,9 +9,11 @@
             ? 'Por agente'
             : view() === 'waiting'
               ? 'Esperando'
-              : view() === 'timeline'
-                ? 'Línea de tiempo'
-                : 'Kanban'
+              : view() === 'dependencies'
+                ? 'Dependencias'
+                : view() === 'timeline'
+                  ? 'Línea de tiempo'
+                  : 'Kanban'
     }}
   </h2>
   @if (!showCreateForm() && canWrite()) {
@@ -246,6 +248,15 @@
     <app-waiting
       [waiting]="waitingList()"
       [failed]="waitingFailed()"
+      [visibleTaskIds]="visibleTaskIds()"
+    />
+  }
+} @else if (view() === 'dependencies') {
+  @if (!loading()) {
+    <app-dependencies
+      [projectId]="projectId"
+      [risks]="risks()"
+      [failed]="risksFailed()"
       [visibleTaskIds]="visibleTaskIds()"
     />
   }

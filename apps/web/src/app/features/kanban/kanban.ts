@@ -5,6 +5,8 @@ import { BoardViews } from '../../shared/board-views/board-views.js';
 import { TaskTable } from '../task-table/task-table.js';
 import { ReviewQueue } from '../review-queue/review-queue.js';
 import { NoteDialog } from '../../shared/note-dialog/note-dialog.js';
+import { RisksService, type ProjectRisks } from '../../core/risks.service.js';
+import { DependenciesView } from '../dependencies/dependencies.js';
 import { WaitingView } from '../waiting/waiting.js';
 import { WaitingService, type Waiting } from '../../core/waiting.service.js';
 import { AgentLanes } from '../agent-lanes/agent-lanes.js';
@@ -95,6 +97,7 @@ export const COLUMN_CAP = 8;
   selector: 'app-kanban',
   imports: [
     WaitingView,
+    DependenciesView,
     LabelPipe,
     ShortTitlePipe,
     DatePipe,
@@ -130,13 +133,19 @@ export class Kanban implements OnInit {
   private readonly memory = inject(BoardMemory);
   private readonly dialog = inject(MatDialog);
   private readonly waitingService = inject(WaitingService);
+  private readonly risksService = inject(RisksService);
   readonly viewport = inject(Viewport);
 
   /**
    * Which of the views of the tasks this page shows (Roadmap TASK-17, TASK-18): the board, or the list
    * the route `list` names. They share the filters, their toolbar and their address; each has its own body.
    */
-  readonly view = signal<'board' | 'list' | 'review' | 'agents' | 'waiting' | 'timeline'>('board');
+  readonly view = signal<
+    'board' | 'list' | 'review' | 'agents' | 'waiting' | 'dependencies' | 'timeline'
+  >('board');
+  /** The risks of the project, for the view of what blocks what and the critical path (Roadmap TASK-22). */
+  readonly risks = signal<ProjectRisks | null>(null);
+  readonly risksFailed = signal(false);
   /** What the project waits for, for the view that lists it (Roadmap TASK-21). */
   readonly waitingList = signal<Waiting | null>(null);
   readonly waitingFailed = signal(false);
@@ -338,6 +347,7 @@ export class Kanban implements OnInit {
         named === 'review' ||
         named === 'agents' ||
         named === 'waiting' ||
+        named === 'dependencies' ||
         named === 'timeline'
         ? named
         : 'board',
@@ -358,6 +368,9 @@ export class Kanban implements OnInit {
       }
       if (this.view() === 'waiting') {
         await this.readWaiting();
+      }
+      if (this.view() === 'dependencies') {
+        await this.readRisks();
       }
       if (this.view() === 'timeline') {
         await this.readSpans();
@@ -625,6 +638,14 @@ export class Kanban implements OnInit {
   }
 
   /** The ledger's spans; one that cannot be read leaves the timeline on the dates of the tasks, and says so. */
+  private async readRisks(): Promise<void> {
+    try {
+      this.risks.set(await this.risksService.get(this.projectId));
+    } catch {
+      this.risksFailed.set(true);
+    }
+  }
+
   private async readSpans(): Promise<void> {
     try {
       this.spans.set(await this.tasksService.spans(this.projectId));

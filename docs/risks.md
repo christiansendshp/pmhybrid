@@ -55,7 +55,11 @@ nothing: the page says it in words (BR-019).
 Any member of the project can read it (`ProjectMemberGuard`); it only reads. It gives the calculator's answer for the
 project, with what a page needs to say it:
 
-- `signals`, `criticalPath` and `project` (the semaphore of the whole project), as the calculator gives them.
+- `signals`, `criticalPath`, `waiting` and `project` (the semaphore of the whole project), as the calculator gives
+  them. `waiting` is **what blocks what** (Roadmap TASK-22): every open task that depends on other open tasks, with
+  those, each with its status and whether it sits in the Blocked table, the task that waits for the most first and
+  ties by name; a dependency on a finished task is no wait. It is the graph the critical path is the longest chain of,
+  and the Dependencias view of the board (`docs/board-views.md`) shows both without computing anything.
 - `phases`: **every phase of the project, in its own order**, each with its name and semaphore; a phase with nothing
   open (or no task) has the semaphore with no light. `epics`, the same by name.
 - `staleAfterHours`: the threshold used, so the page can say "más de 72 h sin actividad".

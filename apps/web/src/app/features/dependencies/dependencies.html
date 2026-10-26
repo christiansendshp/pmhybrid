@@ -1,0 +1,65 @@
+@if (failed()) {
+  <p class="callout" role="alert">No se pudieron leer las dependencias. Reintenta en un momento.</p>
+} @else if (risks(); as data) {
+  <section class="deps-section" aria-labelledby="deps-path">
+    <h3 id="deps-path">Camino crítico</h3>
+    <p class="meta-text">De todo el proyecto: no usa los filtros del tablero.</p>
+    <p class="deps-sentence">{{ pathText() }}</p>
+    @if (data.criticalPath.length > 0) {
+      <ol class="deps-list deps-path">
+        @for (step of data.criticalPath; track step.task.id) {
+          <li class="deps-item">
+            <a [routerLink]="['/projects', projectId(), 'tasks', step.task.id]">
+              @if (step.task.externalId) {
+                <span class="deps-id">{{ step.task.externalId }}</span>
+              }
+              {{ step.task.title }}
+            </a>
+            <span class="meta-text">{{ statusLabel(step.status) }}</span>
+          </li>
+        }
+      </ol>
+    }
+  </section>
+
+  <section class="deps-section" aria-labelledby="deps-waiting">
+    <h3 id="deps-waiting">Qué espera a qué</h3>
+    <p class="deps-sentence" role="status">{{ summary() }}</p>
+    @if (waiting().length > 0) {
+      <ul class="deps-list">
+        @for (entry of waiting(); track entry.task.id) {
+          <li class="deps-entry">
+            <div class="deps-item">
+              <a [routerLink]="['/projects', projectId(), 'tasks', entry.task.id]">
+                @if (entry.task.externalId) {
+                  <span class="deps-id">{{ entry.task.externalId }}</span>
+                }
+                {{ entry.task.title }}
+              </a>
+              <span class="meta-text">{{ statusLabel(entry.status) }}</span>
+            </div>
+            <p class="meta-text deps-waits">Espera a:</p>
+            <ul class="deps-list deps-needs">
+              @for (need of entry.waitsOn; track need.task.id) {
+                <li class="deps-item">
+                  <a [routerLink]="['/projects', projectId(), 'tasks', need.task.id]">
+                    @if (need.task.externalId) {
+                      <span class="deps-id">{{ need.task.externalId }}</span>
+                    }
+                    {{ need.task.title }}
+                  </a>
+                  <span class="meta-text"
+                    >{{ statusLabel(need.status) }}
+                    @if (need.blocked) {
+                      · bloqueada
+                    }
+                  </span>
+                </li>
+              }
+            </ul>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+}

@@ -36,6 +36,7 @@ const RISKS: ProjectRisks = {
     { kind: 'BLOCKED_BY_BLOCKED', task: ref(2), blockedBy: [ref(3)] },
     { kind: 'UNOWNED_IN_DEVELOPMENT', task: ref(5) },
   ],
+  waiting: [],
   criticalPath: [
     { task: ref(3), status: 'PENDIENTE' },
     { task: ref(2), status: 'EN_DESARROLLO' },

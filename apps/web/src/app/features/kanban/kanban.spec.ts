@@ -9,6 +9,7 @@ import { HierarchyService, ProjectHierarchy } from '../../core/hierarchy.service
 import { ProjectContext } from '../../core/project-context.js';
 import { ProjectsService } from '../../core/projects.service.js';
 import { SynchronizationService } from '../../core/synchronization.service.js';
+import { RisksService } from '../../core/risks.service.js';
 import { WaitingService } from '../../core/waiting.service.js';
 import { TaskCard, TasksService } from '../../core/tasks.service.js';
 import { BoardMemory } from '../../core/board-query.js';
@@ -86,6 +87,7 @@ describe('Kanban (brief §15)', () => {
   let listForProject: ReturnType<typeof vi.fn>;
   let registerLedgerAgent: ReturnType<typeof vi.fn>;
   let getWaiting: ReturnType<typeof vi.fn>;
+  let getRisks: ReturnType<typeof vi.fn>;
   let transition: ReturnType<typeof vi.fn>;
   let table: ReturnType<typeof vi.fn>;
   let listMembers: ReturnType<typeof vi.fn>;
@@ -105,6 +107,16 @@ describe('Kanban (brief §15)', () => {
       byPhase: [],
       byEpic: [],
       ledgerUnreadable: false,
+    });
+    getRisks = vi.fn().mockResolvedValue({
+      generatedAt: '2026-10-28T12:00:00.000Z',
+      staleAfterHours: 72,
+      signals: [],
+      criticalPath: [],
+      waiting: [],
+      project: { light: null, open: 0, blocked: 0, counts: {} },
+      phases: [],
+      epics: [],
     });
     unresolvedNames = vi.fn().mockResolvedValue({ ledgerNames: [], ownerNames: [] });
     spans = vi.fn().mockResolvedValue({});
@@ -130,6 +142,7 @@ describe('Kanban (brief §15)', () => {
               { path: 'review', component: Kanban, data: { view: 'review' } },
               { path: 'agents', component: Kanban, data: { view: 'agents' } },
               { path: 'waiting', component: Kanban, data: { view: 'waiting' } },
+              { path: 'dependencies', component: Kanban, data: { view: 'dependencies' } },
               { path: 'timeline', component: Kanban, data: { view: 'timeline' } },
             ],
           },
@@ -137,6 +150,7 @@ describe('Kanban (brief §15)', () => {
         { provide: TasksService, useValue: { listForProject, transition, table, spans } },
         { provide: MatDialog, useValue: { open: openDialog } },
         { provide: WaitingService, useValue: { get: getWaiting } },
+        { provide: RisksService, useValue: { get: getRisks } },
         { provide: ProjectsService, useValue: { listMembers, registerLedgerAgent } },
         { provide: SynchronizationService, useValue: { unresolvedNames } },
         { provide: HierarchyService, useValue: { load: vi.fn().mockResolvedValue(HIERARCHY) } },
@@ -399,6 +413,84 @@ describe('Kanban (brief §15)', () => {
     await component.onDrop(drop({}, {}), 'EN_DESARROLLO');
     expect(transition).toHaveBeenCalledWith('p1', 't1', 'EN_DESARROLLO');
     expect(listForProject).toHaveBeenCalledTimes(2);
+  });
+
+  describe('the view of what blocks what (Roadmap TASK-22)', () => {
+    const risksWith = (waiting: unknown[], criticalPath: unknown[] = []) => ({
+      generatedAt: '2026-10-28T12:00:00.000Z',
+      staleAfterHours: 72,
+      signals: [],
+      criticalPath,
+      waiting,
+      project: { light: null, open: 0, blocked: 0, counts: {} },
+      phases: [],
+      epics: [],
+    });
+    const entry = (id: string, title: string) => ({
+      task: { id, externalId: null, title },
+      status: 'PENDIENTE',
+      waitsOn: [
+        {
+          task: { id: 'z', externalId: null, title: 'Prerequisite' },
+          status: 'EN_DESARROLLO',
+          blocked: false,
+        },
+      ],
+    });
+    const waiters = (root: HTMLElement) =>
+      Array.from(root.querySelectorAll('.deps-entry > .deps-item a')).map((link) =>
+        (link.textContent ?? '').replace(/\s+/g, ' ').trim(),
+      );
+
+    it('reads the risks of the project and shows what waits for what, working out nothing of its own', async () => {
+      getRisks.mockResolvedValue(risksWith([entry('t1', 'Build API')]));
+
+      const { harness } = await render([card()], ['task.write'], '/projects/p1/dependencies');
+
+      expect(getRisks).toHaveBeenCalledWith('p1');
+      expect(waiters(harness.routeNativeElement!)).toEqual(['Build API']);
+    });
+
+    it('is named in the title of the page', async () => {
+      const { harness } = await render([card()], ['task.write'], '/projects/p1/dependencies');
+
+      expect(harness.routeNativeElement!.querySelector('h2')?.textContent).toContain(
+        'Dependencias',
+      );
+    });
+
+    it('keeps the filters: a task they leave out is not listed', async () => {
+      getRisks.mockResolvedValue(risksWith([entry('t1', 'Build API'), entry('t2', 'Write docs')]));
+
+      const { harness } = await render(
+        [card({ id: 't1', title: 'Build API' }), card({ id: 't2', title: 'Write docs' })],
+        ['task.write'],
+        '/projects/p1/dependencies?q=Build',
+      );
+
+      expect(waiters(harness.routeNativeElement!)).toEqual(['Build API']);
+    });
+
+    it('says it could not read the dependencies, and keeps the page', async () => {
+      getRisks.mockRejectedValue(new Error('boom'));
+
+      const { harness, component } = await render(
+        [card()],
+        ['task.write'],
+        '/projects/p1/dependencies',
+      );
+
+      expect(component.risksFailed()).toBe(true);
+      expect(harness.routeNativeElement!.textContent).toContain(
+        'No se pudieron leer las dependencias',
+      );
+    });
+
+    it('is not asked for on the board', async () => {
+      await render([card()]);
+
+      expect(getRisks).not.toHaveBeenCalled();
+    });
   });
 
   describe('the view of what is waiting (Roadmap TASK-21)', () => {
@@ -884,6 +976,7 @@ describe('Kanban (brief §15)', () => {
         '/projects/p1/review?q=api&stale=72',
         '/projects/p1/agents?q=api&stale=72',
         '/projects/p1/waiting?q=api&stale=72',
+        '/projects/p1/dependencies?q=api&stale=72',
         '/projects/p1/timeline?q=api&stale=72',
       ]);
     });
@@ -905,6 +998,7 @@ describe('Kanban (brief §15)', () => {
         '/projects/p1/review?q=api&divergent=1',
         '/projects/p1/agents?q=api&divergent=1',
         '/projects/p1/waiting?q=api&divergent=1',
+        '/projects/p1/dependencies?q=api&divergent=1',
         '/projects/p1/timeline?q=api&divergent=1',
       ]);
     });

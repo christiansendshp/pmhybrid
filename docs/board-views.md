@@ -9,7 +9,8 @@ holds and how each filter works. It grows with the views next to the Kanban (`FE
 A switcher at the top of the page, a navigation landmark called "Vistas del tablero", offers the views
 that exist and only those: **Tablero** (`/projects/:id/kanban`, the board, whose address does not
 change), **Lista** (`/projects/:id/list`), **En revisión** (`/projects/:id/review`), **Por agente**
-(`/projects/:id/agents`) and **Línea de tiempo** (`/projects/:id/timeline`), each described below. Every link carries the filters of the view being
+(`/projects/:id/agents`), **Esperando** (`/projects/:id/waiting`), **Dependencias** (`/projects/:id/dependencies`) and
+**Línea de tiempo** (`/projects/:id/timeline`), each described below. Every link carries the filters of the view being
 left in its address, so the next view shows the same tasks; what only one view has (the board's grouping
 and column order, the list's order and page) is not carried. A view that cannot use a filter that is on
 says so in words under the switcher (none does today). The current view is marked as the current page,
@@ -107,6 +108,22 @@ many tasks it holds back, and the blocked count per phase and per epic is listed
 board: the waits of tasks they leave out are not listed, and what is about no task always is. When the list cannot be
 read it says so (an alert) instead of an empty page, and when the ledger could not be read it says the list is not
 complete.
+
+## What blocks what (Roadmap TASK-22)
+
+`/projects/:projectId/dependencies` ("Dependencias") shows **the critical path and what waits for what**, and works out
+nothing of its own: it reads `GET /projects/:projectId/risks` (`docs/risks.md`) once per visit.
+
+- **Camino crítico**: the longest chain of open tasks by dependency, in the order the work has to be done, as a
+  sentence and an ordered list, each task a link to its page with its status. It is **the project's**, so the filters
+  of the board do not narrow it, and the page says so ("De todo el proyecto: no usa los filtros del tablero").
+- **Qué espera a qué**: every open task that depends on other open tasks, **the one that waits for the most first**,
+  with what it waits for (each a link with its status, "· bloqueada" when it sits in the Blocked table). A dependency
+  on a finished task is no wait, so it is not listed. This list **does** keep the filters of the board: a task they
+  leave out is not listed. With none it says so ("Ninguna tarea abierta espera a otra").
+
+When the risks cannot be read it says so (an alert) instead of an empty page. The page is hosted by the same
+component as the other views (`data.view`), with their toolbar and filters.
 
 ## The review queue (Roadmap TASK-19)
 

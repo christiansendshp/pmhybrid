@@ -26,6 +26,14 @@ interface Risks {
     idleHours?: number;
   }[];
   criticalPath: { task: { externalId: string | null }; status: string }[];
+  waiting: {
+    task: { externalId: string | null };
+    waitsOn: {
+      task: { externalId: string | null };
+      status: string;
+      blocked: boolean;
+    }[];
+  }[];
   project: Semaphore;
   phases: { phaseId: string; name: string; semaphore: Semaphore }[];
   epics: { epicId: string; name: string; semaphore: Semaphore }[];
@@ -293,17 +301,39 @@ describe('Risks (e2e, Roadmap TASK-44)', () => {
     ]);
   });
 
+  it('lists what blocks what: each open task that waits for other open ones, and not for a finished one', async () => {
+    const projectId = await project();
+    const first = await make(projectId, 'W1', { roadmapTable: 'BLOCKED' });
+    const second = await make(projectId, 'W2');
+    const finished = await make(projectId, 'W0', {
+      status: TaskStatus.TERMINADA,
+      completedAt: new Date(),
+    });
+    await dependsOn(second.id, first.id);
+    await dependsOn(second.id, finished.id);
+
+    const { waiting } = await risks(projectId);
+
+    expect(
+      waiting.map((entry) => [
+        entry.task.externalId,
+        entry.waitsOn.map((w) => [w.task.externalId, w.status, w.blocked]),
+      ]),
+    ).toEqual([['W2', [['W1', 'PENDIENTE', true]]]]);
+  });
+
   it('answers empty lists and green for a project with open work and nothing wrong', async () => {
     const projectId = await project();
     await developing(projectId, 'FINE');
 
     const data = await risks(projectId);
 
-    expect([data.signals, data.criticalPath, data.project.light]).toEqual([
-      [],
-      [],
-      'GREEN',
-    ]);
+    expect([
+      data.signals,
+      data.criticalPath,
+      data.waiting,
+      data.project.light,
+    ]).toEqual([[], [], [], 'GREEN']);
   });
 
   it('answers no light for a project with nothing open', async () => {

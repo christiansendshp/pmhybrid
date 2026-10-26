@@ -25,6 +25,13 @@ export interface RiskSignal {
   dueDate?: string;
 }
 
+/** An open task that waits for other open tasks, and which (Roadmap TASK-22). */
+export interface WaitingTask {
+  task: RiskRef;
+  status: string;
+  waitsOn: { task: RiskRef; status: string; blocked: boolean }[];
+}
+
 export interface CriticalStep {
   task: RiskRef;
   status: string;
@@ -46,6 +53,8 @@ export interface ProjectRisks {
   staleAfterHours: number;
   signals: RiskSignal[];
   criticalPath: CriticalStep[];
+  /** What blocks what: every open task that waits for another open one, the one waiting for most first. */
+  waiting: WaitingTask[];
   project: Semaphore;
   phases: { phaseId: string; name: string; semaphore: Semaphore }[];
   epics: { epicId: string; name: string; semaphore: Semaphore }[];

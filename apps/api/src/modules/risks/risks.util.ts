@@ -68,6 +68,14 @@ export interface RiskSignal {
   dueDate?: string;
 }
 
+/** An open task that has to wait for other open tasks, and which (Roadmap TASK-22). */
+export interface WaitingTask {
+  task: RiskRef;
+  status: string;
+  /** The open tasks it depends on, with where each stands and whether it sits in the Blocked table. */
+  waitsOn: { task: RiskRef; status: string; blocked: boolean }[];
+}
+
 /** A step of the critical path: a task, and where it stands. */
 export interface CriticalStep {
   task: RiskRef;
@@ -90,6 +98,8 @@ export interface Risks {
   signals: RiskSignal[];
   /** The longest chain of open tasks by dependency, the first to do first; empty when no task waits on another. */
   criticalPath: CriticalStep[];
+  /** Every open task that waits for another open one, the one waiting for the most first: what blocks what. */
+  waiting: WaitingTask[];
   project: Semaphore;
   byPhase: ({ phaseId: string } & Semaphore)[];
   byEpic: ({ epicId: string } & Semaphore)[];
@@ -210,6 +220,7 @@ export function risksOf(input: {
   return {
     signals,
     criticalPath: criticalPathOf(open, waitsOn),
+    waiting: waitingOf(open, waitsOn),
     project: semaphoreOf(open),
     byPhase: phaseIds.map((phaseId) => ({
       phaseId,
@@ -282,4 +293,34 @@ function criticalPathOf(
     path.unshift({ task: refOf(step), status: step.status });
   }
   return path;
+}
+
+/**
+ * What blocks what (Roadmap TASK-22): each open task that depends on other open tasks, with those, the one that
+ * waits for the most first and ties by name. A dependency on a finished task is no wait, so it is not here. It is
+ * the same graph the critical path is the longest chain of.
+ */
+function waitingOf(
+  open: readonly RiskTask[],
+  waitsOn: ReadonlyMap<string, readonly RiskTask[]>,
+): WaitingTask[] {
+  return open
+    .filter((task) => (waitsOn.get(task.id) ?? []).length > 0)
+    .map((task) => ({
+      task,
+      dependencies: [...(waitsOn.get(task.id) ?? [])].sort(byName),
+    }))
+    .sort(
+      (a, b) =>
+        b.dependencies.length - a.dependencies.length || byName(a.task, b.task),
+    )
+    .map(({ task, dependencies }) => ({
+      task: refOf(task),
+      status: task.status,
+      waitsOn: dependencies.map((dependency) => ({
+        task: refOf(dependency),
+        status: dependency.status,
+        blocked: dependency.blocked,
+      })),
+    }));
 }

@@ -9,6 +9,7 @@ import {
   type RiskSignal,
   type Risks,
   type Semaphore,
+  type WaitingTask,
 } from './risks.util.js';
 
 export interface PhaseRisk {
@@ -29,6 +30,8 @@ export interface ProjectRisks {
   staleAfterHours: number;
   signals: RiskSignal[];
   criticalPath: CriticalStep[];
+  /** What blocks what: every open task that waits for another open one (Roadmap TASK-22). */
+  waiting: WaitingTask[];
   project: Semaphore;
   /** Every phase of the project, in its own order: one with nothing open has no light. */
   phases: PhaseRisk[];
@@ -166,6 +169,7 @@ export class RisksService {
       staleAfterHours: project.staleAfterHours,
       signals: risks.signals,
       criticalPath: risks.criticalPath,
+      waiting: risks.waiting,
       project: risks.project,
       phases: phases.map((phase) => ({
         phaseId: phase.id,
