@@ -18,15 +18,7 @@ segments live in `docs/history/`.
 
 ## Previous segment
 
-- Archive: `docs/history/Agentslog-20261026-020.md`
-- SHA-256: `b109f4686159d3c6144bc8859ea2c5aca3cfa48d54598d1158c04cbd7f144b20`
+- Archive: `docs/history/Agentslog-20261026-021.md`
+- SHA-256: `8d906f374c8fb12dd0d522fc127ff4b93d35725fd4cc736fb46e9add07d0812f`
 
 ## Entries
-
-## [2026-10-26T18:38:15Z] | claude-sonnet-5-5 | TASK-37 | IN_PROGRESS | Seguimiento tab: pace, burn-up and forecast
-- Summary: carried forward from docs/history/Agentslog-20261026-020.md at rotation
-
-## [2026-10-26T18:51:28Z] | claude-sonnet-5-5 | TASK-37 | DONE | Seguimiento tab: pace, burn-up and forecast
-- Summary: Seguimiento tab (/projects/:id/pace): reads GET /metrics/pace once per visit and shows the forecast range or why there is none (no hay historia suficiente, does not converge), the weekly closed/created bars and the burn-up of the project and each phase, each with a sentence and a table of its numbers, scrolling inside its own region on a phone
-- Files: apps/web/src/app/core/pace.service.ts, apps/web/src/app/core/pace.ts, apps/web/src/app/features/pace/*, apps/web/src/app/app.routes.ts, apps/web/src/app/features/project-dashboard/project-dashboard.ts, apps/web/a11y/*.a11y.spec.ts, docs/metrics.md
-- Verify: check, lint, build, unit (web pace.spec, burn-up.spec, core/pace.spec: 44 tests) and e2e green; checked in the browser on a scratch API/web (desktop, 375 px without page overflow); the a11y suite was extended but not run (it needs the persistent stack stopped)

@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 187
-- Latest verification: `check, lint, build, unit (web pace.spec, burn-up.spec, core/pace.spec: 44 tests) and e2e green; checked in the browser on a scratch API/web (desktop, 375 px without page overflow); the a11y suite was extended but not run (it needs the persistent stack stopped)` (2026-10-26)
+- Verified capabilities: 188
+- Latest verification: `TASK-35, TASK-36 and TASK-37 are in Features.md with VALIDAR green on 5a8bf48, 96b71d5 and 56b7c79` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -202,3 +202,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | TASK-35 | Pure pace calculator: UTC Monday weeks, cumulative scope/done, burn-up per phase and a forecast range from the 2- and 4-week paces that declines (NOT_ENOUGH_HISTORY, NOTHING_OPEN, NO_RECENT_COMPLETIONS, NOT_CONVERGING); BR-016, docs/metrics.md | check, lint, build, unit (pace.util.spec 22 tests) and e2e (pace-weeks vs date_trunc) green | log:TASK-35 | 2026-10-26 |
 | TASK-36 | GET /projects/:id/metrics/pace?weeks= (2-52, default 12) gives the weekly pace, burn-up by phase with names and the forecast over the tasks that count towards the progress; sibling of the instant-close /metrics, no migration | check, lint, build, unit and e2e green (pace-endpoint 17 tests incl. SQL equality, 400s, member-only) | log:TASK-36 | 2026-10-26 |
 | TASK-37 | Seguimiento tab (/projects/:id/pace): reads GET /metrics/pace once per visit and shows the forecast range or why there is none (no hay historia suficiente, does not converge), the weekly closed/created bars and the burn-up of the project and each phase, each with a sentence and a table of its numbers, scrolling inside its own region on a phone | check, lint, build, unit (web pace.spec, burn-up.spec, core/pace.spec: 44 tests) and e2e green; checked in the browser on a scratch API/web (desktop, 375 px without page overflow); the a11y suite was extended but not run (it needs the persistent stack stopped) | log:TASK-37 | 2026-10-26 |
+| FEATURE-01 | Pace, progress over time and forecast: the calculator, GET /projects/:id/metrics/pace and the Seguimiento tab (weekly closed and created, burn-up per phase, forecast as a range beside the scope growth, declining without history or when the work does not converge) | TASK-35, TASK-36 and TASK-37 are in Features.md with VALIDAR green on 5a8bf48, 96b71d5 and 56b7c79 | log:FEATURE-01 | 2026-10-26 |
