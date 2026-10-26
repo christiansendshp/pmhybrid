@@ -18,15 +18,16 @@ segments live in `docs/history/`.
 
 ## Previous segment
 
-- Archive: `docs/history/Agentslog-20261026-017.md`
-- SHA-256: `ea1177cd15c74a605f764aecc6b45385df9afa4609d1410515f5e5af079721fa`
+- Archive: `docs/history/Agentslog-20261026-018.md`
+- SHA-256: `6298df8b4775631da732ac51552dcba345e03ff88d753d9f783ad507490d70cd`
 
 ## Entries
 
-## [2026-10-26T18:03:28Z] | claude-sonnet-5-5 | TASK-34 | IN_PROGRESS | Import closed ledger work as done tasks, on request
-- Summary: carried forward from docs/history/Agentslog-20261026-017.md at rotation
+## [2026-10-26T18:16:33Z] | claude-sonnet-5-5 | TASK-35 | IN_PROGRESS | Pace and forecast calculator
+- Summary: Pace and forecast calculator
+- Verify: pending
 
-## [2026-10-26T18:13:22Z] | claude-sonnet-5-5 | TASK-34 | DONE | Import closed ledger work as done tasks, on request
-- Summary: POST /projects/:id/documents/agentslog/untracked/import (task.write) turns the listed IDs whose latest entry is the exact DONE into done tasks (sourceOrigin AGENTSLOG, titled by the closing entry, dated by the ledger, no Roadmap row, entries linked, audited), skipping open work and unlisted IDs, once; the Documents page asks first with the count it adds
-- Files: apps/api/src/modules/untracked-work, apps/api/prisma/migrations/20261026150000_add_task_source_origin_agentslog, apps/api/test/untracked-import.e2e-spec.ts, apps/web/src/app/features/documents-viewer, docs/roadmap-parser.md
-- Verify: VALIDAR green in 229 s: api unit 842, web 604, e2e 589
+## [2026-10-26T18:25:41Z] | claude-sonnet-5-5 | TASK-35 | DONE | Pace and forecast calculator
+- Summary: Pure pace calculator: UTC Monday weeks, cumulative scope/done, burn-up per phase and a forecast range from the 2- and 4-week paces that declines (NOT_ENOUGH_HISTORY, NOTHING_OPEN, NO_RECENT_COMPLETIONS, NOT_CONVERGING); BR-016, docs/metrics.md
+- Files: apps/api/src/modules/metrics/pace.util.ts, apps/api/src/modules/metrics/pace.util.spec.ts, apps/api/test/pace-weeks.e2e-spec.ts, docs/metrics.md, docs/ProductDescription.md
+- Verify: check, lint, build, unit (pace.util.spec 22 tests) and e2e (pace-weeks vs date_trunc) green

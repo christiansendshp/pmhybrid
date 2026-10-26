@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 183
-- Latest verification: `VALIDAR green in 229 s: api unit 842, web 604, e2e 589` (2026-10-26)
+- Verified capabilities: 185
+- Latest verification: `check, lint, build, unit (pace.util.spec 22 tests) and e2e (pace-weeks vs date_trunc) green` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -198,3 +198,5 @@ Use one row per stable capability. Link long specifications or runbooks from
 | FEATURE-05 | What is waiting, and on whom: blocked tasks know since when they are blocked, one endpoint lists blocked tasks, ledger decisions and open conflicts oldest first with the blocked count per phase and epic, and the Esperando view shows it | TASK-31, TASK-32 and TASK-21 are in Features.md with VALIDAR green on 421bcc2, 9c27d60 and da3e343 | log:FEATURE-05 | 2026-10-26 |
 | TASK-33 | GET /projects/:id/documents/agentslog/untracked lists the ledger IDs that are no task of the project (deleted tasks and entries read before their task existed excluded), with entries, agents, dates, last word and whether it closed with the exact DONE, open first; the structured Agentslog view lists them and shows the entries of one ID; nothing counts them in the progress | VALIDAR green in 217 s: api unit 837, web 597, e2e 575 | log:TASK-33 | 2026-10-26 |
 | TASK-34 | POST /projects/:id/documents/agentslog/untracked/import (task.write) turns the listed IDs whose latest entry is the exact DONE into done tasks (sourceOrigin AGENTSLOG, titled by the closing entry, dated by the ledger, no Roadmap row, entries linked, audited), skipping open work and unlisted IDs, once; the Documents page asks first with the count it adds | VALIDAR green in 229 s: api unit 842, web 604, e2e 589 | log:TASK-34 | 2026-10-26 |
+| FEATURE-02 | Work logged without a task: the ledger IDs that are no task are listed per project (open first, with entries, agents, dates and last word) and a person with task.write can import the closed ones as done tasks, saying first how many they add | TASK-33 and TASK-34 are in Features.md with VALIDAR green on 9177da3 and 1217bbc | log:FEATURE-02 | 2026-10-26 |
+| TASK-35 | Pure pace calculator: UTC Monday weeks, cumulative scope/done, burn-up per phase and a forecast range from the 2- and 4-week paces that declines (NOT_ENOUGH_HISTORY, NOTHING_OPEN, NO_RECENT_COMPLETIONS, NOT_CONVERGING); BR-016, docs/metrics.md | check, lint, build, unit (pace.util.spec 22 tests) and e2e (pace-weeks vs date_trunc) green | log:TASK-35 | 2026-10-26 |
