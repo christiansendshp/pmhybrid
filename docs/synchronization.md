@@ -718,7 +718,16 @@ written exactly as before.
   **Every name is the actor's ledger name** (Roadmap TASK-04): the string the agent passes
   to the skill, which the skill compares exactly to say who holds a task. It is the agent's
   chosen ledger name, else its display name; a person's is the display name. An alias is never
-  written. What the owner cell and `assigned_agent` say is the display name still (GAP-45).
+  written. What the owner cell and `assigned_agent` say is the display name, on purpose
+  (Roadmap GAP-45, answered): the skill never reads them as an identity. Its `claim`,
+  `pause`, `handoff`, `review` and `done` take the holder from the ledger's latest entry
+  (`task_state`), and only _write_ the Owner cell (`<agent>@<timestamp>`, on `claim`, `assign`
+  and `handoff`); its `check` compares ledger names, never an owner. PM Hub reads either
+  string back to the same agent (Roadmap TASK-02), so the two spellings can differ without
+  anything disagreeing. Writing the ledger name there too would change three comparisons
+  (the drift checks of a field edit, a resolution and a reassignment, which match the
+  document's owner against the previous assignee's display name) with no reader to serve.
+  Revisit if the skill ever reads the cell as an identity.
 
   | Event                           | Entries                                                                                                |
   | ------------------------------- | ------------------------------------------------------------------------------------------------------ |

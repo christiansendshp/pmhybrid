@@ -30,3 +30,12 @@ segments live in `docs/history/`.
 - Summary: MCP tools handoff_task (assignee only, note as comment, reviewer), review_task (PASS/FAIL need approve/reject permission, note required) and list_review_queue (oldest first, reviewer filter); note also on approval
 - Files: apps/api/src/modules/mcp/mcp-workflow-tools.ts, apps/api/src/modules/tasks/tasks.service.ts, apps/api/test/mcp-review.e2e-spec.ts, docs/permissions.md
 - Verify: VALIDAR green: check, lint, build, api unit 768, web 525, e2e 536
+
+## [2026-10-26T15:13:32Z] | claude-sonnet-5-5 | GAP-45 | IN_PROGRESS | Roadmap owner cell uses display name, ledger the ledger name
+- Summary: Answer whether the skill reads the Owner cell as an identity
+- Verify: pending
+
+## [2026-10-26T15:13:49Z] | claude-sonnet-5-5 | GAP-45 | DONE | Roadmap owner cell uses display name, ledger the ledger name
+- Summary: Answered: the skill never reads the Owner cell as an identity (holder comes from the ledger), so PM Hub keeps writing the display name there; documented with the reason
+- Files: docs/synchronization.md
+- Verify: Read project_docs.sh claim/pause/handoff/review/done: holder from task_state, Owner only written; check and unit tests green
