@@ -14,6 +14,7 @@ import { PROJECT_REPOSITORY_PROVIDER } from '../git-providers/project-repository
 import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AgentslogParserService } from './agentslog-parser.service.js';
+import { ledgerWordRows } from './ledger-words.util.js';
 import {
   resolveDocumentFilename,
   resolveDocumentKind,
@@ -74,6 +75,22 @@ export class RoadmapController {
   async agentslogStructured(@Param('projectId') projectId: string) {
     const content = await this.readDocument(projectId, 'agentslog');
     return this.agentslogParser.parse(content);
+  }
+
+  /**
+   * The status words the ledger uses, each with the status PM Hub reads it as and how many entries carry it,
+   * the words it does not know first (Roadmap TASK-30), so the table of words can grow where agents write new ones.
+   * Read from the entries the sync stored, not from the file.
+   */
+  @Get('agentslog/words')
+  async agentslogWords(@Param('projectId') projectId: string) {
+    const groups = await this.prisma.agentLogEvent.groupBy({
+      by: ['statusWord', 'canonicalStatus'],
+      where: { projectId },
+      _count: { _all: true },
+      _max: { statusQualifier: true },
+    });
+    return ledgerWordRows(groups);
   }
 
   /**

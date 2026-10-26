@@ -18,15 +18,15 @@ segments live in `docs/history/`.
 
 ## Previous segment
 
-- Archive: `docs/history/Agentslog-20261026-011.md`
-- SHA-256: `845f196479a9c51cca68f30c9bc8e8e8ce64d4495b82add495a1cf3eff68faee`
+- Archive: `docs/history/Agentslog-20261026-012.md`
+- SHA-256: `eee41bd562d2e174f8b83b21c38a4b6da09e8e970e781e31c6079778e19e9681`
 
 ## Entries
 
-## [2026-10-26T16:02:34Z] | claude-sonnet-5-5 | TASK-29 | IN_PROGRESS | Ledger status words map to canonical statuses
-- Summary: carried forward from docs/history/Agentslog-20261026-011.md at rotation
+## [2026-10-26T16:13:27Z] | claude-sonnet-5-5 | TASK-30 | IN_PROGRESS | List the ledger's status words and what they map to
+- Summary: carried forward from docs/history/Agentslog-20261026-012.md at rotation
 
-## [2026-10-26T16:12:34Z] | claude-sonnet-5-5 | TASK-29 | DONE | Ledger status words map to canonical statuses
-- Summary: Ledger status words map to the plan's canonical statuses: BLOCKED, DROPPED, SUPERSEDED and FINDING (Spanish and English words, BLOQUEADO_PO keeps PO as qualifier) and OTHER for an unknown word; the exact DONE stays the only terminal; obsolete 'unknown word is null' tests replaced
-- Files: apps/api/src/modules/roadmap/ledger-status.util.ts, apps/api/src/modules/roadmap/ledger-status.util.spec.ts, apps/api/src/modules/synchronization/agentslog-ingestion.service.ts, apps/api/test/ledger-stage-words.e2e-spec.ts, docs/roadmap-parser.md
-- Verify: VALIDAR green: check, lint, build, api unit 797, web 563, e2e 548
+## [2026-10-26T16:25:39Z] | claude-sonnet-5-5 | TASK-30 | DONE | List the ledger's status words and what they map to
+- Summary: GET /projects/:id/documents/agentslog/words lists the ledger's distinct status words with the status each is read as, its entries and an example qualifier, unknown words first; the structured Agentslog view says how many words are in use and how many it does not know (path kept under /documents with the other ledger views)
+- Files: apps/api/src/modules/roadmap/ledger-words.util.ts, apps/api/src/modules/roadmap/roadmap.controller.ts, apps/web/src/app/features/documents-viewer, docs/roadmap-parser.md
+- Verify: VALIDAR green: check, lint, build, api unit 802, web 568, e2e 551

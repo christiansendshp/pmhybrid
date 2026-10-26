@@ -160,6 +160,51 @@
     </table>
   }
 
+  @if (ledgerWords(); as words) {
+    <details class="ledger-words">
+      <summary>
+        Palabras de estado del registro: {{ words.length }} en uso
+        @if (unknownWords().length > 0) {
+          · {{ unknownWords().length }}
+          {{ unknownWords().length === 1 ? 'desconocida' : 'desconocidas' }} ({{
+            unknownWordEntries()
+          }}
+          {{ unknownWordEntries() === 1 ? 'entrada' : 'entradas' }})
+        } @else {
+          · todas conocidas
+        }
+      </summary>
+      <table>
+        <thead>
+          <tr>
+            <th>Palabra</th>
+            <th>Se lee como</th>
+            <th>Entradas</th>
+            <th>Ejemplo de calificador</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (word of words; track word.word) {
+            <tr>
+              <td>
+                <code>{{ word.word }}</code>
+              </td>
+              <td>
+                {{
+                  word.canonicalStatus === 'OTHER'
+                    ? 'No la conozco'
+                    : (word.canonicalStatus ?? 'Sin clasificar aún')
+                }}
+              </td>
+              <td>{{ word.entries }}</td>
+              <td>{{ word.qualifier ?? '' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </details>
+  }
+
   @if (filteredAgentslogEntries(); as entries) {
     <ul>
       @for (entry of entries; track entry.rawEntryHash) {

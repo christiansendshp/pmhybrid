@@ -256,7 +256,11 @@ correcciones`). The words real ledgers use besides the skill's are read too (Roa
   qualifier: it is listed so the table can grow (Roadmap TASK-30), and nothing reads it differently
   from before. Only an empty word has no canonical status. **BR-003's terminal check is still the
   exact word `DONE`**: a `DONE parcial`, or any `DONE (…)`, never closes a task whose row left, and
-  none of the new statuses has a stage.
+  none of the new statuses has a stage. `GET /projects/:projectId/documents/agentslog/words` lists the
+  distinct words of a project's ledger as the sync stored them (Roadmap TASK-30): each with the status it
+  is read as, how many entries carry it and one example qualifier, the `OTHER` ones first, so the table
+  can grow where agents write new words. The structured view of the Agentslog in the Documents page says
+  how many words are in use and how many it does not know.
 - `timestampFromLog` is parsed but **never trusted** as an ordering signal
   for reconciliation (it's agent-authored and can be wrong or backdated) —
   only used for display. The parser's own ingestion time (`createdAt`) is

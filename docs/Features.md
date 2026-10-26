@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 174
-- Latest verification: `VALIDAR green: check, lint, build, api unit 797, web 563, e2e 548` (2026-10-26)
+- Verified capabilities: 175
+- Latest verification: `VALIDAR green: check, lint, build, api unit 802, web 568, e2e 551` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -189,3 +189,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | TASK-25 | The Team page offers the skill's Agent identity table for the active AI agents (ledger name as id, model, role, aliases) with a Copy button that reports success or failure; names that would break the table stay out and are listed; contract test against the skill template | VALIDAR green: check, lint, build, api unit 782, web 563, e2e 548; the skill's check accepts the table and claim normalises an alias | log:TASK-25 | 2026-10-26 |
 | FEATURE-03 | Agents as the responsible actors, absorbed by FEATURE-10: the log's agents are suggested and registered on one click (TASK-03), agent@time owners resolve to assignee and claim time (TASK-02), aliases and ledger names identify them (TASK-01); registering SMARTHR's own agents is the live-data TASK-24 | TASK-01, TASK-02, TASK-03 and TASK-25 are in Features.md with VALIDAR green on aa6a45d and 785423a | log:FEATURE-03 | 2026-10-26 |
 | TASK-29 | Ledger status words map to the plan's canonical statuses: BLOCKED, DROPPED, SUPERSEDED and FINDING (Spanish and English words, BLOQUEADO_PO keeps PO as qualifier) and OTHER for an unknown word; the exact DONE stays the only terminal; obsolete 'unknown word is null' tests replaced | VALIDAR green: check, lint, build, api unit 797, web 563, e2e 548 | log:TASK-29 | 2026-10-26 |
+| TASK-30 | GET /projects/:id/documents/agentslog/words lists the ledger's distinct status words with the status each is read as, its entries and an example qualifier, unknown words first; the structured Agentslog view says how many words are in use and how many it does not know (path kept under /documents with the other ledger views) | VALIDAR green: check, lint, build, api unit 802, web 568, e2e 551 | log:TASK-30 | 2026-10-26 |

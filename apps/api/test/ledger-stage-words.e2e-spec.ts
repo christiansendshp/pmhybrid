@@ -268,4 +268,77 @@ describe('Stage words of the ledger (e2e, Roadmap TASK-06)', () => {
       expect(status['SW-5']).not.toBe('TERMINADA');
     });
   });
+
+  describe('the words of the ledger, listed (Roadmap TASK-30)', () => {
+    const words = (projectId: string) =>
+      request(server())
+        .get(`/projects/${projectId}/documents/agentslog/words`)
+        .set('Authorization', auth());
+
+    it('lists each distinct word with its status, how many entries carry it and an example qualifier, the unknown words first', async () => {
+      const { projectId } = await project({
+        roadmap: roadmap('SW-1', 'SW-2', 'SW-3', 'SW-4', 'SW-7', 'SW-8'),
+        entries: [
+          ...entries,
+          { at: '2026-10-13T11:00:00Z', task: 'SW-8', word: 'EN CURSO' },
+          { at: '2026-10-13T11:05:00Z', task: 'SW-9', word: 'BLOQUEADO_PO' },
+        ],
+      });
+      await sync(projectId).expect(201);
+
+      const res = await words(projectId).expect(200);
+
+      expect(
+        (
+          res.body as {
+            word: string;
+            canonicalStatus: string;
+            entries: number;
+            qualifier: string | null;
+          }[]
+        ).map((row) => [row.word, row.canonicalStatus, row.entries, row.qualifier]),
+      ).toEqual([
+        ['EN CURSO', 'OTHER', 2, null],
+        ['REVIEW', 'REVIEW', 2, null],
+        ['BLOQUEADO_PO', 'BLOCKED', 1, 'PO'],
+        ['DONE (2 de 3 partes)', 'DONE_PARTIAL', 1, '2 de 3 partes'],
+        ['HALLAZGO', 'FINDING', 1, null],
+        ['IN_PROGRESS', 'IN_PROGRESS', 1, null],
+        [
+          'IN_PROGRESS (revisión, 3 correcciones)',
+          'IN_PROGRESS',
+          1,
+          'revisión, 3 correcciones',
+        ],
+      ]);
+    });
+
+    it('is empty for a project whose ledger has no entries', async () => {
+      const { projectId } = await project({ roadmap: roadmap(), entries: [] });
+      await sync(projectId).expect(201);
+
+      const res = await words(projectId).expect(200);
+
+      expect(res.body).toEqual([]);
+    });
+
+    it('is refused to someone who is not a member of the project', async () => {
+      const { projectId } = await project({ roadmap: roadmap(), entries: [] });
+      const email = `${unique('outsider')}@pmhybrid.local`;
+      await request(server())
+        .post('/users')
+        .set('Authorization', auth())
+        .send({ displayName: 'Outsider', email, password: 'password123' })
+        .expect(201);
+      const login = await request(server())
+        .post('/auth/login')
+        .send({ email, password: 'password123' })
+        .expect(200);
+
+      await request(server())
+        .get(`/projects/${projectId}/documents/agentslog/words`)
+        .set('Authorization', `Bearer ${login.body.accessToken}`)
+        .expect(403);
+    });
+  });
 });

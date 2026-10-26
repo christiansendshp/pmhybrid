@@ -50,6 +50,14 @@ export interface ParsedAgentslog {
   previousSegment?: { archivePath: string; sha256: string };
 }
 
+/** One status word of the ledger and what PM Hub reads it as (Roadmap TASK-30); `OTHER` is a word it does not know. */
+export interface LedgerWord {
+  word: string;
+  canonicalStatus: string | null;
+  entries: number;
+  qualifier: string | null;
+}
+
 export type RevisionSource = 'SYNC' | 'UI' | 'API';
 
 export interface DocumentRevisionSummary {
@@ -90,6 +98,15 @@ export class DocumentsService {
     return firstValueFrom(
       this.http.get<ParsedAgentslog>(
         `${API_BASE_URL}/projects/${projectId}/documents/agentslog/structured`,
+      ),
+    );
+  }
+
+  /** The status words the ledger uses, the ones PM Hub does not know first (Roadmap TASK-30). */
+  getLedgerWords(projectId: string): Promise<LedgerWord[]> {
+    return firstValueFrom(
+      this.http.get<LedgerWord[]>(
+        `${API_BASE_URL}/projects/${projectId}/documents/agentslog/words`,
       ),
     );
   }

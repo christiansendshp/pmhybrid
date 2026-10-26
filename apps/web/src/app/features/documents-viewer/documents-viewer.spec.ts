@@ -15,6 +15,7 @@ describe('DocumentsViewer (brief §10)', () => {
   let listRevisions: ReturnType<typeof vi.fn>;
   let getStructuredRoadmap: ReturnType<typeof vi.fn>;
   let getStructuredAgentslog: ReturnType<typeof vi.fn>;
+  let getLedgerWords: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     getRaw = vi.fn().mockResolvedValue({ kind: 'roadmap', content: '# Roadmap\n\nSome text' });
@@ -22,6 +23,7 @@ describe('DocumentsViewer (brief §10)', () => {
     listRevisions = vi.fn().mockResolvedValue([]);
     getStructuredRoadmap = vi.fn().mockResolvedValue([]);
     getStructuredAgentslog = vi.fn().mockResolvedValue({ entries: [] });
+    getLedgerWords = vi.fn().mockResolvedValue([]);
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -38,6 +40,7 @@ describe('DocumentsViewer (brief §10)', () => {
             listRevisions,
             getStructuredRoadmap,
             getStructuredAgentslog,
+            getLedgerWords,
           },
         },
       ],
@@ -141,6 +144,87 @@ describe('DocumentsViewer (brief §10)', () => {
     harness.detectChanges();
     expect(text()).toContain('Codex');
     expect(text()).toContain('Shipped it');
+  });
+
+  describe('the status words of the ledger (Roadmap TASK-30)', () => {
+    const word = (overrides: Record<string, unknown>) => ({
+      word: 'DONE',
+      canonicalStatus: 'DONE',
+      entries: 10,
+      qualifier: null,
+      ...overrides,
+    });
+    const openStructuredLedger = async () => {
+      const view = await render();
+      await view.component.onViewModeChange('structured');
+      await view.component.onKindChange('agentslog');
+      view.harness.detectChanges();
+      return view;
+    };
+
+    it('says how many words the ledger uses and that all of them are known', async () => {
+      getLedgerWords.mockResolvedValue([
+        word({}),
+        word({ word: 'PAUSE', canonicalStatus: 'PAUSE' }),
+      ]);
+
+      const { text } = await openStructuredLedger();
+
+      expect(text()).toContain('Palabras de estado del registro: 2 en uso · todas conocidas');
+    });
+
+    it('says which words it does not know and how many entries carry them', async () => {
+      getLedgerWords.mockResolvedValue([
+        word({ word: 'EN CURSO', canonicalStatus: 'OTHER', entries: 4 }),
+        word({ word: 'N/A', canonicalStatus: 'OTHER', entries: 1 }),
+        word({}),
+      ]);
+
+      const { text } = await openStructuredLedger();
+
+      expect(text()).toContain('3 en uso · 2 desconocidas (5 entradas)');
+    });
+
+    it('lists each word with what it is read as, the unknown ones in words', async () => {
+      getLedgerWords.mockResolvedValue([
+        word({ word: 'EN CURSO', canonicalStatus: 'OTHER', entries: 4 }),
+        word({
+          word: 'BLOQUEADO_PO',
+          canonicalStatus: 'BLOCKED',
+          entries: 2,
+          qualifier: 'PO',
+        }),
+      ]);
+
+      const { harness } = await openStructuredLedger();
+
+      const rows = Array.from(
+        harness.routeNativeElement!.querySelectorAll('.ledger-words tbody tr'),
+      ).map((row) =>
+        Array.from(row.querySelectorAll('td')).map((cell) => cell.textContent?.trim()),
+      );
+      expect(rows).toEqual([
+        ['EN CURSO', 'No la conozco', '4', ''],
+        ['BLOQUEADO_PO', 'BLOCKED', '2', 'PO'],
+      ]);
+    });
+
+    it('still shows the entries when the words could not be read', async () => {
+      getLedgerWords.mockRejectedValue(new Error('boom'));
+
+      const { text, component } = await openStructuredLedger();
+
+      expect(component.ledgerWords()).toBeNull();
+      expect(text()).not.toContain('Palabras de estado');
+      expect(text()).toContain('Todavía no hay entradas de Agentslog.');
+    });
+
+    it('asks for the words only for the ledger in the structured view', async () => {
+      const { component } = await render();
+      await component.onKindChange('features');
+
+      expect(getLedgerWords).not.toHaveBeenCalled();
+    });
   });
 
   it('reports a failed load instead of rendering an empty document silently', async () => {

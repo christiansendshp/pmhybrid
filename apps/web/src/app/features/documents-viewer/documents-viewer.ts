@@ -19,6 +19,7 @@ import {
   DocumentKind,
   DocumentRevisionSummary,
   DocumentsService,
+  LedgerWord,
   ParsedAgentslog,
   ParsedRoadmapRow,
 } from '../../core/documents.service.js';
@@ -58,6 +59,14 @@ export class DocumentsViewer implements OnInit {
   readonly rawContent = signal<string | null>(null);
   readonly roadmapRows = signal<ParsedRoadmapRow[] | null>(null);
   readonly agentslog = signal<ParsedAgentslog | null>(null);
+  /** The status words of the ledger and what PM Hub reads them as (Roadmap TASK-30); null until read or when it could not be. */
+  readonly ledgerWords = signal<LedgerWord[] | null>(null);
+  readonly unknownWords = computed(() =>
+    (this.ledgerWords() ?? []).filter((word) => word.canonicalStatus === 'OTHER'),
+  );
+  readonly unknownWordEntries = computed(() =>
+    this.unknownWords().reduce((total, word) => total + word.entries, 0),
+  );
 
   readonly revisions = signal<DocumentRevisionSummary[]>([]);
   readonly revisionsLoading = signal(false);
@@ -156,6 +165,7 @@ export class DocumentsViewer implements OnInit {
     this.rawContent.set(null);
     this.roadmapRows.set(null);
     this.agentslog.set(null);
+    this.ledgerWords.set(null);
     this.revisions.set([]);
     this.viewCurrent();
     try {
@@ -172,6 +182,10 @@ export class DocumentsViewer implements OnInit {
         this.roadmapRows.set(await this.documentsService.getStructuredRoadmap(this.projectId));
       } else if (kind === 'agentslog') {
         this.agentslog.set(await this.documentsService.getStructuredAgentslog(this.projectId));
+        // The list of words is a help, not the document: without it the entries still show.
+        this.ledgerWords.set(
+          await this.documentsService.getLedgerWords(this.projectId).catch(() => null),
+        );
       }
     } catch (error) {
       this.error.set(describeHttpError(error, 'No se pudo cargar este documento.'));
