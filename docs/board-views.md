@@ -47,7 +47,7 @@ left. An address that names a view wins over what was left.
 ## The list (Roadmap TASK-18)
 
 `/projects/:projectId/list` shows the tasks as a table: ID, title (shortened like a card's, with the whole
-title as its tooltip), state (with the "Registro: … · PM Hub: …" and "Cierre inmediato" notes), agent
+title as its tooltip), state (with the "Registro: … · PM Hub: …", "Cierre inmediato" and "Sin fila en el Roadmap" notes), agent
 (with its kind and model), reviewer, priority, time in the stage, due date and last update. It does not
 load every task: it asks the server for one page of 50 (`GET /projects/:id/task-table`), filtered with the
 same filters as the board and ordered by the column the person chose over everything the filters keep,
@@ -154,5 +154,8 @@ Besides what the board always showed, a card says in words (never by colour alon
 kind and model, how long the task has been in its stage ("en QA hace 2 d", from `statusChangedAt`, in
 elapsed time so a day boundary or a time zone changes nothing; none for a finished task), the reviewer
 while it is in QA, an instant close, a disagreement between ledger and board ("Registro: QA · PM Hub:
-EN DESARROLLO"), and, when the card is hovered or has focus, the start of the latest ledger line
+EN DESARROLLO"), that the task has **lost its row** ("Sin fila en el Roadmap: hay un conflicto
+abierto", with a link to the Conflicts page: the row left the Roadmap, the ledger does not say the task
+was closed, and the conflict about it is still open; Roadmap GAP-47, `rowGone` on the card), and, when
+the card is hovered or has focus, the start of the latest ledger line
 (120 characters), which the title link also carries as its description for a screen reader.

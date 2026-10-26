@@ -229,6 +229,76 @@ describe('Restoring the row of a vanished task (e2e, Roadmap GAP-46)', () => {
     );
   });
 
+  describe('what the board says (Roadmap GAP-47)', () => {
+    const flagsOf = async (projectId: string) => {
+      const list = await request(server())
+        .get(`/projects/${projectId}/tasks`)
+        .set('Authorization', auth())
+        .expect(200);
+      return Object.fromEntries(
+        (list.body as { externalId: string; rowGone: boolean }[]).map(
+          (task) => [task.externalId, task.rowGone],
+        ),
+      );
+    };
+
+    it('flags, on every card, the tasks whose row left the Roadmap and whose conflict is open', async () => {
+      const { projectId } = await rowsGone();
+
+      expect(await flagsOf(projectId)).toEqual({ 'R-1': true, 'R-2': true });
+    });
+
+    it('flags it on the page of the task and in the table of tasks as well', async () => {
+      const { projectId } = await rowsGone();
+      const { task } = await conflictOf(projectId, 'R-1');
+
+      const detail = await request(server())
+        .get(`/projects/${projectId}/tasks/${task.id}`)
+        .set('Authorization', auth())
+        .expect(200);
+      const table = await request(server())
+        .get(`/projects/${projectId}/task-table`)
+        .set('Authorization', auth())
+        .expect(200);
+
+      expect(detail.body.rowGone).toBe(true);
+      expect(
+        (table.body.items as { rowGone: boolean }[]).map(
+          (card) => card.rowGone,
+        ),
+      ).toEqual([true, true]);
+    });
+
+    it('stops saying it once the row is restored', async () => {
+      const { projectId } = await rowsGone();
+      const { conflict } = await conflictOf(projectId, 'R-1');
+      await restore(projectId, conflict.id).expect(201);
+
+      expect(await flagsOf(projectId)).toEqual({ 'R-1': false, 'R-2': true });
+    });
+
+    it('does not say it of a task whose row never left', async () => {
+      const docsPath = createScratchDocsPath();
+      writeFileSync(
+        path.join(docsPath, 'Roadmap.md'),
+        roadmap(['R-1', 'IN_PROGRESS']),
+        'utf-8',
+      );
+      writeFileSync(path.join(docsPath, 'Agentslog.md'), LEDGER, 'utf-8');
+      const created = await request(server())
+        .post('/projects')
+        .set('Authorization', auth())
+        .send({
+          name: `Row present E2E ${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+          docsPath,
+        })
+        .expect(201);
+      await sync(created.body.id);
+
+      expect(await flagsOf(created.body.id)).toEqual({ 'R-1': false });
+    });
+  });
+
   it('refuses a conflict that is not about a vanished row', async () => {
     const docsPath = createScratchDocsPath();
     // a status the app does not know raises an UNRECOGNIZED_STATUS conflict

@@ -15,6 +15,7 @@ function card(status: TaskCard['status'], overrides: Partial<TaskCard> = {}): Ta
     status,
     phaseId: null,
     instantClose: false,
+    rowGone: false,
     completedAt: null,
     statusChangedAt: '2026-10-12T00:00:00.000Z',
     createdAt: '2026-10-01T00:00:00.000Z',

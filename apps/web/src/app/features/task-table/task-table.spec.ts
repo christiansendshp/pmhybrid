@@ -31,6 +31,7 @@ function card(overrides: Partial<TaskCard> = {}): TaskCard {
     completedAt: null,
     statusChangedAt: new Date(Date.now() - 3 * 3_600_000).toISOString(),
     instantClose: false,
+    rowGone: false,
     ledgerStage: null,
     ledgerNote: null,
     reviewerActorId: null,
@@ -104,6 +105,20 @@ describe('TaskTable (Roadmap TASK-18)', () => {
     };
     return { harness, host, root, flush };
   }
+
+  it('says in the row of a task whose row left the Roadmap that it has none, and in no other (Roadmap GAP-47)', async () => {
+    table.mockResolvedValue(
+      page([card({ rowGone: true }), card({ id: 't2', externalId: 'PMH-2', rowGone: false })]),
+    );
+    const { root, flush } = await render();
+    await flush();
+    const rows = Array.from(root().querySelectorAll('tbody tr')).map((row) =>
+      (row.textContent ?? '').replace(/\s+/g, ' '),
+    );
+
+    expect(rows[0]).toContain('Sin fila en el Roadmap: conflicto abierto');
+    expect(rows[1]).not.toContain('Sin fila en el Roadmap');
+  });
 
   it('asks the server for the first page with the filters and the order of the address', async () => {
     const { host, flush } = await render();

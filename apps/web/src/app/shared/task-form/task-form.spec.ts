@@ -27,6 +27,7 @@ function task(overrides: Partial<Task> = {}): Task {
     completedAt: null,
     statusChangedAt: '2026-10-01T10:00:00.000Z',
     instantClose: false,
+    rowGone: false,
     ledgerStage: null,
     ledgerNote: null,
     reviewerActorId: null,

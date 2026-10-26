@@ -36,6 +36,7 @@ function taskDetail(overrides: Partial<TaskDetailModel> = {}): TaskDetailModel {
     completedAt: null,
     statusChangedAt: '2026-10-01T10:00:00.000Z',
     instantClose: false,
+    rowGone: false,
     ledgerStage: null,
     ledgerNote: null,
     reviewerActorId: null,
@@ -326,6 +327,26 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     const { harness } = await render();
 
     expect(harness.routeNativeElement!.querySelector('.ledger-note')).toBeNull();
+  });
+
+  it('says on the page of a task whose row left the Roadmap what happened and where it is decided (Roadmap GAP-47)', async () => {
+    getById.mockResolvedValue(taskDetail({ rowGone: true }));
+    listAudit.mockResolvedValue([]);
+
+    const { harness } = await render();
+
+    const text = (harness.routeNativeElement!.textContent ?? '').replace(/\s+/g, ' ');
+    expect(text).toContain('Sin fila en el Roadmap');
+    expect(text).toContain('restaurar la fila');
+  });
+
+  it('says nothing about a missing row for a task that has its row', async () => {
+    getById.mockResolvedValue(taskDetail({ rowGone: false }));
+    listAudit.mockResolvedValue([]);
+
+    const { harness } = await render();
+
+    expect(harness.routeNativeElement!.textContent).not.toContain('Sin fila en el Roadmap');
   });
 
   it('says nothing about an instant close for a task that was not closed that way (Roadmap TASK-12)', async () => {

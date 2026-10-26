@@ -35,6 +35,7 @@ function card(overrides: Partial<TaskCard> = {}): TaskCard {
     completedAt: null,
     statusChangedAt: '2026-10-01T10:00:00.000Z',
     instantClose: false,
+    rowGone: false,
     ledgerStage: null,
     ledgerNote: null,
     reviewerActorId: null,
@@ -172,6 +173,20 @@ describe('Kanban (brief §15)', () => {
 
     // Words, not only a colour, and not in the alert colour: it says how the work was recorded.
     expect(notes).toEqual([['Cierre inmediato'], []]);
+  });
+
+  it('says on the card of a task whose row left the Roadmap that it has no row, with a way to the conflict, and on no other (Roadmap GAP-47)', async () => {
+    const { harness } = await render([
+      card({ id: 't1', externalId: 'PMH-1', rowGone: true }),
+      card({ id: 't2', externalId: 'PMH-2', rowGone: false }),
+    ]);
+    const notes = Array.from(harness.routeNativeElement!.querySelectorAll('.card')).map((element) =>
+      Array.from(element.querySelectorAll('.card__note')).map((note) =>
+        (note.textContent ?? '').replace(/\s+/g, ' ').trim(),
+      ),
+    );
+
+    expect(notes).toEqual([['Sin fila en el Roadmap: hay un conflicto abierto'], []]);
   });
 
   it('names the agent with its model, how long the task has been in its stage, the reviewer and the last ledger line (Roadmap TASK-13)', async () => {

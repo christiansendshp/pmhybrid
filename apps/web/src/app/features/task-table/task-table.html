@@ -44,6 +44,12 @@
             @if (card.instantClose) {
               <span class="task-table__note">Cierre inmediato</span>
             }
+            @if (card.rowGone) {
+              <span class="task-table__note"
+                >Sin fila en el Roadmap:
+                <a [routerLink]="['../conflicts']">conflicto abierto</a></span
+              >
+            }
           </td>
           <td>
             @if (card.assignee; as assignee) {

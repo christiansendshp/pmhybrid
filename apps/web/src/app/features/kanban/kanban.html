@@ -400,6 +400,12 @@
                       @if (card.instantClose) {
                         <li class="card__note">Cierre inmediato</li>
                       }
+                      @if (card.rowGone) {
+                        <li class="card__note">
+                          Sin fila en el Roadmap:
+                          <a [routerLink]="['../conflicts']">hay un conflicto abierto</a>
+                        </li>
+                      }
                       @if (card.ledgerStage && ledgerDiverges(card.ledgerStage, card.status)) {
                         <li class="card__note">
                           {{ divergenceText(card.ledgerStage, card.status) }}

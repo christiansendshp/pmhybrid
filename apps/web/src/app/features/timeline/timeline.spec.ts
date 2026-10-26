@@ -18,6 +18,7 @@ function card(overrides: Partial<TaskCard> = {}): TaskCard {
     status: 'EN_DESARROLLO',
     phaseId: 'p1',
     instantClose: false,
+    rowGone: false,
     completedAt: null,
     statusChangedAt: '2026-10-12T00:00:00.000Z',
     createdAt: '2026-10-01T00:00:00.000Z',

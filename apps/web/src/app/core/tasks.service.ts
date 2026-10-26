@@ -91,6 +91,8 @@ export interface Task {
   statusChangedAt: string;
   /** Closed within minutes of its first IN_PROGRESS in the ledger: the board could not show it in development (Roadmap TASK-12). */
   instantClose: boolean;
+  /** The row of the task left the Roadmap with nothing in the ledger to say why, and the conflict about it is open (Roadmap GAP-47). */
+  rowGone: boolean;
   /** The stage the ledger's latest entry gives the task, as of the last sync; null when it says nothing (Roadmap TASK-14). */
   ledgerStage: TaskStatus | null;
   /** The start of the summary of the ledger's latest entry for the task, for the card to show (Roadmap TASK-13). */

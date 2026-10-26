@@ -174,6 +174,14 @@ export class TasksService {
   async cardsOf(tasks: CardRow[]) {
     // Progress for the whole list from one batch of reads, not a query per task.
     const progress = await this.progressRollup.computeTasksProgress(tasks);
+    // Whose row left the Roadmap and has an open conflict about it (Roadmap GAP-47): one read for the list.
+    const rowGone =
+      tasks.length > 0
+        ? await this.tasksWithVanishedRow(
+            tasks[0].projectId,
+            tasks.map((task) => task.id),
+          )
+        : new Set<string>();
     // Closed within minutes of starting, in the ledger (Roadmap TASK-12): one read for the list.
     const instant =
       tasks.length > 0
@@ -188,6 +196,7 @@ export class TasksService {
         assignee: presentAssignee(assignee),
         computedProgress: progress.get(task.id) ?? 0,
         instantClose: task.externalId !== null && instant.has(task.externalId),
+        rowGone: rowGone.has(task.id),
         subtaskCounts: {
           total: subtasks.length,
           done: subtasks.filter(
@@ -207,7 +216,7 @@ export class TasksService {
 
   async findById(projectId: string, taskId: string) {
     const owned = await this.getOwned(projectId, taskId);
-    const [full, computedProgress, instant] = await Promise.all([
+    const [full, computedProgress, instant, rowGone] = await Promise.all([
       this.prisma.task.findUniqueOrThrow({
         where: { id: taskId },
         include: {
@@ -243,13 +252,37 @@ export class TasksService {
       }),
       this.progressRollup.computeTaskProgress(taskId),
       this.instantCloses.flagged(projectId, [owned.externalId]),
+      this.tasksWithVanishedRow(projectId, [taskId]),
     ]);
     return {
       ...full,
       assignee: presentAssignee(full.assignee),
       computedProgress,
       instantClose: full.externalId !== null && instant.has(full.externalId),
+      rowGone: rowGone.has(taskId),
     };
+  }
+
+  /**
+   * The tasks among `taskIds` whose row left the Roadmap with nothing in the ledger to say why, and
+   * whose conflict about it is still open (Roadmap GAP-47): the files no longer show them, and the
+   * board has to say so instead of leaving them in a column as if nothing had happened.
+   */
+  private async tasksWithVanishedRow(
+    projectId: string,
+    taskIds: string[],
+  ): Promise<Set<string>> {
+    const open = await this.prisma.conflict.findMany({
+      where: {
+        projectId,
+        resolvedAt: null,
+        entityType: 'Task',
+        kind: 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG',
+        entityId: { in: taskIds },
+      },
+      select: { entityId: true },
+    });
+    return new Set(open.map((conflict) => conflict.entityId));
   }
 
   /**

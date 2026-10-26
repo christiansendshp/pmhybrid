@@ -111,6 +111,15 @@
       tarea.
     </p>
   }
+  @if (t.rowGone) {
+    <p class="ledger-note">
+      <strong class="ledger-note__chip">Sin fila en el Roadmap</strong>
+      La fila de esta tarea ya no está en el Roadmap y el registro de los agentes no dice que se
+      cerrara. La tarea sigue aquí sin cambios hasta que alguien decida en
+      <a [routerLink]="['../../conflicts']">Conflictos</a>: restaurar la fila, darla por terminada o
+      conservarla sin fila.
+    </p>
+  }
   @if (t.instantClose) {
     <p class="instant-close">
       <strong class="instant-close__chip">Cierre inmediato</strong>
