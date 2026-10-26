@@ -43,6 +43,7 @@ export class ProjectDashboard implements OnInit {
   readonly tabs = [
     { label: 'Kanban', path: 'kanban' },
     { label: 'Progreso', path: 'progress' },
+    { label: 'Seguimiento', path: 'pace' },
     { label: 'Documentos', path: 'documents' },
     { label: 'Conflictos', path: 'conflicts' },
     { label: 'Auditoría', path: 'audit' },

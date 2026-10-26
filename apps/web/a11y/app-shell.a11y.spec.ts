@@ -89,6 +89,15 @@ test.describe('accessibility (Roadmap GAP-25)', () => {
     await checkA11y(page, 'progress');
   });
 
+  test('project pace (forecast, bars, burn-up and their tables, Roadmap TASK-37)', async ({ page }) => {
+    await page.goto('/projects');
+    await page.locator('.projects__name').first().click();
+    await page.getByRole('link', { name: 'Seguimiento' }).click();
+    await expect(page.getByRole('heading', { name: 'Seguimiento' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Cuándo termina el trabajo abierto' })).toBeVisible();
+    await checkA11y(page, 'pace');
+  });
+
   test('task detail (styled sections, breadcrumb, Roadmap UX-03c1)', async ({ page }) => {
     // This repository's own project is the seeded one that has tasks.
     await page.goto('/projects/pmhybrid-self/kanban');

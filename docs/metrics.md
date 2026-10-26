@@ -1,7 +1,7 @@
 # Metrics: pace, burn-up and forecast
 
-Status: the calculator (Roadmap TASK-35) and the endpoint (TASK-36) exist; the Seguimiento tab (TASK-37)
-builds on them. This page is where all three are described; each task adds its part.
+Status: the calculator (Roadmap TASK-35), the endpoint (TASK-36) and the Seguimiento tab (TASK-37) exist.
+This page is where all three are described.
 
 ## The calculator (`apps/api/src/modules/metrics/pace.util.ts`)
 
@@ -62,3 +62,30 @@ left as they are: that one reads the ledger from the repository, and the pace ne
 - A project with no task answers 12 weeks of zeros and `NOT_ENOUGH_HISTORY`.
 - A task finished and then reopened loses its `completedAt` (the app clears it), so its week no longer counts it:
   the figures are of the tasks as they stand, as the SQL is.
+
+## The Seguimiento tab (`/projects/:projectId/pace`)
+
+A tab of the project, next to Progreso (`apps/web/src/app/features/pace`). It reads
+`GET …/metrics/pace` **once per visit** (the page has no weeks selector, so the default 12 weeks are drawn) and
+shows, in this order:
+
+1. **When the open work ends.** A sentence for the forecast's status (BR-016): the range with the new work
+   counted ("terminaría entre el … y el …") and "Es una estimación, no una promesa"; or, with no date,
+   "No hay historia suficiente…", "No queda trabajo abierto…", "No se cerró ninguna tarea en las últimas semanas
+   completas…" or "El trabajo nuevo llega tan rápido como, o más rápido que, el que se cierra: … no termina",
+   which still says when it would end without the new work. Below it, a table of each window (the last 2 and 4
+   complete weeks): closed and new tasks per week, and the date with and without the new work ("no termina",
+   "sin ritmo" where there is none).
+2. **Closed and created per week.** Paired bars (closed solid, created hatched, the value on each bar; the
+   week in progress lighter), a sentence ("En las últimas 12 semanas: 3 tareas cerradas y 5 creadas. Se crea más
+   trabajo del que se cierra.") and the table of the numbers, open.
+3. **Scope and finished tasks.** The burn-up of the project and then of each phase, in the phases' order and
+   "Sin fase" last: two lines (the scope continuous, what is done dashed), a sentence of how both moved and the
+   table of the numbers (open for the project, closed for the phases).
+
+No figure is only in a drawing or a colour: every chart has a sentence and a table, the two series differ in
+stroke or pattern as well as colour, and the drawings are `aria-hidden` because the table says the same. The
+tables scroll inside their own region (`.table-scroll`, focusable) when they are wider than the screen, never
+the page. Dates are the API's UTC days shown as that day (`core/pace.ts`). The texts are pure functions
+(`forecastSentence`, `weeklySentence`, `burnUpSentence`) with their own tests; the page and the chart have
+component specs, and the page is in the accessibility, mobile-layout and target-size suites.

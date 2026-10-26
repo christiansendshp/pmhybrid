@@ -95,6 +95,11 @@ export const routes: Routes = [
               import('./features/phases-progress/phases-progress').then((m) => m.PhasesProgress),
           },
           {
+            // How the project moves over time: pace, burn-up and forecast (Roadmap TASK-37).
+            path: 'pace',
+            loadComponent: () => import('./features/pace/pace').then((m) => m.Pace),
+          },
+          {
             path: 'tasks/:taskId',
             loadComponent: () =>
               import('./features/task-detail/task-detail').then((m) => m.TaskDetail),

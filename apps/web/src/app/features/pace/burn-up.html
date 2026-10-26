@@ -1,0 +1,72 @@
+<figure class="burn-up">
+  <figcaption class="burn-up__sentence">{{ sentence() }}</figcaption>
+
+  <div class="burn-up__plot">
+    <span class="burn-up__scale meta-text" aria-hidden="true">{{ max() }}</span>
+    <svg
+      class="burn-up__svg"
+      viewBox="0 0 100 40"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <line class="burn-up__axis" x1="0" y1="38" x2="100" y2="38" />
+      <polyline class="burn-up__line burn-up__line--scope" [attr.points]="scopeLine()" />
+      <polyline
+        class="burn-up__line burn-up__line--done"
+        stroke-dasharray="6 4"
+        [attr.points]="doneLine()"
+      />
+    </svg>
+  </div>
+
+  <p class="burn-up__legend meta-text">
+    <span class="burn-up__key"
+      ><span class="burn-up__sample burn-up__sample--scope" aria-hidden="true"></span> Alcance</span
+    >
+    <span class="burn-up__key"
+      ><span class="burn-up__sample burn-up__sample--done" aria-hidden="true"></span>
+      Terminadas</span
+    >
+  </p>
+
+  <details class="burn-up__numbers" [open]="tableOpen()">
+    <summary>Ver los números</summary>
+    <div
+      class="table-scroll pace-scroll"
+      appScrollCue
+      tabindex="0"
+      role="region"
+      [attr.aria-label]="subject() + ': alcance y tareas terminadas'"
+    >
+      <table class="pace-table">
+        <caption class="pace-table__caption">
+          {{
+            subject()
+          }}: alcance y tareas terminadas al final de cada semana
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Semana desde el lunes</th>
+            <th scope="col" class="pace-table__num">Alcance</th>
+            <th scope="col" class="pace-table__num">Terminadas</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (point of points(); track point.weekStart) {
+            <tr>
+              <th scope="row">
+                {{ dateText(point.weekStart) }}
+                @if (point.partial) {
+                  <span class="meta-text">(en curso)</span>
+                }
+              </th>
+              <td class="pace-table__num">{{ point.scope }}</td>
+              <td class="pace-table__num">{{ point.done }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </details>
+</figure>

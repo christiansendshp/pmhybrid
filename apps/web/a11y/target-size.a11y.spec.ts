@@ -18,6 +18,7 @@ const routes = [
   '/projects/pmhybrid-self/agents',
   '/projects/pmhybrid-self/timeline',
   '/projects/pmhybrid-self/progress',
+  '/projects/pmhybrid-self/pace',
   '/projects/pmhybrid-self/documents',
   '/projects/pmhybrid-self/conflicts',
   '/projects/pmhybrid-self/audit',

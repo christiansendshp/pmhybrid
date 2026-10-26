@@ -1,0 +1,147 @@
+<header class="page-header">
+  <div>
+    <h2>Seguimiento</h2>
+    <p class="page-header__description">
+      El ritmo del proyecto semana a semana y cuándo terminaría el trabajo abierto, según lo que ya
+      pasó.
+    </p>
+  </div>
+</header>
+
+@if (loading()) {
+  <p class="meta-text">Cargando…</p>
+} @else if (failed()) {
+  <p class="callout" role="alert">No se pudo leer el seguimiento. Reintenta en un momento.</p>
+} @else if (pace(); as data) {
+  <section class="pace-section" aria-labelledby="pace-forecast">
+    <h3 id="pace-forecast">Cuándo termina el trabajo abierto</h3>
+    <p class="pace-forecast" [attr.data-status]="data.forecast.status" role="status">
+      {{ forecastText() }}
+    </p>
+
+    @if (data.forecast.windows.length > 0) {
+      <div
+        class="table-scroll"
+        appScrollCue
+        tabindex="0"
+        role="region"
+        aria-label="Ritmo de las últimas semanas completas"
+      >
+        <table class="pace-table pace-table--wide">
+          <caption class="pace-table__caption">
+            El ritmo de las últimas semanas completas y la fecha a la que lleva cada uno
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Ritmo de</th>
+              <th scope="col" class="pace-table__num">Cerradas por semana</th>
+              <th scope="col" class="pace-table__num">Nuevas por semana</th>
+              <th scope="col">Termina contando el trabajo nuevo</th>
+              <th scope="col">Termina sin el trabajo nuevo</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (window of data.forecast.windows; track window.weeks) {
+              <tr>
+                <th scope="row">Últimas {{ window.weeks }} semanas</th>
+                <td class="pace-table__num">{{ window.completedPerWeek | number: '1.0-1' }}</td>
+                <td class="pace-table__num">{{ window.createdPerWeek | number: '1.0-1' }}</td>
+                <td>{{ window.finishesBy ? longDate(window.finishesBy) : 'no termina' }}</td>
+                <td>
+                  {{
+                    window.finishesByIgnoringNewScope
+                      ? longDate(window.finishesByIgnoringNewScope)
+                      : 'sin ritmo'
+                  }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <section class="pace-section" aria-labelledby="pace-weekly">
+    <h3 id="pace-weekly">Cerradas y creadas por semana</h3>
+    <p class="pace-sentence">{{ weeklyText() }}</p>
+
+    <div class="pace-bars" aria-hidden="true">
+      @for (week of data.weeks; track week.weekStart) {
+        <div class="pace-bars__week" [class.pace-bars__week--partial]="week.partial">
+          <div class="pace-bars__plot">
+            <span
+              class="pace-bar pace-bar--completed"
+              [style.height.%]="heightOf(week, 'completed')"
+            >
+              <span class="pace-bar__value">{{ week.completed }}</span>
+            </span>
+            <span class="pace-bar pace-bar--created" [style.height.%]="heightOf(week, 'created')">
+              <span class="pace-bar__value">{{ week.created }}</span>
+            </span>
+          </div>
+          <span class="pace-bars__label">{{ shortDate(week.weekStart) }}</span>
+        </div>
+      }
+    </div>
+
+    <p class="pace-legend meta-text">
+      <span class="pace-legend__key"
+        ><span class="pace-legend__sample pace-legend__sample--completed" aria-hidden="true"></span>
+        Cerradas</span
+      >
+      <span class="pace-legend__key"
+        ><span class="pace-legend__sample pace-legend__sample--created" aria-hidden="true"></span>
+        Creadas</span
+      >
+    </p>
+
+    <details class="pace-numbers" open>
+      <summary>Ver los números</summary>
+      <div
+        class="table-scroll pace-scroll"
+        appScrollCue
+        tabindex="0"
+        role="region"
+        aria-label="Tareas cerradas y creadas por semana"
+      >
+        <table class="pace-table">
+          <caption class="pace-table__caption">
+            Tareas cerradas y creadas en cada semana
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Semana desde el lunes</th>
+              <th scope="col" class="pace-table__num">Cerradas</th>
+              <th scope="col" class="pace-table__num">Creadas</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (week of data.weeks; track week.weekStart) {
+              <tr>
+                <th scope="row">
+                  {{ shortDate(week.weekStart) }}
+                  @if (week.partial) {
+                    <span class="meta-text">(en curso)</span>
+                  }
+                </th>
+                <td class="pace-table__num">{{ week.completed }}</td>
+                <td class="pace-table__num">{{ week.created }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </section>
+
+  <section class="pace-section" aria-labelledby="pace-burn-up">
+    <h3 id="pace-burn-up">Alcance y tareas terminadas</h3>
+    <app-burn-up subject="Proyecto" [points]="project()" [tableOpen]="true" />
+
+    @for (phase of phases(); track phase.key) {
+      <h4 class="pace-phase">{{ phase.name }}</h4>
+      <app-burn-up [subject]="phase.name" [points]="phase.points" />
+    }
+  </section>
+}

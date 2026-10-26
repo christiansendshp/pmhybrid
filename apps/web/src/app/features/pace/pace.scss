@@ -1,0 +1,150 @@
+@use 'pace-table';
+
+@include pace-table.pace-table;
+
+.pace-section {
+  margin-bottom: var(--space-8);
+}
+
+.pace-sentence,
+.pace-forecast {
+  max-width: 48rem;
+  margin: 0 0 var(--space-3);
+}
+
+// The status is said in words; the edge only repeats it.
+.pace-forecast {
+  padding: var(--space-3);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-left-width: 4px;
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-surface-container-low);
+}
+
+.pace-forecast[data-status='OK'] {
+  border-left-color: var(--mat-sys-primary);
+}
+
+.pace-forecast[data-status='NOT_CONVERGING'],
+.pace-forecast[data-status='NO_RECENT_COMPLETIONS'] {
+  border-left-color: var(--mat-sys-error);
+}
+
+.pace-bars {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  max-width: 48rem;
+  padding-top: var(--space-4);
+}
+
+.pace-bars__week {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.pace-bars__plot {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 7.5rem;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.pace-bar {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 1px;
+  border-radius: var(--mat-sys-corner-extra-small) var(--mat-sys-corner-extra-small) 0 0;
+}
+
+.pace-bar__value {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.pace-bar--completed {
+  background: var(--mat-sys-primary);
+}
+
+// Created is hatched, closed is solid: the two never depend on their colour alone.
+.pace-bar--created {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--mat-sys-secondary) 0 0.3rem,
+    var(--mat-sys-secondary-container) 0.3rem 0.6rem
+  );
+}
+
+.pace-bars__week--partial .pace-bar {
+  opacity: 0.6;
+}
+
+.pace-bars__label {
+  overflow: hidden;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+  text-align: center;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.pace-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-2) 0 0;
+}
+
+.pace-legend__key {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pace-legend__sample {
+  display: inline-block;
+  width: 1rem;
+  height: 0.75rem;
+  border-radius: var(--mat-sys-corner-extra-small);
+}
+
+.pace-legend__sample--completed {
+  background: var(--mat-sys-primary);
+}
+
+.pace-legend__sample--created {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--mat-sys-secondary) 0 0.3rem,
+    var(--mat-sys-secondary-container) 0.3rem 0.6rem
+  );
+}
+
+.pace-numbers {
+  margin-top: var(--space-2);
+}
+
+.pace-numbers summary {
+  min-height: 1.5rem;
+  cursor: pointer;
+  color: var(--mat-sys-primary);
+}
+
+.pace-phase {
+  margin: var(--space-4) 0 var(--space-1);
+}
+
+// On a phone the values on the bars would overlap: the table below has every figure.
+@media (max-width: 40rem) {
+  .pace-bar__value {
+    display: none;
+  }
+}

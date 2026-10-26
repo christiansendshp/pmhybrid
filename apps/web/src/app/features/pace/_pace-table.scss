@@ -1,0 +1,50 @@
+// The table of the numbers behind a chart, shared by the weekly bars and the burn-ups (Roadmap TASK-37).
+@mixin pace-table {
+  // A table wider than the screen scrolls inside its own region (.table-scroll), never the page.
+  .pace-scroll {
+    max-width: 40rem;
+    margin-top: var(--space-2);
+  }
+
+  .pace-table {
+    width: 100%;
+    min-width: 22rem;
+    border-collapse: collapse;
+    font: var(--mat-sys-body-small);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pace-table__caption {
+    padding: var(--space-1) 0;
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-label-medium);
+    text-align: left;
+  }
+
+  .pace-table--wide {
+    min-width: 44rem;
+  }
+
+  // The week of a row is a date, not a heading: it keeps its own case.
+  .pace-table tbody th {
+    text-transform: none;
+  }
+
+  .pace-table th,
+  .pace-table td {
+    padding: var(--space-1) var(--space-3);
+    border-top: 1px solid var(--mat-sys-outline-variant);
+    text-align: left;
+    font-weight: normal;
+  }
+
+  .pace-table thead th {
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-label-medium);
+  }
+
+  .pace-table th.pace-table__num,
+  .pace-table td.pace-table__num {
+    text-align: right;
+  }
+}
