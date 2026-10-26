@@ -18,7 +18,7 @@ segments live in `docs/history/`.
 
 ## Previous segment
 
-- Archive: `docs/history/Agentslog-20261026-003.md`
-- SHA-256: `08faf5b92b4371ac8dd981f916ec16c82157e137d0145ddd9c44514d3476fda8`
+- Archive: `docs/history/Agentslog-20261026-004.md`
+- SHA-256: `f89324c538189af365d901eb2c2f6a2c9c70375215055a87d59c38fde5bf8e74`
 
 ## Entries
