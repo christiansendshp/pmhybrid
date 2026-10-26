@@ -1,0 +1,103 @@
+.since-visit {
+  margin-bottom: var(--space-8);
+}
+
+.since-visit__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+
+  h2 {
+    margin: 0;
+  }
+}
+
+.since-visit__projects {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.since-visit__project {
+  padding: var(--space-3);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-surface-container-low);
+}
+
+.since-visit__project-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+
+  h3 {
+    margin: 0;
+  }
+
+  .since-visit__link {
+    margin-left: auto;
+  }
+}
+
+.since-visit__lines,
+.since-visit__tasks {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.since-visit__lines {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.since-visit__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+// What needs a person is said first and its edge says it again; the sentence is what says it.
+.since-visit__line[data-kind='blocked'],
+.since-visit__line[data-kind='conflicts'] {
+  padding-left: var(--space-2);
+  border-left: 3px solid var(--mat-sys-error);
+}
+
+.since-visit__sentence {
+  font: var(--mat-sys-label-large);
+}
+
+.since-visit__tasks {
+  display: grid;
+  flex-basis: 100%;
+  gap: var(--space-1);
+}
+
+.since-visit__id {
+  margin-right: var(--space-1);
+  color: var(--mat-sys-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+
+.since-visit__link {
+  min-height: 1.5rem;
+  padding: 0 var(--space-1);
+  border: 0;
+  background: none;
+  color: var(--mat-sys-primary);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.since-visit__link:disabled {
+  color: var(--mat-sys-on-surface-variant);
+  cursor: default;
+}

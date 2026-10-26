@@ -34,6 +34,8 @@ test.describe('accessibility (Roadmap GAP-25)', () => {
   test('app shell + dashboard (auth surface, default landing page)', async ({ page }) => {
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: 'Panel' })).toBeVisible();
+    // The section of what is new since the last visit is the first thing under the title (Roadmap TASK-39).
+    await expect(page.getByRole('heading', { name: 'Desde tu última visita' })).toBeVisible();
     await checkA11y(page, 'dashboard');
   });
 

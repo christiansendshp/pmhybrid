@@ -18,16 +18,15 @@ segments live in `docs/history/`.
 
 ## Previous segment
 
-- Archive: `docs/history/Agentslog-20261026-021.md`
-- SHA-256: `8d906f374c8fb12dd0d522fc127ff4b93d35725fd4cc736fb46e9add07d0812f`
+- Archive: `docs/history/Agentslog-20261026-022.md`
+- SHA-256: `bc0db70cb7577db19e98b7f8946afc28b753f273cca3ee7d251a5f2aef6cb4bb`
 
 ## Entries
 
-## [2026-10-26T18:56:27Z] | claude-sonnet-5-5 | TASK-38 | IN_PROGRESS | Since-last-visit summary per person and project, in the API
-- Summary: 
-- Verify: pending
+## [2026-10-26T19:06:56Z] | claude-sonnet-5-5 | TASK-39 | IN_PROGRESS | Desde tu última visita at the top of the Panel
+- Summary: carried forward from docs/history/Agentslog-20261026-022.md at rotation
 
-## [2026-10-26T19:06:09Z] | claude-sonnet-5-5 | TASK-38 | DONE | Since-last-visit summary per person and project, in the API
-- Summary: Per-person ProjectSeen marker and GET /dashboard/since-last-visit: for each active project of the caller with news since the marker (7 days back with none), the tasks done, blocked, unblocked (audit) and new, and the conflicts opened, as counts with up to 10 tasks each; POST /dashboard/since-last-visit/seen moves only the caller's marker (BR-017)
-- Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261026160000_add_project_seen, apps/api/src/modules/dashboard/since-visit.{util,service,controller}.ts, dto/mark-seen.dto.ts, dashboard.module.ts, apps/api/test/since-last-visit.e2e-spec.ts, docs/what-changed.md, docs/domain-model.md, docs/api-reference.md, docs/ProductDescription.md
-- Verify: check, lint, build, unit (since-visit.util.spec 16) and e2e (since-last-visit 17) green; migration applied to the dev DB
+## [2026-10-26T19:16:51Z] | claude-sonnet-5-5 | TASK-39 | DONE | Desde tu última visita at the top of the Panel
+- Summary: The Panel starts with Desde tu última visita: each project with news since the person's marker as a card (counts as sentences in the order a person acts: blocked, conflicts, unblocked, done, new; the first tasks as links; from when it counts) and Marcar como visto per project or for all, updating without reloading; it reads on its own and says when it cannot
+- Files: apps/web/src/app/core/since-visit.{service,}.ts, apps/web/src/app/features/dashboard/since-visit.*, dashboard.{ts,html,spec.ts}, apps/web/a11y/app-shell.a11y.spec.ts, docs/what-changed.md
+- Verify: check, lint, build, unit and e2e green (since-visit specs 26 incl. Panel); looked at in the browser on a scratch API/web (desktop, mark as seen, 375 px without overflow); the a11y suite was extended but not run (needs the persistent stack stopped)

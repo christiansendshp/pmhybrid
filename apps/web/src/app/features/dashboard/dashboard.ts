@@ -9,11 +9,12 @@ import {
   DashboardSummary,
 } from '../../core/dashboard.service.js';
 import { statusLabel } from '../../core/task-status-policy.js';
+import { SinceVisit } from './since-visit.js';
 
 /** Brief §14 "DASHBOARD PRINCIPAL" — cross-project summary + activity. */
 @Component({
   selector: 'app-dashboard',
-  imports: [LabelPipe, DatePipe, DecimalPipe, RouterLink],
+  imports: [LabelPipe, DatePipe, DecimalPipe, RouterLink, SinceVisit],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })

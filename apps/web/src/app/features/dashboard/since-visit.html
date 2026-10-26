@@ -1,0 +1,75 @@
+<section class="since-visit" aria-labelledby="since-visit-title">
+  <div class="since-visit__head">
+    <h2 id="since-visit-title">Desde tu última visita</h2>
+    @if (projects().length > 1) {
+      <button type="button" class="since-visit__link" [disabled]="marking()" (click)="markSeen()">
+        Marcar todo como visto
+      </button>
+    }
+  </div>
+
+  @if (markFailed()) {
+    <p class="callout" role="alert">No se pudo marcar como visto. Reintenta en un momento.</p>
+  }
+
+  @if (loading()) {
+    <p class="meta-text">Cargando…</p>
+  } @else if (failed()) {
+    <p class="callout" role="alert">
+      No se pudo leer lo que cambió desde tu última visita. El resto del panel sigue igual.
+    </p>
+  } @else if (projects().length === 0) {
+    <p class="meta-text" role="status">Nada nuevo desde tu última visita.</p>
+  } @else {
+    <ul class="since-visit__projects">
+      @for (project of projects(); track project.projectId) {
+        <li class="since-visit__project">
+          <div class="since-visit__project-head">
+            <h3>
+              <a [routerLink]="['/projects', project.projectId, 'kanban']">{{ project.name }}</a>
+            </h3>
+            <span class="meta-text">desde el {{ project.since | date: 'd MMM y, HH:mm' }}</span>
+            <button
+              type="button"
+              class="since-visit__link"
+              [disabled]="marking()"
+              [attr.aria-label]="'Marcar como visto ' + project.name"
+              (click)="markSeen(project.projectId)"
+            >
+              Marcar como visto
+            </button>
+          </div>
+          <ul class="since-visit__lines">
+            @for (line of lines(project); track line.key) {
+              <li class="since-visit__line" [attr.data-kind]="line.key">
+                <span class="since-visit__sentence">{{ line.sentence }}</span>
+                @if (line.key === 'conflicts') {
+                  <a [routerLink]="['/projects', project.projectId, 'conflicts']"
+                    >Ver los conflictos</a
+                  >
+                }
+                @if (line.tasks.length > 0) {
+                  <ul class="since-visit__tasks">
+                    @for (task of line.tasks; track task.id) {
+                      <li>
+                        <a [routerLink]="['/projects', project.projectId, 'tasks', task.id]">
+                          @if (task.externalId) {
+                            <span class="since-visit__id">{{ task.externalId }}</span>
+                          }
+                          {{ task.title }}
+                        </a>
+                      </li>
+                    }
+                    @if (line.more > 0) {
+                      <li class="meta-text">y {{ line.more }} más</li>
+                    }
+                  </ul>
+                }
+              </li>
+            }
+          </ul>
+        </li>
+      }
+    </ul>
+  }
+</section>

@@ -1,8 +1,8 @@
 # What changed: since the last visit, notifications and summaries
 
-Status: the marker and the summary of what is new in the API exist (Roadmap TASK-38). The Panel section
-(TASK-39), the new notification types (TASK-40, TASK-41) and the periodic summary (TASK-42) build on it and add
-their parts here. DEC-004 D3: everything stays in the app, nothing is sent out.
+Status: the marker and the summary of what is new in the API (Roadmap TASK-38) and the Panel section
+(TASK-39) exist. The new notification types (TASK-40, TASK-41) and the periodic summary (TASK-42) build on them and
+add their parts here. DEC-004 D3: everything stays in the app, nothing is sent out.
 
 ## The marker (`ProjectSeen`)
 
@@ -33,3 +33,25 @@ all of the caller's when none is named, and answers the ones it moved. A project
 left alone, whatever was asked, and a list that is not a list of ids is a 400.
 
 The same builder is what the periodic summary (TASK-42) will read over a period instead of a marker.
+
+## The section of the Panel ("Desde tu última visita")
+
+`apps/web/src/app/features/dashboard/since-visit.*`, the first thing under the title of the Panel. It reads
+`GET /dashboard/since-last-visit` **on its own**, apart from the rest of the Panel: if that read fails it says so
+("No se pudo leer lo que cambió desde tu última visita. El resto del panel sigue igual.") and the figures and the
+activity below are untouched.
+
+- Each project with news is a card: the project (a link to its board), "desde el <date and time>" (where its count
+  starts) and "Marcar como visto".
+- Inside it, one line per kind that has something, **in the order a person has to act**: tasks blocked, new
+  conflicts (with "Ver los conflictos"), tasks unblocked, tasks done, tasks new. Every count is a sentence ("1 tarea
+  bloqueada", "14 tareas terminadas"), never a bare number, and the blocked and conflict lines carry an edge as
+  well. The first tasks of a kind are links to their page, with their ID, and "y N más" says how many the list
+  leaves out.
+- "Marcar como visto" (per project; "Marcar todo como visto" appears only when there is more than one project)
+  calls `POST …/seen` and takes what was marked off the list **without reloading**; if the call fails it says
+  "No se pudo marcar como visto" and keeps the list. With no project left it says "Nada nuevo desde tu última
+  visita", which is also what a person with no news sees from the start.
+- The pure part, the sentences and their order, is `core/since-visit.ts` (`newsLines`), with its own tests; the
+  component spec checks the reading, the failures, the links and the marking, and the Panel is in the accessibility
+  and target-size suites.

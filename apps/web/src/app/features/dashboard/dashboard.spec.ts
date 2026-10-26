@@ -7,6 +7,7 @@ import {
   DashboardService,
   DashboardSummary,
 } from '../../core/dashboard.service.js';
+import { SinceVisitService } from '../../core/since-visit.service.js';
 import { Dashboard } from './dashboard.js';
 
 const SUMMARY: DashboardSummary = {
@@ -76,6 +77,10 @@ describe('Dashboard (brief §14)', () => {
       providers: [
         provideRouter([]),
         { provide: DashboardService, useValue: { getSummary, getActivity } },
+        {
+          provide: SinceVisitService,
+          useValue: { get: vi.fn().mockResolvedValue({ generatedAt: '', projects: [] }) },
+        },
       ],
     });
   });
