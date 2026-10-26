@@ -53,6 +53,7 @@ describe('BoardViews (Roadmap TASK-17)', () => {
       'list',
       'review',
       'agents',
+      'waiting',
       'timeline',
     ]);
     expect(links(root).map((link) => link.textContent?.trim())).toEqual([
@@ -60,6 +61,7 @@ describe('BoardViews (Roadmap TASK-17)', () => {
       'Lista',
       'En revisión',
       'Por agente',
+      'Esperando',
       'Línea de tiempo',
     ]);
     const nav = root.querySelector('nav');
@@ -68,12 +70,13 @@ describe('BoardViews (Roadmap TASK-17)', () => {
 
   it('points at the sibling views of the project, and marks the one it is on as the current page', async () => {
     const { harness } = await render();
-    const [board, list, review, agents, timeline] = links(harness.routeNativeElement!);
+    const [board, list, review, agents, waiting, timeline] = links(harness.routeNativeElement!);
 
     expect(board.getAttribute('href')).toBe('/projects/p1/kanban');
     expect(list.getAttribute('href')).toBe('/projects/p1/list');
     expect(review.getAttribute('href')).toBe('/projects/p1/review');
     expect(agents.getAttribute('href')).toBe('/projects/p1/agents');
+    expect(waiting.getAttribute('href')).toBe('/projects/p1/waiting');
     expect(timeline.getAttribute('href')).toBe('/projects/p1/timeline');
     expect(board.getAttribute('aria-current')).toBe('page');
     expect(board.classList.contains('board-views__link--active')).toBe(true);
@@ -90,6 +93,7 @@ describe('BoardViews (Roadmap TASK-17)', () => {
       '/projects/p1/list?q=sync&kind=AI_AGENT&stale=72',
       '/projects/p1/review?q=sync&kind=AI_AGENT&stale=72',
       '/projects/p1/agents?q=sync&kind=AI_AGENT&stale=72',
+      '/projects/p1/waiting?q=sync&kind=AI_AGENT&stale=72',
       '/projects/p1/timeline?q=sync&kind=AI_AGENT&stale=72',
     ]);
   });

@@ -9,6 +9,7 @@ import { HierarchyService, ProjectHierarchy } from '../../core/hierarchy.service
 import { ProjectContext } from '../../core/project-context.js';
 import { ProjectsService } from '../../core/projects.service.js';
 import { SynchronizationService } from '../../core/synchronization.service.js';
+import { WaitingService } from '../../core/waiting.service.js';
 import { TaskCard, TasksService } from '../../core/tasks.service.js';
 import { BoardMemory } from '../../core/board-query.js';
 import { Viewport } from '../../core/viewport.js';
@@ -84,6 +85,7 @@ const SEEN = {
 describe('Kanban (brief §15)', () => {
   let listForProject: ReturnType<typeof vi.fn>;
   let registerLedgerAgent: ReturnType<typeof vi.fn>;
+  let getWaiting: ReturnType<typeof vi.fn>;
   let transition: ReturnType<typeof vi.fn>;
   let table: ReturnType<typeof vi.fn>;
   let listMembers: ReturnType<typeof vi.fn>;
@@ -98,6 +100,12 @@ describe('Kanban (brief §15)', () => {
     openDialog = vi.fn(() => ({ afterClosed: () => of(dialogAnswer) }));
     listMembers = vi.fn().mockResolvedValue([]);
     registerLedgerAgent = vi.fn().mockResolvedValue({ id: 'new', displayName: 'ghost' });
+    getWaiting = vi.fn().mockResolvedValue({
+      items: [],
+      byPhase: [],
+      byEpic: [],
+      ledgerUnreadable: false,
+    });
     unresolvedNames = vi.fn().mockResolvedValue({ ledgerNames: [], ownerNames: [] });
     spans = vi.fn().mockResolvedValue({});
     listForProject = vi.fn();
@@ -121,12 +129,14 @@ describe('Kanban (brief §15)', () => {
               { path: 'list', component: Kanban, data: { view: 'list' } },
               { path: 'review', component: Kanban, data: { view: 'review' } },
               { path: 'agents', component: Kanban, data: { view: 'agents' } },
+              { path: 'waiting', component: Kanban, data: { view: 'waiting' } },
               { path: 'timeline', component: Kanban, data: { view: 'timeline' } },
             ],
           },
         ]),
         { provide: TasksService, useValue: { listForProject, transition, table, spans } },
         { provide: MatDialog, useValue: { open: openDialog } },
+        { provide: WaitingService, useValue: { get: getWaiting } },
         { provide: ProjectsService, useValue: { listMembers, registerLedgerAgent } },
         { provide: SynchronizationService, useValue: { unresolvedNames } },
         { provide: HierarchyService, useValue: { load: vi.fn().mockResolvedValue(HIERARCHY) } },
@@ -389,6 +399,76 @@ describe('Kanban (brief §15)', () => {
     await component.onDrop(drop({}, {}), 'EN_DESARROLLO');
     expect(transition).toHaveBeenCalledWith('p1', 't1', 'EN_DESARROLLO');
     expect(listForProject).toHaveBeenCalledTimes(2);
+  });
+
+  describe('the view of what is waiting (Roadmap TASK-21)', () => {
+    const blockedItem = (taskId: string, title: string) => ({
+      kind: 'BLOCKED',
+      since: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      taskId,
+      externalId: null,
+      title,
+      reason: 'Waiting on credentials',
+      neededDecision: null,
+      from: null,
+      holds: 0,
+    });
+    const waitingList = (...items: ReturnType<typeof blockedItem>[]) => ({
+      items,
+      byPhase: [],
+      byEpic: [],
+      ledgerUnreadable: false,
+    });
+    const itemTitles = (root: HTMLElement) =>
+      Array.from(root.querySelectorAll('.waiting__task')).map((link) =>
+        (link.textContent ?? '').replace(/\s+/g, ' ').trim(),
+      );
+
+    it('reads the list from the endpoint of the project and shows it, with no query of its own', async () => {
+      getWaiting.mockResolvedValue(waitingList(blockedItem('t1', 'Build API')));
+
+      const { harness } = await render([card()], ['task.write'], '/projects/p1/waiting');
+
+      expect(getWaiting).toHaveBeenCalledWith('p1');
+      expect(itemTitles(harness.routeNativeElement!)).toEqual(['Build API']);
+    });
+
+    it('is named in the title of the page', async () => {
+      const { harness } = await render([card()], ['task.write'], '/projects/p1/waiting');
+
+      expect(harness.routeNativeElement!.querySelector('h2')?.textContent).toContain('Esperando');
+    });
+
+    it('keeps the filters: a task they leave out is not listed', async () => {
+      getWaiting.mockResolvedValue(
+        waitingList(blockedItem('t1', 'Build API'), blockedItem('t2', 'Write docs')),
+      );
+
+      const { harness } = await render(
+        [card({ id: 't1', title: 'Build API' }), card({ id: 't2', title: 'Write docs' })],
+        ['task.write'],
+        '/projects/p1/waiting?q=Build',
+      );
+
+      expect(itemTitles(harness.routeNativeElement!)).toEqual(['Build API']);
+    });
+
+    it('says it could not read the list, and keeps the page', async () => {
+      getWaiting.mockRejectedValue(new Error('boom'));
+
+      const { harness, component } = await render([card()], ['task.write'], '/projects/p1/waiting');
+
+      expect(component.waitingFailed()).toBe(true);
+      expect(harness.routeNativeElement!.textContent).toContain(
+        'No se pudo leer lo que está esperando',
+      );
+    });
+
+    it('is not asked for on the board', async () => {
+      await render([card()]);
+
+      expect(getWaiting).not.toHaveBeenCalled();
+    });
   });
 
   describe('sending a task back from QA (Roadmap TASK-28)', () => {
@@ -803,6 +883,7 @@ describe('Kanban (brief §15)', () => {
         '/projects/p1/list?q=api&stale=72',
         '/projects/p1/review?q=api&stale=72',
         '/projects/p1/agents?q=api&stale=72',
+        '/projects/p1/waiting?q=api&stale=72',
         '/projects/p1/timeline?q=api&stale=72',
       ]);
     });
@@ -823,6 +904,7 @@ describe('Kanban (brief §15)', () => {
         '/projects/p1/list?q=api&divergent=1',
         '/projects/p1/review?q=api&divergent=1',
         '/projects/p1/agents?q=api&divergent=1',
+        '/projects/p1/waiting?q=api&divergent=1',
         '/projects/p1/timeline?q=api&divergent=1',
       ]);
     });

@@ -1,0 +1,94 @@
+@if (failed()) {
+  <p class="callout" role="alert">
+    No se pudo leer lo que está esperando. Reintenta en un momento.
+  </p>
+} @else if (waiting(); as data) {
+  @if (data.ledgerUnreadable) {
+    <p class="meta-text" role="status">
+      No se pudo leer el registro (Agentslog): faltan las decisiones que dice esperar, y la lista de
+      abajo no está completa.
+    </p>
+  }
+
+  <p class="waiting__summary" role="status">
+    {{ items().length }} {{ items().length === 1 ? 'espera' : 'esperas' }}, la más antigua primero.
+  </p>
+
+  @if (items().length === 0) {
+    <p class="waiting__empty">Nada está esperando.</p>
+  } @else {
+    <ol class="waiting__list">
+      @for (item of items(); track $index) {
+        <li class="waiting__item" [attr.data-kind]="item.kind">
+          <div class="waiting__head">
+            <span class="waiting__kind">{{ kindLabel[item.kind] }}</span>
+            @if (item.taskId) {
+              <a class="waiting__task" [routerLink]="['../tasks', item.taskId]">
+                @if (item.externalId) {
+                  <span class="waiting__id">{{ item.externalId }}</span>
+                }
+                {{ item.title }}
+              </a>
+            } @else {
+              <a class="waiting__task" [routerLink]="['../conflicts']">Un documento del proyecto</a>
+            }
+            <span class="waiting__age" [attr.title]="item.since | date: 'd MMM y, HH:mm'">
+              {{ waitedFor(item.since) }}
+            </span>
+          </div>
+
+          @switch (item.kind) {
+            @case ('BLOCKED') {
+              @if (item.reason) {
+                <p class="waiting__line">{{ item.reason }}</p>
+              }
+              @if (item.neededDecision) {
+                <p class="waiting__line">Necesita: {{ item.neededDecision }}</p>
+              }
+              @if (item.from) {
+                <p class="waiting__line">Espera a: {{ item.from }}</p>
+              }
+              @if (item.holds > 0) {
+                <p class="waiting__line">
+                  Detiene a {{ item.holds }} {{ item.holds === 1 ? 'tarea' : 'tareas' }}.
+                </p>
+              }
+            }
+            @case ('DECISION') {
+              <p class="waiting__line">
+                El registro dice que espera
+                @if (item.from) {
+                  a {{ item.from }}.
+                } @else {
+                  una respuesta.
+                }
+                Su fila del Roadmap no está en Bloqueadas.
+              </p>
+            }
+            @case ('CONFLICT') {
+              <p class="waiting__line">
+                {{ conflictKindLabel(item.conflictKind) }}.
+                <a [routerLink]="['../conflicts']">Resolver</a>
+              </p>
+            }
+          }
+        </li>
+      }
+    </ol>
+  }
+
+  @for (group of groups(); track group.title) {
+    @if (group.counts.length > 0) {
+      <section class="waiting__group" [attr.aria-label]="'Bloqueadas ' + group.title.toLowerCase()">
+        <h3>{{ group.title }}</h3>
+        <ul>
+          @for (count of group.counts; track $index) {
+            <li>{{ nameOf(count, group.none) }}: {{ count.blocked }}</li>
+          }
+        </ul>
+      </section>
+    }
+  }
+} @else {
+  <p class="meta-text">Cargando…</p>
+}

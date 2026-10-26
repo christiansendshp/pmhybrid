@@ -5,6 +5,8 @@ import { BoardViews } from '../../shared/board-views/board-views.js';
 import { TaskTable } from '../task-table/task-table.js';
 import { ReviewQueue } from '../review-queue/review-queue.js';
 import { NoteDialog } from '../../shared/note-dialog/note-dialog.js';
+import { WaitingView } from '../waiting/waiting.js';
+import { WaitingService, type Waiting } from '../../core/waiting.service.js';
 import { AgentLanes } from '../agent-lanes/agent-lanes.js';
 import { Timeline } from '../timeline/timeline.js';
 import type { LedgerSpans } from '../../core/timeline.js';
@@ -92,6 +94,7 @@ export const COLUMN_CAP = 8;
 @Component({
   selector: 'app-kanban',
   imports: [
+    WaitingView,
     LabelPipe,
     ShortTitlePipe,
     DatePipe,
@@ -126,13 +129,17 @@ export class Kanban implements OnInit {
   private readonly router = inject(Router);
   private readonly memory = inject(BoardMemory);
   private readonly dialog = inject(MatDialog);
+  private readonly waitingService = inject(WaitingService);
   readonly viewport = inject(Viewport);
 
   /**
    * Which of the views of the tasks this page shows (Roadmap TASK-17, TASK-18): the board, or the list
    * the route `list` names. They share the filters, their toolbar and their address; each has its own body.
    */
-  readonly view = signal<'board' | 'list' | 'review' | 'agents' | 'timeline'>('board');
+  readonly view = signal<'board' | 'list' | 'review' | 'agents' | 'waiting' | 'timeline'>('board');
+  /** What the project waits for, for the view that lists it (Roadmap TASK-21). */
+  readonly waitingList = signal<Waiting | null>(null);
+  readonly waitingFailed = signal(false);
   /** When the ledger says each task was first started and last closed, for the timeline (Roadmap TASK-23). */
   readonly spans = signal<LedgerSpans>({});
   readonly spansFailed = signal(false);
@@ -327,7 +334,11 @@ export class Kanban implements OnInit {
   async ngOnInit(): Promise<void> {
     const named = this.route.snapshot?.data?.['view'];
     this.view.set(
-      named === 'list' || named === 'review' || named === 'agents' || named === 'timeline'
+      named === 'list' ||
+        named === 'review' ||
+        named === 'agents' ||
+        named === 'waiting' ||
+        named === 'timeline'
         ? named
         : 'board',
     );
@@ -344,6 +355,9 @@ export class Kanban implements OnInit {
       this.hierarchy.set(hierarchy);
       if (this.view() === 'agents') {
         await this.readUnregistered();
+      }
+      if (this.view() === 'waiting') {
+        await this.readWaiting();
       }
       if (this.view() === 'timeline') {
         await this.readSpans();
@@ -565,6 +579,23 @@ export class Kanban implements OnInit {
   }
 
   /** The names no agent answers to; a list that cannot be read leaves the lanes as they are and says so. */
+  /** The ids of the tasks the filters keep, or null while none is on, so the list of what is waiting leaves nothing out. */
+  readonly visibleTaskIds = computed(() =>
+    this.visibleCards().length === this.cards().length
+      ? null
+      : new Set(this.visibleCards().map((card) => card.id)),
+  );
+
+  /** What the project waits for; one that cannot be read is said in the view, not left empty (Roadmap TASK-21). */
+  private async readWaiting(): Promise<void> {
+    try {
+      this.waitingList.set(await this.waitingService.get(this.projectId));
+      this.waitingFailed.set(false);
+    } catch {
+      this.waitingFailed.set(true);
+    }
+  }
+
   /** Registers a name the ledger carries as an agent of the project, then reads the lanes again (Roadmap TASK-03). */
   async registerAgent(name: string): Promise<void> {
     this.registeringName.set(name);

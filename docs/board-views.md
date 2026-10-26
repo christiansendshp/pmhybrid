@@ -98,7 +98,15 @@ not the one with the latest clock. A blocked task that the ledger also says wait
 two. The response also counts the blocked tasks per phase and per epic (the ones in none are a group of their
 own, last among equals), and says `ledgerUnreadable` when the ledger could not be read, so the missing
 decisions are not taken for none. It is read-only, and any member may read it: it is what the Blocked table, the
-ledger and the conflicts page already show them. The view that shows it is Roadmap TASK-21.
+ledger and the conflicts page already show them.
+`/projects/:projectId/waiting` ("Esperando", Roadmap TASK-21) shows that list as a view next to the others and adds
+no query of its own. Each wait says its kind in words (Bloqueada, Espera una decisión, Conflicto abierto), the task
+(a link to its page) or, for a conflict about the document as a whole, a link to the conflicts, and how long it has
+waited ("hace 3 d", the date in its title); a blocked task says its reason, what it needs, whom it waits for and how
+many tasks it holds back, and the blocked count per phase and per epic is listed below. It keeps the filters of the
+board: the waits of tasks they leave out are not listed, and what is about no task always is. When the list cannot be
+read it says so (an alert) instead of an empty page, and when the ledger could not be read it says the list is not
+complete.
 
 ## The review queue (Roadmap TASK-19)
 
