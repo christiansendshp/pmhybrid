@@ -22,3 +22,21 @@ segments live in `docs/history/`.
 - SHA-256: `c650439a5b03c9c2959a2bc7e0693cc55c30df89c5b3c58947929dbf760fb6eb`
 
 ## Entries
+
+## [2026-10-26T15:25:23Z] | claude-sonnet-5-5 | FEATURE-11 | IN_PROGRESS | Development and QA are visible, and a handoff is documented
+- Summary: Close the feature: every task under it is done
+- Verify: pending
+
+## [2026-10-26T15:25:24Z] | claude-sonnet-5-5 | FEATURE-12 | IN_PROGRESS | Kanban card and board say who, where, how long
+- Summary: Close the feature: every task under it is done
+- Verify: pending
+
+## [2026-10-26T15:25:26Z] | claude-sonnet-5-5 | FEATURE-11 | DONE | Development and QA are visible, and a handoff is documented
+- Summary: Development and QA are visible and a handoff is documented: stages read from the ledger, time in state, instant closes, reviewer in Postgres, opt-in QA handoff in the ledger, MCP handoff and review tools, board notes
+- Files: docs/Roadmap.md
+- Verify: Every task under it is in Features.md; VALIDAR green on HEAD fa0ad10
+
+## [2026-10-26T15:25:27Z] | claude-sonnet-5-5 | FEATURE-12 | DONE | Kanban card and board say who, where, how long
+- Summary: Kanban card and board say who, where and how long: agent chip, age in the stage, reviewer, last ledger line, divergence badge, advisory WIP limits and filters
+- Files: docs/Roadmap.md
+- Verify: Every task under it is in Features.md; VALIDAR green on HEAD fa0ad10
