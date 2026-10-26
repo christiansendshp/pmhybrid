@@ -567,4 +567,104 @@ describe('Team (brief §3 — administrable actors)', () => {
       expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Mostrar inactivos');
     });
   });
+
+  describe('the roster for the skill (Roadmap TASK-25)', () => {
+    const claude = actor({
+      id: 'a2',
+      kind: 'AI_AGENT',
+      displayName: 'Claude',
+      agentProfile: {
+        providerType: 'claude',
+        configJson: null,
+        model: 'Claude Sonnet 5.5',
+        stageRole: 'DEVELOPER',
+        ledgerName: 'claude-sonnet-5-5',
+        customLedgerName: true,
+        aliases: ['claude'],
+      },
+    });
+    let writeText: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      actorsService.listAgents.mockResolvedValue([claude]);
+      writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    });
+
+    const roster = (root: HTMLElement) => root.querySelector('pre.roster-table')?.textContent ?? '';
+    const copyButton = (root: HTMLElement) =>
+      Array.from(root.querySelectorAll('button')).find((button) =>
+        button.textContent?.includes('Copiar tabla'),
+      );
+
+    it('shows the table of the active agents, filled in', async () => {
+      const { fixture } = await render();
+
+      expect(roster(fixture.nativeElement)).toBe(
+        [
+          '| Agent id | Kind | Model | Role | Aliases |',
+          '|---|---|---|---|---|',
+          '| claude-sonnet-5-5 | AI | Claude Sonnet 5.5 | DEVELOPER | claude |',
+        ].join('\n'),
+      );
+    });
+
+    it('copies the table, and says it did', async () => {
+      const { fixture, component } = await render();
+
+      copyButton(fixture.nativeElement)!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(writeText).toHaveBeenCalledWith(component.roster().table);
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('[role="status"]')?.textContent,
+      ).toContain('Tabla copiada');
+    });
+
+    it('says it could not copy, in words, and where to take the text from', async () => {
+      writeText.mockRejectedValue(new Error('denied'));
+      const { fixture } = await render();
+
+      copyButton(fixture.nativeElement)!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('[role="status"]')?.textContent,
+      ).toContain('No se pudo copiar');
+    });
+
+    it('says what stayed out of the table because it would break it', async () => {
+      actorsService.listAgents.mockResolvedValue([
+        claude,
+        actor({
+          id: 'a3',
+          kind: 'AI_AGENT',
+          displayName: 'Pipe',
+          agentProfile: {
+            providerType: 'x',
+            configJson: null,
+            ledgerName: 'a|b',
+            aliases: [],
+          },
+        }),
+      ]);
+      const { fixture } = await render();
+      const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+      expect(roster(fixture.nativeElement)).not.toContain('a|b');
+      expect(text).toContain('Pipe: su nombre en el registro no cabe en una tabla.');
+    });
+
+    it('offers no copy button, and says so, when no active agent is left', async () => {
+      actorsService.listAgents.mockResolvedValue([]);
+      const { fixture } = await render();
+
+      expect(copyButton(fixture.nativeElement)).toBeUndefined();
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+        'No hay agentes IA activos que poner en la tabla.',
+      );
+    });
+  });
 });

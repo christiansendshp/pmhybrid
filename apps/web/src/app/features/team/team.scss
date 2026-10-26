@@ -84,3 +84,17 @@
     user-select: all;
   }
 }
+
+.roster-table {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
+  overflow-x: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--mat-sys-surface-container);
+  color: var(--mat-sys-on-surface);
+  font-size: 0.8125rem;
+  user-select: all;
+}

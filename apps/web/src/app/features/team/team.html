@@ -229,6 +229,34 @@
     }
   </section>
 
+  <section class="team-section" aria-labelledby="roster-heading">
+    <h2 id="roster-heading">Tabla de identidad para AGENTS.md</h2>
+    <p class="page-header__description">
+      La skill de documentación lee a sus agentes de la sección «Agent identity» del AGENTS.md del
+      proyecto. Esta es esa tabla con los agentes IA activos: pégala allí. PM Hub no escribe nada en
+      los archivos del proyecto.
+    </p>
+    @if (roster().rows === 0) {
+      <p class="meta-text">No hay agentes IA activos que poner en la tabla.</p>
+    } @else {
+      <pre class="roster-table" tabindex="0" aria-label="Tabla Agent identity en Markdown">{{
+        roster().table
+      }}</pre>
+      <div class="team-form__actions">
+        <button mat-stroked-button type="button" (click)="copyRoster()">Copiar tabla</button>
+      </div>
+    }
+    <p class="meta-text" role="status">{{ rosterCopy() }}</p>
+    @if (roster().left.length > 0) {
+      <p class="meta-text">Quedó fuera de la tabla porque rompería su formato:</p>
+      <ul class="meta-text">
+        @for (line of roster().left; track line) {
+          <li>{{ line }}</li>
+        }
+      </ul>
+    }
+  </section>
+
   @if (editing(); as actor) {
     <section class="team-section team-section--edit">
       <h2>Editar a {{ actor.displayName }}</h2>

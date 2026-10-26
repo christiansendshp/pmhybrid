@@ -18,15 +18,15 @@ segments live in `docs/history/`.
 
 ## Previous segment
 
-- Archive: `docs/history/Agentslog-20261026-009.md`
-- SHA-256: `bfc54c1a4b5b398dc2b772db272dcf9c17838b6e4af9f45377eab14a0c4664ac`
+- Archive: `docs/history/Agentslog-20261026-010.md`
+- SHA-256: `37b29ca93f826de4b6ca2a5a832f67304ae27e5b28da15e7103bc7346e31e96c`
 
 ## Entries
 
-## [2026-10-26T15:27:33Z] | claude-sonnet-5-5 | TASK-03 | IN_PROGRESS | Suggest registering the agents seen in the log
-- Summary: carried forward from docs/history/Agentslog-20261026-009.md at rotation
+## [2026-10-26T15:49:40Z] | claude-sonnet-5-5 | TASK-25 | IN_PROGRESS | Team page offers the Agent identity table
+- Summary: carried forward from docs/history/Agentslog-20261026-010.md at rotation
 
-## [2026-10-26T15:48:44Z] | claude-sonnet-5-5 | TASK-03 | DONE | Suggest registering the agents seen in the log
-- Summary: Agents the ledger names that nobody registered: GET and POST /projects/:id/agents/unregistered list them with entries, tasks and dates and register one as a member agent (needs members.manage and actors.manage, audited); Register button in the agent lanes
-- Files: apps/api/src/modules/agents, apps/web/src/app/features/agent-lanes, apps/web/src/app/features/kanban, docs/permissions.md, docs/synchronization.md
-- Verify: VALIDAR green: check, lint, build, api unit 778, web 547, e2e 548
+## [2026-10-26T16:00:08Z] | claude-sonnet-5-5 | TASK-25 | DONE | Team page offers the Agent identity table
+- Summary: The Team page offers the skill's Agent identity table for the active AI agents (ledger name as id, model, role, aliases) with a Copy button that reports success or failure; names that would break the table stay out and are listed; contract test against the skill template
+- Files: apps/web/src/app/core/agent-roster.ts, apps/web/src/app/features/team, packages/shared-types/src/agents.ts, apps/api/src/modules/agents/agent-roster-contract.spec.ts, docs/domain-model.md
+- Verify: VALIDAR green: check, lint, build, api unit 782, web 563, e2e 548; the skill's check accepts the table and claim normalises an alias

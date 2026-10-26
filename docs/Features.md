@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 171
-- Latest verification: `VALIDAR green: check, lint, build, api unit 778, web 547, e2e 548` (2026-10-26)
+- Verified capabilities: 172
+- Latest verification: `VALIDAR green: check, lint, build, api unit 782, web 563, e2e 548; the skill's check accepts the table and claim normalises an alias` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -186,3 +186,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | FEATURE-11 | Development and QA are visible and a handoff is documented: stages read from the ledger, time in state, instant closes, reviewer in Postgres, opt-in QA handoff in the ledger, MCP handoff and review tools, board notes | Every task under it is in Features.md; VALIDAR green on HEAD fa0ad10 | log:FEATURE-11 | 2026-10-26 |
 | FEATURE-12 | Kanban card and board say who, where and how long: agent chip, age in the stage, reviewer, last ledger line, divergence badge, advisory WIP limits and filters | Every task under it is in Features.md; VALIDAR green on HEAD fa0ad10 | log:FEATURE-12 | 2026-10-26 |
 | TASK-03 | Agents the ledger names that nobody registered: GET and POST /projects/:id/agents/unregistered list them with entries, tasks and dates and register one as a member agent (needs members.manage and actors.manage, audited); Register button in the agent lanes | VALIDAR green: check, lint, build, api unit 778, web 547, e2e 548 | log:TASK-03 | 2026-10-26 |
+| TASK-25 | The Team page offers the skill's Agent identity table for the active AI agents (ledger name as id, model, role, aliases) with a Copy button that reports success or failure; names that would break the table stay out and are listed; contract test against the skill template | VALIDAR green: check, lint, build, api unit 782, web 563, e2e 548; the skill's check accepts the table and claim normalises an alias | log:TASK-25 | 2026-10-26 |

@@ -13,6 +13,7 @@ import { ScrollCue } from '../../shared/scroll-cue';
 import { Actor, ActorsService, UpdateActorInput } from '../../core/actors.service.js';
 import { AuthService } from '../../core/auth.service.js';
 import { filterActors } from '../../core/actor-filter.js';
+import { agentRoster } from '../../core/agent-roster.js';
 import { describeHttpError } from '../../core/http-error.js';
 
 const ACTORS_MANAGE = 'actors.manage';
@@ -71,6 +72,10 @@ export class Team implements OnInit {
   private withoutHiddenInactive(actors: Actor[]): Actor[] {
     return this.includeInactive() ? actors : actors.filter((actor) => actor.isActive);
   }
+  /** The skill's roster for the active agents, for a person to paste into the project's AGENTS.md (Roadmap TASK-25). */
+  readonly roster = computed(() => agentRoster(this.agents()));
+  /** What the last attempt to copy it said, in words. */
+  readonly rosterCopy = signal('');
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly errorMessage = signal<string | null>(null);
@@ -124,6 +129,16 @@ export class Team implements OnInit {
 
   async ngOnInit(): Promise<void> {
     await this.reload();
+  }
+
+  /** Puts the roster on the clipboard, and says whether it could: the clipboard is not always there. */
+  async copyRoster(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.roster().table);
+      this.rosterCopy.set('Tabla copiada al portapapeles.');
+    } catch {
+      this.rosterCopy.set('No se pudo copiar: selecciona el texto de la tabla y cópialo a mano.');
+    }
   }
 
   onSearch(event: Event): void {

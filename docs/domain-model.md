@@ -78,7 +78,17 @@ written. All of them are unique across the instance once folded (`AgentIdentifie
 and no other agent's display name may equal them either: a name in a document
 resolves to one agent or to none. They are plain text (no `|`, no line break, nothing
 that looks like a credential) and are stored in Postgres only: no document has a
-field for them.
+field for them, and PM Hub writes none (it only reads).
+
+**The skill's roster (Roadmap TASK-25).** The skill keeps its agents in the `## Agent identity` table of the
+project's AGENTS.md (`Agent id | Kind | Model | Role | Aliases`) to normalise the names agents pass to it. The
+Team page offers that table already filled, for the active AI agents, with a **Copiar tabla** button: the
+ledger name is the Agent id, `AI` the kind, the profile's model and stage role (`DEVELOPER`, `QA` or `BOTH`)
+the next two, and the aliases comma separated. A person pastes it into AGENTS.md; **the app writes nothing to
+the project's files**. A name that would break the table (a `|`, a line break, a comma inside an alias) is
+left out of it and said on the page. The columns and the roles come from `@pmhybrid/shared-types`, and
+`agent-roster-contract.spec.ts` compares them with this repository's copy of the skill's template, so a skill
+that changes its roster fails a test here.
 
 **Postgres nuance to carry into the migration**: the natural
 `@@unique([actorId, roleId, projectId])` does **not** deduplicate global grants,
