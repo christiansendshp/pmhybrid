@@ -119,6 +119,27 @@ a few points, raise the floor in the same commit so the gain is kept. The
 report is a text summary in the log plus `apps/api/coverage/lcov.info` (ignored
 by git). The web unit run has no floor yet.
 
+## How long VALIDAR takes (Roadmap GAP-44)
+
+The whole gate (`check`, `lint`, `build`, unit and e2e) was measured on the development machine on 2026-10-26: 293 to 322 s
+before GAP-44, 268 s after it (`check` 35 s, `lint` 6 s, `build` 14 s, unit 44 s, e2e 169 s). What the measure showed,
+so the next attempt does not start from zero:
+
+- **`check` was 59 to 73 s, 45 of them in one loop.** The skill's script asked, for each of the 209 Features IDs with no
+  DONE entry in the hot log, whether an archive of `docs/history` holds it, one `grep` process per archive (1327 of them
+  with 41 archives, and one more archive for every rotation). One `grep` over all the archives answers the same
+  question; `check` fell to 25 s alone (ADR-024). Rotating the ledger more often than the skill asks makes more
+  archives; rotate when `check` says to.
+- **The e2e suite is bound by the machine, not by its ordering.** About 1100 s of tests run over 12 workers; 16 workers
+  gave the same wall time (124 s against 130 s of test files) with each test slower. Do not raise `E2E_MAX_WORKERS` to
+  win time.
+- **The longest files run the skill itself.** `ledger-qa-handoff` (90 s) and `ledger-name` (44 s) call the skill's
+  `init`, `claim`, `check` and `status` on a scratch project, 4 to 8 s each on Windows, for 98 s of the 1100. They are
+  the contract between the entries PM Hub writes and the skill, so they stay; splitting the files would not lower the
+  total work.
+- Per-file timings: `pnpm exec vitest run --config ./vitest.config.e2e.ts --reporter=json --outputFile=times.json` in
+  `apps/api`, then read each `testResults[].endTime - startTime`.
+
 ## CI
 
 `.github/workflows/ci.yml` (Roadmap GAP-17) runs `lint` → `build` → unit

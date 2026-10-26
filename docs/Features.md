@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 210
-- Latest verification: `FEATURE-01 to FEATURE-09 are in Features.md with VALIDAR green; the last, TASK-52, on 369c450` (2026-10-26)
+- Verified capabilities: 211
+- Latest verification: `check, lint, build, unit and e2e green in 268 s; the skill's smoke test 578 passed 0 failed with the change; the same four history scenarios give the same verdicts with the original and the changed script` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -225,3 +225,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | TASK-52 | deploy/backup/backup-postgres.sh (pg_dump -Fc inside a named container over its socket, no password, read back with pg_restore --list before it is kept, keeps the newest N, a failed run deletes nothing) and restore-check.sh (restores the newest dump into a scratch database, compares the rows of every table with the live one, --strict, drops the scratch database and looks for it again); docs/deployment.md Backups section (what is irreplaceable, schedule, restore, how it was tested) | check, lint, build, unit green; e2e 746 green (one run under a concurrent run failed on timing, alone it passes in 165 s); pnpm test:backup 47 cases on a throwaway container, two mutations caught; run by hand on pmhybrid_test: 30 tables, 15208 rows equal under --strict, scratch database gone | log:TASK-52 | 2026-10-26 |
 | FEATURE-09 | Operational hygiene: the old sync runs of a project are trimmed but every failed one stays (TASK-50), read notifications older than N days are deleted and the unread never (TASK-51), and a documented pg_dump backup with a restore check on a scratch database (TASK-52) | TASK-50, TASK-51 and TASK-52 are in Features.md with VALIDAR green on 762276b, 8eb24b4 and 369c450 | log:FEATURE-09 | 2026-10-26 |
 | EPIC-01 | Project tracking: pace and forecast, work logged without a task, agents as responsible actors, normalized log status, what is waiting and on whom, what changed since the last visit and a periodic summary, risk signals, a shareable report with a daily history, and operational hygiene of the data that grows | FEATURE-01 to FEATURE-09 are in Features.md with VALIDAR green; the last, TASK-52, on 369c450 | log:EPIC-01 | 2026-10-26 |
+| GAP-44 | VALIDAR went from 293-322 s to 268 s: check 59-73 s to 35 s (one grep over the archives of docs/history instead of one per archive, 1327 processes for 209 IDs, ADR-024), the e2e suite shown to be bound by the machine (16 workers no faster) and its longest files to be the skill's own commands; findings in docs/testing.md | check, lint, build, unit and e2e green in 268 s; the skill's smoke test 578 passed 0 failed with the change; the same four history scenarios give the same verdicts with the original and the changed script | log:GAP-44 | 2026-10-26 |

@@ -1733,13 +1733,9 @@ check_log_entries() {
 history_has_done() {
   tid="$1"
   [ -d "$HISTORY_DIR" ] || return 1
-  for f in "$HISTORY_DIR"/*.md; do
-    [ -e "$f" ] || continue
-    if grep -qE "^## \[[^]]*\] \| [^|]* \| $tid \| DONE" "$f"; then
-      return 0
-    fi
-  done
-  return 1
+  # One grep over every archive, not one process per archive (Roadmap GAP-44 of PM Hub: the same answer, and
+  # about 45 s less of `check` on Windows with 40 archives). With no archive the unexpanded glob is no file.
+  grep -qE "^## \[[^]]*\] \| [^|]* \| $tid \| DONE" "$HISTORY_DIR"/*.md 2>/dev/null
 }
 
 epic_history_done() {
@@ -1748,13 +1744,10 @@ epic_history_done() {
   if all_task_states | awk -F'\t' -v p="$prefix" '$1 ~ "^"p && $7=="1"{f=1} END{exit(f?0:1)}'; then
     return 0
   fi
-  if [ -d "$HISTORY_DIR" ]; then
-    for f in "$HISTORY_DIR"/*.md; do
-      [ -e "$f" ] || continue
-      if grep -qE "^## \[[^]]*\] \| [^|]* \| ${prefix}[^ ]* \| DONE" "$f"; then
-        return 0
-      fi
-    done
+  # One grep over every archive (see history_has_done).
+  if [ -d "$HISTORY_DIR" ] &&
+    grep -qE "^## \[[^]]*\] \| [^|]* \| ${prefix}[^ ]* \| DONE" "$HISTORY_DIR"/*.md 2>/dev/null; then
+    return 0
   fi
   return 1
 }
