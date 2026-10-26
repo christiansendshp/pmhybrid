@@ -3,11 +3,18 @@ import { Cron } from '@nestjs/schedule';
 import { Prisma, TaskStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { startOfUtcDay } from '../dashboard/period-summary.util.js';
+import { NON_WORK_ENTRY_TYPES } from '../roadmap/roadmap-attributes.util.js';
 import {
   COUNTS_TOWARDS_PROGRESS,
   ProgressRollupService,
 } from '../tasks/progress-rollup.service.js';
-import { dayKey, tallyStatuses, type StatusCounts } from './snapshot.util.js';
+import {
+  dayKey,
+  daysToReconstruct,
+  tallyStatuses,
+  totalsAtEndOf,
+  type StatusCounts,
+} from './snapshot.util.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -113,6 +120,59 @@ export class SnapshotService {
       openConflicts: row.openConflicts,
       progress: row.progress,
     }));
+  }
+
+  /**
+   * Rebuilds the past days a project has no snapshot for, from the dates of its tasks (Roadmap TASK-47): total and
+   * done at the end of each day, and nothing else, because nothing else can be known. The rows say they are
+   * RECONSTRUCTED. A day that has a snapshot, recorded or rebuilt, is never touched, and neither is today, which is the
+   * job's.
+   */
+  async reconstruct(
+    projectId: string,
+    days: number = DEFAULT_SNAPSHOT_DAYS,
+    now: Date = new Date(),
+  ): Promise<{ written: number; days: string[] }> {
+    const today = startOfUtcDay(now);
+    const [project, tasks, existing] = await Promise.all([
+      this.prisma.project.findUniqueOrThrow({
+        where: { id: projectId },
+        select: { createdAt: true },
+      }),
+      this.prisma.task.findMany({
+        where: {
+          projectId,
+          OR: [
+            { entryType: null },
+            { entryType: { notIn: [...NON_WORK_ENTRY_TYPES] } },
+          ],
+        },
+        select: { createdAt: true, completedAt: true, deletedAt: true },
+      }),
+      this.prisma.projectSnapshot.findMany({
+        where: {
+          projectId,
+          day: { gte: new Date(today.getTime() - days * DAY) },
+        },
+        select: { day: true },
+      }),
+    ]);
+    const missing = daysToReconstruct(
+      today,
+      days,
+      new Set(existing.map((row) => dayKey(row.day))),
+      project.createdAt,
+    );
+    const written = await this.prisma.projectSnapshot.createMany({
+      data: missing.map((day) => ({
+        projectId,
+        day,
+        source: 'RECONSTRUCTED' as const,
+        ...totalsAtEndOf(tasks, day),
+      })),
+      skipDuplicates: true,
+    });
+    return { written: written.count, days: missing.map(dayKey) };
   }
 
   private async rowOf(

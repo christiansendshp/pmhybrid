@@ -1,6 +1,6 @@
 # Status report and history
 
-Status: the daily snapshot exists (Roadmap TASK-46). The rebuilding of past days (TASK-47), the weekly report in
+Status: the daily snapshot (Roadmap TASK-46) and the rebuilding of past days (TASK-47) exist. The weekly report in
 Markdown (TASK-48) and the Informe tab (TASK-49) add their parts here. The idea is FEATURE-08 of
 `docs/tracking-improvement-plan.md`: the state of a project should be readable without logging in, and the past state
 should be a number and not a reconstruction.
@@ -32,3 +32,21 @@ Any member can read it. `?days=` is a whole number from 1 to 365 (30 by default;
 last N days, today included, **oldest first**, each as `{ day, source, total, done, byStatus, blocked, openConflicts,
 progress }`. A day with no row is simply not in the list: a project that was created yesterday has one day, and a day
 the job did not run is a gap, never a zero made up.
+
+## Rebuilding the past (`POST /projects/:projectId/snapshots/reconstruct`)
+
+A project that has existed for months has no snapshots before the job began. A person with `project.update` can ask for
+the missing days to be **rebuilt** (`?days=`, 1 to 365, 30 by default); a member without that permission gets a 403
+and nothing is written. For each of the `days` days before today (**today is the job's**) it writes a
+`RECONSTRUCTED` row, unless that day
+
+- already has a snapshot, recorded or rebuilt (the table's unique key and `skipDuplicates` make this safe: **a recorded
+  day is never overwritten**, and asking twice writes nothing the second time), or
+- is before the day the project was created (it did not exist, so there is nothing to say; a zero would mislead).
+
+What it knows is only **the dates of the tasks**: `total` and `done` at the end of the UTC day. A task counts from the
+day it was created until the day it was deleted (a deleted task is read too, which the live counts leave out), and is
+done once its `completedAt` has passed; the cards that are not work are out, as in every count. It is **approximate on
+purpose**: a task that was finished and later reopened has lost its `completedAt` and counts as open on the days it
+was done. Everything else (`byStatus`, `blocked`, `openConflicts`, `progress`) is **null**, never invented, and the
+row says `RECONSTRUCTED` so no page presents it as a recorded figure (BR-020). The answer is `{ written, days[] }`.

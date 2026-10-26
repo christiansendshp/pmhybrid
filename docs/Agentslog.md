@@ -18,16 +18,15 @@ segments live in `docs/history/`.
 
 ## Previous segment
 
-- Archive: `docs/history/Agentslog-20261026-031.md`
-- SHA-256: `b57275dcbee8a29b9f875e6d1f7877d31ff29f2f8291a85afcd1baaeab63a65e`
+- Archive: `docs/history/Agentslog-20261026-032.md`
+- SHA-256: `45063d22c17facfd161bb8868f8b885abde96e2ca2834279a8b697a001db43ad`
 
 ## Entries
 
-## [2026-10-26T20:49:50Z] | claude-sonnet-5-5 | TASK-46 | IN_PROGRESS | Daily project snapshot: table, job and history endpoint
-- Summary: 
-- Verify: pending
+## [2026-10-26T21:02:40Z] | claude-sonnet-5-5 | TASK-47 | IN_PROGRESS | Rebuild past snapshots from the tasks' dates, labelled approximate
+- Summary: carried forward from docs/history/Agentslog-20261026-032.md at rotation
 
-## [2026-10-26T21:00:45Z] | claude-sonnet-5-5 | TASK-46 | DONE | Daily project snapshot: table, job and history endpoint
-- Summary: ProjectSnapshot (one row a project and UTC day: total, done, count by status, blocked, open conflicts, progress; source RECORDED or RECONSTRUCTED) written by a job at 00:10 UTC for the active projects, never twice a day, and GET /projects/:id/snapshots?days= (1 to 365, default 30, member-only) oldest first
-- Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261026200000_add_project_snapshot, apps/api/src/modules/snapshots/*, apps/api/src/app.module.ts, apps/api/test/snapshots.e2e-spec.ts, docs/status-report.md, docs/domain-model.md, docs/api-reference.md
-- Verify: check, lint, build, unit and e2e green (snapshots 14 e2e: counts, exclusions, twice and concurrent, paused, history order and window, 400s, member-only; tally unit); migration applied to the dev DB; VALIDAR took 313 s, registered as GAP-44
+## [2026-10-26T21:12:35Z] | claude-sonnet-5-5 | TASK-47 | DONE | Rebuild past snapshots from the tasks' dates, labelled approximate
+- Summary: POST /projects/:id/snapshots/reconstruct?days= (needs project.update; 1 to 365, default 30) rebuilds the days before today that have no snapshot, from the tasks' createdAt, completedAt and deletedAt: total and done at the end of each day, RECONSTRUCTED, with the count by status, blocked, conflicts and progress null; it never overwrites a recorded day, writes nothing twice, skips today and the days before the project existed (BR-020)
+- Files: apps/api/src/modules/snapshots/{snapshot.util,snapshot.service,snapshot.controller}.ts, apps/api/test/snapshots-reconstruct.e2e-spec.ts, docs/status-report.md, docs/api-reference.md, docs/ProductDescription.md
+- Verify: check, lint, build, unit and e2e green (reconstruct 16 e2e: each missing day, labelling, recorded day kept, twice, today, before creation, cards, default, 400s, permission; totalsAtEndOf and daysToReconstruct unit)
