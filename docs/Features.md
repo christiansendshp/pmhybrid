@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 157
-- Latest verification: `VALIDAR green on the change: check 21s, lint 10s, build 18s, unit 46s, e2e 303s (477 + 1 tests passed), 398s in all` (2026-10-26)
+- Verified capabilities: 158
+- Latest verification: `VALIDAR green: check 17s, lint 6s, build 10s, unit 34s (api 735, web 512), e2e 271s (484), 338s in all` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -172,3 +172,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | TASK-26 | This repo uses the latest project-documentation skill (upstream 9302b58, tables with a Name on every row, handoff, review, assign, Agent identity) and its own docs follow it; PM Hub reads a row's Name as its title, writes a Name of 10 words or fewer on every row it creates, reads a ledger status before the Name; answers DEC-005, closes BUG-17, DEPENDENCY-01, DEPENDENCY-02 and GAP-43 | check OK and context 7056 bytes; api unit 730 and lint ok; api e2e 472 with the coverage floor met (new spec: Name and Description, ledger Name); nest build ok | log:TASK-26 | 2026-10-16 |
 | BUG-18 | A task whose row left the Roadmap is completed by the closing entry of the ledger even when it is written after the sync that asked (the conflict closes itself), an entry stored with its Name after the status is read as the word it says, and a task already done raises no conflict when its row is taken out; on the live instance this closed 10 tasks of SMARTHR and settled 6 of PMHYBRID, and the 15 that remain have no row and no closing entry (GAP-46, GAP-47) | api unit 730 and lint ok; api e2e 477 with the coverage floor met (new spec: late closing entry, stored Name, already done); live instance after the rebuild: stored words with a Name 26 to 0, open disappeared-row conflicts 31 to 15, SMARTHR open tasks 25 to 15 | log:BUG-18 | 2026-10-26 |
 | BUG-19 | The documents e2e reads a ledger it owns (the skill's template fence and one entry) instead of expecting this repo's own ledger to have entries, so a rotation no longer breaks the suite; the real file only has to be read without the fenced example becoming an entry. The old test was replaced by these two, not removed | VALIDAR green on the change: check 21s, lint 10s, build 18s, unit 46s, e2e 303s (477 + 1 tests passed), 398s in all | log:BUG-19 | 2026-10-26 |
+| GAP-46 | A task whose row left the Roadmap with no closing entry can be settled by restoring its row: the RESTORE_ROW resolution writes the row back with the task's own data (Name, acceptance check, status, owner, dependencies) before settling the conflict, adds nothing to the ledger, needs task.write besides conflict.resolve and refuses any other kind of conflict; the conflicts page offers it | VALIDAR green: check 17s, lint 6s, build 10s, unit 34s (api 735, web 512), e2e 271s (484), 338s in all | log:GAP-46 | 2026-10-26 |

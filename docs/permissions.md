@@ -8,23 +8,23 @@ Authoritative source: `packages/shared-types/src/permissions.ts` (the
 
 ## Permission keys
 
-| Key                      | Scope   | Grants                                                                                         |
-| ------------------------ | ------- | ---------------------------------------------------------------------------------------------- |
-| `task.assign`            | Project | Assign or unassign a task while not `EN_DESARROLLO`                                            |
-| `task.status.transition` | Project | Move a task between ordinary Kanban states                                                     |
-| `task.qa.approve`        | Project | Approve `QA` → `TERMINADA`                                                                     |
-| `task.qa.reject`         | Project | Reject `QA` → `EN_DESARROLLO`                                                                  |
-| `task.reopen`            | Project | Reopen a `TERMINADA` task                                                                      |
-| `task.reassign.locked`   | Project | Reassign a task locked by `EN_DESARROLLO`                                                      |
-| `task.delete`            | Project | Remove a task (soft delete; its Roadmap row is taken out)                                      |
-| `task.write`             | Project | Create and edit a task's own fields and declare or remove its dependencies                     |
-| `conflict.resolve`       | Project | Resolve a sync conflict (applying a status change still needs that move's key)                 |
-| `project.update`         | Project | Update project settings, and create/edit phases/epics/templates                                |
-| `project.members.manage` | Project | Add or remove project members                                                                  |
-| `project.roles.manage`   | Project | Assign or revoke project-scoped roles                                                          |
-| `actors.manage`          | Global  | Create, edit and deactivate users and AI agents; mint/revoke agent API keys                    |
-| `roles.manage`           | Global  | Edit any role's permission set (the catalog, not one project's assignments)                    |
-| `settings.manage`        | Global  | Configure the instance's settings: today the LLM provider, model and API key (Roadmap GAP-39a) |
+| Key                      | Scope   | Grants                                                                                                                      |
+| ------------------------ | ------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `task.assign`            | Project | Assign or unassign a task while not `EN_DESARROLLO`                                                                         |
+| `task.status.transition` | Project | Move a task between ordinary Kanban states                                                                                  |
+| `task.qa.approve`        | Project | Approve `QA` → `TERMINADA`                                                                                                  |
+| `task.qa.reject`         | Project | Reject `QA` → `EN_DESARROLLO`                                                                                               |
+| `task.reopen`            | Project | Reopen a `TERMINADA` task                                                                                                   |
+| `task.reassign.locked`   | Project | Reassign a task locked by `EN_DESARROLLO`                                                                                   |
+| `task.delete`            | Project | Remove a task (soft delete; its Roadmap row is taken out)                                                                   |
+| `task.write`             | Project | Create and edit a task's own fields and declare or remove its dependencies                                                  |
+| `conflict.resolve`       | Project | Resolve a sync conflict (applying a status change still needs that move's key; restoring a vanished row needs `task.write`) |
+| `project.update`         | Project | Update project settings, and create/edit phases/epics/templates                                                             |
+| `project.members.manage` | Project | Add or remove project members                                                                                               |
+| `project.roles.manage`   | Project | Assign or revoke project-scoped roles                                                                                       |
+| `actors.manage`          | Global  | Create, edit and deactivate users and AI agents; mint/revoke agent API keys                                                 |
+| `roles.manage`           | Global  | Edit any role's permission set (the catalog, not one project's assignments)                                                 |
+| `settings.manage`        | Global  | Configure the instance's settings: today the LLM provider, model and API key (Roadmap GAP-39a)                              |
 
 A **Global**-scope key can only ever be granted via a `GLOBAL` role
 (`ActorRole.projectId = null`) — `RolesService.updateRolePermissions` refuses

@@ -31,6 +31,8 @@ function setup(options: {
   currentTask?: Record<string, unknown>;
   /** The write-back to the document throws. */
   writeBackFails?: boolean;
+  /** Writing the row of a vanished task back throws. */
+  restoreFails?: boolean;
   /** What the membership lookup finds for the assignee being applied; default is an active member. */
   member?: { isActive: boolean; actor: { isActive: boolean } } | null;
 }) {
@@ -91,12 +93,17 @@ function setup(options: {
   const recordConflictResolution = options.writeBackFails
     ? vi.fn().mockRejectedValue(new Error('EACCES'))
     : vi.fn().mockResolvedValue(undefined);
+  const recordTaskEvent = options.restoreFails
+    ? vi.fn().mockRejectedValue(new Error('EACCES'))
+    : vi.fn().mockResolvedValue(undefined);
   const writeBack = {
     recordConflictResolution,
+    recordTaskEvent,
   } as unknown as WriteBackService;
   return {
     service: new ConflictsService(prisma, audit, resolver, writeBack),
     recordConflictResolution,
+    recordTaskEvent,
     taskUpdate,
     conflictUpdate,
     record,
@@ -597,5 +604,90 @@ describe('ConflictsService.resolve writes the chosen value to the document (Road
       ),
     ).resolves.toBeDefined();
     expect(conflictUpdate).toHaveBeenCalled();
+  });
+});
+
+describe('ConflictsService.resolve RESTORE_ROW (Roadmap GAP-46)', () => {
+  const disappeared = {
+    kind: 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG',
+    localVersion: {
+      externalId: 'T-1',
+      status: 'PENDIENTE',
+      roadmapTable: 'ACTIVE',
+    },
+    externalVersion: undefined,
+  };
+  const restore = { strategy: 'RESTORE_ROW' } as never;
+
+  it('writes the row of the task back, with the origin of the call, and settles the conflict', async () => {
+    const { service, recordTaskEvent, conflictUpdate } = setup({
+      held: ['task.write'],
+      taskStatus: 'PENDIENTE',
+      ...disappeared,
+    });
+
+    await service.resolve('p1', 'c1', restore, 'actor-1', 'API');
+
+    expect(recordTaskEvent).toHaveBeenCalledWith(
+      'p1',
+      't1',
+      'RESTORED',
+      'actor-1',
+      undefined,
+      'API',
+    );
+    expect(conflictUpdate).toHaveBeenCalled();
+  });
+
+  it('changes nothing on the task itself: it keeps its status, assignee and table', async () => {
+    const { service, taskUpdate } = setup({
+      held: ['task.write'],
+      taskStatus: 'PENDIENTE',
+      ...disappeared,
+    });
+
+    await service.resolve('p1', 'c1', restore, 'actor-1');
+
+    expect(taskUpdate).not.toHaveBeenCalled();
+  });
+
+  it('refuses a person who may resolve conflicts but not write tasks, and writes nothing', async () => {
+    const { service, recordTaskEvent, conflictUpdate } = setup({
+      held: [],
+      taskStatus: 'PENDIENTE',
+      ...disappeared,
+    });
+
+    await expect(
+      service.resolve('p1', 'c1', restore, 'actor-1'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(recordTaskEvent).not.toHaveBeenCalled();
+    expect(conflictUpdate).not.toHaveBeenCalled();
+  });
+
+  it('refuses a conflict that is not about a row that left the document', async () => {
+    const { service, recordTaskEvent } = setup({
+      held: ['task.write'],
+      taskStatus: 'PENDIENTE',
+    });
+
+    await expect(
+      service.resolve('p1', 'c1', restore, 'actor-1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(recordTaskEvent).not.toHaveBeenCalled();
+  });
+
+  it('leaves the conflict open when the row could not be written', async () => {
+    const { service, conflictUpdate } = setup({
+      held: ['task.write'],
+      taskStatus: 'PENDIENTE',
+      restoreFails: true,
+      ...disappeared,
+    });
+
+    await expect(
+      service.resolve('p1', 'c1', restore, 'actor-1'),
+    ).rejects.toThrow('EACCES');
+    expect(conflictUpdate).not.toHaveBeenCalled();
   });
 });

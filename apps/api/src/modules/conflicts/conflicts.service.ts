@@ -158,6 +158,11 @@ export class ConflictsService {
       throw new BadRequestException('manualValue is required for MANUAL_EDIT');
     }
 
+    // The row goes back into the document first: one that could not be written leaves the conflict open.
+    if (dto.strategy === ConflictResolutionKind.RESTORE_ROW) {
+      await this.restoreRow(projectId, conflict, requesterActorId, origin);
+    }
+
     const resolved = await this.prisma.$transaction(async (tx) => {
       const fieldsToApply = this.resolveTaskFields(conflict, dto);
       if (fieldsToApply && conflict.entityType === 'Task') {
@@ -433,6 +438,45 @@ export class ConflictsService {
         throw new ForbiddenException(`Missing permission: ${permission}`);
       }
     }
+  }
+
+  /**
+   * Writes the row of a task whose row left the Roadmap back into it, with the task's own data (Roadmap
+   * GAP-46). Only that conflict has a row to restore, and writing the document takes `task.write`, as
+   * creating a task does; the task keeps its status, assignee and history, and the ledger gets no entry.
+   */
+  private async restoreRow(
+    projectId: string,
+    conflict: { kind: string; entityType: string; entityId: string },
+    requesterActorId: string,
+    origin: AuditOrigin,
+  ): Promise<void> {
+    if (
+      conflict.kind !== 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG' ||
+      conflict.entityType !== 'Task'
+    ) {
+      throw new BadRequestException(
+        'RESTORE_ROW only applies to a task whose row disappeared from the Roadmap',
+      );
+    }
+    const allowed = await this.permissionsResolver.hasPermission(
+      requesterActorId,
+      PERMISSIONS.TASK_WRITE,
+      projectId,
+    );
+    if (!allowed) {
+      throw new ForbiddenException(
+        `Missing permission: ${PERMISSIONS.TASK_WRITE}`,
+      );
+    }
+    await this.writeBack.recordTaskEvent(
+      projectId,
+      conflict.entityId,
+      'RESTORED',
+      requesterActorId,
+      undefined,
+      origin,
+    );
   }
 
   /** Only an active member of the project, and an active actor, can be put on a task. */

@@ -492,6 +492,7 @@ enum ConflictResolutionKind {
   KEEP_EXTERNAL
   MANUAL_EDIT
   DISMISSED
+  RESTORE_ROW
 }
 
 model Document {

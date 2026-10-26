@@ -62,7 +62,8 @@ export type ConflictKind =
   | 'WRITE_BACK_COLLISION'
   | 'UNRECOGNIZED_STATUS';
 
-export type ConflictResolutionKind = 'KEEP_LOCAL' | 'KEEP_EXTERNAL' | 'MANUAL_EDIT' | 'DISMISSED';
+export type ConflictResolutionKind =
+  'KEEP_LOCAL' | 'KEEP_EXTERNAL' | 'MANUAL_EDIT' | 'DISMISSED' | 'RESTORE_ROW';
 
 export interface Conflict {
   id: string;

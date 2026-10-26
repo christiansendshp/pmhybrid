@@ -49,7 +49,13 @@ export interface ResolvedTaskFields {
 }
 
 export type WriteBackTrigger =
-  'CREATED' | 'STATUS_EN_DESARROLLO' | 'STATUS_TERMINADA' | 'LOCKED_REASSIGN';
+  | 'CREATED'
+  | 'STATUS_EN_DESARROLLO'
+  | 'STATUS_TERMINADA'
+  | 'LOCKED_REASSIGN'
+  // The row of a task whose row left the Roadmap, written back (Roadmap GAP-46): the task's history is
+  // in the ledger already, so it adds no entry.
+  | 'RESTORED';
 
 /** Pre-edit values of the Roadmap-backed fields a UI edit just changed; absent keys were not changed. */
 export interface RoadmapFieldEdit {
@@ -1032,6 +1038,8 @@ export class WriteBackService {
             agentslogContent,
           )
         : null;
+    } else if (trigger === 'RESTORED') {
+      updatedAgentslog = null;
     } else {
       updatedAgentslog = appendAgentslogEntry(agentslogContent, {
         timestampIso,
@@ -1235,6 +1243,8 @@ function statusWordFor(trigger: WriteBackTrigger): string {
       return 'DONE';
     case 'LOCKED_REASSIGN':
       return 'REASSIGNED';
+    case 'RESTORED':
+      return 'RESTORED';
   }
 }
 
@@ -1248,6 +1258,8 @@ function summaryFor(trigger: WriteBackTrigger, title: string): string {
       return `Completed: ${title}`;
     case 'LOCKED_REASSIGN':
       return `Reassigned while in progress: ${title}`;
+    case 'RESTORED':
+      return `Row restored: ${title}`;
   }
 }
 

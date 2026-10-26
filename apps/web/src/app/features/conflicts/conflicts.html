@@ -159,6 +159,16 @@
               Conservar versión del documento
             </button>
           }
+          @if (conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG' && canRestoreRow()) {
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="resolvingId() === conflict.id"
+              (click)="resolve(conflict, 'RESTORE_ROW')"
+            >
+              Restaurar la fila en el Roadmap
+            </button>
+          }
           @if (hasEditableFields(conflict)) {
             <button mat-stroked-button type="button" (click)="startManualEdit(conflict)">
               Editar manualmente

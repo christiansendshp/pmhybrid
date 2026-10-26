@@ -43,7 +43,7 @@ const KIND_EXPLANATIONS: Record<ConflictKind, string> = {
   UNRECOGNIZED_STATUS:
     'El documento da un estado que la app no reconoce, así que la tarea conserva el suyo. Elige un estado válido o descarta el aviso.',
   ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG:
-    'La fila de esta tarea ya no está en el Roadmap, y no se encontró una entrada DONE para ella en el Agentslog — puede haberse quitado de otra forma, o puede ser un error.',
+    'La fila de esta tarea ya no está en el Roadmap, y no se encontró una entrada DONE para ella en el Agentslog — puede haberse quitado de otra forma, o puede ser un error. Si el trabajo sigue pendiente, restaura la fila: se escribe de nuevo con los datos de la tarea.',
 };
 
 /** One field of an in-progress MANUAL_EDIT form: its current draft value and how to edit it. */
@@ -59,6 +59,7 @@ interface ManualField {
  * DISMISSED. Never auto-resolved — docs/synchronization.md "Conflicts".
  */
 const CONFLICT_RESOLVE = 'conflict.resolve';
+const TASK_WRITE = 'task.write';
 
 @Component({
   selector: 'app-conflicts',
@@ -82,6 +83,8 @@ export class Conflicts implements OnInit {
 
   /** Resolving needs `conflict.resolve`; the API enforces it regardless (Roadmap SECURITY-02). */
   readonly canResolve = computed(() => this.context.permissions().includes(CONFLICT_RESOLVE));
+  /** Writing a row back into the Roadmap is writing a task: it needs `task.write` too (Roadmap GAP-46). */
+  readonly canRestoreRow = computed(() => this.context.permissions().includes(TASK_WRITE));
 
   readonly statuses = KANBAN_STATUSES;
   readonly roadmapTables = ROADMAP_TABLES;

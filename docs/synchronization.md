@@ -774,6 +774,21 @@ and, if the resolution changes stored data, may trigger a normal write-back.
 `DISMISSED` settles any of them without choosing a value; for a disappeared row it
 records the missing row the same way `KEEP_LOCAL` does.
 
+- **`RESTORE_ROW` is for a disappeared row only** (Roadmap GAP-46; any other kind is a
+  400). It writes the row back into the Roadmap with the task's own data — the
+  title as its `Name` (and, where the table has a `Description`, as that too), the
+  acceptance check, the status in the document's vocabulary, the owner and the
+  dependencies — into the table the document has (Active work when none holds it),
+  the way a task created in PM Hub is written (write-back, trigger `RESTORED`,
+  audited `WRITE_BACK` with the origin of the call). The task keeps its status,
+  assignee and history, and the ledger gets no entry: it already tells the task's
+  story. The row is written **before** the conflict is settled, so a row that could
+  not be written leaves it open; the next sync reads the row back and sets the
+  task's table. It needs `task.write` besides `conflict.resolve`, as writing the
+  document is writing the task. What PM Hub does not hold is the row's own
+  `Description`: the restored row carries the title there, and a person puts the
+  detail back if it had any.
+
 - **`MANUAL_EDIT` names only what the conflict contests** (the keys of its two
   versions) and each value is validated like the same edit elsewhere: `title`
   not blank, `status` one of the board's, `assigneeActorId` an active member of the

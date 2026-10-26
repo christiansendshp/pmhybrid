@@ -84,6 +84,7 @@ const DICTIONARIES: Record<LabelKind, Record<string, string>> = {
     KEEP_EXTERNAL: 'se conservó el valor del documento',
     MANUAL_EDIT: 'se editó a mano',
     DISMISSED: 'se descartó',
+    RESTORE_ROW: 'se restauró la fila en el Roadmap',
   },
   revisionSource: {
     SYNC: 'Sincronización',

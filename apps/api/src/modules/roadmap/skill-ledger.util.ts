@@ -4,7 +4,11 @@ import { isSkillRoadmap } from './markdown-table.util.js';
 import { looksLikeNewFormatRoadmap } from './roadmap-yaml-entry.util.js';
 
 export type SkillLedgerTrigger =
-  'CREATED' | 'STATUS_EN_DESARROLLO' | 'STATUS_TERMINADA' | 'LOCKED_REASSIGN';
+  | 'CREATED'
+  | 'STATUS_EN_DESARROLLO'
+  | 'STATUS_TERMINADA'
+  | 'LOCKED_REASSIGN'
+  | 'RESTORED';
 
 const SKILL_STATES = new Set(['IN_PROGRESS', 'PAUSE', 'DONE']);
 
@@ -70,6 +74,8 @@ export function skillLedgerEntries(input: {
 
   switch (trigger) {
     case 'CREATED':
+    // A row written back for a task that already has its history: nothing new to say.
+    case 'RESTORED':
       return [];
     case 'STATUS_EN_DESARROLLO':
       return held

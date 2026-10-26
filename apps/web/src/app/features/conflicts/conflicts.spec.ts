@@ -177,4 +177,39 @@ describe('Conflicts (brief §26 — resolution UI)', () => {
     expect(buttons()).not.toContain('Conservar versión de la app');
     expect(buttons()).not.toContain('Descartar');
   });
+
+  describe('restoring the row of a vanished task (Roadmap GAP-46)', () => {
+    it('offers it for a row that left the Roadmap, to whoever may write tasks', async () => {
+      const { buttons } = await render([disappearedRow], ['conflict.resolve', 'task.write']);
+
+      expect(buttons()).toContain('Restaurar la fila en el Roadmap');
+    });
+
+    it('does not offer it without the permission to write tasks', async () => {
+      const { buttons } = await render([disappearedRow], ['conflict.resolve']);
+
+      expect(buttons()).not.toContain('Restaurar la fila en el Roadmap');
+    });
+
+    it('does not offer it for a conflict about anything else', async () => {
+      const { buttons } = await render([conflict()], ['conflict.resolve', 'task.write']);
+
+      expect(buttons()).not.toContain('Restaurar la fila en el Roadmap');
+    });
+
+    it('resolves with RESTORE_ROW and reloads the list', async () => {
+      const { component } = await render([disappearedRow], ['conflict.resolve', 'task.write']);
+
+      await component.resolve(disappearedRow, 'RESTORE_ROW');
+
+      expect(resolveConflict).toHaveBeenCalledWith('p1', 'c2', 'RESTORE_ROW', undefined);
+      expect(listConflicts).toHaveBeenCalledTimes(2);
+    });
+
+    it('tells a person what restoring does', async () => {
+      const { text } = await render([disappearedRow], ['conflict.resolve', 'task.write']);
+
+      expect(text()).toContain('restaura la fila');
+    });
+  });
 });
