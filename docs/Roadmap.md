@@ -26,7 +26,7 @@ stable for positional edits.
 
 | ID | Name | Description | Acceptance check | Status | Owner | Depends on | Pause reason |
 |---|---|---|---|---|---|---|---|
-| TASK-24 | Register the agents of SMARTHR with their aliases | BLOQUEADA (BLOQUEO): live SMARTHR data and a person's answer on which agent names are one agent. Cause and action: its Agentslog entry. | Every SMARTHR ledger agent name resolves to a registered agent. | PAUSE | claude-sonnet-5-5@2026-10-26T23:24:36Z | TASK-02 | BLOQUEO |
+| TASK-24 | Register the agents of SMARTHR with their aliases | BLOQUEADA (BLOQUEO): live SMARTHR data and a person's answer on which agent names are one agent. Cause and action: its Agentslog entry. | Every SMARTHR ledger agent name resolves to a registered agent. | PAUSE | claude-sonnet-5-5@2026-10-26T23:24:36Z | TASK-02 | BLOQUEADA: waits for a person, live SMARTHR data |
 
 <!-- context:end -->
 
@@ -53,8 +53,8 @@ Epics and features are rows like the rest, each one naming its parent in its Des
 
 | ID | Name | Description | Acceptance check | Status | Owner | Depends on | Pause reason |
 |---|---|---|---|---|---|---|---|
-| EPIC-02 | Agent identity, development and QA on the Kanban, more views | BLOQUEADA (BLOQUEO) by FEATURE-10. Plan: docs/agent-stage-and-kanban-plan.md. | Every feature under it is done. | PAUSE | claude-sonnet-5-5@2026-10-26T23:32:48Z | FEATURE-10 | BLOQUEO |
-| FEATURE-10 | Agents identify themselves, and the app knows who they are | BLOQUEADA (BLOQUEO) by TASK-24, its only open task. | Every task under it is done. | PAUSE | claude-sonnet-5-5@2026-10-26T23:32:46Z | TASK-24 | BLOQUEO |
+| EPIC-02 | Agent identity, development and QA on the Kanban, more views | BLOQUEADA (BLOQUEO) by FEATURE-10. Plan: docs/agent-stage-and-kanban-plan.md. | Every feature under it is done. | PAUSE | claude-sonnet-5-5@2026-10-26T23:32:48Z | FEATURE-10 | BLOQUEADA: by FEATURE-10 |
+| FEATURE-10 | Agents identify themselves, and the app knows who they are | BLOQUEADA (BLOQUEO) by TASK-24, its only open task. | Every task under it is done. | PAUSE | claude-sonnet-5-5@2026-10-26T23:32:46Z | TASK-24 | BLOQUEADA: by TASK-24 |
 
 ## Gaps, Bugs & Technical Debt
 
