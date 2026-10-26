@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 178
-- Latest verification: `VALIDAR green in 243 s: api unit 817, web 572, e2e 559 incl. the migration's backfill statement` (2026-10-26)
+- Verified capabilities: 179
+- Latest verification: `VALIDAR green in 233 s: api unit 829, web 572, e2e 569` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -193,3 +193,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | FEATURE-04 | A normalized status for each log entry: every entry stores the canonical status of its word (the skill's, BLOCKED, DROPPED, SUPERSEDED, FINDING, OTHER) with the qualifier, backfilled by the sync, and the words in use are listed with the ones PM Hub does not know first | TASK-06, TASK-29 and TASK-30 are in Features.md with VALIDAR green on b7875d9 and 1644c51 | log:FEATURE-04 | 2026-10-26 |
 | TASK-27 | VALIDAR cut from 437 s to 299 s with the same tests: the e2e files share one capped Prisma connection (starting an engine cost 2 s per test), the LLM queue skips projects with nothing to do, and the skill's init runs only where a test uses the skill; remaining time: skill check ~25 s, web unit ~40 s | VALIDAR green in 299 s (check 30, lint 9, build 20, unit 56, e2e 184): api unit 803, web 568, e2e 551 | log:TASK-27 | 2026-10-26 |
 | TASK-31 | Task.blockedSince: set when a sync reads a row into the Blocked table, kept while it stays, cleared when it leaves or a conflict settles it elsewhere, backfilled by the migration from the audit trail (else creation); cards and the task page say how long | VALIDAR green in 243 s: api unit 817, web 572, e2e 559 incl. the migration's backfill statement | log:TASK-31 | 2026-10-26 |
+| TASK-32 | GET /projects/:id/waiting gives one list, the longest waiting first, of the blocked tasks (reason, needed decision, whom the ledger says, tasks behind, since when), the decisions the ledger says wait on someone and the open conflicts, with the blocked count per phase and epic; ledgerUnreadable when the ledger cannot be read; any member | VALIDAR green in 233 s: api unit 829, web 572, e2e 569 | log:TASK-32 | 2026-10-26 |

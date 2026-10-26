@@ -31,6 +31,7 @@ import { RealtimeModule } from './modules/realtime/realtime.module.js';
 import { ConflictsModule } from './modules/conflicts/conflicts.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { WorkloadModule } from './modules/workload/workload.module.js';
+import { WaitingModule } from './modules/waiting/waiting.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { SettingsModule } from './modules/settings/settings.module.js';
 import { TitleNormalizationModule } from './modules/title-normalization/title-normalization.module.js';
@@ -65,6 +66,7 @@ import { TitleNormalizationModule } from './modules/title-normalization/title-no
     ConflictsModule,
     DashboardModule,
     WorkloadModule,
+    WaitingModule,
     HealthModule,
     SettingsModule,
     TitleNormalizationModule,

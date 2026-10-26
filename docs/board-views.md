@@ -81,6 +81,25 @@ filters.
 - **Instant closes** (`instant`): the task was closed within the project's threshold of its first
   start in the ledger (Roadmap TASK-12).
 
+## What is waiting (the list, Roadmap TASK-32)
+
+`GET /projects/:projectId/waiting` gathers in one list, **the longest waiting first**, what a project waits for.
+Three kinds, each with the time it began:
+
+| Kind       | What it is                                                                                                                                                                                                         | Since when                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| `BLOCKED`  | A task in the Roadmap's Blocked table: its reason, the decision it needs, how many unfinished tasks depend on it, and whom the ledger says it waits for, when its latest entry says it (`BLOQUEADO_PO` gives `PO`) | `blockedSince` (Roadmap TASK-31)                                                 |
+| `DECISION` | A task whose **latest** ledger entry is a block and that is not in the Blocked table: the row still says it works                                                                                                  | The entry's own time (the agent's clock: shown, never trusted for anything else) |
+| `CONFLICT` | An open conflict, with the task it is about when it is about one                                                                                                                                                   | When it was detected                                                             |
+
+A task that is finished is in none of them, a ledger block followed by any other entry is not a block any more,
+and a resolved conflict is not open. The latest entry of a task is the last one in the file (Roadmap TASK-07),
+not the one with the latest clock. A blocked task that the ledger also says waits on someone is one item, not
+two. The response also counts the blocked tasks per phase and per epic (the ones in none are a group of their
+own, last among equals), and says `ledgerUnreadable` when the ledger could not be read, so the missing
+decisions are not taken for none. It is read-only, and any member may read it: it is what the Blocked table, the
+ledger and the conflicts page already show them. The view that shows it is Roadmap TASK-21.
+
 ## The review queue (Roadmap TASK-19)
 
 `/projects/:projectId/review` shows only the tasks in QA, as a queue per reviewer (Roadmap SUBTASK-09.1):
