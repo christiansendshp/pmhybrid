@@ -309,6 +309,78 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
     expect(transition).toHaveBeenCalledWith('p1', 't1', 'QA', null);
   });
 
+  describe('the note that goes with a handoff to QA and its answer (Roadmap TASK-28)', () => {
+    const noteField = (root: HTMLElement) =>
+      root.querySelector<HTMLTextAreaElement>(
+        'textarea[aria-label="Nota para el registro (opcional)"]',
+      );
+
+    it('offers a note where a move to QA is possible, sends it with the move, and spends it', async () => {
+      getById.mockResolvedValue(taskDetail({ status: 'EN_DESARROLLO' }));
+      listAudit.mockResolvedValue([]);
+      const { component, harness } = await render();
+      expect(noteField(harness.routeNativeElement!)).not.toBeNull();
+
+      component.moveNote.set('  importer done  ');
+      await component.transition('QA');
+
+      expect(transition).toHaveBeenCalledWith('p1', 't1', 'QA', null, 'importer done');
+      expect(component.moveNote()).toBe('');
+    });
+
+    it('sends the note with a return from QA and with an approval', async () => {
+      getById.mockResolvedValue(taskDetail({ status: 'QA' }));
+      listAudit.mockResolvedValue([]);
+      const { component, harness } = await render();
+      expect(noteField(harness.routeNativeElement!)).not.toBeNull();
+
+      component.moveNote.set('missing the empty case');
+      await component.transition('EN_DESARROLLO');
+      component.moveNote.set('checked it');
+      await component.transition('TERMINADA');
+
+      expect(transition).toHaveBeenNthCalledWith(
+        1,
+        'p1',
+        't1',
+        'EN_DESARROLLO',
+        null,
+        'missing the empty case',
+      );
+      expect(transition).toHaveBeenNthCalledWith(2, 'p1', 't1', 'TERMINADA', null, 'checked it');
+    });
+
+    it('moves without a note argument when nothing was written', async () => {
+      getById.mockResolvedValue(taskDetail({ status: 'EN_DESARROLLO' }));
+      listAudit.mockResolvedValue([]);
+      const { component } = await render();
+
+      component.moveNote.set('   ');
+      await component.transition('QA');
+
+      expect(transition).toHaveBeenCalledWith('p1', 't1', 'QA', null);
+    });
+
+    it('never sends a note with a move that is neither the handoff nor its answer', async () => {
+      getById.mockResolvedValue(taskDetail({ status: 'EN_DESARROLLO' }));
+      listAudit.mockResolvedValue([]);
+      const { component } = await render();
+
+      component.moveNote.set('left over');
+      await component.transition('ASIGNADA');
+
+      expect(transition).toHaveBeenCalledWith('p1', 't1', 'ASIGNADA', null);
+    });
+
+    it('shows no note field where no move takes one', async () => {
+      getById.mockResolvedValue(taskDetail({ status: 'ASIGNADA' }));
+      listAudit.mockResolvedValue([]);
+      const { harness } = await render();
+
+      expect(noteField(harness.routeNativeElement!)).toBeNull();
+    });
+  });
+
   it('says both stages when the ledger and the board disagree about the task (Roadmap TASK-14)', async () => {
     getById.mockResolvedValue(taskDetail({ status: 'EN_DESARROLLO', ledgerStage: 'QA' }));
     listAudit.mockResolvedValue([]);

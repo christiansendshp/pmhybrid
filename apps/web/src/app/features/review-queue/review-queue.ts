@@ -89,7 +89,13 @@ export class ReviewQueue {
           card.id,
           `Rechazada en revisión: ${reason}`,
         );
-        await this.tasksService.transition(this.projectId(), card.id, 'EN_DESARROLLO');
+        await this.tasksService.transition(
+          this.projectId(),
+          card.id,
+          'EN_DESARROLLO',
+          null,
+          reason,
+        );
         this.rejecting.set(null);
       },
       'No se pudo rechazar la tarea.',

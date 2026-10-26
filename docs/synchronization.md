@@ -776,8 +776,10 @@ claim that follows a review. Names are the actors' ledger names, compared withou
 The optional `note` of the transition request is the text of the handoff, of the rejection, or of the
 approval (`Review: PASS - <note>`; 400 with any other move); it is kept in the audit of the move whether or not the ledger takes it. The older document
 formats and the YAML entries have no review state: there the move writes the row's Status (`QA`, or
-`TESTING` in the YAML format) and no ledger entry. The MCP tools `handoff_task` and `review_task` send it (Roadmap TASK-10); a note typed on the board is
-Roadmap TASK-28.
+`TESTING` in the YAML format) and no ledger entry. The MCP tools `handoff_task` and `review_task` send it (Roadmap TASK-10), and so does the board
+(Roadmap TASK-28): the task page has an optional note field beside the reviewer, sent with the move
+to QA and with its answer; dragging a card from QA back to development asks why in a dialog
+(cancelling leaves the card where it was); the review queue sends the reason it already asked for.
 
 Decision (Roadmap TASK-08): an opt-in switch rather than detecting the skill's version, because a
 document cannot say which skill wrote it, and a wrong guess would fill the ledger with entries

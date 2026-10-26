@@ -312,17 +312,23 @@ export class TasksService {
     );
   }
 
-  /** `reviewerActorId` asks someone to review the task and goes only with the move to QA (Roadmap SUBTASK-09.1). */
+  /**
+   * `reviewerActorId` asks someone to review the task and goes only with the move to QA (Roadmap
+   * SUBTASK-09.1). `note` goes with the move to QA or the answer to it, a return or an approval, and
+   * is written into the ledger of a project that records the QA handoff (Roadmap TASK-08, TASK-28).
+   */
   transition(
     projectId: string,
     taskId: string,
     status: TaskStatus,
     reviewerActorId?: string | null,
+    note?: string | null,
   ): Promise<Task> {
     return firstValueFrom(
       this.http.post<Task>(`${API_BASE_URL}/projects/${projectId}/tasks/${taskId}/transition`, {
         status,
         ...(reviewerActorId ? { reviewerActorId } : {}),
+        ...(note ? { note } : {}),
       }),
     );
   }

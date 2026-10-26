@@ -91,7 +91,9 @@ about it. **Aprobar** and **Rechazar** are the transitions the board already has
 EN_DESARROLLO) with the permissions they already need, `task.qa.approve` and `task.qa.reject`: a person who does
 not hold one does not see its button, and the API refuses regardless. Rejecting asks for the reason (it is
 required), keeps it as a comment on the task ("Rechazada en revisión: …") before the task goes back, and does
-not send the task back if the comment could not be kept. When nothing waits it says so in words. It uses the
+not send the task back if the comment could not be kept; the reason also travels as the note of the
+move, which a project that records the QA handoff writes into its ledger (Roadmap TASK-28). When nothing
+waits it says so in words. It uses the
 same filters and address as the other views.
 
 ## The view by agent (Roadmap TASK-20)

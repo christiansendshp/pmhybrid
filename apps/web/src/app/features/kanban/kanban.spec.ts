@@ -1,5 +1,7 @@
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
 import { TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
+import { of } from 'rxjs';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -78,8 +80,13 @@ describe('Kanban (brief §15)', () => {
   let listMembers: ReturnType<typeof vi.fn>;
   let unresolvedNames: ReturnType<typeof vi.fn>;
   let spans: ReturnType<typeof vi.fn>;
+  let openDialog: ReturnType<typeof vi.fn>;
+  /** What the person answers the dialog that asks why a task goes back from QA: text, or undefined for cancelling. */
+  let dialogAnswer: string | undefined;
 
   beforeEach(() => {
+    dialogAnswer = undefined;
+    openDialog = vi.fn(() => ({ afterClosed: () => of(dialogAnswer) }));
     listMembers = vi.fn().mockResolvedValue([]);
     unresolvedNames = vi.fn().mockResolvedValue({ ledgerNames: [], ownerNames: [] });
     spans = vi.fn().mockResolvedValue({});
@@ -109,6 +116,7 @@ describe('Kanban (brief §15)', () => {
           },
         ]),
         { provide: TasksService, useValue: { listForProject, transition, table, spans } },
+        { provide: MatDialog, useValue: { open: openDialog } },
         { provide: ProjectsService, useValue: { listMembers } },
         { provide: SynchronizationService, useValue: { unresolvedNames } },
         { provide: HierarchyService, useValue: { load: vi.fn().mockResolvedValue(HIERARCHY) } },
@@ -351,6 +359,64 @@ describe('Kanban (brief §15)', () => {
     await component.onDrop(drop({}, {}), 'EN_DESARROLLO');
     expect(transition).toHaveBeenCalledWith('p1', 't1', 'EN_DESARROLLO');
     expect(listForProject).toHaveBeenCalledTimes(2);
+  });
+
+  describe('sending a task back from QA (Roadmap TASK-28)', () => {
+    const inQa = card({ id: 'qa-1', status: 'QA', roadmapTable: 'ACTIVE' });
+    const dropOn = (component: Kanban, toStatus: 'EN_DESARROLLO' | 'TERMINADA') =>
+      component.onDrop(
+        {
+          item: { data: inQa },
+          previousContainer: { id: component.listId('none', 'QA') },
+          container: { id: component.listId('none', toStatus) },
+        } as unknown as CdkDragDrop<TaskCard[]>,
+        toStatus,
+      );
+
+    it('asks why before the card moves, and sends the answer as the note of the move', async () => {
+      const { component } = await render([inQa]);
+      dialogAnswer = 'falta el caso vacío';
+
+      await dropOn(component, 'EN_DESARROLLO');
+
+      expect(openDialog).toHaveBeenCalledTimes(1);
+      expect(transition).toHaveBeenCalledWith(
+        'p1',
+        'qa-1',
+        'EN_DESARROLLO',
+        null,
+        'falta el caso vacío',
+      );
+    });
+
+    it('moves the card without a note when the person confirms without writing a reason', async () => {
+      const { component } = await render([inQa]);
+      dialogAnswer = '';
+
+      await dropOn(component, 'EN_DESARROLLO');
+
+      expect(transition).toHaveBeenCalledWith('p1', 'qa-1', 'EN_DESARROLLO');
+    });
+
+    it('leaves the card where it was, and does not reload the board, when the person cancels', async () => {
+      const { component } = await render([inQa]);
+      dialogAnswer = undefined;
+
+      await dropOn(component, 'EN_DESARROLLO');
+
+      expect(transition).not.toHaveBeenCalled();
+      expect(listForProject).toHaveBeenCalledTimes(1);
+      expect(component.cards().find((candidate) => candidate.id === 'qa-1')?.status).toBe('QA');
+    });
+
+    it('asks nothing for any other move, an approval included', async () => {
+      const { component } = await render([inQa]);
+
+      await dropOn(component, 'TERMINADA');
+
+      expect(openDialog).not.toHaveBeenCalled();
+      expect(transition).toHaveBeenCalledWith('p1', 'qa-1', 'TERMINADA');
+    });
   });
 
   it('offers "Nueva tarea" only to a member holding task.write (Roadmap SECURITY-02)', async () => {

@@ -4,6 +4,7 @@ import { ShortTitlePipe } from '../../shared/short-title.pipe.js';
 import { BoardViews } from '../../shared/board-views/board-views.js';
 import { TaskTable } from '../task-table/task-table.js';
 import { ReviewQueue } from '../review-queue/review-queue.js';
+import { NoteDialog } from '../../shared/note-dialog/note-dialog.js';
 import { AgentLanes } from '../agent-lanes/agent-lanes.js';
 import { Timeline } from '../timeline/timeline.js';
 import type { LedgerSpans } from '../../core/timeline.js';
@@ -13,8 +14,10 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -120,6 +123,7 @@ export class Kanban implements OnInit {
   private readonly context = inject(ProjectContext);
   private readonly router = inject(Router);
   private readonly memory = inject(BoardMemory);
+  private readonly dialog = inject(MatDialog);
   readonly viewport = inject(Viewport);
 
   /**
@@ -462,6 +466,15 @@ export class Kanban implements OnInit {
     ) {
       return;
     }
+    // A task sent back from QA says why, if the person wants to; cancelling leaves it where it was (Roadmap TASK-28).
+    let reason = '';
+    if (card.status === 'QA' && toStatus === 'EN_DESARROLLO') {
+      const answer = await this.askReturnReason(card);
+      if (answer === undefined) {
+        return;
+      }
+      reason = answer;
+    }
     this.boardError.set(null);
     // Open the column it lands in: sorted past the cap it would seem to have vanished.
     if (event.container.id) {
@@ -474,12 +487,27 @@ export class Kanban implements OnInit {
       ),
     );
     try {
-      await this.tasksService.transition(this.projectId, card.id, toStatus);
+      await (reason
+        ? this.tasksService.transition(this.projectId, card.id, toStatus, null, reason)
+        : this.tasksService.transition(this.projectId, card.id, toStatus));
     } catch (error) {
       this.boardError.set(describeHttpError(error, 'No se pudo mover la tarea.'));
     }
     await this.reloadCards();
     this.sayIfOverLimit(toStatus);
+  }
+
+  /** The reason a task goes back to development, or `undefined` when the person cancels. */
+  private askReturnReason(card: TaskCard): Promise<string | undefined> {
+    const dialogRef = this.dialog.open<NoteDialog, unknown, string | undefined>(NoteDialog, {
+      data: {
+        title: 'Devolver a desarrollo',
+        label: `Motivo (opcional) — ${card.title}`,
+        confirm: 'Devolver',
+        hint: 'Se guarda con el cambio y se escribe en el registro del proyecto si lo lleva.',
+      },
+    });
+    return firstValueFrom(dialogRef.afterClosed());
   }
 
   /** A move into a full column goes through, and says that the column is now past its limit. */

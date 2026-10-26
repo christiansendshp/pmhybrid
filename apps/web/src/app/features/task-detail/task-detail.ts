@@ -94,6 +94,8 @@ export class TaskDetail implements OnInit {
     [],
   );
   readonly selectedReviewerId = signal<string | null>(null);
+  /** What to say with a move to QA or the answer to it; spent with the move (Roadmap TASK-28). */
+  readonly moveNote = signal('');
   readonly selectedDependsOnId = signal<string | null>(null);
   readonly editing = signal(false);
   readonly addingSubtask = signal(false);
@@ -173,6 +175,19 @@ export class TaskDetail implements OnInit {
     const current = this.task()?.status;
     return current ? LEGAL_NEXT_STATUSES[current] : [];
   }
+
+  /** Whether a move to `status` carries a note: the handoff to QA, and a return or an approval from it. */
+  takesNote(status: TaskStatus): boolean {
+    return (
+      status === 'QA' ||
+      (this.task()?.status === 'QA' && (status === 'EN_DESARROLLO' || status === 'TERMINADA'))
+    );
+  }
+
+  /** The note field is shown when some move the task can make takes one. */
+  readonly anyMoveTakesNote = computed(() =>
+    this.legalNextStatuses().some((status) => this.takesNote(status)),
+  );
 
   ngOnInit(): void {
     this.destroyRef.onDestroy(() => {
@@ -263,9 +278,13 @@ export class TaskDetail implements OnInit {
   async transition(status: TaskStatus): Promise<void> {
     // Only the move to QA can name a reviewer, and the choice is spent with it.
     const reviewerId = status === 'QA' ? this.selectedReviewerId() : null;
+    const note = this.takesNote(status) ? this.moveNote().trim() : '';
     await this.runAction(async () => {
-      await this.tasksService.transition(this.projectId, this.taskId, status, reviewerId);
+      await (note
+        ? this.tasksService.transition(this.projectId, this.taskId, status, reviewerId, note)
+        : this.tasksService.transition(this.projectId, this.taskId, status, reviewerId));
       this.selectedReviewerId.set(null);
+      this.moveNote.set('');
     }, 'No se pudo cambiar el estado.');
   }
 

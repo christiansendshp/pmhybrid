@@ -144,3 +144,46 @@ describe('TasksService.listForProject (Roadmap IMPROVEMENT-01d3)', () => {
     backend.verify();
   });
 });
+
+describe('TasksService: the body of a transition (Roadmap SUBTASK-09.1, TASK-28)', () => {
+  let service: TasksService;
+  let backend: HttpTestingController;
+  const url = `${API_BASE_URL}/projects/p1/tasks/t1/transition`;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(TasksService);
+    backend = TestBed.inject(HttpTestingController);
+  });
+
+  const bodyOf = async (move: Promise<unknown>) => {
+    const request = backend.expectOne(url);
+    const body = request.request.body;
+    request.flush({});
+    await move;
+    backend.verify();
+    return body;
+  };
+
+  it('sends only the status when nothing else is given', async () => {
+    expect(await bodyOf(service.transition('p1', 't1', 'EN_DESARROLLO'))).toEqual({
+      status: 'EN_DESARROLLO',
+    });
+  });
+
+  it('sends the reviewer and the note with the move to QA', async () => {
+    expect(await bodyOf(service.transition('p1', 't1', 'QA', 'ana', 'ready for a look'))).toEqual({
+      status: 'QA',
+      reviewerActorId: 'ana',
+      note: 'ready for a look',
+    });
+  });
+
+  it('leaves out a reviewer or a note that is null or empty', async () => {
+    expect(await bodyOf(service.transition('p1', 't1', 'EN_DESARROLLO', null, ''))).toEqual({
+      status: 'EN_DESARROLLO',
+    });
+  });
+});

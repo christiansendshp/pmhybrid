@@ -232,6 +232,17 @@
         }
       </mat-select>
     }
+    @if (anyMoveTakesNote()) {
+      <textarea
+        class="move-note"
+        rows="2"
+        maxlength="400"
+        aria-label="Nota para el registro (opcional)"
+        placeholder="Nota (opcional): qué se entrega, o por qué vuelve a desarrollo"
+        [ngModel]="moveNote()"
+        (ngModelChange)="moveNote.set($event)"
+      ></textarea>
+    }
     @for (status of legalNextStatuses(); track status) {
       <button mat-flat-button type="button" [disabled]="acting()" (click)="transition(status)">
         {{ statusLabel(status) }}

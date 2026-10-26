@@ -220,7 +220,13 @@ describe('ReviewQueue (Roadmap TASK-19)', () => {
         'task-r',
         'Rechazada en revisión: The edge case fails',
       );
-      expect(transition).toHaveBeenCalledWith('p1', 'task-r', 'EN_DESARROLLO');
+      expect(transition).toHaveBeenCalledWith(
+        'p1',
+        'task-r',
+        'EN_DESARROLLO',
+        null,
+        'The edge case fails',
+      );
       expect(addComment.mock.invocationCallOrder[0]).toBeLessThan(
         transition.mock.invocationCallOrder[0],
       );

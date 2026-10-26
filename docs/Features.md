@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 167
-- Latest verification: `Read project_docs.sh claim/pause/handoff/review/done: holder from task_state, Owner only written; check and unit tests green` (2026-10-26)
+- Verified capabilities: 168
+- Latest verification: `VALIDAR green: check, lint, build, api unit 768, web 542, e2e 536` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -182,3 +182,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | GAP-40 | A move to QA now leaves its trace in the ledger when the project turns on ledgerQaHandoff (TASK-08) | ledger-qa-handoff.e2e-spec.ts: handoff, approval and return pass the skill check | log:GAP-40 | 2026-10-26 |
 | TASK-10 | MCP tools handoff_task (assignee only, note as comment, reviewer), review_task (PASS/FAIL need approve/reject permission, note required) and list_review_queue (oldest first, reviewer filter); note also on approval | VALIDAR green: check, lint, build, api unit 768, web 525, e2e 536 | log:TASK-10 | 2026-10-26 |
 | GAP-45 | Answered: the skill never reads the Owner cell as an identity (holder comes from the ledger), so PM Hub keeps writing the display name there; documented with the reason | Read project_docs.sh claim/pause/handoff/review/done: holder from task_state, Owner only written; check and unit tests green | log:GAP-45 | 2026-10-26 |
+| TASK-28 | The board sends a note with the QA handoff and its answer: optional note field on the task page, a reason dialog when a card is dragged from QA to development, and the review queue reason as the note of the move | VALIDAR green: check, lint, build, api unit 768, web 542, e2e 536 | log:TASK-28 | 2026-10-26 |
