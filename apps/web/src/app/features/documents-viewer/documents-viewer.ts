@@ -25,6 +25,7 @@ import {
   UntrackedWork,
 } from '../../core/documents.service.js';
 import { describeHttpError } from '../../core/http-error.js';
+import { ProjectContext } from '../../core/project-context.js';
 
 type ViewMode = 'documental' | 'structured';
 
@@ -49,6 +50,7 @@ type ViewMode = 'documental' | 'structured';
 export class DocumentsViewer implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly documentsService = inject(DocumentsService);
+  private readonly context = inject(ProjectContext);
 
   readonly documentKinds = DOCUMENT_KINDS;
   readonly selectedKind = signal<DocumentKind>('roadmap');
@@ -70,6 +72,17 @@ export class DocumentsViewer implements OnInit {
   readonly untrackedClosed = computed(
     () => (this.untrackedWork() ?? []).filter((work) => work.closed).length,
   );
+  /** Importing closed work as done tasks changes the project's numbers, so it takes the permission to write tasks (Roadmap TASK-34). */
+  /** The IDs of the closed work, for importing them all. */
+  readonly closedUntrackedIds = computed(() =>
+    (this.untrackedWork() ?? []).filter((work) => work.closed).map((work) => work.externalId),
+  );
+  readonly canImport = computed(() => this.context.permissions().includes('task.write'));
+  /** The IDs a person asked to import, waiting for them to confirm; null when nothing is asked. */
+  readonly confirmingImport = signal<string[] | null>(null);
+  readonly importing = signal(false);
+  readonly importNote = signal<string | null>(null);
+  readonly importError = signal<string | null>(null);
   readonly unknownWordEntries = computed(() =>
     this.unknownWords().reduce((total, word) => total + word.entries, 0),
   );
@@ -156,6 +169,49 @@ export class DocumentsViewer implements OnInit {
     } catch (error) {
       this.revisionError.set(describeHttpError(error, 'No se pudo cargar esa revisión.'));
       this.viewingRevisionId.set(null);
+    }
+  }
+
+  /** Asks to import some closed work: nothing is created until the person confirms, with the count in view. */
+  askImport(ids: string[]): void {
+    this.importNote.set(null);
+    this.importError.set(null);
+    this.confirmingImport.set(ids);
+  }
+
+  cancelImport(): void {
+    this.confirmingImport.set(null);
+  }
+
+  async confirmImport(): Promise<void> {
+    const ids = this.confirmingImport();
+    if (!ids || this.importing()) {
+      return;
+    }
+    this.importing.set(true);
+    this.importError.set(null);
+    try {
+      const result = await this.documentsService.importUntracked(this.projectId, ids);
+      const made = result.imported.length;
+      const left = result.skipped.length;
+      this.importNote.set(
+        (made === 0
+          ? 'No se importó ninguna tarea.'
+          : made === 1
+            ? 'Se importó 1 tarea terminada.'
+            : `Se importaron ${made} tareas terminadas.`) +
+          (left > 0
+            ? ` No se ${left === 1 ? 'importó 1' : `importaron ${left}`}: ya no están en la lista o siguen abiertas.`
+            : ''),
+      );
+      this.confirmingImport.set(null);
+      this.untrackedWork.set(
+        await this.documentsService.getUntrackedWork(this.projectId).catch(() => null),
+      );
+    } catch (error) {
+      this.importError.set(describeHttpError(error, 'No se pudo importar.'));
+    } finally {
+      this.importing.set(false);
     }
   }
 

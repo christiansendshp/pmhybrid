@@ -9,6 +9,22 @@ export interface UntrackedEvent {
   createdAt: Date;
 }
 
+/**
+ * The latest of an ID's entries: the one with the latest time it says, then the one read last. The entries
+ * of the archive are no longer in the file, so the file order cannot be used here (Roadmap TASK-33).
+ */
+export function latestEntryOf<
+  T extends { timestampFromLog: Date; createdAt: Date },
+>(entries: readonly T[]): T {
+  return entries.reduce((latest, entry) =>
+    entry.timestampFromLog.getTime() > latest.timestampFromLog.getTime() ||
+    (entry.timestampFromLog.getTime() === latest.timestampFromLog.getTime() &&
+      entry.createdAt.getTime() > latest.createdAt.getTime())
+      ? entry
+      : latest,
+  );
+}
+
 /** An ID the ledger works on that is no task of the project, with what the ledger says of it. */
 export interface UntrackedWork {
   externalId: string;
@@ -45,19 +61,16 @@ export function untrackedWork(
   }
   return [...byId]
     .map(([externalId, group]) => {
-      const ordered = [...group].sort(
-        (a, b) =>
-          a.timestampFromLog.getTime() - b.timestampFromLog.getTime() ||
-          a.createdAt.getTime() - b.createdAt.getTime(),
-      );
-      const last = ordered[ordered.length - 1];
+      const last = latestEntryOf(group);
       return {
         externalId,
         entries: group.length,
         agents: [...new Set(group.map((event) => event.agentName))].sort(
           (a, b) => a.localeCompare(b),
         ),
-        firstSeen: ordered[0].timestampFromLog,
+        firstSeen: new Date(
+          Math.min(...group.map((event) => event.timestampFromLog.getTime())),
+        ),
         lastSeen: last.timestampFromLog,
         lastWord: last.statusWord,
         closed: last.statusWord === 'DONE',

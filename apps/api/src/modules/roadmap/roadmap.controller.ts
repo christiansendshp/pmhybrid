@@ -15,7 +15,7 @@ import type { ProjectRepositoryProvider } from '../git-providers/project-reposit
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AgentslogParserService } from './agentslog-parser.service.js';
 import { ledgerWordRows } from './ledger-words.util.js';
-import { untrackedWork } from './untracked-work.util.js';
+import { UntrackedWorkService } from './untracked-work.service.js';
 import {
   resolveDocumentFilename,
   resolveDocumentKind,
@@ -42,6 +42,7 @@ export class RoadmapController {
     private readonly repositoryProvider: ProjectRepositoryProvider,
     private readonly roadmapParser: RoadmapParserService,
     private readonly agentslogParser: AgentslogParserService,
+    private readonly untrackedWork: UntrackedWorkService,
   ) {}
 
   @Get(':kind/raw')
@@ -101,42 +102,8 @@ export class RoadmapController {
    * its task existed keeps null.
    */
   @Get('agentslog/untracked')
-  async agentslogUntracked(@Param('projectId') projectId: string) {
-    const ids = (
-      await this.prisma.agentLogEvent.groupBy({
-        by: ['taskExternalId'],
-        where: { projectId, taskExternalId: { not: null } },
-      })
-    ).flatMap((group) =>
-      group.taskExternalId === null ? [] : [group.taskExternalId],
-    );
-    const tasks = await this.prisma.task.findMany({
-      where: { projectId, externalId: { in: ids } },
-      select: { externalId: true },
-    });
-    const known = new Set(tasks.map((task) => task.externalId));
-    const events = await this.prisma.agentLogEvent.findMany({
-      where: {
-        projectId,
-        taskExternalId: { in: ids.filter((id) => !known.has(id)) },
-      },
-      select: {
-        taskExternalId: true,
-        agentName: true,
-        statusWord: true,
-        canonicalStatus: true,
-        timestampFromLog: true,
-        createdAt: true,
-      },
-    });
-    return untrackedWork(
-      events.flatMap((event) =>
-        event.taskExternalId === null
-          ? []
-          : [{ ...event, taskExternalId: event.taskExternalId }],
-      ),
-      new Set(),
-    );
+  agentslogUntracked(@Param('projectId') projectId: string) {
+    return this.untrackedWork.list(projectId);
   }
 
   /**

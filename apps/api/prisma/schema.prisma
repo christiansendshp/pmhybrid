@@ -271,6 +271,8 @@ enum RoadmapTable {
 enum TaskSourceOrigin {
   UI
   ROADMAP
+  // Imported from work the ledger carries that the Roadmap does not (Roadmap TASK-34); it has no row.
+  AGENTSLOG
 }
 
 model Task {

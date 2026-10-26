@@ -7,6 +7,7 @@ import {
   DocumentsService,
   ParsedRoadmapRow,
 } from '../../core/documents.service.js';
+import { ProjectContext } from '../../core/project-context.js';
 import { DocumentsViewer } from './documents-viewer.js';
 
 describe('DocumentsViewer (brief §10)', () => {
@@ -17,6 +18,7 @@ describe('DocumentsViewer (brief §10)', () => {
   let getStructuredAgentslog: ReturnType<typeof vi.fn>;
   let getLedgerWords: ReturnType<typeof vi.fn>;
   let getUntrackedWork: ReturnType<typeof vi.fn>;
+  let importUntracked: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     getRaw = vi.fn().mockResolvedValue({ kind: 'roadmap', content: '# Roadmap\n\nSome text' });
@@ -26,8 +28,10 @@ describe('DocumentsViewer (brief §10)', () => {
     getStructuredAgentslog = vi.fn().mockResolvedValue({ entries: [] });
     getLedgerWords = vi.fn().mockResolvedValue([]);
     getUntrackedWork = vi.fn().mockResolvedValue([]);
+    importUntracked = vi.fn().mockResolvedValue({ imported: [], skipped: [] });
     TestBed.configureTestingModule({
       providers: [
+        ProjectContext,
         provideRouter([
           {
             path: 'projects/:projectId',
@@ -44,6 +48,7 @@ describe('DocumentsViewer (brief §10)', () => {
             getStructuredAgentslog,
             getLedgerWords,
             getUntrackedWork,
+            importUntracked,
           },
         },
       ],
@@ -295,6 +300,110 @@ describe('DocumentsViewer (brief §10)', () => {
         .click();
 
       expect(component.searchQuery()).toBe('X-1');
+    });
+
+    describe('importing the closed ones (Roadmap TASK-34)', () => {
+      const closed = (id: string) => work(id);
+      const open = (id: string) => work(id, { closed: false, lastWord: 'PAUSE' });
+      const asWriter = () => TestBed.inject(ProjectContext).permissions.set(['task.write']);
+      const buttonsOf = (root: HTMLElement) =>
+        Array.from(root.querySelectorAll('button')).map((button) => button.textContent?.trim());
+
+      it('offers to import a closed ID and all the closed ones to someone who writes tasks, and not an open one', async () => {
+        asWriter();
+        getUntrackedWork.mockResolvedValue([open('X-1'), closed('X-2'), closed('X-3')]);
+
+        const { harness } = await openStructuredLedger();
+
+        const root = harness.routeNativeElement!;
+        expect(buttonsOf(root).filter((label) => label === 'Importar como hecha')).toHaveLength(2);
+        expect(buttonsOf(root)).toContain('Importar las 2 cerradas como tareas terminadas');
+      });
+
+      it('offers nothing to import to someone who cannot write tasks', async () => {
+        getUntrackedWork.mockResolvedValue([closed('X-2')]);
+
+        const { harness } = await openStructuredLedger();
+
+        expect(buttonsOf(harness.routeNativeElement!).join(' ')).not.toContain('Importar');
+      });
+
+      it('says what it will add, and creates nothing, until the person confirms', async () => {
+        asWriter();
+        getUntrackedWork.mockResolvedValue([closed('X-2'), closed('X-3')]);
+        const { harness, component, text } = await openStructuredLedger();
+
+        component.askImport(['X-2', 'X-3']);
+        harness.detectChanges();
+
+        expect(text()).toContain('Se agregarán 2 tareas terminadas al avance del proyecto');
+        expect(importUntracked).not.toHaveBeenCalled();
+      });
+
+      it('imports the IDs asked for when confirmed, says how many, and reads the list again', async () => {
+        asWriter();
+        getUntrackedWork
+          .mockResolvedValueOnce([closed('X-2'), closed('X-3')])
+          .mockResolvedValue([]);
+        importUntracked.mockResolvedValue({
+          imported: [
+            { externalId: 'X-2', taskId: 't2', title: 'Two' },
+            { externalId: 'X-3', taskId: 't3', title: 'Three' },
+          ],
+          skipped: [],
+        });
+        const { harness, component, text } = await openStructuredLedger();
+        component.askImport(['X-2', 'X-3']);
+
+        await component.confirmImport();
+        harness.detectChanges();
+
+        expect(importUntracked).toHaveBeenCalledWith('p1', ['X-2', 'X-3']);
+        expect(text()).toContain('Se importaron 2 tareas terminadas.');
+        expect(component.untrackedWork()).toEqual([]);
+        expect(component.confirmingImport()).toBeNull();
+      });
+
+      it('says how many were left when some are no longer there or still open', async () => {
+        asWriter();
+        getUntrackedWork.mockResolvedValue([closed('X-2')]);
+        importUntracked.mockResolvedValue({
+          imported: [{ externalId: 'X-2', taskId: 't2', title: 'Two' }],
+          skipped: [{ externalId: 'X-9', reason: 'OPEN' }],
+        });
+        const { component } = await openStructuredLedger();
+        component.askImport(['X-2', 'X-9']);
+
+        await component.confirmImport();
+
+        expect(component.importNote()).toContain('No se importó 1');
+      });
+
+      it('creates nothing when the person cancels', async () => {
+        asWriter();
+        getUntrackedWork.mockResolvedValue([closed('X-2')]);
+        const { component } = await openStructuredLedger();
+        component.askImport(['X-2']);
+
+        component.cancelImport();
+        await component.confirmImport();
+
+        expect(importUntracked).not.toHaveBeenCalled();
+      });
+
+      it('says why it could not import, and keeps the list', async () => {
+        asWriter();
+        getUntrackedWork.mockResolvedValue([closed('X-2')]);
+        importUntracked.mockRejectedValue(new Error('boom'));
+        const { component } = await openStructuredLedger();
+        component.askImport(['X-2']);
+
+        await component.confirmImport();
+
+        expect(component.importError()).toBe('No se pudo importar.');
+        expect(component.untrackedWork()).toHaveLength(1);
+        expect(component.importing()).toBe(false);
+      });
     });
 
     it('shows nothing when the ledger has no work without a task', async () => {

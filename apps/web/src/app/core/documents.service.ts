@@ -71,6 +71,12 @@ export interface UntrackedWork {
   closed: boolean;
 }
 
+/** What importing closed ledger work did: the tasks it made and the IDs it left, with why (Roadmap TASK-34). */
+export interface UntrackedImportResult {
+  imported: { externalId: string; taskId: string; title: string }[];
+  skipped: { externalId: string; reason: 'NOT_LISTED' | 'OPEN' }[];
+}
+
 export type RevisionSource = 'SYNC' | 'UI' | 'API';
 
 export interface DocumentRevisionSummary {
@@ -129,6 +135,16 @@ export class DocumentsService {
     return firstValueFrom(
       this.http.get<UntrackedWork[]>(
         `${API_BASE_URL}/projects/${projectId}/documents/agentslog/untracked`,
+      ),
+    );
+  }
+
+  /** Turns the closed ledger work of these IDs into done tasks; open work and IDs that are no work are left (Roadmap TASK-34). */
+  importUntracked(projectId: string, ids: string[]): Promise<UntrackedImportResult> {
+    return firstValueFrom(
+      this.http.post<UntrackedImportResult>(
+        `${API_BASE_URL}/projects/${projectId}/documents/agentslog/untracked/import`,
+        { ids },
       ),
     );
   }

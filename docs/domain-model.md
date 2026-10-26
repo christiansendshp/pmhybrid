@@ -200,7 +200,7 @@ Task(
   roadmapTable: ACTIVE|NEAR_TERM|BLOCKED|null,   // null = not doc-sourced
   blockedReason?, neededDecision?,
   blockedSince?,                         // when it entered the BLOCKED table; null while not in it (Roadmap TASK-31)
-  sourceOrigin: UI|ROADMAP,               // immutable at creation
+  sourceOrigin: UI|ROADMAP|AGENTSLOG,     // immutable at creation; AGENTSLOG = imported from closed ledger work (TASK-34)
   lastSyncedContentHash?, lastSyncedAt?,
   deletedAt?,                            // soft delete: out of every view, never recreated by sync
   createdAt, updatedAt

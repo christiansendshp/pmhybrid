@@ -215,8 +215,38 @@
         </summary>
         <p class="meta-text">
           Trabajo que el registro cuenta y que no está en el Roadmap del proyecto. No cuenta en el
-          avance. Primero las que siguen abiertas.
+          avance mientras no lo importes. Primero las que siguen abiertas.
         </p>
+        @if (canImport() && untrackedClosed() > 0) {
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="importing()"
+            (click)="askImport(closedUntrackedIds())"
+          >
+            Importar las {{ untrackedClosed() }} cerradas como tareas terminadas
+          </button>
+        }
+        @if (confirmingImport(); as pending) {
+          <div class="import-confirm" role="group" aria-label="Confirmar la importación">
+            <p>
+              Se agregarán {{ pending.length }}
+              {{ pending.length === 1 ? 'tarea terminada' : 'tareas terminadas' }} al avance del
+              proyecto. No se escribe nada en el Roadmap, y lo que sigue abierto no se importa.
+            </p>
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="importing()"
+              (click)="confirmImport()"
+            >
+              Importar
+            </button>
+            <button mat-button type="button" [disabled]="importing()" (click)="cancelImport()">
+              Cancelar
+            </button>
+          </div>
+        }
         <table>
           <thead>
             <tr>
@@ -252,6 +282,17 @@
                   >
                     Ver entradas
                   </button>
+                  @if (canImport() && work.closed) {
+                    <button
+                      mat-button
+                      type="button"
+                      [attr.aria-label]="'Importar ' + work.externalId + ' como tarea terminada'"
+                      [disabled]="importing()"
+                      (click)="askImport([work.externalId])"
+                    >
+                      Importar como hecha
+                    </button>
+                  }
                 </td>
               </tr>
             }
@@ -259,6 +300,10 @@
         </table>
       </details>
     }
+    @if (importError()) {
+      <p class="callout" role="alert">{{ importError() }}</p>
+    }
+    <p class="meta-text" role="status">{{ importNote() }}</p>
   }
 
   @if (filteredAgentslogEntries(); as entries) {

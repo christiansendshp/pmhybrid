@@ -269,6 +269,15 @@ correcciones`). The words real ledgers use besides the skill's are read too (Roa
   entry because the rotated archive is no longer in the file), its last word and whether that is the exact
   `DONE` (BR-003; a partial close is open). Open ones come first. Nothing counts it in the progress: it is
   read-only, and the Documents page shows it in the structured view of the Agentslog.
+  **Importing it is a separate, explicit step** (Roadmap TASK-34): `POST
+/projects/:projectId/documents/agentslog/untracked/import` with `{ ids }` makes a done task of each listed ID
+  whose latest entry is the exact `DONE` (and skips, saying why, the ones that are open or not listed: it
+  answers `{ imported, skipped }`). The task is titled with what that entry says it did (one line, at most a
+  title long), `TERMINADA`, `completedAt` and `statusChangedAt` the entry's time, `createdAt` the first time the
+  ledger named the ID, `sourceOrigin AGENTSLOG`, no Roadmap row (the ledger is where it lives, so the sync
+  neither duplicates it nor writes a row for it), and its entries are linked to it. It runs under the project's
+  lock, is audited as a task `CREATE` that says it came from the ledger, needs `task.write`, and asking again
+  imports nothing more. The Documents page asks first, with the number of done tasks it adds.
 - `timestampFromLog` is parsed but **never trusted** as an ordering signal
   for reconciliation (it's agent-authored and can be wrong or backdated) —
   only used for display. The parser's own ingestion time (`createdAt`) is

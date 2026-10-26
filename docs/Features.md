@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 182
-- Latest verification: `VALIDAR green in 217 s: api unit 837, web 597, e2e 575` (2026-10-26)
+- Verified capabilities: 183
+- Latest verification: `VALIDAR green in 229 s: api unit 842, web 604, e2e 589` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -197,3 +197,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | TASK-21 | The Waiting view (Esperando) joins the board's views at /projects/:id/waiting: it shows the list of GET /waiting with each wait's kind in words, task link, age and what it needs, the blocked count per phase and epic, keeps the board's filters, and says when the list or the ledger could not be read | VALIDAR green in 217 s: api unit 829, web 592, e2e 569 | log:TASK-21 | 2026-10-26 |
 | FEATURE-05 | What is waiting, and on whom: blocked tasks know since when they are blocked, one endpoint lists blocked tasks, ledger decisions and open conflicts oldest first with the blocked count per phase and epic, and the Esperando view shows it | TASK-31, TASK-32 and TASK-21 are in Features.md with VALIDAR green on 421bcc2, 9c27d60 and da3e343 | log:FEATURE-05 | 2026-10-26 |
 | TASK-33 | GET /projects/:id/documents/agentslog/untracked lists the ledger IDs that are no task of the project (deleted tasks and entries read before their task existed excluded), with entries, agents, dates, last word and whether it closed with the exact DONE, open first; the structured Agentslog view lists them and shows the entries of one ID; nothing counts them in the progress | VALIDAR green in 217 s: api unit 837, web 597, e2e 575 | log:TASK-33 | 2026-10-26 |
+| TASK-34 | POST /projects/:id/documents/agentslog/untracked/import (task.write) turns the listed IDs whose latest entry is the exact DONE into done tasks (sourceOrigin AGENTSLOG, titled by the closing entry, dated by the ledger, no Roadmap row, entries linked, audited), skipping open work and unlisted IDs, once; the Documents page asks first with the count it adds | VALIDAR green in 229 s: api unit 842, web 604, e2e 589 | log:TASK-34 | 2026-10-26 |

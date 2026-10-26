@@ -18,16 +18,15 @@ segments live in `docs/history/`.
 
 ## Previous segment
 
-- Archive: `docs/history/Agentslog-20261026-016.md`
-- SHA-256: `265d4bced43003a20c533aa12dab520dd3460d0c9cd995ca3e46dd6738a24a43`
+- Archive: `docs/history/Agentslog-20261026-017.md`
+- SHA-256: `ea1177cd15c74a605f764aecc6b45385df9afa4609d1410515f5e5af079721fa`
 
 ## Entries
 
-## [2026-10-26T17:54:43Z] | claude-sonnet-5-5 | TASK-33 | IN_PROGRESS | List the ledger's work that has no task
-- Summary: List the ledger's work that has no task
-- Verify: pending
+## [2026-10-26T18:03:28Z] | claude-sonnet-5-5 | TASK-34 | IN_PROGRESS | Import closed ledger work as done tasks, on request
+- Summary: carried forward from docs/history/Agentslog-20261026-017.md at rotation
 
-## [2026-10-26T18:02:10Z] | claude-sonnet-5-5 | TASK-33 | DONE | List the ledger's work that has no task
-- Summary: GET /projects/:id/documents/agentslog/untracked lists the ledger IDs that are no task of the project (deleted tasks and entries read before their task existed excluded), with entries, agents, dates, last word and whether it closed with the exact DONE, open first; the structured Agentslog view lists them and shows the entries of one ID; nothing counts them in the progress
-- Files: apps/api/src/modules/roadmap/untracked-work.util.ts, apps/api/src/modules/roadmap/roadmap.controller.ts, apps/api/test/untracked-work.e2e-spec.ts, apps/web/src/app/features/documents-viewer, docs/roadmap-parser.md
-- Verify: VALIDAR green in 217 s: api unit 837, web 597, e2e 575
+## [2026-10-26T18:13:22Z] | claude-sonnet-5-5 | TASK-34 | DONE | Import closed ledger work as done tasks, on request
+- Summary: POST /projects/:id/documents/agentslog/untracked/import (task.write) turns the listed IDs whose latest entry is the exact DONE into done tasks (sourceOrigin AGENTSLOG, titled by the closing entry, dated by the ledger, no Roadmap row, entries linked, audited), skipping open work and unlisted IDs, once; the Documents page asks first with the count it adds
+- Files: apps/api/src/modules/untracked-work, apps/api/prisma/migrations/20261026150000_add_task_source_origin_agentslog, apps/api/test/untracked-import.e2e-spec.ts, apps/web/src/app/features/documents-viewer, docs/roadmap-parser.md
+- Verify: VALIDAR green in 229 s: api unit 842, web 604, e2e 589
