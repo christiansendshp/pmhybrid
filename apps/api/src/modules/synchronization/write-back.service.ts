@@ -2,10 +2,13 @@ import { createHash } from 'node:crypto';
 import {
   Inject,
   Injectable,
+  Logger,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DocumentKind, Prisma, TaskStatus } from '@prisma/client';
 import type { AuditOrigin, Task, TaskDependency } from '@prisma/client';
+import { TASKS_WRITTEN_EVENT } from '../../common/events.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { AgentslogParserService } from '../roadmap/agentslog-parser.service.js';
@@ -108,6 +111,8 @@ const DOCUMENT_FILENAMES: Record<'ROADMAP' | 'AGENTSLOG', string> = {
  */
 @Injectable()
 export class WriteBackService {
+  private readonly logger = new Logger(WriteBackService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject(PROJECT_REPOSITORY_PROVIDER)
@@ -115,6 +120,7 @@ export class WriteBackService {
     private readonly roadmapParser: RoadmapParserService,
     private readonly agentslogParser: AgentslogParserService,
     private readonly audit: AuditService,
+    private readonly events: EventEmitter2,
   ) {}
 
   /**
@@ -131,8 +137,9 @@ export class WriteBackService {
     projectId: string,
     work: (tx: Prisma.TransactionClient) => Promise<T>,
   ): Promise<T> {
+    let result: T;
     try {
-      return await this.prisma.$transaction(
+      result = await this.prisma.$transaction(
         async (tx) => {
           await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${projectId}))`;
           return work(tx);
@@ -145,6 +152,23 @@ export class WriteBackService {
         throw new UnprocessableEntityException(notSaved);
       }
       throw error;
+    }
+    await this.announceWrite(projectId);
+    return result;
+  }
+
+  /**
+   * Says the tasks of the project were written, once the change has committed, so what is derived from them (a
+   * phase that is now complete, Roadmap TASK-41) can be checked. A listener's failure never changes the answer of
+   * the write.
+   */
+  private async announceWrite(projectId: string): Promise<void> {
+    try {
+      await this.events.emitAsync(TASKS_WRITTEN_EVENT, { projectId });
+    } catch (error) {
+      this.logger.error(
+        `A listener of ${TASKS_WRITTEN_EVENT} failed for project ${projectId}: ${String(error)}`,
+      );
     }
   }
 

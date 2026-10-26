@@ -214,6 +214,9 @@ model Phase {
   order       Int
   description String?
   status      String?
+  // When the members were told every work task of this phase is done (Roadmap TASK-41): keeps the notice from
+  // repeating, and is cleared when the phase has an open task again, so finishing it again is announced again.
+  completionNotifiedAt DateTime?
   epics       Epic[]
   tasks       Task[]
 

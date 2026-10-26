@@ -157,7 +157,9 @@ All nullable/app-level, since the managed project's own documents don't define
 these levels:
 
 ```
-Phase(id, externalId?, projectId, name, order, description?, status?)
+Phase(id, externalId?, projectId, name, order, description?, status?,
+  completionNotifiedAt?)   // when the members were told every work task is done (Roadmap TASK-41); cleared when the
+                            // phase has an open task again. See docs/what-changed.md.
 Epic(id, externalId?, projectId, phaseId?, name, order, description?, status?)
 Template(id, projectId, epicId?, name, order, description?)
 ```
@@ -329,6 +331,7 @@ Notification(id, actorId, projectId, type, payload? jsonb, readAt?, createdAt)
   // type: CONFLICTS_DETECTED | SYNC_FAILED | ROADMAP_ENTRIES_INVALID
   //       | TASK_ASSIGNED | TASK_REASSIGNED | TASK_COMMENTED   (Roadmap GAP-36c)
   //       | TASK_BLOCKED | TASK_UNBLOCKED                      (Roadmap TASK-40)
+  //       | PHASE_COMPLETED                                    (Roadmap TASK-41)
 ```
 
 **Who is told what** (Roadmap GAP-36c). The first three go to every active member
@@ -341,8 +344,8 @@ the event emitter), so a notification never describes something that rolled back
 and a failing listener never fails the request. An agent reads its own through the
 MCP tools `list_notifications` and `mark_notifications_read`
 (`docs/permissions.md`). `TASK_BLOCKED` and `TASK_UNBLOCKED` (Roadmap TASK-40) go to the assignee of a task
-after a synchronization put it into the Blocked table or took it out for another one, and are described in
-`docs/what-changed.md`. The brief's full list of events is not in this
+after a synchronization put it into the Blocked table or took it out for another one, and `PHASE_COMPLETED` (TASK-41)
+to every active member when the last open work task of a phase is done; both are described in `docs/what-changed.md`. The brief's full list of events is not in this
 repository, so the rest are descoped rather than guessed: nothing is sent for a
 status change of a task you hold, a due date, or a mention, and adding one is a
 new `OnEvent` handler in `NotificationsService` plus a sentence in the web's

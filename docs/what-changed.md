@@ -1,8 +1,8 @@
 # What changed: since the last visit, notifications and summaries
 
-Status: the marker and the summary of what is new in the API (Roadmap TASK-38), the Panel section (TASK-39) and
-the blocked and unblocked notifications (TASK-40) exist. The phase completed notification (TASK-41) and the
-periodic summary (TASK-42) add their parts here. DEC-004 D3: everything stays in the app, nothing is sent out.
+Status: the marker and the summary of what is new in the API (Roadmap TASK-38), the Panel section (TASK-39), the
+blocked and unblocked notifications (TASK-40) and the phase completed notification (TASK-41) exist. The periodic
+summary (TASK-42) adds its part here. DEC-004 D3: everything stays in the app, nothing is sent out.
 
 ## The marker (`ProjectSeen`)
 
@@ -75,3 +75,22 @@ with no assignee, a deleted one or a finished one tells nobody, and a sync that 
 runs are one after another under the project's lock, so a change is in the window of one run only. A failure in
 the listener is logged and never changes the sync's own outcome. The notification list says each in a sentence
 ("Tu tarea «…» quedó bloqueada: <reason>. Necesita: <decision>", "Tu tarea «…» ya no está bloqueada").
+
+## Phase completed (`PHASE_COMPLETED`)
+
+Sent once to **every active member** of the project when the last open work task of a phase is done (Roadmap
+TASK-41), whoever did it: it is about the phase, not about one person's action. `PhaseCompletionService` counts the
+work tasks of each phase (the tasks that count towards the progress, so deleted tasks and the cards that are not
+work are out) after either trigger:
+
+- a write of tasks in the app: `WriteBackService.inTransaction`, which every UI, MCP and API write goes through,
+  emits `project.tasks-written` (`common/events.ts`) once the transaction has committed, so the announcement never
+  describes something that rolled back;
+- a synchronization: `sync.completed`.
+
+A phase is complete when it has work tasks and none is open; a phase with no tasks never completes. `Phase.completionNotifiedAt`
+is the marker: a complete phase with no marker is announced and gets it (claimed with a conditional update, so two
+checks at once announce once); a phase with the marker that has an open task again has it cleared, so finishing it
+again is announced again. The migration marks the phases that are complete when it runs, so deploying it does not
+announce work finished long ago. A failure in the check is logged and never changes what the write or the sync
+answers.

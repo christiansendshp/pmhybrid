@@ -113,6 +113,21 @@ describe('describeNotification (brief §29)', () => {
     });
   });
 
+  describe('a phase completed (Roadmap TASK-41)', () => {
+    const phase = (payload: Record<string, unknown>) =>
+      describeNotification(notification({ type: 'PHASE_COMPLETED', payload }));
+
+    it('says the phase is complete and all its tasks are done', () => {
+      expect(phase({ phaseId: 'p1', name: 'Build' })).toBe(
+        'Se completó la fase «Build»: todas sus tareas están terminadas',
+      );
+    });
+
+    it('never renders a hole when the payload has no name', () => {
+      expect(phase({})).toBe('Se completó la fase «sin nombre»: todas sus tareas están terminadas');
+    });
+  });
+
   it('falls back to the raw type for an unknown notification type, instead of rendering empty', () => {
     expect(describeNotification(notification({ type: 'SOMETHING_NEW', payload: {} }))).toBe(
       'SOMETHING_NEW',

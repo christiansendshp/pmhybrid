@@ -295,7 +295,8 @@ export class NotificationsService {
   }
 
   /** Never notifies whoever directly triggered this run — a manual "Sync now" already returned its own result in the response. */
-  private async notifyProjectMembers(
+  /** Every active member of the project, except the one named: a notification each (the change of who is told is a decision of the caller). */
+  async notifyProjectMembers(
     projectId: string,
     type: string,
     payload: Prisma.InputJsonValue,

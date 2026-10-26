@@ -40,6 +40,11 @@ export function describeNotification(notification: Notification): string {
           : '';
       return `Tu tarea «${taskTitle(payload)}» quedó bloqueada${reason}${needed}`;
     }
+    case 'PHASE_COMPLETED': {
+      const name =
+        typeof payload['name'] === 'string' && payload['name'] ? payload['name'] : 'sin nombre';
+      return `Se completó la fase «${name}»: todas sus tareas están terminadas`;
+    }
     case 'TASK_UNBLOCKED':
       return `Tu tarea «${taskTitle(payload)}» ya no está bloqueada`;
     case 'TASK_COMMENTED':
