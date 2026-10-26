@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 180
-- Latest verification: `VALIDAR green in 217 s: api unit 829, web 592, e2e 569` (2026-10-26)
+- Verified capabilities: 181
+- Latest verification: `TASK-31, TASK-32 and TASK-21 are in Features.md with VALIDAR green on 421bcc2, 9c27d60 and da3e343` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -195,3 +195,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | TASK-31 | Task.blockedSince: set when a sync reads a row into the Blocked table, kept while it stays, cleared when it leaves or a conflict settles it elsewhere, backfilled by the migration from the audit trail (else creation); cards and the task page say how long | VALIDAR green in 243 s: api unit 817, web 572, e2e 559 incl. the migration's backfill statement | log:TASK-31 | 2026-10-26 |
 | TASK-32 | GET /projects/:id/waiting gives one list, the longest waiting first, of the blocked tasks (reason, needed decision, whom the ledger says, tasks behind, since when), the decisions the ledger says wait on someone and the open conflicts, with the blocked count per phase and epic; ledgerUnreadable when the ledger cannot be read; any member | VALIDAR green in 233 s: api unit 829, web 572, e2e 569 | log:TASK-32 | 2026-10-26 |
 | TASK-21 | The Waiting view (Esperando) joins the board's views at /projects/:id/waiting: it shows the list of GET /waiting with each wait's kind in words, task link, age and what it needs, the blocked count per phase and epic, keeps the board's filters, and says when the list or the ledger could not be read | VALIDAR green in 217 s: api unit 829, web 592, e2e 569 | log:TASK-21 | 2026-10-26 |
+| FEATURE-05 | What is waiting, and on whom: blocked tasks know since when they are blocked, one endpoint lists blocked tasks, ledger decisions and open conflicts oldest first with the blocked count per phase and epic, and the Esperando view shows it | TASK-31, TASK-32 and TASK-21 are in Features.md with VALIDAR green on 421bcc2, 9c27d60 and da3e343 | log:FEATURE-05 | 2026-10-26 |
