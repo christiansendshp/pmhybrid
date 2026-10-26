@@ -18,15 +18,15 @@ segments live in `docs/history/`.
 
 ## Previous segment
 
-- Archive: `docs/history/Agentslog-20261026-013.md`
-- SHA-256: `8250abb73759dda71811b73001e5298beec22d0adbff938f35cb4e0477d4229b`
+- Archive: `docs/history/Agentslog-20261026-014.md`
+- SHA-256: `1f55d44ed440651751938e48c2c2c015ee28dec8965068095003f760f7591da6`
 
 ## Entries
 
-## [2026-10-26T16:46:12Z] | claude-sonnet-5-5 | TASK-27 | IN_PROGRESS | Cut VALIDAR below five minutes
-- Summary: carried forward from docs/history/Agentslog-20261026-013.md at rotation
+## [2026-10-26T17:17:24Z] | claude-sonnet-5-5 | TASK-31 | IN_PROGRESS | Record since when a task is blocked
+- Summary: carried forward from docs/history/Agentslog-20261026-014.md at rotation
 
-## [2026-10-26T17:15:25Z] | claude-sonnet-5-5 | TASK-27 | DONE | Cut VALIDAR below five minutes
-- Summary: VALIDAR cut from 437 s to 299 s with the same tests: the e2e files share one capped Prisma connection (starting an engine cost 2 s per test), the LLM queue skips projects with nothing to do, and the skill's init runs only where a test uses the skill; remaining time: skill check ~25 s, web unit ~40 s
-- Files: apps/api/test/setup-shared-prisma.ts, apps/api/test/e2e-limits.ts, apps/api/vitest.config.e2e.ts, apps/api/src/modules/title-normalization/title-normalization.service.ts, apps/api/test/ledger-qa-handoff.e2e-spec.ts, docs/testing.md
-- Verify: VALIDAR green in 299 s (check 30, lint 9, build 20, unit 56, e2e 184): api unit 803, web 568, e2e 551
+## [2026-10-26T17:30:55Z] | claude-sonnet-5-5 | TASK-31 | DONE | Record since when a task is blocked
+- Summary: Task.blockedSince: set when a sync reads a row into the Blocked table, kept while it stays, cleared when it leaves or a conflict settles it elsewhere, backfilled by the migration from the audit trail (else creation); cards and the task page say how long
+- Files: apps/api/prisma/migrations/20261026140000_add_task_blocked_since, apps/api/src/modules/tasks/blocked-since.util.ts, apps/api/src/modules/synchronization/synchronization.service.ts, apps/api/test/blocked-since.e2e-spec.ts, apps/web/src/app/features/kanban, docs/synchronization.md
+- Verify: VALIDAR green in 243 s: api unit 817, web 572, e2e 559 incl. the migration's backfill statement

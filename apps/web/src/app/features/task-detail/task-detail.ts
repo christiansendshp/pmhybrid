@@ -21,7 +21,7 @@ import { newIdempotencyKey } from '../../core/idempotency-key.js';
 import { ProjectContext } from '../../core/project-context.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { ledgerDivergenceText, ledgerDiverges } from '../../core/ledger-stage.js';
-import { stageAgeText } from '../../core/stage-age.js';
+import { elapsedText, stageAgeText } from '../../core/stage-age.js';
 import { LEGAL_NEXT_STATUSES, statusLabel } from '../../core/task-status-policy.js';
 import {
   Task,
@@ -170,6 +170,9 @@ export class TaskDetail implements OnInit {
   private get taskId(): string {
     return this.route.snapshot.paramMap.get('taskId')!;
   }
+
+  /** How long ago the task was blocked ("hace 3 d"); the date goes beside it (Roadmap TASK-31). */
+  readonly blockedFor = (since: string) => elapsedText(since);
 
   legalNextStatuses(): TaskStatus[] {
     const current = this.task()?.status;

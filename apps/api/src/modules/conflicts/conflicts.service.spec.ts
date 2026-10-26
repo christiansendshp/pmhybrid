@@ -448,7 +448,7 @@ describe('ConflictsService.resolve of a disappeared row (Roadmap BUG-06a)', () =
 
       expect(taskUpdate).toHaveBeenCalledWith({
         where: { id: 't1', deletedAt: null },
-        data: { roadmapTable: null },
+        data: { roadmapTable: null, blockedSince: null },
       });
     }
   });
@@ -776,7 +776,7 @@ describe('ConflictsService.resolve QA_APPROVAL_REQUIRED (Roadmap GAP-41)', () =>
 
     expect(taskUpdate).toHaveBeenCalledWith({
       where: { id: 't1', deletedAt: null },
-      data: { roadmapTable: null },
+      data: { roadmapTable: null, blockedSince: null },
     });
   });
 });

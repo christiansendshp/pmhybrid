@@ -43,6 +43,7 @@ function taskDetail(overrides: Partial<TaskDetailModel> = {}): TaskDetailModel {
     reviewRequestedAt: null,
     roadmapTable: 'ACTIVE',
     blockedReason: null,
+    blockedSince: null,
     neededDecision: null,
     createdAt: '2026-09-15T09:00:00.000Z',
     updatedAt: '2026-09-15T09:00:00.000Z',
@@ -378,6 +379,42 @@ describe('TaskDetail — details, editing, removal, history and agent activity (
       const { harness } = await render();
 
       expect(noteField(harness.routeNativeElement!)).toBeNull();
+    });
+  });
+
+  describe('how long the task has been blocked (Roadmap TASK-31)', () => {
+    it('says how long ago and since which day, in the callout of a blocked task', async () => {
+      const since = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+      getById.mockResolvedValue(
+        taskDetail({
+          roadmapTable: 'BLOCKED',
+          blockedReason: 'Waiting for legal',
+          blockedSince: since.toISOString(),
+        }),
+      );
+      listAudit.mockResolvedValue([]);
+
+      const { harness } = await render();
+      const callout = (
+        harness.routeNativeElement!.querySelector('.callout--blocked')?.textContent ?? ''
+      ).replace(/\s+/g, ' ');
+
+      expect(callout).toContain('Tarea bloqueada');
+      expect(callout).toContain('hace 2 d · desde el');
+      expect(callout).toContain('Waiting for legal');
+    });
+
+    it('says nothing about time when the task does not say since when', async () => {
+      getById.mockResolvedValue(
+        taskDetail({ roadmapTable: 'BLOCKED', blockedReason: 'Waiting', blockedSince: null }),
+      );
+      listAudit.mockResolvedValue([]);
+
+      const { harness } = await render();
+
+      expect(
+        harness.routeNativeElement!.querySelector('.callout--blocked')?.textContent,
+      ).not.toContain('desde el');
     });
   });
 

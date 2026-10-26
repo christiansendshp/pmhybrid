@@ -44,6 +44,7 @@ function card(overrides: Partial<TaskCard> = {}): TaskCard {
     reviewRequestedAt: null,
     roadmapTable: 'BLOCKED',
     blockedReason: 'Waiting on credentials',
+    blockedSince: null,
     createdAt: '2026-09-15T09:00:00.000Z',
     updatedAt: '2026-09-15T09:00:00.000Z',
     assignee: { id: 'codex', displayName: 'Codex', kind: 'AI_AGENT', model: null },
@@ -177,6 +178,26 @@ describe('Kanban (brief §15)', () => {
     );
     expect(text()).toContain('EN DESARROLLO');
     expect(text()).toContain('1 de 1 tareas');
+  });
+
+  describe('how long a card has been blocked (Roadmap TASK-31)', () => {
+    const alertOf = (harness: { routeNativeElement: HTMLElement | null }) =>
+      Array.from(harness.routeNativeElement!.querySelectorAll('.card__alert'))
+        .map((alert) => (alert.textContent ?? '').replace(/\s+/g, ' ').trim())
+        .join(' | ');
+
+    it('says since when next to the word, in the unit that fits, and then the reason', async () => {
+      const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+      const { harness } = await render([card({ blockedSince: threeDaysAgo })]);
+
+      expect(alertOf(harness)).toContain('Bloqueada hace 3 d — Waiting on credentials');
+    });
+
+    it('says only that it is blocked when the task does not say since when', async () => {
+      const { harness } = await render([card({ blockedSince: null })]);
+
+      expect(alertOf(harness)).toContain('Bloqueada — Waiting on credentials');
+    });
   });
 
   it('marks a card closed within minutes of starting with a text note, and no other (Roadmap TASK-12)', async () => {

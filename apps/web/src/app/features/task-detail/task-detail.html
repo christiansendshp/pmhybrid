@@ -69,6 +69,11 @@
   @if (t.roadmapTable === 'BLOCKED') {
     <div class="callout callout--blocked" role="status">
       <strong>Tarea bloqueada</strong>
+      @if (t.blockedSince) {
+        <span class="meta-text">
+          {{ blockedFor(t.blockedSince) }} · desde el {{ t.blockedSince | date: 'd MMM y' }}
+        </span>
+      }
       @if (t.blockedReason) {
         <p>{{ t.blockedReason }}</p>
       }

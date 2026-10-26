@@ -35,6 +35,7 @@ function card(overrides: Partial<TaskCard> = {}): TaskCard {
     reviewRequestedAt: null,
     roadmapTable: 'ACTIVE',
     blockedReason: null,
+    blockedSince: null,
     createdAt: `2026-09-${String(sequence).padStart(2, '0')}T09:00:00.000Z`,
     updatedAt: `2026-09-${String(sequence).padStart(2, '0')}T09:00:00.000Z`,
     assignee: null,

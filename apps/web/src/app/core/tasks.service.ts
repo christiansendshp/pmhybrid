@@ -108,6 +108,8 @@ export interface Task {
 /** A task as the board lists it (brief §15): the task plus what its card shows at a glance. */
 export interface TaskCard extends Task {
   blockedReason: string | null;
+  /** When the task entered the Roadmap's Blocked table; null while it is not in it (Roadmap TASK-31). */
+  blockedSince: string | null;
   assignee: {
     id: string;
     displayName: string;
@@ -126,6 +128,7 @@ export interface TaskDetail extends Task {
   /** Why a BLOCKED task is blocked, and the decision or event it waits for (Roadmap UX-03c1). */
   blockedReason: string | null;
   neededDecision: string | null;
+  blockedSince: string | null;
   computedProgress: number;
   subtasks: Task[];
   dependencies: {

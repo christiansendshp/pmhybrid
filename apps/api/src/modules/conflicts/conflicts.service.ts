@@ -21,6 +21,7 @@ import {
   WriteBackService,
 } from '../synchronization/write-back.service.js';
 import { completedAtFor } from '../tasks/completion-date.util.js';
+import { blockedStamp } from '../tasks/blocked-since.util.js';
 import { statusStamp } from '../tasks/status-change.util.js';
 import {
   documentTitleData,
@@ -182,6 +183,7 @@ export class ConflictsService {
             assigneeActorId: true,
             description: true,
             generatedDescription: true,
+            roadmapTable: true,
           },
         });
         const nextAssignee = fieldsToApply.assigneeActorId;
@@ -216,6 +218,12 @@ export class ConflictsService {
               ? dto.strategy === ConflictResolutionKind.KEEP_EXTERNAL
                 ? documentTitleData(task, fieldsToApply.title)
                 : personTitleData(fieldsToApply.title)
+              : {}),
+            ...('roadmapTable' in fieldsToApply
+              ? blockedStamp(
+                  task.roadmapTable,
+                  fieldsToApply.roadmapTable as string | null,
+                )
               : {}),
             ...(typeof fieldsToApply.status === 'string'
               ? {
@@ -300,7 +308,7 @@ export class ConflictsService {
       ) {
         await tx.task.updateMany({
           where: { id: conflict.entityId, deletedAt: null },
-          data: { roadmapTable: null },
+          data: { roadmapTable: null, blockedSince: null },
         });
       }
 

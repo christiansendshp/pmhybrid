@@ -199,6 +199,7 @@ Task(
   acceptanceCriteria?,                   // required for app-created tasks (brief §9)
   roadmapTable: ACTIVE|NEAR_TERM|BLOCKED|null,   // null = not doc-sourced
   blockedReason?, neededDecision?,
+  blockedSince?,                         // when it entered the BLOCKED table; null while not in it (Roadmap TASK-31)
   sourceOrigin: UI|ROADMAP,               // immutable at creation
   lastSyncedContentHash?, lastSyncedAt?,
   deletedAt?,                            // soft delete: out of every view, never recreated by sync

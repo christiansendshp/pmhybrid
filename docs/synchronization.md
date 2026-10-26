@@ -83,6 +83,13 @@ rolled-back transaction, so the history still says what happened.
      mechanism for tracking "which table a row sits in is itself a status
      signal" (brief's blocked-tasks metric) — no separate table or column is
      needed beyond this audit trail plus the current `roadmapTable` value.
+   - `Task.blockedSince` (Roadmap TASK-31) is the time a sync read the row into BLOCKED. It is
+     set once when the table becomes `BLOCKED` (a new task read there included), kept while the row
+     stays and whatever its cells say, and cleared when the table is anything else, `null` included (a
+     row that left, or a conflict settled that way), so a task that comes back has a new one. The
+     column was filled for the tasks blocked when it was added from the audit trail's last
+     `ROADMAP_TABLE_CHANGE` into BLOCKED, else from the task's creation: approximate, since the trail
+     only knows what a sync saw. The cards and the task page say how long.
    - A row **in** BLOCKED (on the move in, and again whenever it changes) → set
      `blockedReason`/`neededDecision` from the row (the blocker text, cleared
      when it goes). **Do not clear** `status`/`dependencies`/`acceptanceCriteria`

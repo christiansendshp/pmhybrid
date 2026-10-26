@@ -56,7 +56,7 @@ import { describeHttpError } from '../../core/http-error.js';
 import { newIdempotencyKey } from '../../core/idempotency-key.js';
 import { ledgerDivergenceText, ledgerDiverges } from '../../core/ledger-stage.js';
 import { ProjectContext } from '../../core/project-context.js';
-import { stageAgeText } from '../../core/stage-age.js';
+import { elapsedText, stageAgeText } from '../../core/stage-age.js';
 import { WipState, countAgentWip, countInStatus, wipRatio, wipState } from '../../core/wip.js';
 import { ProjectMember, ProjectsService } from '../../core/projects.service.js';
 import { Viewport } from '../../core/viewport.js';
@@ -465,6 +465,11 @@ export class Kanban implements OnInit {
       value,
       overdue,
     };
+  }
+
+  /** How long a blocked card has been blocked ("hace 3 d"), or null when the task does not say since when (Roadmap TASK-31). */
+  blockedFor(card: TaskCard): string | null {
+    return card.blockedSince ? elapsedText(card.blockedSince) : null;
   }
 
   async onDrop(event: CdkDragDrop<TaskCard[]>, toStatus: TaskStatus): Promise<void> {

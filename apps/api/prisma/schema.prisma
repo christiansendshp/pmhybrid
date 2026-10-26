@@ -355,6 +355,8 @@ model Task {
   roadmapTable   RoadmapTable?
   blockedReason  String?
   neededDecision String?
+  // When the task entered the Blocked table (Roadmap TASK-31); null while it is not in it.
+  blockedSince   DateTime?
 
   sourceOrigin TaskSourceOrigin
 

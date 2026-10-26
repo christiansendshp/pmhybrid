@@ -44,6 +44,7 @@ import {
   type DependencyGraph,
 } from '../tasks/dependency-graph.js';
 import { completedAtFor } from '../tasks/completion-date.util.js';
+import { blockedStamp } from '../tasks/blocked-since.util.js';
 import { statusStamp } from '../tasks/status-change.util.js';
 import {
   documentTitleData,
@@ -611,7 +612,10 @@ export class SynchronizationService {
         if (existing.roadmapTable === null) {
           await tx.task.update({
             where: { id: existing.id },
-            data: { roadmapTable: row.table },
+            data: {
+              roadmapTable: row.table,
+              ...blockedStamp(null, row.table),
+            },
           });
           await this.audit.record(
             {
@@ -789,7 +793,10 @@ export class SynchronizationService {
         }
         await tx.task.update({
           where: { id: task.id },
-          data: { roadmapTable: null },
+          data: {
+            roadmapTable: null,
+            ...blockedStamp(task.roadmapTable, null),
+          },
         });
         await this.audit.record(
           {
@@ -845,6 +852,7 @@ export class SynchronizationService {
           data: {
             status: TaskStatus.TERMINADA,
             roadmapTable: null,
+            ...blockedStamp(task.roadmapTable, null),
             completedAt: completedAtFor(task.status, TaskStatus.TERMINADA),
             ...statusStamp(task.status, TaskStatus.TERMINADA),
           },
@@ -919,6 +927,7 @@ export class SynchronizationService {
           : undefined,
         blockedReason: row.blocker,
         neededDecision: row.neededDecision,
+        ...blockedStamp(null, row.table),
         lastSyncedContentHash: rowContentHash(row),
         lastSyncedAt: new Date(),
       },
@@ -1384,6 +1393,7 @@ export class SynchronizationService {
 
     if (task.roadmapTable !== row.table) {
       updates.roadmapTable = row.table;
+      Object.assign(updates, blockedStamp(task.roadmapTable, row.table));
       await this.audit.record(
         {
           projectId: task.projectId,
