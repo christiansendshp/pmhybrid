@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 194
-- Latest verification: `TASK-38, TASK-39, TASK-40, TASK-41 and TASK-42 are in Features.md with VALIDAR green on 24c378c, 7e21e08, beb4c11, 8837cf5 and 1010bb7` (2026-10-26)
+- Verified capabilities: 195
+- Latest verification: `check, lint, build, unit (risks.util.spec 45 tests) and e2e green` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -209,3 +209,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | TASK-41 | PHASE_COMPLETED goes once to every active member when the last open work task of a phase is done, by a sync or by any write in the app (WriteBackService.inTransaction emits project.tasks-written after the commit); Phase.completionNotifiedAt keeps it from repeating, is cleared when the phase has an open task again, and the migration marks the phases already complete so deploying does not announce them | check, lint, build, unit and e2e green (phase-completion 10 e2e incl. the app write path, a sync and two checks at once; util unit; web sentence); migration applied to the dev DB | log:TASK-41 | 2026-10-26 |
 | TASK-42 | In-app periodic summary (DEC-004 D3): Actor.summaryFrequency (NONE, DAILY, WEEKLY by default) and summaryLastSentAt; a job at 07:00 UTC makes one PERIOD_SUMMARY per project with news for each person due one (daily: last day; weekly: Mondays, last 7 days), never for an agent, once per day (claimed with a conditional update); GET/PATCH /notifications/preferences are the caller's own and the notifications panel has the selector (BR-018) | check, lint, build, unit and e2e green (period-summary 19 e2e: due day, window, agent, none, quiet project, twice a day, concurrent runs, preferences own-only; util and web unit); looked at in the browser (selector saves, stored server-side); migration applied to the dev DB | log:TASK-42 | 2026-10-26 |
 | FEATURE-06 | What changed, and a periodic summary, in the app (DEC-004 D3): Desde tu última visita at the top of the Panel from a marker only the person moves, TASK_BLOCKED, TASK_UNBLOCKED and PHASE_COMPLETED notifications, and a daily or weekly summary per person chosen in the notifications panel | TASK-38, TASK-39, TASK-40, TASK-41 and TASK-42 are in Features.md with VALIDAR green on 24c378c, 7e21e08, beb4c11, 8837cf5 and 1010bb7 | log:FEATURE-06 | 2026-10-26 |
+| TASK-43 | Pure risks calculator: UNOWNED_IN_DEVELOPMENT, BLOCKED_BY_BLOCKED, STALE_IN_DEVELOPMENT and OVERDUE signals with their reason, the critical path (longest open dependency chain, cycles broken, finished dependencies add nothing) and a semaphore per project, phase and epic (red / amber / green / none) carrying the counts that explain it (BR-019) | check, lint, build, unit (risks.util.spec 45 tests) and e2e green | log:TASK-43 | 2026-10-26 |

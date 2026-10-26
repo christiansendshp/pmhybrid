@@ -22,3 +22,12 @@ segments live in `docs/history/`.
 - SHA-256: `617f07a38b1dc90523a90cf4bfa0484e661e4287a3d1552cd3db83b37ff919fc`
 
 ## Entries
+
+## [2026-10-26T19:58:09Z] | claude-sonnet-5-5 | TASK-43 | IN_PROGRESS | Risk signals, critical path and semaphore calculator
+- Summary: 
+- Verify: pending
+
+## [2026-10-26T20:05:42Z] | claude-sonnet-5-5 | TASK-43 | DONE | Risk signals, critical path and semaphore calculator
+- Summary: Pure risks calculator: UNOWNED_IN_DEVELOPMENT, BLOCKED_BY_BLOCKED, STALE_IN_DEVELOPMENT and OVERDUE signals with their reason, the critical path (longest open dependency chain, cycles broken, finished dependencies add nothing) and a semaphore per project, phase and epic (red / amber / green / none) carrying the counts that explain it (BR-019)
+- Files: apps/api/src/modules/risks/risks.util.ts, apps/api/src/modules/risks/risks.util.spec.ts, docs/risks.md, docs/ProductDescription.md
+- Verify: check, lint, build, unit (risks.util.spec 45 tests) and e2e green
