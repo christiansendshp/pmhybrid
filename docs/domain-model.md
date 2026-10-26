@@ -346,7 +346,9 @@ Notification(id, actorId, projectId, type, payload? jsonb, readAt?, createdAt)
 of the project except whoever triggered the run. The task events go to one person
 and never to whoever caused them: `TASK_ASSIGNED` to the new assignee,
 `TASK_REASSIGNED` to the previous one (the task moved to somebody else),
-`TASK_COMMENTED` to whoever holds the task when somebody else comments on it. They
+`TASK_COMMENTED` to whoever holds the task when somebody else comments on it. **A read notification is deleted
+`NOTIFICATION_RETENTION_DAYS` days (default 90; `0` keeps all) after it was read** (counted from `readAt`, not from when it
+was made), by a daily job at 03:40 UTC (Roadmap TASK-51); **an unread one is never deleted**, however old. They
 are emitted after the change has committed (`task.assigned`, `task.commented` on
 the event emitter), so a notification never describes something that rolled back,
 and a failing listener never fails the request. An agent reads its own through the

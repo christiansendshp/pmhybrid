@@ -70,3 +70,35 @@ describe('SYNC_RUN_RETENTION (Roadmap TASK-50)', () => {
     ]);
   });
 });
+
+describe('NOTIFICATION_RETENTION_DAYS (Roadmap TASK-51)', () => {
+  const base = { DATABASE_URL: 'postgres://db', JWT_SECRET: 'change-me' };
+
+  it('keeps a read notification 90 days when nothing is set, or only spaces', () => {
+    expect([
+      validateEnv(base).NOTIFICATION_RETENTION_DAYS,
+      validateEnv({ ...base, NOTIFICATION_RETENTION_DAYS: ' ' })
+        .NOTIFICATION_RETENTION_DAYS,
+    ]).toEqual([90, 90]);
+  });
+
+  it('takes a whole number of days, and 0 for "keep them all"', () => {
+    expect([
+      validateEnv({ ...base, NOTIFICATION_RETENTION_DAYS: '30' })
+        .NOTIFICATION_RETENTION_DAYS,
+      validateEnv({ ...base, NOTIFICATION_RETENTION_DAYS: '0' })
+        .NOTIFICATION_RETENTION_DAYS,
+    ]).toEqual([30, 0]);
+  });
+
+  it.each([['-1'], ['1.5'], ['soon'], ['7d']])(
+    'stops the start on %j and names the variable',
+    (bad) => {
+      expect(() =>
+        validateEnv({ ...base, NOTIFICATION_RETENTION_DAYS: bad }),
+      ).toThrow(
+        /NOTIFICATION_RETENTION_DAYS must be a whole number of days to keep/,
+      );
+    },
+  );
+});

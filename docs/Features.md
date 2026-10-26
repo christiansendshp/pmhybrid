@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 206
-- Latest verification: `check, lint, build, unit and e2e green (sync-run-retention 8 e2e: newest kept, failed kept, under the limit, 0, per project, only the named, ties; env validation unit)` (2026-10-26)
+- Verified capabilities: 207
+- Latest verification: `check, lint, build, unit and e2e green (notification-retention 8 e2e: past the limit, within it, unread never, from readAt, the boundary, 0, only the named; env validation unit)` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -221,3 +221,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | TASK-49 | The Informe tab (/projects/:id/report): the weekly report cut into its sections, shown as the text the API wrote, with Copiar Markdown, Descargar .md (informe-<project>-<day>.md) and Imprimir o guardar como PDF (window.print with a print stylesheet that leaves only the report; no rendering library added), and the history of the last 30 snapshot days as a table where a rebuilt day says Aproximado and shows a dash for what it cannot know; each failure says so without hiding the other part | check, lint, build, unit and e2e green (web report page and core/report specs 30); looked at in the browser on a scratch API/web (report, history with an approximate day, print class on beforeprint and removed on afterprint); the a11y suites were extended but not run (they need the persistent stack stopped) | log:TASK-49 | 2026-10-26 |
 | FEATURE-08 | Shareable status report and history: a daily ProjectSnapshot recorded by a job, the past rebuilt from the tasks' dates and labelled approximate, a weekly status report in plain Markdown built from the pace, the waits and the risks, and an Informe tab to read, copy, download and print it (the PDF is the browser's own, through a print stylesheet) | TASK-46, TASK-47, TASK-48 and TASK-49 are in Features.md with VALIDAR green on 2d14a8d, 8b2a3ce, fbdf4bb and e357213 | log:FEATURE-08 | 2026-10-26 |
 | TASK-50 | SYNC_RUN_RETENTION (default 500, 0 keeps all, invalid stops the start) and a daily job at 03:30 UTC that keeps, per project, the newest runs and deletes the older ones except the FAILED ones, which stay; the boundary is the start time of the last run kept so ties are kept; one project's failure is logged and stops no other | check, lint, build, unit and e2e green (sync-run-retention 8 e2e: newest kept, failed kept, under the limit, 0, per project, only the named, ties; env validation unit) | log:TASK-50 | 2026-10-26 |
+| TASK-51 | NOTIFICATION_RETENTION_DAYS (default 90, 0 keeps all, invalid stops the start) and a daily job at 03:40 UTC that deletes the notifications read more than that many days ago, counted from readAt, and never an unread one | check, lint, build, unit and e2e green (notification-retention 8 e2e: past the limit, within it, unread never, from readAt, the boundary, 0, only the named; env validation unit) | log:TASK-51 | 2026-10-26 |

@@ -74,6 +74,7 @@ Names and purpose only; never store real values.
 | SYNC_SCHEDULER_ENABLED | Scheduled sync on (default) or off; manual sync always works; the e2e suite sets `false` | no | `true` |
 | DOCUMENT_REVISION_RETENTION | How many revisions of each document to keep; the daily 03:00 job deletes older ones (defaults to `200`, `0` keeps all; Roadmap BUG-07c) | no | `200` |
 | SYNC_RUN_RETENTION | How many sync runs of each project to keep; the daily 03:30 UTC job deletes the older ones except the failed ones, which stay (defaults to `500`, `0` keeps all; Roadmap TASK-50) | no | `500` |
+| NOTIFICATION_RETENTION_DAYS | How many days a read notification is kept after it was read; the daily 03:40 UTC job deletes older ones, never an unread one (defaults to `90`, `0` keeps all; Roadmap TASK-51) | no | `90` |
 | CORS_ORIGINS | Browser origins allowed to call the API, comma-separated (`*` allows every one); unset: the web app's dev origins outside production, none in production (Roadmap SECURITY-04b1) | no | `http://localhost:4200` |
 | GIT_PROVIDER_TYPE | Selects the ProjectRepositoryProvider implementation process-wide: `local` (default) or `github` (Roadmap GAP-23) | no | `local` |
 | GITHUB_TOKEN | GitHub REST API token; required (fails fast at boot) when GIT_PROVIDER_TYPE=github, unused otherwise | no | `<token>` |

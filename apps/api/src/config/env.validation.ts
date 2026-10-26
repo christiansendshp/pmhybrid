@@ -14,6 +14,8 @@ export interface EnvConfig {
   DOCUMENT_REVISION_RETENTION: number;
   /** How many sync runs of each project to keep (Roadmap TASK-50); the newest survive, older ones are deleted daily, but every failed run stays. 0 keeps everything. */
   SYNC_RUN_RETENTION: number;
+  /** How many days a read notification is kept after it was read (Roadmap TASK-51); older ones are deleted daily, unread ones never. 0 keeps everything. */
+  NOTIFICATION_RETENTION_DAYS: number;
   GIT_PROVIDER_TYPE: string;
   /** Filesystem browser (docsPath picker) is confined to this directory and its descendants. */
   PROJECT_DOCS_BROWSE_ROOT: string;
@@ -27,6 +29,7 @@ export interface EnvConfig {
 
 const DEFAULT_REVISION_RETENTION = 200;
 const DEFAULT_SYNC_RUN_RETENTION = 500;
+const DEFAULT_NOTIFICATION_RETENTION_DAYS = 90;
 
 /**
  * A whole number of things to keep, 0 for "all"; anything else stops the start rather than silently keeping or
@@ -97,6 +100,12 @@ export function validateEnv(
       'SYNC_RUN_RETENTION',
       DEFAULT_SYNC_RUN_RETENTION,
       'sync runs',
+    ),
+    NOTIFICATION_RETENTION_DAYS: parseRetention(
+      raw.NOTIFICATION_RETENTION_DAYS,
+      'NOTIFICATION_RETENTION_DAYS',
+      DEFAULT_NOTIFICATION_RETENTION_DAYS,
+      'days',
     ),
     GIT_PROVIDER_TYPE: raw.GIT_PROVIDER_TYPE ?? 'local',
     PROJECT_DOCS_BROWSE_ROOT: raw.PROJECT_DOCS_BROWSE_ROOT ?? homedir(),

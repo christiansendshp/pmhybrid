@@ -18,16 +18,15 @@ segments live in `docs/history/`.
 
 ## Previous segment
 
-- Archive: `docs/history/Agentslog-20261026-034.md`
-- SHA-256: `e332f25ce7d970f4d0d97cee254b0278d333d989c4e837de529efca0aa24cda0`
+- Archive: `docs/history/Agentslog-20261026-035.md`
+- SHA-256: `57c0d95edd5bca9fe3b107bd84851fe0d715cb77b1db98e1c15a994f2f1be38f`
 
 ## Entries
 
-## [2026-10-26T21:41:20Z] | claude-sonnet-5-5 | TASK-50 | IN_PROGRESS | Retention for old sync runs, keeping every failure
-- Summary: 
-- Verify: pending
+## [2026-10-26T21:52:28Z] | claude-sonnet-5-5 | TASK-51 | IN_PROGRESS | Retention for read notifications
+- Summary: carried forward from docs/history/Agentslog-20261026-035.md at rotation
 
-## [2026-10-26T21:50:23Z] | claude-sonnet-5-5 | TASK-50 | DONE | Retention for old sync runs, keeping every failure
-- Summary: SYNC_RUN_RETENTION (default 500, 0 keeps all, invalid stops the start) and a daily job at 03:30 UTC that keeps, per project, the newest runs and deletes the older ones except the FAILED ones, which stay; the boundary is the start time of the last run kept so ties are kept; one project's failure is logged and stops no other
-- Files: apps/api/src/config/env.validation.ts, apps/api/src/modules/synchronization/sync-run-retention.service.ts, apps/api/src/modules/synchronization/synchronization.module.ts, apps/api/test/sync-run-retention.e2e-spec.ts, apps/api/src/config/env.validation.spec.ts, docs/synchronization.md, docs/Stack_Tecnologies.md, .env.example
-- Verify: check, lint, build, unit and e2e green (sync-run-retention 8 e2e: newest kept, failed kept, under the limit, 0, per project, only the named, ties; env validation unit)
+## [2026-10-26T22:01:49Z] | claude-sonnet-5-5 | TASK-51 | DONE | Retention for read notifications
+- Summary: NOTIFICATION_RETENTION_DAYS (default 90, 0 keeps all, invalid stops the start) and a daily job at 03:40 UTC that deletes the notifications read more than that many days ago, counted from readAt, and never an unread one
+- Files: apps/api/src/config/env.validation.ts, apps/api/src/modules/notifications/notification-retention.service.ts, apps/api/src/modules/notifications/notifications.module.ts, apps/api/test/notification-retention.e2e-spec.ts, apps/api/src/config/env.validation.spec.ts, docs/Stack_Tecnologies.md, docs/domain-model.md, .env.example
+- Verify: check, lint, build, unit and e2e green (notification-retention 8 e2e: past the limit, within it, unread never, from readAt, the boundary, 0, only the named; env validation unit)
