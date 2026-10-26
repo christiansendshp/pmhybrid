@@ -81,7 +81,16 @@ describe('AppShell', () => {
             logout,
           },
         },
-        { provide: NotificationsService, useValue: { list, markRead, markAllRead } },
+        {
+          provide: NotificationsService,
+          useValue: {
+            list,
+            markRead,
+            markAllRead,
+            preferences: vi.fn().mockResolvedValue({ summaryFrequency: 'WEEKLY' }),
+            setSummaryFrequency: vi.fn(),
+          },
+        },
         { provide: RealtimeService, useValue: { notificationsChanged } },
       ],
     });

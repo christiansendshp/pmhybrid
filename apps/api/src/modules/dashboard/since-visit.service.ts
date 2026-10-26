@@ -95,7 +95,8 @@ export class SinceVisitService {
     return { projectIds: marked };
   }
 
-  private async newsOf(
+  /** What happened in one project since `since`: for a person's marker, or for a period (Roadmap TASK-42). */
+  async newsOf(
     projectId: string,
     name: string,
     since: Date,

@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { Prisma, TaskStatus } from '@prisma/client';
+import { Prisma, SummaryFrequency, TaskStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { netBlockedMoves } from '../tasks/blocked-since.util.js';
 import { NotificationsGateway } from '../realtime/notifications.gateway.js';
@@ -57,6 +57,29 @@ export class NotificationsService {
     private readonly prisma: PrismaService,
     private readonly gateway: NotificationsGateway,
   ) {}
+
+  /** What the person chose about being notified (Roadmap TASK-42). */
+  async preferencesOf(
+    actorId: string,
+  ): Promise<{ summaryFrequency: SummaryFrequency }> {
+    const actor = await this.prisma.actor.findUniqueOrThrow({
+      where: { id: actorId },
+      select: { summaryFrequency: true },
+    });
+    return actor;
+  }
+
+  /** The person's own, only: how often they are sent the summary of what changed. */
+  async setSummaryFrequency(
+    actorId: string,
+    summaryFrequency: SummaryFrequency,
+  ): Promise<{ summaryFrequency: SummaryFrequency }> {
+    return this.prisma.actor.update({
+      where: { id: actorId },
+      data: { summaryFrequency },
+      select: { summaryFrequency: true },
+    });
+  }
 
   findAllForActor(actorId: string) {
     return this.prisma.notification.findMany({
@@ -276,7 +299,7 @@ export class NotificationsService {
   }
 
   /** The named actors, only if they are still active members of the project. */
-  private async notifyActors(
+  async notifyActors(
     actorIds: string[],
     projectId: string,
     type: string,

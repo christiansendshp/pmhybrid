@@ -1,8 +1,8 @@
 # What changed: since the last visit, notifications and summaries
 
-Status: the marker and the summary of what is new in the API (Roadmap TASK-38), the Panel section (TASK-39), the
-blocked and unblocked notifications (TASK-40) and the phase completed notification (TASK-41) exist. The periodic
-summary (TASK-42) adds its part here. DEC-004 D3: everything stays in the app, nothing is sent out.
+Status: all of FEATURE-06 exists: the marker and the summary of what is new in the API (Roadmap TASK-38), the Panel
+section (TASK-39), the blocked and unblocked notifications (TASK-40), the phase completed notification (TASK-41) and
+the periodic summary (TASK-42). DEC-004 D3: everything stays in the app, nothing is sent out.
 
 ## The marker (`ProjectSeen`)
 
@@ -94,3 +94,31 @@ checks at once announce once); a phase with the marker that has an open task aga
 again is announced again. The migration marks the phases that are complete when it runs, so deploying it does not
 announce work finished long ago. A failure in the check is logged and never changes what the write or the sync
 answers.
+
+## The periodic summary (`PERIOD_SUMMARY`)
+
+In the app only (DEC-004 D3): nothing is sent out, so there is no channel to run or credential to keep. A job at
+**07:00 UTC** (`PeriodSummaryService`, `@Cron`) makes it, from the same builder as "Desde tu última visita"
+(`SinceVisitService.newsOf`) but over a **period** instead of a marker:
+
+| Frequency (`Actor.summaryFrequency`) | When it is made  | What it covers  |
+| ------------------------------------ | ---------------- | --------------- |
+| `DAILY`                              | every day        | the last day    |
+| `WEEKLY` (the default)               | on Mondays (UTC) | the last 7 days |
+| `NONE`                               | never            |                 |
+
+It makes **one `PERIOD_SUMMARY` per project that has news** for each person who is due one, with the counts of
+each kind (`done`, `blocked`, `unblocked`, `newScope`, `conflicts`), the period and the project's name; a
+project with nothing new gets none. Only a person is sent one, **never an agent**, whatever its frequency says, and
+only an active member of an active project. `Actor.summaryLastSentAt` is claimed with a conditional update before the
+summary is made (it must be behind today's midnight UTC), so a restart, a second run the same day or two runs at
+once send it once. One person's failure is logged and does not stop the others. `sendDue(now, onlyActorIds?)` is
+what the job calls, and what the tests call with a chosen moment and chosen people.
+
+A person chooses the frequency in the notifications panel ("Resumen de lo que cambió": Diario, Semanal, Ninguno,
+`apps/web/src/app/layout/app-shell/notification-preferences.ts`), which reads and writes
+`GET/PATCH /notifications/preferences`: always their own, from their session. The list says each summary as a
+sentence, what needs a person first ("Resumen semanal de «Alpha»: 1 bloqueada, 5 conflictos nuevos, 3 terminadas").
+
+The weekly default means a person who never chose receives one summary per project with news every Monday; they can
+turn it off in the panel, and the migration gives it to everyone who already exists.

@@ -14,6 +14,9 @@ export interface Notification {
   createdAt: string;
 }
 
+/** How often a person is sent the summary of what changed in their projects (Roadmap TASK-42). */
+export type SummaryFrequency = 'NONE' | 'DAILY' | 'WEEKLY';
+
 /** Internal notifications (brief §29): no push, the UI polls on demand — see docs/architecture.md. */
 @Injectable({ providedIn: 'root' })
 export class NotificationsService {
@@ -21,6 +24,26 @@ export class NotificationsService {
 
   list(): Promise<Notification[]> {
     return firstValueFrom(this.http.get<Notification[]>(`${API_BASE_URL}/notifications`));
+  }
+
+  /** What the person chose about being notified: theirs alone. */
+  preferences(): Promise<{ summaryFrequency: SummaryFrequency }> {
+    return firstValueFrom(
+      this.http.get<{ summaryFrequency: SummaryFrequency }>(
+        `${API_BASE_URL}/notifications/preferences`,
+      ),
+    );
+  }
+
+  setSummaryFrequency(
+    summaryFrequency: SummaryFrequency,
+  ): Promise<{ summaryFrequency: SummaryFrequency }> {
+    return firstValueFrom(
+      this.http.patch<{ summaryFrequency: SummaryFrequency }>(
+        `${API_BASE_URL}/notifications/preferences`,
+        { summaryFrequency },
+      ),
+    );
   }
 
   markAllRead(): Promise<{ count: number }> {

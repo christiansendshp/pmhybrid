@@ -22,6 +22,7 @@ import { Notification, NotificationsService } from '../../core/notifications.ser
 import { RealtimeService } from '../../core/realtime.service.js';
 import { ThemeService } from '../../core/theme.service.js';
 import { ScrollCue, showWhenActive } from '../../shared/scroll-cue';
+import { NotificationPreferences } from './notification-preferences.js';
 
 interface NavItem {
   label: string;
@@ -48,7 +49,15 @@ export interface NotificationGroup {
  */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatButtonModule, DatePipe, ScrollCue],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    MatButtonModule,
+    DatePipe,
+    ScrollCue,
+    NotificationPreferences,
+  ],
   templateUrl: './app-shell.html',
   styleUrl: './app-shell.scss',
 })

@@ -5,6 +5,34 @@ function taskTitle(payload: Record<string, unknown>): string {
   return typeof payload['title'] === 'string' && payload['title'] ? payload['title'] : 'sin título';
 }
 
+const count = (payload: Record<string, unknown>, key: string): number =>
+  typeof payload[key] === 'number' ? payload[key] : 0;
+
+/** "3 terminadas", "1 bloqueada": the kinds of news that have something, as the summary lists them. */
+function summaryParts(payload: Record<string, unknown>): string[] {
+  const part = (key: string, one: string, many: string): string[] => {
+    const n = count(payload, key);
+    return n === 0 ? [] : [n === 1 ? `1 ${one}` : `${n} ${many}`];
+  };
+  return [
+    ...part('blocked', 'bloqueada', 'bloqueadas'),
+    ...part('conflicts', 'conflicto nuevo', 'conflictos nuevos'),
+    ...part('unblocked', 'desbloqueada', 'desbloqueadas'),
+    ...part('done', 'terminada', 'terminadas'),
+    ...part('newScope', 'tarea nueva', 'tareas nuevas'),
+  ];
+}
+
+/** "Resumen semanal de «Alpha»: 1 bloqueada, 3 terminadas" (Roadmap TASK-42). */
+function summarySentence(payload: Record<string, unknown>): string {
+  const period = payload['period'] === 'DAILY' ? 'diario' : 'semanal';
+  const name =
+    typeof payload['projectName'] === 'string' && payload['projectName']
+      ? payload['projectName']
+      : 'sin nombre';
+  return `Resumen ${period} de «${name}»: ${summaryParts(payload).join(', ')}`;
+}
+
 /** A short, human sentence for a notification's type + payload (brief §29). Unknown types fall back to the raw type string, so a new backend event never renders as empty. */
 export function describeNotification(notification: Notification): string {
   const payload = notification.payload ?? {};
@@ -40,6 +68,8 @@ export function describeNotification(notification: Notification): string {
           : '';
       return `Tu tarea «${taskTitle(payload)}» quedó bloqueada${reason}${needed}`;
     }
+    case 'PERIOD_SUMMARY':
+      return summarySentence(payload);
     case 'PHASE_COMPLETED': {
       const name =
         typeof payload['name'] === 'string' && payload['name'] ? payload['name'] : 'sin nombre';

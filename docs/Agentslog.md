@@ -18,15 +18,15 @@ segments live in `docs/history/`.
 
 ## Previous segment
 
-- Archive: `docs/history/Agentslog-20261026-024.md`
-- SHA-256: `2b7c4e56363642aa0bda4a9bfa269255afcfc6d6f1a00310171127c80697d82e`
+- Archive: `docs/history/Agentslog-20261026-025.md`
+- SHA-256: `ea31670d23837bb17733e9d5fe12fc8145a5164a3a0221bb41e8caafdcc8c18c`
 
 ## Entries
 
-## [2026-10-26T19:29:49Z] | claude-sonnet-5-5 | TASK-41 | IN_PROGRESS | Notification when every task of a phase is done
-- Summary: carried forward from docs/history/Agentslog-20261026-024.md at rotation
+## [2026-10-26T19:40:41Z] | claude-sonnet-5-5 | TASK-42 | IN_PROGRESS | Daily or weekly summary per person, in the app
+- Summary: carried forward from docs/history/Agentslog-20261026-025.md at rotation
 
-## [2026-10-26T19:39:29Z] | claude-sonnet-5-5 | TASK-41 | DONE | Notification when every task of a phase is done
-- Summary: PHASE_COMPLETED goes once to every active member when the last open work task of a phase is done, by a sync or by any write in the app (WriteBackService.inTransaction emits project.tasks-written after the commit); Phase.completionNotifiedAt keeps it from repeating, is cleared when the phase has an open task again, and the migration marks the phases already complete so deploying does not announce them
-- Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261026170000_add_phase_completion_notified, apps/api/src/common/events.ts, apps/api/src/modules/notifications/phase-completion.{util,service}.ts, apps/api/src/modules/notifications/notifications.{module,service}.ts, apps/api/src/modules/synchronization/write-back.service.ts, apps/api/test/phase-completion.e2e-spec.ts, apps/web/src/app/core/notification-format.ts, docs/what-changed.md, docs/domain-model.md
-- Verify: check, lint, build, unit and e2e green (phase-completion 10 e2e incl. the app write path, a sync and two checks at once; util unit; web sentence); migration applied to the dev DB
+## [2026-10-26T19:52:25Z] | claude-sonnet-5-5 | TASK-42 | DONE | Daily or weekly summary per person, in the app
+- Summary: In-app periodic summary (DEC-004 D3): Actor.summaryFrequency (NONE, DAILY, WEEKLY by default) and summaryLastSentAt; a job at 07:00 UTC makes one PERIOD_SUMMARY per project with news for each person due one (daily: last day; weekly: Mondays, last 7 days), never for an agent, once per day (claimed with a conditional update); GET/PATCH /notifications/preferences are the caller's own and the notifications panel has the selector (BR-018)
+- Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261026180000_add_actor_summary_frequency, apps/api/src/modules/dashboard/period-summary.{util,service}.ts, dashboard.module.ts, since-visit.service.ts, apps/api/src/modules/notifications/{notifications.service,notifications.controller}.ts, dto/update-preferences.dto.ts, apps/api/test/period-summary.e2e-spec.ts, apps/web/src/app/layout/app-shell/notification-preferences.*, app-shell.*, apps/web/src/app/core/notification{s.service,-format}.ts, docs/what-changed.md, docs/domain-model.md, docs/api-reference.md, docs/ProductDescription.md
+- Verify: check, lint, build, unit and e2e green (period-summary 19 e2e: due day, window, agent, none, quiet project, twice a day, concurrent runs, preferences own-only; util and web unit); looked at in the browser (selector saves, stored server-side); migration applied to the dev DB

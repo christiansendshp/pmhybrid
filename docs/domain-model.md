@@ -30,7 +30,9 @@ direct 1:1 entity below.
 Avoids duplicating fields between humans and AI agents (brief §3):
 
 ```
-Actor(id, kind: HUMAN|AI_AGENT, displayName, avatarUrl?, email?, isActive, createdAt)
+Actor(id, kind: HUMAN|AI_AGENT, displayName, avatarUrl?, email?, isActive, createdAt,
+  summaryFrequency: NONE|DAILY|WEEKLY (default WEEKLY), summaryLastSentAt?)   // Roadmap TASK-42: how often a person
+  // is sent the summary of what changed (in the app only) and when the last was made; an agent is never sent one.
 UserCredential(1:1 Actor where kind=HUMAN): passwordHash?, authProvider, providerUserId?
 AgentProfile(1:1 Actor where kind=AI_AGENT): providerType (free text — "no asumir
   nombres concretos"), configJson? (non-secret labels/refs only; real API keys
@@ -332,6 +334,7 @@ Notification(id, actorId, projectId, type, payload? jsonb, readAt?, createdAt)
   //       | TASK_ASSIGNED | TASK_REASSIGNED | TASK_COMMENTED   (Roadmap GAP-36c)
   //       | TASK_BLOCKED | TASK_UNBLOCKED                      (Roadmap TASK-40)
   //       | PHASE_COMPLETED                                    (Roadmap TASK-41)
+  //       | PERIOD_SUMMARY                                     (Roadmap TASK-42)
 ```
 
 **Who is told what** (Roadmap GAP-36c). The first three go to every active member
@@ -345,7 +348,8 @@ and a failing listener never fails the request. An agent reads its own through t
 MCP tools `list_notifications` and `mark_notifications_read`
 (`docs/permissions.md`). `TASK_BLOCKED` and `TASK_UNBLOCKED` (Roadmap TASK-40) go to the assignee of a task
 after a synchronization put it into the Blocked table or took it out for another one, and `PHASE_COMPLETED` (TASK-41)
-to every active member when the last open work task of a phase is done; both are described in `docs/what-changed.md`. The brief's full list of events is not in this
+to every active member when the last open work task of a phase is done, and `PERIOD_SUMMARY` (TASK-42) to one person,
+per project with news, once a day or a week; all three are described in `docs/what-changed.md`. The brief's full list of events is not in this
 repository, so the rest are descoped rather than guessed: nothing is sent for a
 status change of a task you hold, a due date, or a mention, and adding one is a
 new `OnEvent` handler in `NotificationsService` plus a sentence in the web's

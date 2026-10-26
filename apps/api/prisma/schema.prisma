@@ -19,6 +19,13 @@ enum ActorKind {
   AI_AGENT
 }
 
+/// How often a person is sent the summary of what changed in their projects (Roadmap TASK-42), in the app only.
+enum SummaryFrequency {
+  NONE
+  DAILY
+  WEEKLY
+}
+
 model Actor {
   id          String    @id @default(uuid())
   kind        ActorKind
@@ -27,6 +34,10 @@ model Actor {
   email       String?   @unique
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
+  // The summary of what changed (Roadmap TASK-42): how often a person gets one, and when the last was made, so a
+  // restart or a second run the same day sends it once. An agent is never sent one, whatever this says.
+  summaryFrequency  SummaryFrequency @default(WEEKLY)
+  summaryLastSentAt DateTime?
 
   credential   UserCredential?
   agentProfile AgentProfile?

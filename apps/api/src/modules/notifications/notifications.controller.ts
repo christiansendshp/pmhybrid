@@ -1,6 +1,7 @@
-import { Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { CurrentActorId } from '../../common/decorators/current-actor-id.decorator.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { UpdatePreferencesDto } from './dto/update-preferences.dto.js';
 import { NotificationsService } from './notifications.service.js';
 
 /** Every actor reads and marks only their own notifications — actorId always comes from the JWT, never a param. */
@@ -12,6 +13,23 @@ export class NotificationsController {
   @Get()
   findAll(@CurrentActorId() actorId: string) {
     return this.notificationsService.findAllForActor(actorId);
+  }
+
+  /** How the caller wants to be notified (Roadmap TASK-42): theirs alone, from the token. */
+  @Get('preferences')
+  preferences(@CurrentActorId() actorId: string) {
+    return this.notificationsService.preferencesOf(actorId);
+  }
+
+  @Patch('preferences')
+  setPreferences(
+    @CurrentActorId() actorId: string,
+    @Body() body: UpdatePreferencesDto,
+  ) {
+    return this.notificationsService.setSummaryFrequency(
+      actorId,
+      body.summaryFrequency,
+    );
   }
 
   /** "Marcar todas como leídas": only the caller's own unread ones (Roadmap UX-01). Declared before `:id/read`, which it must never be read as. */

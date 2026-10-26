@@ -128,6 +128,45 @@ describe('describeNotification (brief §29)', () => {
     });
   });
 
+  describe('a periodic summary (Roadmap TASK-42)', () => {
+    const summary = (payload: Record<string, unknown>) =>
+      describeNotification(notification({ type: 'PERIOD_SUMMARY', payload }));
+
+    it('says the period, the project and what is new, what needs a person first', () => {
+      expect(
+        summary({
+          period: 'WEEKLY',
+          projectName: 'Alpha',
+          done: 3,
+          blocked: 1,
+          unblocked: 2,
+          newScope: 4,
+          conflicts: 5,
+        }),
+      ).toBe(
+        'Resumen semanal de «Alpha»: 1 bloqueada, 5 conflictos nuevos, 2 desbloqueadas, 3 terminadas, 4 tareas nuevas',
+      );
+    });
+
+    it('says a daily summary is daily', () => {
+      expect(summary({ period: 'DAILY', projectName: 'Alpha', done: 1 })).toBe(
+        'Resumen diario de «Alpha»: 1 terminada',
+      );
+    });
+
+    it('leaves out what did not happen', () => {
+      expect(summary({ period: 'DAILY', projectName: 'Alpha', newScope: 1, done: 0 })).toBe(
+        'Resumen diario de «Alpha»: 1 tarea nueva',
+      );
+    });
+
+    it('never renders a hole when the payload has no project name', () => {
+      expect(summary({ period: 'WEEKLY', done: 2 })).toBe(
+        'Resumen semanal de «sin nombre»: 2 terminadas',
+      );
+    });
+  });
+
   it('falls back to the raw type for an unknown notification type, instead of rendering empty', () => {
     expect(describeNotification(notification({ type: 'SOMETHING_NEW', payload: {} }))).toBe(
       'SOMETHING_NEW',
