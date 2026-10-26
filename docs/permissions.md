@@ -239,6 +239,17 @@ same rule as every other write: `UI` for a person's JWT, `API` for an
 agent's key (MCP tools hardcode `'API'`, matching `update_task`/
 `transition_task`).
 
+**The review tools** (Roadmap TASK-10) are the same transition with a note, and no new way in.
+`handoff_task` is for the task's assignee only (anyone else is refused before anything moves) and
+needs `task.status.transition`, the rule of `EN_DESARROLLO` → `QA`; it can name a reviewer, and
+the project's reviewer rules (`qaApprovalRequired`) apply to it as to the board. `review_task`
+needs `task.qa.approve` for `PASS` (→ `TERMINADA`) and `task.qa.reject` for `FAIL` (→
+`EN_DESARROLLO`), so a developer's key, which holds neither, cannot answer its own handoff.
+Both keep the note as a comment of the task and send it with the move, so a project that records
+the QA handoff writes it in the ledger (`docs/synchronization.md`). `list_review_queue` reads
+the tasks in QA of the projects the key is a member of, the longest waiting first, and shows
+nothing of any other project; `reviewer: "me"` keeps those that asked the caller.
+
 ## Who may write, and what a resolution may apply (Roadmap SECURITY-02)
 
 Before this change any project member — including one holding no role at all

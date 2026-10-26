@@ -118,7 +118,7 @@ export function registerTaskTools(
     'transition_task',
     {
       description:
-        'Move a task to a new Kanban status, subject to the same permission rules the UI enforces.',
+        'Move a task to a new Kanban status, subject to the same permission rules the UI enforces. To hand a task to review or to answer a review, use handoff_task and review_task: they carry a note.',
       inputSchema: {
         projectId: z.string(),
         taskId: z.string(),

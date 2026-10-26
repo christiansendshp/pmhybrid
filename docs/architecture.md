@@ -140,7 +140,8 @@ followed it, extending GAP-23's `GitHubGitProvider`. The brief §27/§29 trio
 closes with an MCP server (`mcp` module, Roadmap GAP-30): `list_tasks`/
 `get_task`/`update_task`/`transition_task` tools (and, since GAP-36b, the workflow
 tools `whoami`/`list_projects`/`get_context`/`claim_task`/`create_task`/`list_conflicts`/
-`read_document`, `docs/permissions.md`) over a stateless
+`read_document`, and, since TASK-10, the review tools `handoff_task`/`review_task`/
+`list_review_queue`; `docs/permissions.md`) over a stateless
 Streamable HTTP endpoint, thin adapters over `tasks`'s existing service
 methods rather than a new authorization model (`docs/Stack_Tecnologies.md`
 ADR-017). Its "comment" verb was split off as GAP-31 (`docs/Roadmap.md`) and

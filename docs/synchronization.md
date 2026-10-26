@@ -764,11 +764,11 @@ transaction** as the move (a ledger that cannot be written rolls the move back, 
 The **holder** is the agent of the task's latest `IN_PROGRESS` entry (a review is not the holder's),
 so the `IN_PROGRESS` after a failed review is the holder's, as the skill's `check` requires of a
 claim that follows a review. Names are the actors' ledger names, compared without regard to case.
-The optional `note` of the transition request is the handoff's or the rejection's text (400 with any
-other move); it is kept in the audit of the move whether or not the ledger takes it. The older document
+The optional `note` of the transition request is the text of the handoff, of the rejection, or of the
+approval (`Review: PASS - <note>`; 400 with any other move); it is kept in the audit of the move whether or not the ledger takes it. The older document
 formats and the YAML entries have no review state: there the move writes the row's Status (`QA`, or
-`TESTING` in the YAML format) and no ledger entry. A person-typed note on the board and the MCP
-`handoff_task` tool are Roadmap TASK-10.
+`TESTING` in the YAML format) and no ledger entry. The MCP tools `handoff_task` and `review_task` send it (Roadmap TASK-10); a note typed on the board is
+Roadmap TASK-28.
 
 Decision (Roadmap TASK-08): an opt-in switch rather than detecting the skill's version, because a
 document cannot say which skill wrote it, and a wrong guess would fill the ledger with entries

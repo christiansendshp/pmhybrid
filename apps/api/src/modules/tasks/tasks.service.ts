@@ -819,12 +819,15 @@ export class TasksService {
         'A reviewer can only be asked for with the move to QA',
       );
     }
-    // A note goes with the handoff to QA or with the return from it: the two moves a reviewer reads (Roadmap TASK-08).
-    const returnsFromQa =
-      task.status === TaskStatus.QA && toStatus === TaskStatus.EN_DESARROLLO;
-    if (note && toStatus !== TaskStatus.QA && !returnsFromQa) {
+    // A note goes with the handoff to QA or with the answer to it, a return or an approval: the moves a
+    // reviewer reads (Roadmap TASK-08, TASK-10).
+    const answersQa =
+      task.status === TaskStatus.QA &&
+      (toStatus === TaskStatus.EN_DESARROLLO ||
+        toStatus === TaskStatus.TERMINADA);
+    if (note && toStatus !== TaskStatus.QA && !answersQa) {
       throw new BadRequestException(
-        'A note can only go with the move to QA or the move back from it',
+        'A note can only go with the move to QA or the answer to it',
       );
     }
 
@@ -939,6 +942,7 @@ export class TasksService {
             requesterActorId,
             tx,
             origin,
+            note,
           );
         }
         return null;

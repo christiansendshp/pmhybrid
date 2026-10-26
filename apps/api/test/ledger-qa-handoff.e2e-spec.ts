@@ -493,11 +493,11 @@ describe('The QA handoff in the ledger (e2e, Roadmap TASK-08)', () => {
   });
 
   describe('the note', () => {
-    it('is refused with a move that is neither a handoff nor a return from QA', async () => {
+    it('is refused with a move that is neither a handoff nor the answer to one', async () => {
       const { projectId, taskId } = await developing(false);
 
       await move(projectId, taskId, {
-        status: 'TERMINADA',
+        status: 'ASIGNADA',
         note: 'not a handoff',
       }).expect(400);
 

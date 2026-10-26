@@ -167,6 +167,14 @@ describe('QA handoff entries in a ledger that accepts the review stage (Roadmap 
       );
     });
 
+    it('says what the reviewer said in the Review bullet when they gave a note', () => {
+      const [review] = entries('STATUS_TERMINADA', handedOver, {
+        note: 'checked the CSV edge cases',
+      });
+
+      expect(review.review).toBe('PASS - checked the CSV edge cases');
+    });
+
     it('answers the handoff of the agent that made it', () => {
       const [review] = entries('STATUS_TERMINADA', handedOver);
 

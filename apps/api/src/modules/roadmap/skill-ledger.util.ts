@@ -88,7 +88,7 @@ export function skillLedgerEntries(input: {
   qaHandoff?: boolean;
   /** Who was asked to review the task with the move to QA, or null (Roadmap SUBTASK-09.1). */
   reviewerName?: string | null;
-  /** What the person said with a move to QA or a return from it. */
+  /** What the person said with a move to QA, or with the answer to it: a return or an approval. */
   note?: string;
 }): AgentslogEntryInput[] {
   const { trigger, timestampIso, taskExternalId, title } = input;
@@ -208,7 +208,7 @@ export function skillLedgerEntries(input: {
               `Review of the handoff from ${developer}`,
               {
                 verify: `approved in PM Hub by ${input.requesterName}; no automated check ran`,
-                review: `PASS - approved in PM Hub by ${input.requesterName}`,
+                review: `PASS - ${input.note ?? `approved in PM Hub by ${input.requesterName}`}`,
               },
             ),
             done,

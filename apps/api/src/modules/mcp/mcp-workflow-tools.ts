@@ -1,7 +1,9 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { ForbiddenException } from '@nestjs/common';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { TaskPriority, TaskStatus } from '@pmhybrid/shared-types';
 import { z } from 'zod';
+import { LIMITS } from '../../common/dto-limits.js';
 import type { ProjectRepositoryProvider } from '../git-providers/project-repository-provider.interface.js';
 import { readRulesDocument } from '../git-providers/read-rules-document.js';
 import { resolveDocumentFilename } from '../roadmap/document-kind.util.js';
@@ -116,6 +118,55 @@ export function buildProjectContext(
       .map(brief),
     blocked: cards.filter((card) => card.roadmapTable === 'BLOCKED').map(brief),
   };
+}
+
+/** A QA card as the review queue reads it: what the service gives a board card. */
+export interface ReviewQueueCard {
+  id: string;
+  externalId: string | null;
+  title: string;
+  assignee: { displayName: string } | null;
+  reviewerActorId: string | null;
+  reviewer: { id: string; displayName: string } | null;
+  reviewRequestedAt: Date | null;
+  statusChangedAt: Date | null;
+}
+
+/**
+ * The tasks waiting in QA across the projects the caller belongs to, the longest waiting first
+ * (Roadmap TASK-10). It counts from when a reviewer was asked for, else from when the task entered QA.
+ * `reviewer` keeps those asked of one actor: an id, or `me` for the caller; absent keeps every one.
+ */
+export function buildReviewQueue(
+  projects: readonly { id: string; name: string }[],
+  qaCardsByProject: ReadonlyMap<string, readonly ReviewQueueCard[]>,
+  actorId: string,
+  reviewer?: string,
+) {
+  const wanted = reviewer === 'me' ? actorId : reviewer;
+  return projects
+    .flatMap((project) =>
+      (qaCardsByProject.get(project.id) ?? []).map((card) => ({
+        projectId: project.id,
+        projectName: project.name,
+        taskId: card.id,
+        externalId: card.externalId,
+        title: card.title,
+        assignee: card.assignee?.displayName ?? null,
+        reviewer: card.reviewer
+          ? { id: card.reviewer.id, displayName: card.reviewer.displayName }
+          : null,
+        waitingSince: card.reviewRequestedAt ?? card.statusChangedAt,
+        reviewerActorId: card.reviewerActorId,
+      })),
+    )
+    .filter((entry) => !wanted || entry.reviewerActorId === wanted)
+    .sort(
+      (a, b) =>
+        (a.waitingSince?.getTime() ?? Infinity) -
+        (b.waitingSince?.getTime() ?? Infinity),
+    )
+    .map(({ reviewerActorId: _reviewerActorId, ...entry }) => entry);
 }
 
 function fail(error: unknown): CallToolResult {
@@ -270,6 +321,112 @@ export function registerWorkflowTools(
           'API',
         );
       }),
+  );
+
+  server.registerTool(
+    'handoff_task',
+    {
+      description:
+        "Hand a task you are developing over to review: the task moves from EN_DESARROLLO to QA, the optional reviewer is asked, and the note is kept as a comment (and written into the project ledger when the project records the QA handoff). Only the task's assignee can hand it over.",
+      inputSchema: {
+        projectId: z.string(),
+        taskId: z.string(),
+        note: z.string().min(1).max(LIMITS.NOTE).optional(),
+        reviewerActorId: z.string().optional(),
+      },
+    },
+    ({ projectId, taskId, note, reviewerActorId }) =>
+      guarded(ctx, projectId, async () => {
+        const task = await ctx.tasksService.findById(projectId, taskId);
+        if (task.assigneeActorId !== ctx.actorId) {
+          throw new ForbiddenException(
+            'Only the assignee can hand a task over to review',
+          );
+        }
+        const moved = await ctx.tasksService.transition(
+          projectId,
+          taskId,
+          TaskStatus.QA,
+          ctx.actorId,
+          'API',
+          reviewerActorId,
+          note,
+        );
+        const comment = note
+          ? await ctx.taskCommentsService.add(
+              projectId,
+              taskId,
+              { body: `Handed to review: ${note}` },
+              ctx.actorId,
+              'API',
+            )
+          : null;
+        return { task: moved, comment };
+      }),
+  );
+
+  server.registerTool(
+    'review_task',
+    {
+      description:
+        'Answer the handoff of a task in QA. PASS approves it (the task becomes TERMINADA, and needs the permission to approve QA); FAIL returns it to development (needs the permission to reject QA). The note is required, kept as a comment, and written into the project ledger when the project records the QA handoff.',
+      inputSchema: {
+        projectId: z.string(),
+        taskId: z.string(),
+        result: z.enum(['PASS', 'FAIL']),
+        note: z.string().min(1).max(LIMITS.NOTE),
+      },
+    },
+    ({ projectId, taskId, result, note }) =>
+      guarded(ctx, projectId, async () => {
+        const moved = await ctx.tasksService.transition(
+          projectId,
+          taskId,
+          result === 'PASS' ? TaskStatus.TERMINADA : TaskStatus.EN_DESARROLLO,
+          ctx.actorId,
+          'API',
+          undefined,
+          note,
+        );
+        const comment = await ctx.taskCommentsService.add(
+          projectId,
+          taskId,
+          { body: `Review ${result}: ${note}` },
+          ctx.actorId,
+          'API',
+        );
+        return { task: moved, comment };
+      }),
+  );
+
+  server.registerTool(
+    'list_review_queue',
+    {
+      description:
+        'The tasks waiting in QA across the projects the caller is a member of, the longest waiting first. With reviewer = "me" only those that asked the caller to review them; with an actor id, those asked of that actor.',
+      inputSchema: { reviewer: z.string().optional() },
+    },
+    async ({ reviewer }) => {
+      try {
+        const projects = await ctx.projectsService.findAllForActor(ctx.actorId);
+        const entries = await Promise.all(
+          projects.map(
+            async (project) =>
+              [
+                project.id,
+                (await ctx.tasksService.findAllForProject(project.id, {
+                  status: TaskStatus.QA,
+                })) as unknown as ReviewQueueCard[],
+              ] as const,
+          ),
+        );
+        return textResult(
+          buildReviewQueue(projects, new Map(entries), ctx.actorId, reviewer),
+        );
+      } catch (error) {
+        return fail(error);
+      }
+    },
   );
 
   server.registerTool(
