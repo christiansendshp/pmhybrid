@@ -19,6 +19,7 @@ const PROJECT: Project = {
   wipLimitDevelopment: null,
   wipLimitQa: null,
   wipLimitAgent: null,
+  qaApprovalRequired: false,
   progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
   status: 'ACTIVE',
   createdAt: '2026-09-01T09:00:00.000Z',
@@ -102,6 +103,7 @@ describe('ProjectSettings', () => {
       wipLimitDevelopment: null,
       wipLimitQa: null,
       wipLimitAgent: null,
+      qaApprovalRequired: false,
       docsPath: './site-docs',
       repoUrl: 'https://example.test/site',
       progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
@@ -331,6 +333,41 @@ describe('ProjectSettings', () => {
       fixture.detectChanges();
 
       expect(text()).toContain('Missing permission: project.update');
+    });
+  });
+
+  describe('the reviewer rules for a move to QA (Roadmap SUBTASK-09.2)', () => {
+    it('starts off, and says what it asks of a move to QA and of a document that closes a task in QA', () => {
+      const { component, text } = render(['project.update']);
+
+      expect(component.form.getRawValue().qaApprovalRequired).toBe(false);
+      expect(text()).toContain('Revisión en QA');
+      expect(text()).toContain('que no sea quien la desarrolló');
+      expect(text()).toContain('queda un conflicto');
+    });
+
+    it('saves it turned on', async () => {
+      update.mockResolvedValue({ ...PROJECT, qaApprovalRequired: true });
+      const { component } = render(['project.update']);
+
+      component.form.patchValue({ qaApprovalRequired: true });
+      component.form.markAsDirty();
+      await component.save();
+
+      expect(update).toHaveBeenCalledWith(
+        'p1',
+        expect.objectContaining({ qaApprovalRequired: true }),
+      );
+    });
+
+    it('shows a project that has it on as on', () => {
+      const context = TestBed.inject(ProjectContext);
+      context.project.set({ ...PROJECT, qaApprovalRequired: true });
+      context.permissions.set(['project.update']);
+      const fixture = TestBed.createComponent(ProjectSettings);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.form.getRawValue().qaApprovalRequired).toBe(true);
     });
   });
 });

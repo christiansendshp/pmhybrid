@@ -18,6 +18,7 @@ function project(overrides: Partial<ProjectWithSummary> = {}): ProjectWithSummar
     wipLimitDevelopment: null,
     wipLimitQa: null,
     wipLimitAgent: null,
+    qaApprovalRequired: false,
     progressRollupStrategy: 'EQUAL_WEIGHT_AVERAGE',
     status: 'ACTIVE',
     createdAt: '2026-09-01T09:00:00.000Z',

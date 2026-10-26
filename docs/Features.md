@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 159
-- Latest verification: `VALIDAR green: unit api 735 web 516, e2e 488, 365s` (2026-10-26)
+- Verified capabilities: 162
+- Latest verification: `closed by TASK-09` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -174,3 +174,6 @@ Use one row per stable capability. Link long specifications or runbooks from
 | BUG-19 | The documents e2e reads a ledger it owns (the skill's template fence and one entry) instead of expecting this repo's own ledger to have entries, so a rotation no longer breaks the suite; the real file only has to be read without the fenced example becoming an entry. The old test was replaced by these two, not removed | VALIDAR green on the change: check 21s, lint 10s, build 18s, unit 46s, e2e 303s (477 + 1 tests passed), 398s in all | log:BUG-19 | 2026-10-26 |
 | GAP-46 | A task whose row left the Roadmap with no closing entry can be settled by restoring its row: the RESTORE_ROW resolution writes the row back with the task's own data (Name, acceptance check, status, owner, dependencies) before settling the conflict, adds nothing to the ledger, needs task.write besides conflict.resolve and refuses any other kind of conflict; the conflicts page offers it | VALIDAR green: check 17s, lint 6s, build 10s, unit 34s (api 735, web 512), e2e 271s (484), 338s in all | log:GAP-46 | 2026-10-26 |
 | GAP-47 | Cards, the list and the task page say a task has no row in the Roadmap (rowGone: its row left, the ledger does not say it closed, the conflict is open) and link to Conflicts | VALIDAR green: unit api 735 web 516, e2e 488, 365s | log:GAP-47 | 2026-10-26 |
+| SUBTASK-09.2 | Project switch qaApprovalRequired (off by default): a move to QA needs a reviewer who holds task.qa.approve and is not the assignee, refused in the API with its own message; settings page checkbox; BR-013 | VALIDAR green: unit api 735 web 519, e2e 499, 381s | log:SUBTASK-09.2 | 2026-10-26 |
+| TASK-09 | A task in QA has a reviewer, stored apart from the assignee (Workload and the lock untouched), chosen from the members who can approve, and a project can require that reviewer to be independent | subtasks 09.1, 09.2, 09.3 done; VALIDAR green | log:TASK-09 | 2026-10-26 |
+| GAP-42 | The question who reviews a task has an answer: the reviewer field, shown on the card and the task, with the independence rule a project can turn on | closed by TASK-09 | log:GAP-42 | 2026-10-26 |

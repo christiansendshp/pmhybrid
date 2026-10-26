@@ -86,6 +86,18 @@
       </mat-form-field>
     </fieldset>
 
+    <fieldset class="settings-limits">
+      <legend>Revisión en QA</legend>
+      <mat-checkbox formControlName="qaApprovalRequired">
+        Exigir un revisor independiente para pasar una tarea a QA
+      </mat-checkbox>
+      <p class="meta-text">
+        Encendido: pasar una tarea a QA pide un revisor que pueda aprobar y que no sea quien la
+        desarrolló, y un documento que dé por cerrada una tarea en QA no la cierra: queda un
+        conflicto para quien pueda aprobar. Apagado, nada de esto se pide.
+      </p>
+    </fieldset>
+
     <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Cálculo de progreso</mat-label>
       <mat-select formControlName="progressRollupStrategy">

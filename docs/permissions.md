@@ -261,6 +261,17 @@ Now:
   `TERMINADA` needs `task.reopen`, any other jump `task.status.transition`),
   and any other field needs `task.write`. A resolution that moves a task is
   audited as `STATUS_CHANGE` as well as `CONFLICT_RESOLVED`.
+- **QA approval is a per-project rule** (Roadmap SUBTASK-09.2, decided in DEC-006:
+  the second option, a switch off by default). `PATCH /projects/:id` with
+  `qaApprovalRequired: true` (needs `project.update`) makes a move to `QA` in that
+  project ask three things in the API, so the board, the task page and the MCP
+  tools are held to it alike: a **reviewer** (`reviewerActorId`), who holds
+  `task.qa.approve` in the project, and who is **not the task's assignee**. Each
+  refusal is a 400 with its own message and leaves the task where it was. With it
+  off, which every project starts, nothing is asked and a reviewer, when named,
+  is any active member. The rules bind moves made in PM Hub: a ledger entry that
+  puts a task in QA (the skill's `handoff`) is the document's own word, read as
+  such. What a document cannot do either, close a task in QA, is GAP-41.
 - Existing databases pick the new keys up by re-running `prisma db seed`
   (it only adds); roles edited via `PATCH /roles/:id/permissions` are not
   touched, so grant `task.write`/`conflict.resolve` to any custom-edited role

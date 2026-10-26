@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -52,6 +53,7 @@ const STATUS_LABELS: Record<ProjectStatus, string> = {
     DatePipe,
     ReactiveFormsModule,
     MatButtonModule,
+    MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -106,6 +108,8 @@ export class ProjectSettings {
     wipLimitDevelopment: [null as number | null, WIP_LIMIT_VALIDATORS],
     wipLimitQa: [null as number | null, WIP_LIMIT_VALIDATORS],
     wipLimitAgent: [null as number | null, WIP_LIMIT_VALIDATORS],
+    // Reviewer rules for a move to QA (Roadmap SUBTASK-09.2).
+    qaApprovalRequired: [false],
     docsPath: ['', [Validators.required, Validators.pattern(NOT_BLANK)]],
     repoUrl: [''],
     progressRollupStrategy: ['EQUAL_WEIGHT_AVERAGE' as ProgressRollupStrategy],
@@ -155,6 +159,7 @@ export class ProjectSettings {
         wipLimitDevelopment: limitOf(value.wipLimitDevelopment),
         wipLimitQa: limitOf(value.wipLimitQa),
         wipLimitAgent: limitOf(value.wipLimitAgent),
+        qaApprovalRequired: value.qaApprovalRequired,
         docsPath: value.docsPath.trim(),
         repoUrl: value.repoUrl.trim() || null,
         progressRollupStrategy: value.progressRollupStrategy,
@@ -221,6 +226,7 @@ function toFormValue(project: Project) {
     wipLimitDevelopment: project.wipLimitDevelopment ?? null,
     wipLimitQa: project.wipLimitQa ?? null,
     wipLimitAgent: project.wipLimitAgent ?? null,
+    qaApprovalRequired: project.qaApprovalRequired ?? false,
     docsPath: project.docsPath,
     repoUrl: project.repoUrl ?? '',
     progressRollupStrategy: project.progressRollupStrategy as ProgressRollupStrategy,

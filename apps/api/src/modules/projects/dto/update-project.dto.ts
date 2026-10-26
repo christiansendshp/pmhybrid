@@ -1,5 +1,6 @@
 import { OmitType, PartialType } from '@nestjs/mapped-types';
 import {
+  IsBoolean,
   IsIn,
   IsInt,
   IsOptional,
@@ -67,6 +68,11 @@ export class UpdateProjectDto extends PartialType(
   @Min(1)
   @Max(MAX_INSTANT_CLOSE_MINUTES)
   instantCloseMinutes?: number;
+
+  /** Whether a move to QA needs an independent reviewer who can approve, and a document cannot close a task in QA (Roadmap SUBTASK-09.2). */
+  @ValidateIf(provided)
+  @IsBoolean()
+  qaApprovalRequired?: boolean;
 
   /** Advisory limits on the work in progress, 1 to 999; null clears one (Roadmap TASK-15). */
   @ValidateIf(limitGiven)

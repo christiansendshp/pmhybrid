@@ -655,6 +655,9 @@ model Project {
   wipLimitDevelopment    Int?
   wipLimitQa             Int?
   wipLimitAgent          Int?
+  // A move to QA needs a reviewer who can approve and is not the assignee, and a document cannot close a
+  // task in QA by itself (Roadmap SUBTASK-09.2, GAP-41, DEC-006). Off: nothing is asked.
+  qaApprovalRequired     Boolean  @default(false)
   progressRollupStrategy ProgressRollupStrategy @default(EQUAL_WEIGHT_AVERAGE)
   nextTaskSeq            Int                    @default(1)
   status                 String                 @default("ACTIVE")

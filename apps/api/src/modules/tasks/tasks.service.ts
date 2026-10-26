@@ -732,6 +732,46 @@ export class TasksService {
     return candidates;
   }
 
+  /**
+   * What a project that requires approval asks of a move to QA (Roadmap SUBTASK-09.2, DEC-006): a
+   * reviewer, who can approve QA in the project, and who is not the person who developed the task.
+   * Enforced here and not in the UI, so the board, the task page and the MCP tools are held to it alike.
+   * A project that does not require it is asked nothing, as before.
+   */
+  private async assertReviewerRules(
+    projectId: string,
+    assigneeActorId: string | null,
+    reviewerActorId: string | null,
+  ): Promise<void> {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { qaApprovalRequired: true },
+    });
+    if (!project?.qaApprovalRequired) {
+      return;
+    }
+    if (!reviewerActorId) {
+      throw new BadRequestException(
+        'This project requires a reviewer to move a task to QA',
+      );
+    }
+    if (reviewerActorId === assigneeActorId) {
+      throw new BadRequestException(
+        'The reviewer must not be the person who developed the task',
+      );
+    }
+    const canApprove = await this.permissionsResolver.hasPermission(
+      reviewerActorId,
+      PERMISSIONS.TASK_QA_APPROVE,
+      projectId,
+    );
+    if (!canApprove) {
+      throw new BadRequestException(
+        'The reviewer must be able to approve QA in this project',
+      );
+    }
+  }
+
   /** An actor named for a role on a task must be an active member of the project, and active itself. */
   private async assertActiveMember(
     projectId: string,
@@ -787,6 +827,13 @@ export class TasksService {
     // An active member of this project, asked at the time of the move: they are the one to look at it.
     if (reviewerActorId) {
       await this.assertActiveMember(projectId, reviewerActorId, 'The reviewer');
+    }
+    if (toStatus === TaskStatus.QA) {
+      await this.assertReviewerRules(
+        projectId,
+        task.assigneeActorId,
+        reviewerActorId ?? null,
+      );
     }
 
     const written = await this.writeBack.inTransaction(
