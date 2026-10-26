@@ -3,10 +3,12 @@ import { AuthModule } from '../auth/auth.module.js';
 import { TasksModule } from '../tasks/tasks.module.js';
 import { DashboardController } from './dashboard.controller.js';
 import { DashboardService } from './dashboard.service.js';
+import { SinceVisitController } from './since-visit.controller.js';
+import { SinceVisitService } from './since-visit.service.js';
 
 @Module({
   imports: [AuthModule, TasksModule],
-  controllers: [DashboardController],
-  providers: [DashboardService],
+  controllers: [DashboardController, SinceVisitController],
+  providers: [DashboardService, SinceVisitService],
 })
 export class DashboardModule {}

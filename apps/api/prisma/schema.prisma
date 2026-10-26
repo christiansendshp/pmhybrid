@@ -46,6 +46,7 @@ model Actor {
   leadProjects      Project[]        @relation("ProjectLead")
   idempotencyKeys   IdempotencyKey[]
   ledgerEvents      AgentLogEvent[]  @relation("LedgerAgent")
+  seenProjects      ProjectSeen[]
 }
 
 model UserCredential {
@@ -689,6 +690,20 @@ model Project {
   notifications   Notification[]
   auditEvents     AuditEvent[]
   idempotencyKeys IdempotencyKey[]
+  seenBy          ProjectSeen[]
+}
+
+/// Until when a person has seen the news of a project (Roadmap TASK-38): the marker "Desde tu última visita"
+/// counts from. Moved only by the person, with an explicit call, so opening one task from the list never hides
+/// the rest; a person with no row for a project is read from 7 days back.
+model ProjectSeen {
+  actorId   String
+  actor     Actor    @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  seenAt    DateTime
+
+  @@id([actorId, projectId])
 }
 
 /// A task-creation request the API already answered (Roadmap BUG-07b): a client

@@ -22,3 +22,12 @@ segments live in `docs/history/`.
 - SHA-256: `8d906f374c8fb12dd0d522fc127ff4b93d35725fd4cc736fb46e9add07d0812f`
 
 ## Entries
+
+## [2026-10-26T18:56:27Z] | claude-sonnet-5-5 | TASK-38 | IN_PROGRESS | Since-last-visit summary per person and project, in the API
+- Summary: 
+- Verify: pending
+
+## [2026-10-26T19:06:09Z] | claude-sonnet-5-5 | TASK-38 | DONE | Since-last-visit summary per person and project, in the API
+- Summary: Per-person ProjectSeen marker and GET /dashboard/since-last-visit: for each active project of the caller with news since the marker (7 days back with none), the tasks done, blocked, unblocked (audit) and new, and the conflicts opened, as counts with up to 10 tasks each; POST /dashboard/since-last-visit/seen moves only the caller's marker (BR-017)
+- Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261026160000_add_project_seen, apps/api/src/modules/dashboard/since-visit.{util,service,controller}.ts, dto/mark-seen.dto.ts, dashboard.module.ts, apps/api/test/since-last-visit.e2e-spec.ts, docs/what-changed.md, docs/domain-model.md, docs/api-reference.md, docs/ProductDescription.md
+- Verify: check, lint, build, unit (since-visit.util.spec 16) and e2e (since-last-visit 17) green; migration applied to the dev DB

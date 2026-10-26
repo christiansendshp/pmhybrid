@@ -321,6 +321,10 @@ AuditEvent(id, projectId?, actorId?, entityType, entityId, operation,
   @@index([entityType, entityId, occurredAt])
   @@index([projectId, occurredAt])   // a project's whole history in one query
 
+ProjectSeen(actorId, projectId, seenAt)      // @@id([actorId, projectId]); until when a person has seen the news
+  // of a project (Roadmap TASK-38). Only the person moves it, with an explicit call; no row = read from 7 days back.
+  // Cascades with the actor and the project. See docs/what-changed.md.
+
 Notification(id, actorId, projectId, type, payload? jsonb, readAt?, createdAt)
   // type: CONFLICTS_DETECTED | SYNC_FAILED | ROADMAP_ENTRIES_INVALID
   //       | TASK_ASSIGNED | TASK_REASSIGNED | TASK_COMMENTED   (Roadmap GAP-36c)

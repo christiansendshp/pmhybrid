@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 188
-- Latest verification: `TASK-35, TASK-36 and TASK-37 are in Features.md with VALIDAR green on 5a8bf48, 96b71d5 and 56b7c79` (2026-10-26)
+- Verified capabilities: 189
+- Latest verification: `check, lint, build, unit (since-visit.util.spec 16) and e2e (since-last-visit 17) green; migration applied to the dev DB` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -203,3 +203,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | TASK-36 | GET /projects/:id/metrics/pace?weeks= (2-52, default 12) gives the weekly pace, burn-up by phase with names and the forecast over the tasks that count towards the progress; sibling of the instant-close /metrics, no migration | check, lint, build, unit and e2e green (pace-endpoint 17 tests incl. SQL equality, 400s, member-only) | log:TASK-36 | 2026-10-26 |
 | TASK-37 | Seguimiento tab (/projects/:id/pace): reads GET /metrics/pace once per visit and shows the forecast range or why there is none (no hay historia suficiente, does not converge), the weekly closed/created bars and the burn-up of the project and each phase, each with a sentence and a table of its numbers, scrolling inside its own region on a phone | check, lint, build, unit (web pace.spec, burn-up.spec, core/pace.spec: 44 tests) and e2e green; checked in the browser on a scratch API/web (desktop, 375 px without page overflow); the a11y suite was extended but not run (it needs the persistent stack stopped) | log:TASK-37 | 2026-10-26 |
 | FEATURE-01 | Pace, progress over time and forecast: the calculator, GET /projects/:id/metrics/pace and the Seguimiento tab (weekly closed and created, burn-up per phase, forecast as a range beside the scope growth, declining without history or when the work does not converge) | TASK-35, TASK-36 and TASK-37 are in Features.md with VALIDAR green on 5a8bf48, 96b71d5 and 56b7c79 | log:FEATURE-01 | 2026-10-26 |
+| TASK-38 | Per-person ProjectSeen marker and GET /dashboard/since-last-visit: for each active project of the caller with news since the marker (7 days back with none), the tasks done, blocked, unblocked (audit) and new, and the conflicts opened, as counts with up to 10 tasks each; POST /dashboard/since-last-visit/seen moves only the caller's marker (BR-017) | check, lint, build, unit (since-visit.util.spec 16) and e2e (since-last-visit 17) green; migration applied to the dev DB | log:TASK-38 | 2026-10-26 |
