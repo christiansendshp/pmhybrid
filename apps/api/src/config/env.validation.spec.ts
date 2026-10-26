@@ -31,3 +31,42 @@ describe('DOCUMENT_REVISION_RETENTION (Roadmap BUG-07c)', () => {
     }
   });
 });
+
+describe('SYNC_RUN_RETENTION (Roadmap TASK-50)', () => {
+  const base = { DATABASE_URL: 'postgres://db', JWT_SECRET: 'change-me' };
+
+  it('keeps 500 runs of each project when nothing is set, or only spaces', () => {
+    expect([
+      validateEnv(base).SYNC_RUN_RETENTION,
+      validateEnv({ ...base, SYNC_RUN_RETENTION: '  ' }).SYNC_RUN_RETENTION,
+    ]).toEqual([500, 500]);
+  });
+
+  it('takes a whole number, and 0 for "keep them all"', () => {
+    expect([
+      validateEnv({ ...base, SYNC_RUN_RETENTION: '50' }).SYNC_RUN_RETENTION,
+      validateEnv({ ...base, SYNC_RUN_RETENTION: '0' }).SYNC_RUN_RETENTION,
+    ]).toEqual([50, 0]);
+  });
+
+  it.each([['-1'], ['2.5'], ['many'], ['1e3x']])(
+    'stops the start on %j and names the variable',
+    (bad) => {
+      expect(() => validateEnv({ ...base, SYNC_RUN_RETENTION: bad })).toThrow(
+        /SYNC_RUN_RETENTION must be a whole number of sync runs to keep/,
+      );
+    },
+  );
+
+  it('does not let the revision retention take its value, nor the other way round', () => {
+    const env = validateEnv({
+      ...base,
+      DOCUMENT_REVISION_RETENTION: '7',
+      SYNC_RUN_RETENTION: '9',
+    });
+
+    expect([env.DOCUMENT_REVISION_RETENTION, env.SYNC_RUN_RETENTION]).toEqual([
+      7, 9,
+    ]);
+  });
+});

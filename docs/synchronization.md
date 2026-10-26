@@ -829,6 +829,17 @@ only history. Nothing holds a foreign key to a revision (the ledger's
 dashboard and the revision list ask only for the newest), so trimming breaks no
 pointer; the one visible effect is a `404` for a deleted revision's id.
 
+### Sync run retention (Roadmap TASK-50)
+
+Every synchronization writes a `SyncRun`: about 230 a project a day with the scheduler on.
+`SyncRunRetentionService` keeps the newest `SYNC_RUN_RETENTION` runs of **each project** (default 500; `0` keeps all)
+and deletes the older ones, daily at 03:30 UTC and off the request path, **except the runs that failed**, which stay
+however old: they are the ones worth reading later. The newest runs stay whatever they are, and the boundary is the start
+time of the last one kept, so runs that share it are kept rather than cut in two. The count is per project, so a busy
+one never costs a quiet one its history. Nothing holds a foreign key to a run (a notification carries its id as plain
+JSON), so trimming breaks no pointer. One project's failure is logged and does not stop the others; a value that is not a
+whole number stops the start and names the variable.
+
 ## Conflicts (brief §26)
 
 `Conflict` is a first-class entity with its own endpoints/UI route, not just

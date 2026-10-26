@@ -12,6 +12,8 @@ export interface EnvConfig {
   SYNC_SCHEDULER_ENABLED: boolean;
   /** How many revisions of each document to keep (Roadmap BUG-07c); the newest survive, older ones are deleted daily. 0 keeps everything. */
   DOCUMENT_REVISION_RETENTION: number;
+  /** How many sync runs of each project to keep (Roadmap TASK-50); the newest survive, older ones are deleted daily, but every failed run stays. 0 keeps everything. */
+  SYNC_RUN_RETENTION: number;
   GIT_PROVIDER_TYPE: string;
   /** Filesystem browser (docsPath picker) is confined to this directory and its descendants. */
   PROJECT_DOCS_BROWSE_ROOT: string;
@@ -24,16 +26,25 @@ export interface EnvConfig {
 }
 
 const DEFAULT_REVISION_RETENTION = 200;
+const DEFAULT_SYNC_RUN_RETENTION = 500;
 
-/** A whole number of revisions to keep, 0 for "all"; anything else stops the start rather than silently keeping or deleting the wrong amount. */
-function parseRetention(raw: string | undefined): number {
+/**
+ * A whole number of things to keep, 0 for "all"; anything else stops the start rather than silently keeping or
+ * deleting the wrong amount.
+ */
+function parseRetention(
+  raw: string | undefined,
+  name: string,
+  fallback: number,
+  what: string,
+): number {
   if (raw === undefined || raw.trim() === '') {
-    return DEFAULT_REVISION_RETENTION;
+    return fallback;
   }
   const value = Number(raw);
   if (!Number.isInteger(value) || value < 0) {
     throw new Error(
-      'DOCUMENT_REVISION_RETENTION must be a whole number of revisions to keep (0 keeps them all)',
+      `${name} must be a whole number of ${what} to keep (0 keeps them all)`,
     );
   }
   return value;
@@ -77,6 +88,15 @@ export function validateEnv(
       raw.SYNC_SCHEDULER_ENABLED?.toLowerCase() !== 'false',
     DOCUMENT_REVISION_RETENTION: parseRetention(
       raw.DOCUMENT_REVISION_RETENTION,
+      'DOCUMENT_REVISION_RETENTION',
+      DEFAULT_REVISION_RETENTION,
+      'revisions',
+    ),
+    SYNC_RUN_RETENTION: parseRetention(
+      raw.SYNC_RUN_RETENTION,
+      'SYNC_RUN_RETENTION',
+      DEFAULT_SYNC_RUN_RETENTION,
+      'sync runs',
     ),
     GIT_PROVIDER_TYPE: raw.GIT_PROVIDER_TYPE ?? 'local',
     PROJECT_DOCS_BROWSE_ROOT: raw.PROJECT_DOCS_BROWSE_ROOT ?? homedir(),

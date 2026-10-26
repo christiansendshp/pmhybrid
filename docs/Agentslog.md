@@ -22,3 +22,12 @@ segments live in `docs/history/`.
 - SHA-256: `e332f25ce7d970f4d0d97cee254b0278d333d989c4e837de529efca0aa24cda0`
 
 ## Entries
+
+## [2026-10-26T21:41:20Z] | claude-sonnet-5-5 | TASK-50 | IN_PROGRESS | Retention for old sync runs, keeping every failure
+- Summary: 
+- Verify: pending
+
+## [2026-10-26T21:50:23Z] | claude-sonnet-5-5 | TASK-50 | DONE | Retention for old sync runs, keeping every failure
+- Summary: SYNC_RUN_RETENTION (default 500, 0 keeps all, invalid stops the start) and a daily job at 03:30 UTC that keeps, per project, the newest runs and deletes the older ones except the FAILED ones, which stay; the boundary is the start time of the last run kept so ties are kept; one project's failure is logged and stops no other
+- Files: apps/api/src/config/env.validation.ts, apps/api/src/modules/synchronization/sync-run-retention.service.ts, apps/api/src/modules/synchronization/synchronization.module.ts, apps/api/test/sync-run-retention.e2e-spec.ts, apps/api/src/config/env.validation.spec.ts, docs/synchronization.md, docs/Stack_Tecnologies.md, .env.example
+- Verify: check, lint, build, unit and e2e green (sync-run-retention 8 e2e: newest kept, failed kept, under the limit, 0, per project, only the named, ties; env validation unit)
