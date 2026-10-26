@@ -140,8 +140,22 @@ segment` section with an archive path + SHA-256), ingest the referenced
      repository root (`docs/history/Agentslog-….md`) while the project's
      files are read from its docs folder, where it is `history/…` (Roadmap
      BUG-09); a hash that does not match still means the archive is not read.
+   - **The word is the one the agent wrote.** The latest skill writes the task's
+     Name after the status (`DONE | Name`); the parser reads the word before it,
+     and a word stored with its Name by an earlier version is made the word
+     again at the start of every sync (`normalizeStatusWords`), before the
+     terminal check — an entry stored whole was never terminal, and the task its
+     `done` closed stayed open (Roadmap BUG-18).
    - **Found** → `Task.status = TERMINADA`, `roadmapTable = null`,
-     `AuditEvent(operation=COMPLETE_VIA_ROADMAP_REMOVAL, origin=SYNC)`.
+     `AuditEvent(operation=COMPLETE_VIA_ROADMAP_REMOVAL, origin=SYNC)`. This holds
+     for a task that already has an open conflict from an earlier run: the skill's
+     `done` takes the row out and writes the entry, and a sync between the two
+     asks; the entry that follows closes that conflict by itself (reason "the
+     ledger now confirms the task is done").
+   - **Already done** → a task that is `TERMINADA` when its row goes (the
+     document said `DONE`, or it was approved here) has nothing to confirm: its
+     `roadmapTable` is cleared with an `ROADMAP_TABLE_CHANGE` audit event and no
+     conflict is raised.
    - **Not found** → `Conflict(kind=ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG)`;
      the `Task` is left **completely untouched**. Never a database delete, in
      either branch.
@@ -807,8 +821,8 @@ Conflicts used to pile up (a missing row raised a new one on every run — 7 on
 one task — and stayed open after the cause was gone). Now:
 
 - **One open conflict per task and kind for a disappeared row.** While it is
-  open the sweep does not ask again. When the row comes back, the conflict
-  closes itself.
+  open the sweep does not ask again. When the row comes back, or a terminal
+  entry of the ledger now confirms the task is done, the conflict closes itself.
 - **One open conflict per task and field.** A later document change to a
   field that is already contested updates the open conflict to the latest local
   and document values instead of adding another; only fields no open conflict

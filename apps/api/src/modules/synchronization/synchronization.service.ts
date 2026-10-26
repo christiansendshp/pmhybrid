@@ -342,6 +342,9 @@ export class SynchronizationService {
     // (Roadmap TASK-02): every run, whether or not the ledger changed, so it is also the
     // backfill, and idempotent.
     await this.agentLinks.linkUnlinked(tx, projectId);
+    // A word stored with the Name that followed it is the word again (Roadmap BUG-18): first, so the
+    // classification below and every terminal check read the word the agent wrote.
+    await this.agentslogIngestion.normalizeStatusWords(tx, projectId);
     // The same for the stage of each entry's word, so a ledger read before it existed gets it (Roadmap TASK-06).
     await this.agentslogIngestion.classifyUnclassified(tx, projectId);
 
@@ -745,13 +748,41 @@ export class SynchronizationService {
         // The row coming back sets the table again and re-arms this.
         continue;
       }
-      if (
-        (openByTask.get(task.id) ?? []).some(
-          (conflict) =>
-            conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG',
-        )
-      ) {
-        continue; // already asked, and still open
+      const asked = (openByTask.get(task.id) ?? []).filter(
+        (conflict) =>
+          conflict.kind === 'ROADMAP_ROW_DISAPPEARED_NO_TERMINAL_LOG',
+      );
+
+      if (task.status === TaskStatus.TERMINADA) {
+        // Finished already, by the document's own DONE or by an approval: taking its row out afterwards
+        // is housekeeping, and nothing is lost that a person would have to confirm (Roadmap BUG-18).
+        for (const conflict of asked) {
+          await this.closeConflictAutomatically(
+            tx,
+            conflict,
+            openByTask.get(task.id) ?? [],
+            'the task is already done',
+            summary,
+          );
+        }
+        await tx.task.update({
+          where: { id: task.id },
+          data: { roadmapTable: null },
+        });
+        await this.audit.record(
+          {
+            projectId,
+            entityType: 'Task',
+            entityId: task.id,
+            operation: 'ROADMAP_TABLE_CHANGE',
+            origin: 'SYNC',
+            previousValue: { roadmapTable: task.roadmapTable },
+            newValue: { roadmapTable: null },
+          },
+          tx,
+        );
+        summary.tableChanged += 1;
+        continue;
       }
 
       const hasTerminal = await this.agentslogIngestion.hasTerminalEntry(
@@ -759,7 +790,22 @@ export class SynchronizationService {
         projectId,
         externalId,
       );
+      if (asked.length > 0 && !hasTerminal) {
+        continue; // already asked, and still open
+      }
       if (hasTerminal) {
+        // A conflict raised while the entry that closes the task was not written yet (the row goes
+        // first, the entry follows) is no longer true: it closes itself, as it does when the row
+        // comes back (Roadmap BUG-06a, BUG-18).
+        for (const conflict of asked) {
+          await this.closeConflictAutomatically(
+            tx,
+            conflict,
+            openByTask.get(task.id) ?? [],
+            'the ledger now confirms the task is done',
+            summary,
+          );
+        }
         await tx.task.update({
           where: { id: task.id },
           data: {

@@ -153,6 +153,37 @@ export class AgentslogIngestionService {
   }
 
   /**
+   * Takes the Name off the status word of the entries stored with it (Roadmap BUG-18). Until the parser read
+   * `DONE | Name` as the word `DONE` (TASK-26) such an entry was stored whole, so BR-003's terminal check,
+   * which is the exact word, never saw a task closed with the latest skill's `done`. It looks at each
+   * distinct word once and a second run changes nothing. Returns how many entries it set.
+   */
+  async normalizeStatusWords(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ): Promise<number> {
+    const named = await tx.agentLogEvent.groupBy({
+      by: ['statusWord'],
+      where: { projectId, statusWord: { contains: ' | ' } },
+    });
+    let set = 0;
+    for (const { statusWord } of named) {
+      const word = statusWord.split(' | ')[0].trim();
+      const classified = classifyLedgerWord(word);
+      const { count } = await tx.agentLogEvent.updateMany({
+        where: { projectId, statusWord },
+        data: {
+          statusWord: word,
+          canonicalStatus: classified.canonicalStatus,
+          statusQualifier: classified.qualifier,
+        },
+      });
+      set += count;
+    }
+    return set;
+  }
+
+  /**
    * Gives the entries that were read before their word was classified, or whose word was not known
    * then, the canonical status and qualifier of their word (Roadmap TASK-06). It looks at each
    * distinct word once, so it costs a handful of statements however long the ledger is, and a
