@@ -44,6 +44,7 @@ export class ProjectDashboard implements OnInit {
     { label: 'Kanban', path: 'kanban' },
     { label: 'Progreso', path: 'progress' },
     { label: 'Seguimiento', path: 'pace' },
+    { label: 'Riesgos', path: 'risks' },
     { label: 'Documentos', path: 'documents' },
     { label: 'Conflictos', path: 'conflicts' },
     { label: 'Auditoría', path: 'audit' },

@@ -1,0 +1,108 @@
+.risks-section {
+  margin-bottom: var(--space-8);
+}
+
+.risks-sentence,
+.risks-empty {
+  max-width: 48rem;
+  margin: 0 0 var(--space-3);
+}
+
+.risks-table {
+  width: 100%;
+  min-width: 44rem;
+  border-collapse: collapse;
+  font: var(--mat-sys-body-small);
+}
+
+.risks-table__caption {
+  padding: var(--space-1) 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-medium);
+  text-align: left;
+}
+
+.risks-table th,
+.risks-table td {
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  text-align: left;
+  font-weight: normal;
+  vertical-align: top;
+}
+
+.risks-table thead th {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-medium);
+}
+
+// The row header is a name, not a heading: it keeps its own case.
+.risks-table tbody th {
+  text-transform: none;
+}
+
+// A light is a word and a shape; the colour only repeats them.
+.risk-light {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  border: 1px solid currentColor;
+  border-radius: var(--mat-sys-corner-small);
+  white-space: nowrap;
+}
+
+.risk-light--red {
+  color: var(--mat-sys-error);
+}
+
+.risk-light--amber {
+  color: var(--mat-sys-tertiary);
+}
+
+.risk-light--green {
+  color: var(--mat-sys-primary);
+}
+
+.risk-light--none {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.risks-kind {
+  margin: var(--space-4) 0 var(--space-1);
+}
+
+.risks-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.risks-path {
+  padding-left: 0;
+  counter-reset: step;
+}
+
+.risks-path .risks-item::before {
+  counter-increment: step;
+  content: counter(step) '.';
+  min-width: 1.5rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+
+.risks-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-1) 0;
+}
+
+.risks-id {
+  margin-right: var(--space-1);
+  color: var(--mat-sys-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}

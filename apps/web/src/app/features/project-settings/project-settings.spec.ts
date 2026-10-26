@@ -16,6 +16,7 @@ const PROJECT: Project = {
   docsPath: './site-docs',
   syncIntervalMinutes: 5,
   instantCloseMinutes: 5,
+  staleAfterHours: 72,
   wipLimitDevelopment: null,
   wipLimitQa: null,
   wipLimitAgent: null,
@@ -101,6 +102,7 @@ describe('ProjectSettings', () => {
       status: 'PAUSED',
       syncIntervalMinutes: 5,
       instantCloseMinutes: 5,
+      staleAfterHours: 72,
       wipLimitDevelopment: null,
       wipLimitQa: null,
       wipLimitAgent: null,
@@ -241,6 +243,24 @@ describe('ProjectSettings', () => {
     await component.save();
 
     expect(update).toHaveBeenCalledWith('p1', expect.objectContaining({ instantCloseMinutes: 30 }));
+  });
+
+  it('edits the hours without activity after which a task in development is stale, between one hour and a year (Roadmap TASK-45)', async () => {
+    update.mockResolvedValue({ ...PROJECT, staleAfterHours: 120 });
+    const { component, text } = render(['project.update']);
+
+    expect(component.form.getRawValue().staleAfterHours).toBe(72);
+    expect(text()).toContain('Sin actividad en desarrollo (horas)');
+
+    for (const invalid of [0, 8761, 2.5]) {
+      component.form.patchValue({ staleAfterHours: invalid });
+      expect(component.form.controls.staleAfterHours.invalid).toBe(true);
+    }
+    component.form.patchValue({ staleAfterHours: 120 });
+    component.form.markAsDirty();
+    await component.save();
+
+    expect(update).toHaveBeenCalledWith('p1', expect.objectContaining({ staleAfterHours: 120 }));
   });
 
   it('refuses invalid settings and shows why a save failed', async () => {

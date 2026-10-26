@@ -1,7 +1,7 @@
 # Risks: signals, critical path and semaphore
 
-Status: the calculator (Roadmap TASK-43) and the endpoint (TASK-44) exist; the Riesgos page (TASK-45) builds on
-them and adds its part here. The idea is FEATURE-07 of `docs/tracking-improvement-plan.md`: say what is going wrong
+Status: all of FEATURE-07 exists: the calculator (Roadmap TASK-43), the endpoint (TASK-44) and the Riesgos page
+(TASK-45). The idea is FEATURE-07 of `docs/tracking-improvement-plan.md`: say what is going wrong
 before someone looks, with signals that **cannot be wrong about the data the app holds**, each saying why. False
 positives erode trust faster than missing signals, so a signal that needs a guess is not here.
 
@@ -71,3 +71,27 @@ What it reads, from what the database already holds:
 - `Project.staleAfterHours` (72 by default, 1 to 8760, hand-written migration `add_project_stale_after_hours`) is
   changed through `PATCH /projects/:id` like the other project settings, audited, and a value outside the range or not
   a whole number is a 400.
+
+## The Riesgos tab (`/projects/:projectId/risks`)
+
+A tab of the project, next to Seguimiento (`apps/web/src/app/features/risks`). It reads `GET …/risks` **once per visit**
+and shows three sections:
+
+1. **Semáforo**: a table with a row for the project, each phase (in its own order) and each epic: the level, the name,
+   the **light as a word with a shape of its own** (▲ Rojo, ◆ Ámbar, ● Verde, – Sin trabajo abierto; the colour only
+   repeats them) and **why**, in words ("9 tareas abiertas: 1 fuera de plazo, 1 espera a una bloqueada, 1 en
+   desarrollo sin responsable, 1 sin actividad en desarrollo, 1 bloqueada"). A light is never alone (BR-019). The table
+   scrolls inside its own focusable region when it is wider than the screen, never the page.
+2. **Señales**: grouped by kind, what is late or stuck first (fuera de plazo, esperan a una tarea bloqueada, en
+   desarrollo y sin responsable, en desarrollo y sin actividad hace más de N), each with its count. Each signal is the
+   task as a link to its page and the reason in a sentence ("Debía estar terminada el 20 Oct 2026", "Depende de una
+   tarea bloqueada: T-3 …", "Está en desarrollo y lleva 4 días sin actividad"). With none it says so.
+3. **Camino crítico**: a sentence ("La cadena más larga de trabajo abierto tiene 2 tareas: T-3 → T-2.") and the tasks
+   in the order the work has to be done, each with its status. With no chain it says no open task waits on another.
+
+The pure part (the words, the order of the kinds, the sentences, the lights and their shapes) is `core/risks.ts`, with
+its own tests; the page and the settings have component specs, and the page is in the accessibility, mobile-layout and
+target-size suites.
+
+The project's settings have a field **"Sin actividad en desarrollo (horas)"** (`staleAfterHours`, 1 to 8760, 72 by
+default) with its hint, saved through the project's update like the others.

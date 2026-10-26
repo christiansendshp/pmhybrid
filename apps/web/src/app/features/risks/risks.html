@@ -1,0 +1,97 @@
+<header class="page-header">
+  <div>
+    <h2>Riesgos</h2>
+    <p class="page-header__description">
+      Lo que va mal en el trabajo abierto, con la razón de cada señal. Son reglas que no pueden
+      equivocarse con los datos que la aplicación tiene.
+    </p>
+  </div>
+</header>
+
+@if (loading()) {
+  <p class="meta-text">Cargando…</p>
+} @else if (failed()) {
+  <p class="callout" role="alert">No se pudieron leer los riesgos. Reintenta en un momento.</p>
+} @else if (risks(); as data) {
+  <section class="risks-section" aria-labelledby="risks-lights">
+    <h3 id="risks-lights">Semáforo</h3>
+    <div class="table-scroll" appScrollCue tabindex="0" role="region" aria-label="Semáforo">
+      <table class="risks-table">
+        <caption class="risks-table__caption">
+          La luz del proyecto, de cada fase y de cada épica, con lo que la explica
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Nivel</th>
+            <th scope="col">Nombre</th>
+            <th scope="col">Luz</th>
+            <th scope="col">Por qué</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.level + row.name) {
+            <tr>
+              <td>{{ row.level }}</td>
+              <th scope="row">{{ row.name }}</th>
+              <td>
+                <span [class]="'risk-light ' + tone(row.semaphore.light)">
+                  <span class="risk-light__mark" aria-hidden="true">{{
+                    lightMark(row.semaphore.light)
+                  }}</span>
+                  {{ lightWord(row.semaphore.light) }}
+                </span>
+              </td>
+              <td>{{ reason(row.semaphore) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="risks-section" aria-labelledby="risks-signals">
+    <h3 id="risks-signals">Señales</h3>
+    @if (groups().length === 0) {
+      <p class="risks-empty" role="status">No hay señales de riesgo en el trabajo abierto.</p>
+    } @else {
+      @for (group of groups(); track group.kind) {
+        <h4 class="risks-kind">
+          {{ group.heading }} <span class="meta-text">({{ group.signals.length }})</span>
+        </h4>
+        <ul class="risks-list">
+          @for (signal of group.signals; track signal.task.id) {
+            <li class="risks-item">
+              <a [routerLink]="['/projects', projectId(), 'tasks', signal.task.id]">
+                @if (signal.task.externalId) {
+                  <span class="risks-id">{{ signal.task.externalId }}</span>
+                }
+                {{ signal.task.title }}
+              </a>
+              <span class="meta-text">{{ why(signal) }}</span>
+            </li>
+          }
+        </ul>
+      }
+    }
+  </section>
+
+  <section class="risks-section" aria-labelledby="risks-path">
+    <h3 id="risks-path">Camino crítico</h3>
+    <p class="risks-sentence">{{ pathText() }}</p>
+    @if (data.criticalPath.length > 0) {
+      <ol class="risks-list risks-path">
+        @for (step of data.criticalPath; track step.task.id) {
+          <li class="risks-item">
+            <a [routerLink]="['/projects', projectId(), 'tasks', step.task.id]">
+              @if (step.task.externalId) {
+                <span class="risks-id">{{ step.task.externalId }}</span>
+              }
+              {{ step.task.title }}
+            </a>
+            <span class="meta-text">{{ statusLabel(step.status) }}</span>
+          </li>
+        }
+      </ol>
+    }
+  </section>
+}

@@ -100,6 +100,15 @@ test.describe('accessibility (Roadmap GAP-25)', () => {
     await checkA11y(page, 'pace');
   });
 
+  test('project risks (semaphore with words, signals, critical path, Roadmap TASK-45)', async ({ page }) => {
+    await page.goto('/projects');
+    await page.locator('.projects__name').first().click();
+    await page.getByRole('link', { name: 'Riesgos' }).click();
+    await expect(page.getByRole('heading', { name: 'Riesgos' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Semáforo' })).toBeVisible();
+    await checkA11y(page, 'risks');
+  });
+
   test('task detail (styled sections, breadcrumb, Roadmap UX-03c1)', async ({ page }) => {
     // This repository's own project is the seeded one that has tasks.
     await page.goto('/projects/pmhybrid-self/kanban');

@@ -57,6 +57,16 @@
       <mat-error>Un número entero entre 1 y 1440 minutos.</mat-error>
     </mat-form-field>
 
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Sin actividad en desarrollo (horas)</mat-label>
+      <input matInput type="number" min="1" max="8760" step="1" formControlName="staleAfterHours" />
+      <mat-hint
+        >Una tarea en desarrollo sin actividad (cambio de estado, entradas del registro o
+        comentarios) durante más horas que estas aparece en Riesgos.</mat-hint
+      >
+      <mat-error>Un número entero entre 1 y 8760 horas.</mat-error>
+    </mat-form-field>
+
     <fieldset class="settings-limits">
       <legend>Límites de trabajo en curso</legend>
       <p class="meta-text">

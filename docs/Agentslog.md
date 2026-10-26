@@ -18,15 +18,15 @@ segments live in `docs/history/`.
 
 ## Previous segment
 
-- Archive: `docs/history/Agentslog-20261026-028.md`
-- SHA-256: `4ba1b19097479da2397da03296fae2f4b6f9dbd5c10e92c024680adfedf72a8f`
+- Archive: `docs/history/Agentslog-20261026-029.md`
+- SHA-256: `f933f42c096575a0b13ae2836c5fe7fe2fd720dcc2d5c75e71d9fd4aa655fb77`
 
 ## Entries
 
-## [2026-10-26T20:06:42Z] | claude-sonnet-5-5 | TASK-44 | IN_PROGRESS | Risks endpoint and the stale threshold setting
-- Summary: carried forward from docs/history/Agentslog-20261026-028.md at rotation
+## [2026-10-26T20:17:18Z] | claude-sonnet-5-5 | TASK-45 | IN_PROGRESS | Riesgos page: semaphore, signals and critical path
+- Summary: carried forward from docs/history/Agentslog-20261026-029.md at rotation
 
-## [2026-10-26T20:16:21Z] | claude-sonnet-5-5 | TASK-44 | DONE | Risks endpoint and the stale threshold setting
-- Summary: GET /projects/:id/risks, for any member: TASK-43's signals, critical path and semaphores over the open tasks that count towards the progress, with every phase and epic named (a phase with nothing open has no light); a task's last activity is its status change, its ledger entries and its comments; Project.staleAfterHours (72 by default, 1 to 8760) is changed through the project update
-- Files: apps/api/prisma/schema.prisma, apps/api/prisma/migrations/20261026190000_add_project_stale_after_hours, apps/api/src/modules/risks/*, apps/api/src/modules/projects/dto/update-project.dto.ts, apps/api/src/app.module.ts, apps/api/test/risks.e2e-spec.ts, docs/risks.md, docs/api-reference.md, docs/domain-model.md
-- Verify: check, lint, build, unit and e2e green (risks 18 e2e: each signal, ledger and comments as activity, the threshold and its 400s, critical path, phases and epics, member-only; holdsTask unit); migration applied to the dev DB
+## [2026-10-26T20:28:51Z] | claude-sonnet-5-5 | TASK-45 | DONE | Riesgos page: semaphore, signals and critical path
+- Summary: The Riesgos tab (/projects/:id/risks), reading GET /risks once per visit: a semaphore table for the project, each phase and each epic with the light as a word and a shape and the counts that explain it, the signals grouped by kind (late and stuck first) with the reason and the task as a link, and the critical path in order with each status; the project settings have the stale threshold (hours, 1 to 8760)
+- Files: apps/web/src/app/core/risks.{service,}.ts, apps/web/src/app/features/risks/*, apps/web/src/app/features/project-settings/*, apps/web/src/app/core/projects.service.ts, apps/web/src/app/app.routes.ts, apps/web/src/app/features/project-dashboard/project-dashboard.ts, apps/web/a11y/*.a11y.spec.ts, docs/risks.md
+- Verify: check, lint, build, unit and e2e green (web risks, core/risks and settings specs 68); looked at in the browser on a scratch API/web (desktop, 375 px without overflow); the a11y suites were extended but not run (they need the persistent stack stopped)

@@ -100,6 +100,11 @@ export const routes: Routes = [
             loadComponent: () => import('./features/pace/pace').then((m) => m.Pace),
           },
           {
+            // What is going wrong: the semaphore, the signals and the critical path (Roadmap TASK-45).
+            path: 'risks',
+            loadComponent: () => import('./features/risks/risks').then((m) => m.Risks),
+          },
+          {
             path: 'tasks/:taskId',
             loadComponent: () =>
               import('./features/task-detail/task-detail').then((m) => m.TaskDetail),

@@ -26,6 +26,8 @@ import { FolderBrowserDialog } from '../../shared/folder-browser-dialog/folder-b
 const PROJECT_UPDATE = 'project.update';
 /** The API refuses a threshold above a day (Roadmap TASK-12). */
 const MAX_INSTANT_CLOSE_MINUTES = 1440;
+/** The API refuses a threshold above a year (Roadmap TASK-44). */
+const MAX_STALE_AFTER_HOURS = 8760;
 
 /** A limit on the work in progress: empty, or a whole number from 1 to 999 (Roadmap TASK-15). */
 const WIP_LIMIT_VALIDATORS = [Validators.min(1), Validators.max(999), Validators.pattern(/^\d+$/)];
@@ -104,6 +106,15 @@ export class ProjectSettings {
         Validators.pattern(/^\d+$/),
       ],
     ],
+    staleAfterHours: [
+      72,
+      [
+        Validators.required,
+        Validators.min(1),
+        Validators.max(MAX_STALE_AFTER_HOURS),
+        Validators.pattern(/^\d+$/),
+      ],
+    ],
     // Advisory limits (Roadmap TASK-15): a whole number from 1 to 999, or empty for none.
     wipLimitDevelopment: [null as number | null, WIP_LIMIT_VALIDATORS],
     wipLimitQa: [null as number | null, WIP_LIMIT_VALIDATORS],
@@ -158,6 +169,7 @@ export class ProjectSettings {
         status: value.status,
         syncIntervalMinutes: Number(value.syncIntervalMinutes),
         instantCloseMinutes: Number(value.instantCloseMinutes),
+        staleAfterHours: Number(value.staleAfterHours),
         wipLimitDevelopment: limitOf(value.wipLimitDevelopment),
         wipLimitQa: limitOf(value.wipLimitQa),
         wipLimitAgent: limitOf(value.wipLimitAgent),
@@ -226,6 +238,7 @@ function toFormValue(project: Project) {
     status: project.status as ProjectStatus,
     syncIntervalMinutes: project.syncIntervalMinutes,
     instantCloseMinutes: project.instantCloseMinutes,
+    staleAfterHours: project.staleAfterHours,
     wipLimitDevelopment: project.wipLimitDevelopment ?? null,
     wipLimitQa: project.wipLimitQa ?? null,
     wipLimitAgent: project.wipLimitAgent ?? null,

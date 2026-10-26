@@ -18,6 +18,7 @@ const PROJECT: Project = {
   docsPath: './docs',
   syncIntervalMinutes: 5,
   instantCloseMinutes: 5,
+  staleAfterHours: 72,
   wipLimitDevelopment: null,
   wipLimitQa: null,
   wipLimitAgent: null,
