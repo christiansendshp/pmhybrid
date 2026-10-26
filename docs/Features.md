@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 199
-- Latest verification: `check, lint, build, unit and e2e green (risks 60 unit and 19 e2e, dependencies 11 web specs, Kanban 77, switcher); looked at in the browser on a scratch API/web; the a11y suites were extended but not run (they need the persistent stack stopped)` (2026-10-26)
+- Verified capabilities: 200
+- Latest verification: `TASK-17, TASK-18, TASK-19, TASK-20, TASK-21, TASK-22 and TASK-23 are in Features.md with VALIDAR green` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -214,3 +214,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | TASK-45 | The Riesgos tab (/projects/:id/risks), reading GET /risks once per visit: a semaphore table for the project, each phase and each epic with the light as a word and a shape and the counts that explain it, the signals grouped by kind (late and stuck first) with the reason and the task as a link, and the critical path in order with each status; the project settings have the stale threshold (hours, 1 to 8760) | check, lint, build, unit and e2e green (web risks, core/risks and settings specs 68); looked at in the browser on a scratch API/web (desktop, 375 px without overflow); the a11y suites were extended but not run (they need the persistent stack stopped) | log:TASK-45 | 2026-10-26 |
 | FEATURE-07 | Risk signals: a calculator of signals that cannot be wrong (unowned in development, blocked by a blocked task, stale, overdue), the critical path and a semaphore per project, phase and epic; GET /projects/:id/risks; the Riesgos tab with every light as a word and its reason; the stale threshold as a project setting | TASK-43, TASK-44 and TASK-45 are in Features.md with VALIDAR green on c5005ad, a2a6e9c and 22699a6 | log:FEATURE-07 | 2026-10-26 |
 | TASK-22 | The Dependencias view (/projects/:id/dependencies, next to Esperando): the project's critical path and what waits for what, read from GET /risks with nothing computed in the web; /risks gains waiting (every open task that depends on other open ones, the one waiting for most first, each dependency with its status and whether it is blocked); each task and each thing it waits for is a link; the list keeps the board's filters and the path says it does not | check, lint, build, unit and e2e green (risks 60 unit and 19 e2e, dependencies 11 web specs, Kanban 77, switcher); looked at in the browser on a scratch API/web; the a11y suites were extended but not run (they need the persistent stack stopped) | log:TASK-22 | 2026-10-26 |
+| FEATURE-13 | More views next to the Kanban: a switcher over one set of filters and one URL state, a list, a review queue, a view by agent, and the three views that wrap EPIC-01 features without duplicating their queries (Esperando, Dependencias, Línea de tiempo); the /kanban address keeps working | TASK-17, TASK-18, TASK-19, TASK-20, TASK-21, TASK-22 and TASK-23 are in Features.md with VALIDAR green | log:FEATURE-13 | 2026-10-26 |

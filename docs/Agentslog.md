@@ -18,16 +18,7 @@ segments live in `docs/history/`.
 
 ## Previous segment
 
-- Archive: `docs/history/Agentslog-20261026-030.md`
-- SHA-256: `6dd5d2ec0011230b9d5e6a0975bdb17d748c234e542be912da057f0e3ea90eb1`
+- Archive: `docs/history/Agentslog-20261026-031.md`
+- SHA-256: `b57275dcbee8a29b9f875e6d1f7877d31ff29f2f8291a85afcd1baaeab63a65e`
 
 ## Entries
-
-## [2026-10-26T20:32:44Z] | claude-sonnet-5-5 | TASK-22 | IN_PROGRESS | Dependencies view (wraps FEATURE-07)
-- Summary: 
-- Verify: pending
-
-## [2026-10-26T20:44:22Z] | claude-sonnet-5-5 | TASK-22 | DONE | Dependencies view (wraps FEATURE-07)
-- Summary: The Dependencias view (/projects/:id/dependencies, next to Esperando): the project's critical path and what waits for what, read from GET /risks with nothing computed in the web; /risks gains waiting (every open task that depends on other open ones, the one waiting for most first, each dependency with its status and whether it is blocked); each task and each thing it waits for is a link; the list keeps the board's filters and the path says it does not
-- Files: apps/api/src/modules/risks/risks.{util,service}.ts, apps/api/test/risks.e2e-spec.ts, apps/web/src/app/features/dependencies/*, apps/web/src/app/features/kanban/*, apps/web/src/app/shared/board-views/*, apps/web/src/app/core/risks.service.ts, apps/web/src/app/app.routes.ts, apps/web/a11y/*, docs/board-views.md, docs/risks.md, docs/api-reference.md
-- Verify: check, lint, build, unit and e2e green (risks 60 unit and 19 e2e, dependencies 11 web specs, Kanban 77, switcher); looked at in the browser on a scratch API/web; the a11y suites were extended but not run (they need the persistent stack stopped)
