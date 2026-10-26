@@ -233,6 +233,17 @@ owners of the Roadmap's rows that resolved to no member, and the names of the
 Agentslog's entries that no agent answers to. A name that does resolve but is not applied
 yet (the next sync does) is not listed.
 
+A ledger name carries, besides its entries, how many different tasks they are about and when it was
+first and last seen (the agent's own clock, Roadmap TASK-03); spellings that differ in case or
+spacing are one name, written as the ledger spells it most. The same list is
+`GET /projects/:projectId/agents/unregistered`, for a person to **register** one: `POST` on it with
+the name creates the AI agent with that name as display name and alias (so renaming it keeps the
+link), makes it a member of the project, relinks the entries at once, and is audited three ways
+(`CREATE` of the agent, `MEMBER_ADD`, `AGENT_REGISTERED_FROM_LEDGER`). Nothing registers a name by itself
+(Roadmap DEC-004, D2), only a name that list holds can be registered (it is no second way to create an
+agent), a name that two agents answer to is refused, and a name that looks like a credential never
+becomes an agent.
+
 **The claim time follows the owner cell.** When a row's owner cell changes, `rawOwner`
 and `ownerClaimedAt` change with it in the same transaction, with the same
 `ROADMAP_FIELD_UPDATE` audit event: a task taken over by another agent, or claimed again

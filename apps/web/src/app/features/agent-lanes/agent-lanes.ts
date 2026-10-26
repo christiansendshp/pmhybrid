@@ -1,4 +1,6 @@
-import { Component, computed, input } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { Component, computed, input, output } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
 import { AgentLane, UnregisteredName, agentLanes } from '../../core/agent-lanes.js';
 import { statusLabel } from '../../core/task-status-policy.js';
@@ -25,7 +27,7 @@ const STATUSES: readonly TaskStatus[] = [
  */
 @Component({
   selector: 'app-agent-lanes',
-  imports: [RouterLink, ShortTitlePipe],
+  imports: [DatePipe, MatButtonModule, RouterLink, ShortTitlePipe],
   templateUrl: './agent-lanes.html',
   styleUrl: './agent-lanes.scss',
 })
@@ -39,6 +41,14 @@ export class AgentLanes {
   readonly unregistered = input<UnregisteredName[]>([]);
   /** The list of names could not be read: said, so its absence is not taken for "none". */
   readonly unregisteredFailed = input(false);
+  /** Whether the person may register a name as an agent of the project (Roadmap TASK-03). */
+  readonly canRegister = input(false);
+  /** The name being registered right now: every button waits. */
+  readonly registering = input<string | null>(null);
+  /** Why the last registration failed, in words. */
+  readonly registerError = input<string | null>(null);
+  /** The person asked to register this name: the host does it and reads the lanes again. */
+  readonly register = output<string>();
 
   readonly result = computed(() =>
     agentLanes(this.cards(), this.members(), this.agentLimit(), this.allCards()),

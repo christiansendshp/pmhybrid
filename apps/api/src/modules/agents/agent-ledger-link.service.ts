@@ -19,10 +19,30 @@ export type UnresolvedReason = 'UNKNOWN' | 'AMBIGUOUS';
 
 /** The names a project's documents use that no agent could be found for, with how many records carry each (Roadmap TASK-02). */
 export interface UnresolvedNames {
-  /** Names the Agentslog's entries carry, with the number of entries. */
-  ledgerNames: { name: string; events: number; reason: UnresolvedReason }[];
+  /** Names the Agentslog's entries carry, with the number of entries and tasks and when it was first and last seen (Roadmap TASK-03). */
+  ledgerNames: {
+    name: string;
+    events: number;
+    tasks: number;
+    firstSeen: Date;
+    lastSeen: Date;
+    reason: UnresolvedReason;
+  }[];
   /** Owners the Roadmap's rows carry that resolved to no member, with the number of tasks. */
   ownerNames: { name: string; tasks: number; reason: UnresolvedReason }[];
+}
+
+/** A name the ledger carries that no registered agent answers to, with what it has done (Roadmap TASK-03). */
+export interface UnregisteredName {
+  /** The spelling the ledger uses most; other spellings of it (case, spacing) are counted here too. */
+  name: string;
+  entries: number;
+  /** How many different tasks its entries are about. */
+  tasks: number;
+  /** The earliest and the latest time an entry of it says, by the agent's own clock. */
+  firstSeen: Date;
+  lastSeen: Date;
+  reason: UnresolvedReason;
 }
 
 /**
@@ -117,29 +137,11 @@ export class AgentLedgerLinkService {
     projectId: string,
     db: Db = this.prisma,
   ): Promise<UnresolvedNames> {
-    const owners = await this.ownersByKey(db);
-    const reasonOf = (name: string): UnresolvedReason =>
-      (owners.get(identifierKey(name))?.size ?? 0) > 1
-        ? 'AMBIGUOUS'
-        : 'UNKNOWN';
-
-    const events = await db.agentLogEvent.groupBy({
-      by: ['agentName'],
-      where: { projectId, agentActorId: null },
-      _count: { _all: true },
-    });
-    // An unlinked event whose name does resolve is one the next sync links, not a gap.
-    const resolved = await this.resolve(
-      events.map((item) => item.agentName),
-      db,
+    // The same list a person registers from (Roadmap TASK-03); an unlinked event whose name does
+    // resolve is one the next sync links, not a gap, and it is not in it.
+    const ledgerNames = (await this.unregistered(projectId, db)).map(
+      ({ entries, ...name }) => ({ ...name, events: entries }),
     );
-    const ledgerNames = events
-      .filter((item) => resolved.get(item.agentName) === null)
-      .map((item) => ({
-        name: item.agentName,
-        events: item._count._all,
-        reason: reasonOf(item.agentName),
-      }));
 
     const candidates = await this.ownerCandidates(db, projectId);
     const unassigned = await db.task.findMany({
@@ -181,6 +183,85 @@ export class AgentLedgerLinkService {
         (a, b) => b.tasks - a.tasks || a.name.localeCompare(b.name),
       ),
     };
+  }
+
+  /**
+   * The names the project's ledger carries that no registered agent answers to, for a person to register
+   * one (Roadmap TASK-03): how many entries and tasks each has and when it was first and last seen, the
+   * most active first. Spellings that differ only in case or spacing are one name. Read-only.
+   */
+  async unregistered(
+    projectId: string,
+    db: Db = this.prisma,
+  ): Promise<UnregisteredName[]> {
+    const events = await db.agentLogEvent.findMany({
+      where: { projectId, agentActorId: null },
+      select: {
+        agentName: true,
+        taskExternalId: true,
+        timestampFromLog: true,
+      },
+    });
+    const resolved = await this.resolve(
+      events.map((event) => event.agentName),
+      db,
+    );
+    const owners = await this.ownersByKey(db);
+
+    const byKey = new Map<
+      string,
+      {
+        spellings: Map<string, number>;
+        entries: number;
+        tasks: Set<string>;
+        firstSeen: Date;
+        lastSeen: Date;
+        ambiguous: boolean;
+      }
+    >();
+    for (const event of events) {
+      // A name that resolves is one the next sync links, not a gap.
+      if (resolved.get(event.agentName) !== null) {
+        continue;
+      }
+      const key = identifierKey(event.agentName);
+      const group = byKey.get(key) ?? {
+        spellings: new Map<string, number>(),
+        entries: 0,
+        tasks: new Set<string>(),
+        firstSeen: event.timestampFromLog,
+        lastSeen: event.timestampFromLog,
+        ambiguous: (owners.get(key)?.size ?? 0) > 1,
+      };
+      group.spellings.set(
+        event.agentName,
+        (group.spellings.get(event.agentName) ?? 0) + 1,
+      );
+      group.entries += 1;
+      if (event.taskExternalId) {
+        group.tasks.add(event.taskExternalId);
+      }
+      if (event.timestampFromLog < group.firstSeen) {
+        group.firstSeen = event.timestampFromLog;
+      }
+      if (event.timestampFromLog > group.lastSeen) {
+        group.lastSeen = event.timestampFromLog;
+      }
+      byKey.set(key, group);
+    }
+
+    return [...byKey.values()]
+      .map((group) => ({
+        name: [...group.spellings.entries()].sort(
+          (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+        )[0][0],
+        entries: group.entries,
+        tasks: group.tasks.size,
+        firstSeen: group.firstSeen,
+        lastSeen: group.lastSeen,
+        reason: group.ambiguous ? ('AMBIGUOUS' as const) : ('UNKNOWN' as const),
+      }))
+      .sort((a, b) => b.entries - a.entries || a.name.localeCompare(b.name));
   }
 
   /** Links the project's events that are still unlinked and whose name now resolves. Returns how many it linked. */

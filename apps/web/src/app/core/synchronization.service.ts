@@ -5,7 +5,16 @@ import { API_BASE_URL } from './api-base-url.js';
 
 /** What the documents name that no registered agent answers to, and why (Roadmap TASK-02). */
 export interface UnresolvedNames {
-  ledgerNames: { name: string; events: number; reason: 'UNKNOWN' | 'AMBIGUOUS' }[];
+  ledgerNames: {
+    name: string;
+    events: number;
+    /** How many different tasks its entries are about (Roadmap TASK-03). */
+    tasks: number;
+    /** When it was first and last seen, by the agent's own clock. */
+    firstSeen: string;
+    lastSeen: string;
+    reason: 'UNKNOWN' | 'AMBIGUOUS';
+  }[];
   ownerNames: { name: string; tasks: number; reason: 'UNKNOWN' | 'AMBIGUOUS' }[];
 }
 

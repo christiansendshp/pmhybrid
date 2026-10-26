@@ -105,7 +105,10 @@ against every task of the project, not what the filters leave). The tasks no age
 does or nobody does, are in no lane and are counted in words above them. Below the lanes, a lane marked as
 "Sin registrar" lists the names the ledger carries that no registered agent answers to (`GET
 /projects/:id/unresolved-names`, Roadmap TASK-02), with how many entries carry each and why: no agent
-answers to it, or two do. If that list cannot be read, the view says so and keeps the lanes. It reads what
+answers to it, or two do, and how many tasks they are about and since when (Roadmap TASK-03). Whoever may manage
+the project's members and create agents also gets **Registrar como agente** on a name no agent answers to: it
+creates the agent with that name and adds it to the project (`docs/permissions.md`), and the lanes, the list
+and the board are read again. If that list cannot be read, the view says so and keeps the lanes. It reads what
 the board and the workload read, and nothing more than that one list.
 
 ## The timeline (Roadmap TASK-23)

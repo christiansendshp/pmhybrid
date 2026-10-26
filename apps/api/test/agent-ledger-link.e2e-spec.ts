@@ -351,7 +351,14 @@ describe('Owners and ledger names through the aliases (e2e, Roadmap TASK-02)', (
         first.map((event) => [event.id, event.agentActorId]),
       );
       expect((await unresolved(projectId)).ledgerNames).toEqual([
-        { name: stranger, events: 1, reason: 'UNKNOWN' },
+        {
+          name: stranger,
+          events: 1,
+          tasks: 1,
+          firstSeen: expect.any(String),
+          lastSeen: expect.any(String),
+          reason: 'UNKNOWN',
+        },
       ]);
     });
 
@@ -411,7 +418,14 @@ describe('Owners and ledger names through the aliases (e2e, Roadmap TASK-02)', (
         .expect(200);
       expect((await events(projectId))[0].agentActorId).toBeNull();
       expect((await unresolved(projectId)).ledgerNames).toEqual([
-        { name: late, events: 1, reason: 'UNKNOWN' },
+        {
+          name: late,
+          events: 1,
+          tasks: 1,
+          firstSeen: expect.any(String),
+          lastSeen: expect.any(String),
+          reason: 'UNKNOWN',
+        },
       ]);
 
       await request(server())

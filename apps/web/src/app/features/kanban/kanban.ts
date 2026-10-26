@@ -80,6 +80,8 @@ const DROP_TARGET_STATUSES = KANBAN_STATUSES.filter(
  * requester's permission.
  */
 const TASK_WRITE = 'task.write';
+const MEMBERS_MANAGE = 'project.members.manage';
+const ACTORS_MANAGE = 'actors.manage';
 
 /**
  * Cards a column shows before it offers the rest (Roadmap UX-02b). Finished work
@@ -139,6 +141,13 @@ export class Kanban implements OnInit {
   /** The names the documents carry that no registered agent answers to, for the view by agent (Roadmap TASK-20). */
   readonly unregistered = signal<UnregisteredName[]>([]);
   readonly unregisteredFailed = signal(false);
+  /** Registering a name takes the permission to manage the members and the one to create agents (Roadmap TASK-03). */
+  readonly canRegisterAgents = computed(() => {
+    const permissions = this.context.permissions();
+    return permissions.includes(MEMBERS_MANAGE) && permissions.includes(ACTORS_MANAGE);
+  });
+  readonly registeringName = signal<string | null>(null);
+  readonly registerError = signal<string | null>(null);
   /** The limit of work in development per agent, for the lanes of the view by agent. */
   readonly wipAgentLimit = computed(() => this.context.project()?.wipLimitAgent ?? null);
   /** How the list is ordered and which page it is on; only the list has them. */
@@ -551,11 +560,29 @@ export class Kanban implements OnInit {
   }
 
   /** The names no agent answers to; a list that cannot be read leaves the lanes as they are and says so. */
+  /** Registers a name the ledger carries as an agent of the project, then reads the lanes again (Roadmap TASK-03). */
+  async registerAgent(name: string): Promise<void> {
+    this.registeringName.set(name);
+    this.registerError.set(null);
+    try {
+      await this.projectsService.registerLedgerAgent(this.projectId, name);
+      // The agent is a member now and its entries answer to it: the lanes, the names and the cards change.
+      this.members.set(await this.projectsService.listMembers(this.projectId));
+      await this.readUnregistered();
+      await this.reloadCards();
+    } catch (error) {
+      this.registerError.set(describeHttpError(error, 'No se pudo registrar el agente.'));
+    } finally {
+      this.registeringName.set(null);
+    }
+  }
+
   private async readUnregistered(): Promise<void> {
     try {
       this.unregistered.set(
         (await this.synchronization.unresolvedNames(this.projectId)).ledgerNames,
       );
+      this.unregisteredFailed.set(false);
     } catch {
       this.unregisteredFailed.set(true);
     }

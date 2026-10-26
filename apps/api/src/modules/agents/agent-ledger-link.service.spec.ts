@@ -10,7 +10,11 @@ interface FakeEvent {
   projectId: string;
   agentName: string;
   agentActorId: string | null;
+  taskExternalId?: string | null;
+  timestampFromLog?: Date;
 }
+
+const DEFAULT_TIME = new Date('2026-10-01T00:00:00Z');
 interface FakeTask {
   projectId: string;
   rawOwner: string | null;
@@ -76,6 +80,14 @@ function fakeDb(input: {
         })),
     },
     agentLogEvent: {
+      findMany: async ({ where = {} }: { where?: Record<string, unknown> }) =>
+        events
+          .filter((candidate) => matches(candidate, where))
+          .map((event) => ({
+            agentName: event.agentName,
+            taskExternalId: event.taskExternalId ?? null,
+            timestampFromLog: event.timestampFromLog ?? DEFAULT_TIME,
+          })),
       groupBy: async ({ where = {} }: { where?: Record<string, unknown> }) => {
         const groups = new Map<string, number>();
         for (const event of events.filter((candidate) =>
@@ -282,13 +294,131 @@ describe('AgentLedgerLinkService (Roadmap TASK-02)', () => {
       const gaps = await service().unresolved('p1', db);
 
       expect(gaps.ledgerNames).toEqual([
-        { name: 'Stranger', events: 2, reason: 'UNKNOWN' },
-        { name: 'claude', events: 1, reason: 'AMBIGUOUS' },
+        {
+          name: 'Stranger',
+          events: 2,
+          tasks: 0,
+          firstSeen: DEFAULT_TIME,
+          lastSeen: DEFAULT_TIME,
+          reason: 'UNKNOWN',
+        },
+        {
+          name: 'claude',
+          events: 1,
+          tasks: 0,
+          firstSeen: DEFAULT_TIME,
+          lastSeen: DEFAULT_TIME,
+          reason: 'AMBIGUOUS',
+        },
       ]);
       expect(gaps.ownerNames).toEqual([
         { name: 'ghost', tasks: 2, reason: 'UNKNOWN' },
         { name: 'Twin', tasks: 1, reason: 'AMBIGUOUS' },
       ]);
+    });
+  });
+
+  describe('unregistered (Roadmap TASK-03)', () => {
+    const at = (day: number) =>
+      new Date(`2026-10-${String(day).padStart(2, '0')}T10:00:00Z`);
+    const event = (
+      agentName: string,
+      rest: Partial<FakeEvent> = {},
+    ): FakeEvent => ({
+      projectId: 'p1',
+      agentName,
+      agentActorId: null,
+      ...rest,
+    });
+
+    it('counts the entries and the different tasks of a name, and when it was first and last seen by its own clock', async () => {
+      const { db } = fakeDb({
+        agents: [sonnet],
+        events: [
+          event('Stranger', { taskExternalId: 'T-1', timestampFromLog: at(5) }),
+          event('Stranger', { taskExternalId: 'T-1', timestampFromLog: at(2) }),
+          event('Stranger', { taskExternalId: 'T-2', timestampFromLog: at(9) }),
+          event('Stranger', { taskExternalId: null, timestampFromLog: at(3) }),
+        ],
+      });
+
+      const [stranger] = await service().unregistered('p1', db);
+
+      expect(stranger).toEqual({
+        name: 'Stranger',
+        entries: 4,
+        tasks: 2,
+        firstSeen: at(2),
+        lastSeen: at(9),
+        reason: 'UNKNOWN',
+      });
+    });
+
+    it('is one name for spellings that differ in case or spacing, spelled as the ledger does most', async () => {
+      const { db } = fakeDb({
+        agents: [],
+        events: [event('stranger'), event('Stranger '), event('stranger')],
+      });
+
+      const names = await service().unregistered('p1', db);
+
+      expect(names).toEqual([
+        expect.objectContaining({ name: 'stranger', entries: 3 }),
+      ]);
+    });
+
+    it('lists the most active name first, and the alphabetical one first among equals', async () => {
+      const { db } = fakeDb({
+        agents: [],
+        events: [event('beta'), event('alpha'), event('busy'), event('busy')],
+      });
+
+      const names = (await service().unregistered('p1', db)).map(
+        (item) => item.name,
+      );
+
+      expect(names).toEqual(['busy', 'alpha', 'beta']);
+    });
+
+    it('leaves out a name an agent answers to, which the next sync links', async () => {
+      const { db } = fakeDb({
+        agents: [codex],
+        events: [event('Codex'), event('Stranger')],
+      });
+
+      const names = (await service().unregistered('p1', db)).map(
+        (item) => item.name,
+      );
+
+      expect(names).toEqual(['Stranger']);
+    });
+
+    it('leaves out the events of another project and the ones already linked to an agent', async () => {
+      const { db } = fakeDb({
+        agents: [sonnet],
+        events: [
+          { projectId: 'p2', agentName: 'Elsewhere', agentActorId: null },
+          { projectId: 'p1', agentName: 'Linked', agentActorId: 'a1' },
+        ],
+      });
+
+      expect(await service().unregistered('p1', db)).toEqual([]);
+    });
+
+    it('says AMBIGUOUS for a name two agents answer to', async () => {
+      const rival: FakeAgent = {
+        id: 'a3',
+        displayName: 'Rival',
+        aliases: ['claude'],
+      };
+      const { db } = fakeDb({
+        agents: [sonnet, rival],
+        events: [event('claude')],
+      });
+
+      const [name] = await service().unregistered('p1', db);
+
+      expect(name.reason).toBe('AMBIGUOUS');
     });
   });
 });

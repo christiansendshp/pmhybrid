@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 170
-- Latest verification: `Every task under it is in Features.md; VALIDAR green on HEAD fa0ad10` (2026-10-26)
+- Verified capabilities: 171
+- Latest verification: `VALIDAR green: check, lint, build, api unit 778, web 547, e2e 548` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -185,3 +185,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | TASK-28 | The board sends a note with the QA handoff and its answer: optional note field on the task page, a reason dialog when a card is dragged from QA to development, and the review queue reason as the note of the move | VALIDAR green: check, lint, build, api unit 768, web 542, e2e 536 | log:TASK-28 | 2026-10-26 |
 | FEATURE-11 | Development and QA are visible and a handoff is documented: stages read from the ledger, time in state, instant closes, reviewer in Postgres, opt-in QA handoff in the ledger, MCP handoff and review tools, board notes | Every task under it is in Features.md; VALIDAR green on HEAD fa0ad10 | log:FEATURE-11 | 2026-10-26 |
 | FEATURE-12 | Kanban card and board say who, where and how long: agent chip, age in the stage, reviewer, last ledger line, divergence badge, advisory WIP limits and filters | Every task under it is in Features.md; VALIDAR green on HEAD fa0ad10 | log:FEATURE-12 | 2026-10-26 |
+| TASK-03 | Agents the ledger names that nobody registered: GET and POST /projects/:id/agents/unregistered list them with entries, tasks and dates and register one as a member agent (needs members.manage and actors.manage, audited); Register button in the agent lanes | VALIDAR green: check, lint, build, api unit 778, web 547, e2e 548 | log:TASK-03 | 2026-10-26 |

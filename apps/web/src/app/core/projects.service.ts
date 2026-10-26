@@ -135,6 +135,22 @@ export class ProjectsService {
     );
   }
 
+  /**
+   * Registers a name the project's ledger carries as an AI agent and member of the project, in one step
+   * (Roadmap TASK-03). It needs the permission to manage the members and the one to create agents.
+   */
+  registerLedgerAgent(
+    projectId: string,
+    name: string,
+  ): Promise<{ id: string; displayName: string }> {
+    return firstValueFrom(
+      this.http.post<{ id: string; displayName: string }>(
+        `${API_BASE_URL}/projects/${projectId}/agents/unregistered`,
+        { name },
+      ),
+    );
+  }
+
   addMember(projectId: string, actorId: string): Promise<ProjectMember> {
     return firstValueFrom(
       this.http.post<ProjectMember>(`${API_BASE_URL}/projects/${projectId}/members`, { actorId }),

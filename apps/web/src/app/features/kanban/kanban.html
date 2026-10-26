@@ -233,6 +233,10 @@
       [agentLimit]="wipAgentLimit()"
       [unregistered]="unregistered()"
       [unregisteredFailed]="unregisteredFailed()"
+      [canRegister]="canRegisterAgents()"
+      [registering]="registeringName()"
+      [registerError]="registerError()"
+      (register)="registerAgent($event)"
     />
   }
 } @else if (view() === 'timeline') {

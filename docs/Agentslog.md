@@ -18,25 +18,15 @@ segments live in `docs/history/`.
 
 ## Previous segment
 
-- Archive: `docs/history/Agentslog-20261026-008.md`
-- SHA-256: `c650439a5b03c9c2959a2bc7e0693cc55c30df89c5b3c58947929dbf760fb6eb`
+- Archive: `docs/history/Agentslog-20261026-009.md`
+- SHA-256: `bfc54c1a4b5b398dc2b772db272dcf9c17838b6e4af9f45377eab14a0c4664ac`
 
 ## Entries
 
-## [2026-10-26T15:25:23Z] | claude-sonnet-5-5 | FEATURE-11 | IN_PROGRESS | Development and QA are visible, and a handoff is documented
-- Summary: Close the feature: every task under it is done
-- Verify: pending
+## [2026-10-26T15:27:33Z] | claude-sonnet-5-5 | TASK-03 | IN_PROGRESS | Suggest registering the agents seen in the log
+- Summary: carried forward from docs/history/Agentslog-20261026-009.md at rotation
 
-## [2026-10-26T15:25:24Z] | claude-sonnet-5-5 | FEATURE-12 | IN_PROGRESS | Kanban card and board say who, where, how long
-- Summary: Close the feature: every task under it is done
-- Verify: pending
-
-## [2026-10-26T15:25:26Z] | claude-sonnet-5-5 | FEATURE-11 | DONE | Development and QA are visible, and a handoff is documented
-- Summary: Development and QA are visible and a handoff is documented: stages read from the ledger, time in state, instant closes, reviewer in Postgres, opt-in QA handoff in the ledger, MCP handoff and review tools, board notes
-- Files: docs/Roadmap.md
-- Verify: Every task under it is in Features.md; VALIDAR green on HEAD fa0ad10
-
-## [2026-10-26T15:25:27Z] | claude-sonnet-5-5 | FEATURE-12 | DONE | Kanban card and board say who, where, how long
-- Summary: Kanban card and board say who, where and how long: agent chip, age in the stage, reviewer, last ledger line, divergence badge, advisory WIP limits and filters
-- Files: docs/Roadmap.md
-- Verify: Every task under it is in Features.md; VALIDAR green on HEAD fa0ad10
+## [2026-10-26T15:48:44Z] | claude-sonnet-5-5 | TASK-03 | DONE | Suggest registering the agents seen in the log
+- Summary: Agents the ledger names that nobody registered: GET and POST /projects/:id/agents/unregistered list them with entries, tasks and dates and register one as a member agent (needs members.manage and actors.manage, audited); Register button in the agent lanes
+- Files: apps/api/src/modules/agents, apps/web/src/app/features/agent-lanes, apps/web/src/app/features/kanban, docs/permissions.md, docs/synchronization.md
+- Verify: VALIDAR green: check, lint, build, api unit 778, web 547, e2e 548

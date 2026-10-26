@@ -75,14 +75,35 @@
     </h3>
     <p class="meta-text">
       Nombres que el registro de agentes usa y que ningún agente registrado responde: su trabajo no
-      se atribuye a nadie. Se registran en la página Equipo, con el nombre o el alias que escribe
-      cada agente.
+      se atribuye a nadie.
+      @if (canRegister()) {
+        «Registrar» crea el agente con ese nombre y lo agrega al proyecto; nada se registra solo.
+      } @else {
+        Se registran en la página Equipo, con el nombre o el alias que escribe cada agente.
+      }
     </p>
+    @if (registerError()) {
+      <p class="callout" role="alert">{{ registerError() }}</p>
+    }
     <ul class="agent-lane__list">
       @for (item of unregistered(); track item.name) {
         <li>
           <code>{{ item.name }}</code> — {{ item.events }}
           {{ item.events === 1 ? 'entrada' : 'entradas' }}; {{ reasonText(item.reason) }}
+          <span class="meta-text">
+            · {{ item.tasks }} {{ item.tasks === 1 ? 'tarea' : 'tareas' }} · del
+            {{ item.firstSeen | date: 'd MMM y' }} al {{ item.lastSeen | date: 'd MMM y' }}
+          </span>
+          @if (canRegister() && item.reason === 'UNKNOWN') {
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="registering() !== null"
+              (click)="register.emit(item.name)"
+            >
+              Registrar como agente
+            </button>
+          }
         </li>
       }
     </ul>

@@ -73,8 +73,16 @@ const HIERARCHY: ProjectHierarchy = {
   templates: [],
 };
 
+/** What the API says of a name when it was seen: tasks and dates (Roadmap TASK-03). */
+const SEEN = {
+  tasks: 3,
+  firstSeen: '2026-10-01T10:00:00.000Z',
+  lastSeen: '2026-10-05T10:00:00.000Z',
+};
+
 describe('Kanban (brief §15)', () => {
   let listForProject: ReturnType<typeof vi.fn>;
+  let registerLedgerAgent: ReturnType<typeof vi.fn>;
   let transition: ReturnType<typeof vi.fn>;
   let table: ReturnType<typeof vi.fn>;
   let listMembers: ReturnType<typeof vi.fn>;
@@ -88,6 +96,7 @@ describe('Kanban (brief §15)', () => {
     dialogAnswer = undefined;
     openDialog = vi.fn(() => ({ afterClosed: () => of(dialogAnswer) }));
     listMembers = vi.fn().mockResolvedValue([]);
+    registerLedgerAgent = vi.fn().mockResolvedValue({ id: 'new', displayName: 'ghost' });
     unresolvedNames = vi.fn().mockResolvedValue({ ledgerNames: [], ownerNames: [] });
     spans = vi.fn().mockResolvedValue({});
     listForProject = vi.fn();
@@ -117,7 +126,7 @@ describe('Kanban (brief §15)', () => {
         ]),
         { provide: TasksService, useValue: { listForProject, transition, table, spans } },
         { provide: MatDialog, useValue: { open: openDialog } },
-        { provide: ProjectsService, useValue: { listMembers } },
+        { provide: ProjectsService, useValue: { listMembers, registerLedgerAgent } },
         { provide: SynchronizationService, useValue: { unresolvedNames } },
         { provide: HierarchyService, useValue: { load: vi.fn().mockResolvedValue(HIERARCHY) } },
       ],
@@ -1049,8 +1058,8 @@ describe('Kanban (brief §15)', () => {
       listMembers.mockResolvedValue([agentMember('codex', 'Codex')]);
       unresolvedNames.mockResolvedValue({
         ledgerNames: [
-          { name: 'claude-sonnet-5-5', events: 731, reason: 'UNKNOWN' },
-          { name: 'claude', events: 1, reason: 'AMBIGUOUS' },
+          { name: 'claude-sonnet-5-5', events: 731, ...SEEN, reason: 'UNKNOWN' },
+          { name: 'claude', events: 1, ...SEEN, reason: 'AMBIGUOUS' },
         ],
         ownerNames: [],
       });
@@ -1064,6 +1073,76 @@ describe('Kanban (brief §15)', () => {
       );
       expect(text).toContain('claude — 1 entrada; dos agentes responden a este nombre');
       expect(unresolvedNames).toHaveBeenCalledWith('p1');
+    });
+
+    describe('registering a name the ledger carries (Roadmap TASK-03)', () => {
+      const MANAGER = ['task.write', 'project.members.manage', 'actors.manage'];
+      const ghosts = () =>
+        unresolvedNames.mockResolvedValue({
+          ledgerNames: [
+            { name: 'ghost', events: 4, ...SEEN, reason: 'UNKNOWN' },
+            { name: 'twin', events: 1, ...SEEN, reason: 'AMBIGUOUS' },
+          ],
+          ownerNames: [],
+        });
+      const lane = (harness: { routeNativeElement: HTMLElement | null }) =>
+        harness.routeNativeElement!.querySelector('.agent-lane--unregistered')!;
+      const buttons = (root: Element) =>
+        Array.from(root.querySelectorAll('button')).map((button) => button.textContent?.trim());
+
+      it('says how many tasks and since when, beside the entries and the reason', async () => {
+        ghosts();
+        const { harness } = await render([], MANAGER, '/projects/p1/agents');
+
+        const text = (lane(harness).textContent ?? '').replace(/\s+/g, ' ');
+
+        expect(text).toContain('ghost — 4 entradas; ningún agente responde a este nombre');
+        expect(text).toContain('3 tareas · del 1 Oct 2026 al 5 Oct 2026');
+      });
+
+      it('offers to register a name no agent answers to, to someone who can manage the members and create agents', async () => {
+        ghosts();
+        const { harness } = await render([], MANAGER, '/projects/p1/agents');
+
+        expect(buttons(lane(harness))).toEqual(['Registrar como agente']);
+      });
+
+      it('offers nothing to someone who lacks one of the two permissions', async () => {
+        ghosts();
+        const members = await render(
+          [],
+          ['task.write', 'project.members.manage'],
+          '/projects/p1/agents',
+        );
+
+        expect(buttons(lane(members.harness))).toEqual([]);
+      });
+
+      it('registers the name, then reads the members, the names and the board again', async () => {
+        ghosts();
+        const { component } = await render([], MANAGER, '/projects/p1/agents');
+        unresolvedNames.mockResolvedValue({ ledgerNames: [], ownerNames: [] });
+        listMembers.mockResolvedValue([agentMember('ghost', 'ghost')]);
+
+        await component.registerAgent('ghost');
+
+        expect(registerLedgerAgent).toHaveBeenCalledWith('p1', 'ghost');
+        expect(component.members().map((member) => member.actorId)).toEqual(['ghost']);
+        expect(component.unregistered()).toEqual([]);
+        expect(listForProject).toHaveBeenCalledTimes(2);
+      });
+
+      it('says why it could not register, and keeps the name in the list', async () => {
+        ghosts();
+        registerLedgerAgent.mockRejectedValue(new Error('refused'));
+        const { component } = await render([], MANAGER, '/projects/p1/agents');
+
+        await component.registerAgent('ghost');
+
+        expect(component.registerError()).toBe('No se pudo registrar el agente.');
+        expect(component.unregistered().map((item) => item.name)).toEqual(['ghost', 'twin']);
+        expect(component.registeringName()).toBeNull();
+      });
     });
 
     it('shows no lane for names when there are none, and says so when the list could not be read', async () => {

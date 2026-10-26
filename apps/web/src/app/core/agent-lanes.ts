@@ -27,6 +27,11 @@ export interface UnregisteredName {
   name: string;
   /** How many entries of the ledger carry it. */
   events: number;
+  /** How many different tasks those entries are about. */
+  tasks: number;
+  /** When it was first and last seen, by the agent's own clock. */
+  firstSeen: string;
+  lastSeen: string;
   reason: 'UNKNOWN' | 'AMBIGUOUS';
 }
 

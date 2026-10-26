@@ -250,6 +250,15 @@ the QA handoff writes it in the ledger (`docs/synchronization.md`). `list_review
 the tasks in QA of the projects the key is a member of, the longest waiting first, and shows
 nothing of any other project; `reviewer: "me"` keeps those that asked the caller.
 
+## Registering the agents the ledger names (Roadmap TASK-03)
+
+`GET` and `POST /projects/:projectId/agents/unregistered` need `project.members.manage`, as a person who
+cannot act on the list has no use for it (a viewer gets a 403, and so does someone who is not a member).
+Registering also needs `actors.manage`, the global permission to create an agent, checked by the service
+because one route cannot ask for two: a project administrator who can add members but not create agents is
+refused with `Missing permission: actors.manage`, and nothing is created. The board offers the button only
+to someone who holds both; the API refuses regardless.
+
 ## Who may write, and what a resolution may apply (Roadmap SECURITY-02)
 
 Before this change any project member — including one holding no role at all
