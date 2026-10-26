@@ -68,6 +68,98 @@ Where a separate job migrates the database, set `RUN_MIGRATIONS=false` on the AP
 | `GET /health`      | 200 with `db: up`, or 503 when the database cannot be read. | Readiness: the API can do its work.                                                                      |
 | web `GET /healthz` | `ok`                                                        | The web image's `HEALTHCHECK`.                                                                           |
 
+## Backups
+
+The database volume (`pmhybrid_data`) holds the **only copy** of things nothing else can
+rebuild (Roadmap TASK-52):
+
+- **The audit trail** (`AuditEvent`): who changed what, when, from where. It is append-only
+  history; a lost row is lost for good.
+- **The LLM configuration** (`LlmSettings`): provider, model and the API key, which is stored
+  encrypted with a key derived from `JWT_SECRET`. Keep `JWT_SECRET` (in `.env.prod`) with your
+  backups, apart from the dumps: with another secret the dump restores but the key reads as
+  "not readable" and is entered again; nothing else depends on it.
+- The people, roles and API keys (hashed), comments, notifications, document revisions and the
+  daily progress snapshots.
+
+Not in the database: the projects' docs folders (`PROJECTS_DIR`, or the GitHub repository) are
+the truth of their own content and are backed up as files; the images are rebuilt.
+
+### Taking a backup
+
+```bash
+deploy/backup/backup-postgres.sh \
+  --container pmhybrid-prod-postgres-1 --database pmhybrid \
+  --dir /var/backups/pmhybrid --keep 14
+```
+
+It runs `pg_dump` (custom format) **inside** the container, over its local socket, as the user
+the container was created with, so it needs no password and none appears in a command line or
+in its output. It writes `pmhybrid-<UTC date>T<UTC time>Z.dump` into the folder, reads the file
+back with `pg_restore --list`, and only then keeps it and deletes the older dumps of that
+database beyond `--keep` (default 14; at least 1). A run that fails (no such container, not
+running, no such database, a folder that does not exist or is not writable) says why, exits
+non-zero and deletes nothing. The folder is never created for you: put it on another disk or
+machine than the volume, or a dead disk takes both. A dump holds everything the database does,
+including the password hashes and the encrypted key, so give the folder the permissions you give
+the database (the files are created readable by their owner only).
+
+Schedule it daily, and the restore check weekly (cron on the host, or the scheduler of its OS
+running the same `sh` command):
+
+```cron
+15 2 * * *  /opt/pmhybrid/deploy/backup/backup-postgres.sh --container pmhybrid-prod-postgres-1 --database pmhybrid --dir /var/backups/pmhybrid --keep 14 >> /var/log/pmhybrid-backup.log 2>&1
+45 2 * * 0  /opt/pmhybrid/deploy/backup/restore-check.sh --container pmhybrid-prod-postgres-1 --database pmhybrid --dir /var/backups/pmhybrid >> /var/log/pmhybrid-backup.log 2>&1
+```
+
+A database outside Docker (a `DATABASE_URL` pointing elsewhere) is the provider's to back up, or
+`pg_dump -Fc` with a `~/.pgpass` file; never the password in the command.
+
+### Checking that a backup restores
+
+A backup nobody has restored is a hope. `restore-check.sh` takes the newest dump of the folder
+(or `--file` one), restores it into a **scratch database** of the same container
+(`restorecheck_<time>_<pid>`, the only thing it creates), counts the rows of every table of the
+public schema in the scratch copy and in the live database, prints both side by side, and drops the
+scratch database, then looks for it again and fails loudly if it is still there. The live database
+is only read.
+
+Rows written after the dump are normal on a live system, so by default a table whose count differs
+is shown as `differs` and is not a failure. These are: `pg_restore` reporting any error, a table of
+the live database missing from the dump, and a dump with no rows at all although the database has
+some (a schema-only dump). `--strict` makes every difference a failure; use it when nothing is
+writing. It needs room for a second copy of the database in the container.
+
+### Restoring
+
+This **replaces the data of the database with the dump's**. If the current state is worth
+anything, take a backup first.
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod stop api
+docker exec -i pmhybrid-prod-postgres-1 sh -c \
+  'exec pg_restore -w --clean --if-exists --no-owner -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+  < /var/backups/pmhybrid/pmhybrid-20261026T021500Z.dump
+docker compose -f docker-compose.prod.yml --env-file .env.prod start api
+```
+
+On a new, empty volume the same command works: `--if-exists` makes the `--clean` of a database with
+nothing in it harmless. Start the API afterwards; it applies any migration the dump predates.
+Use the same `JWT_SECRET` as when the key was stored.
+
+### How it was tested
+
+`sh deploy/backup/test.sh` (`pnpm test:backup`; a job of `.github/workflows/ci.yml`) starts a
+throwaway Postgres container of its own, with a password of its own, and runs the cases against
+it: the name and the pruning of the dumps, what a failed backup leaves behind (nothing, and the
+older dumps intact), each way a backup or a check can be refused, a restore check that passes, one
+that sees rows written since, one with `--strict`, a schema-only dump, a truncated dump, no scratch
+database left in any of them, the restore command above bringing back deleted rows, and that the
+password appears in no output and in neither script. It removes the container when it ends.
+On 2026-10-26 the scripts were also run by hand against the e2e database (`pmhybrid_test`) of the
+development container: 30 tables and 15 208 rows restored, every count equal under `--strict`, the
+scratch database gone. They were not run against the persistent stack.
+
 ## Upgrading
 
 ```bash
@@ -76,7 +168,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 ```
 
 The API applies any new migration when it starts. The database volume (`pmhybrid_data`)
-is kept; take a `pg_dump` before an upgrade that carries a migration you have not read.
+is kept; take a backup (above) before an upgrade that carries a migration you have not read.
 
 ## The web app's API address
 

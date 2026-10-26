@@ -16,6 +16,7 @@
     "test:e2e": "pnpm --filter api test:e2e",
     "test:e2e:cov": "pnpm --filter api test:e2e:cov",
     "test:a11y": "pnpm --filter web test:a11y",
+    "test:backup": "sh deploy/backup/test.sh",
     "prisma:migrate": "pnpm --filter api prisma:migrate",
     "prisma:studio": "pnpm --filter api prisma:studio",
     "prisma:seed": "pnpm --filter api prisma:seed",

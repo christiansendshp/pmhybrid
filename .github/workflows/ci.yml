@@ -25,6 +25,17 @@ jobs:
       - name: Build the web image
         run: docker build -f apps/web/Dockerfile -t pmhybrid-web:ci .
 
+  # The backup and restore-check scripts of docs/deployment.md restore a real dump of a
+  # throwaway Postgres container (Roadmap TASK-52); no database of the repository is touched.
+  backup-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Test the backup and restore scripts
+        run: sh deploy/backup/test.sh
+
   ci:
     runs-on: ubuntu-latest
 

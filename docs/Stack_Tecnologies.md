@@ -27,7 +27,7 @@ investigation). This is a different axis from the workflow `Status` in
 | Frontend | Angular (latest stable), TypeScript, Signals, standalone components, Angular Material/CDK | CONFIRMED | brief §21 |
 | Backend | Node.js + TypeScript, NestJS | CONFIRMED | brief §22 |
 | Data | PostgreSQL (latest stable compatible), Prisma ORM | CONFIRMED | brief §23 |
-| Infrastructure | Docker images for the API (node) and the web (nginx), `docker-compose.prod.yml`; `docker-compose.yml` is the dev database only | CONFIRMED | this project |
+| Infrastructure | Docker images for the API (node) and the web (nginx), `docker-compose.prod.yml`; `docker-compose.yml` is the dev database only; `deploy/backup/` holds a `pg_dump -Fc` backup script (run inside the container, no password) and a restore check on a scratch database, tested by `pnpm test:backup` (Roadmap TASK-52) | CONFIRMED | this project |
 
 ### Modules, schemas, ports & persistence
 

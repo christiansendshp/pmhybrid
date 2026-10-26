@@ -23,6 +23,7 @@ pnpm --filter web test        # web unit only
 pnpm test:e2e          # api e2e only (root script -> pnpm --filter api test:e2e)
 pnpm --filter api test:cov       # api unit with coverage and its floor
 pnpm test:e2e:cov      # api e2e with coverage and its floor
+pnpm test:backup          # the backup and restore-check scripts of deploy/backup, against a throwaway Postgres container (needs docker; Roadmap TASK-52)
 pnpm test:a11y          # web a11y only (root script -> pnpm --filter web test:a11y); needs Chromium: pnpm --filter web exec playwright install chromium
 pnpm -r lint            # oxlint (api) + eslint (web)
 pnpm -r build            # nest build + ng build (also the closest thing to a typecheck gate)
@@ -127,6 +128,10 @@ service container (its own `DATABASE_URL`, set at the job's `env:` level —
 `vitest.config.e2e.ts`'s `pmhybrid_test` override only applies outside CI) —
 so the "shared, never reset" caveat above never applies to a CI run, only to
 the long-lived local `pmhybrid_test` database.
+
+A second job, `backup-scripts` (Roadmap TASK-52), runs `sh deploy/backup/test.sh`: it starts a throwaway Postgres container of
+its own and restores real dumps with `deploy/backup/backup-postgres.sh` and `restore-check.sh`, so it needs neither the service
+container nor a migrated database.
 
 Since Roadmap SECURITY-03 the job also runs `pnpm audit --prod --audit-level=high`
 right after installing dependencies, so a known high or critical advisory in
