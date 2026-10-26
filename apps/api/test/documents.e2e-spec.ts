@@ -1,3 +1,5 @@
+import { writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
@@ -20,7 +22,9 @@ describe('Documents (roadmap parser, e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     const login = await request(app.getHttpServer())
@@ -88,16 +92,59 @@ describe('Documents (roadmap parser, e2e)', () => {
     }
   });
 
-  it('parses the real Agentslog.md without matching the fenced format example', async () => {
+  it('does not read the fenced format example of the own Agentslog.md of this repo as an entry, however long the ledger is', async () => {
     const res = await request(app.getHttpServer())
       .get(`/projects/${SELF_PROJECT_ID}/documents/agentslog/structured`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
 
-    expect(res.body.entries.length).toBeGreaterThan(0);
-    expect(res.body.entries.some((e: { taskExternalId: string }) => e.taskExternalId === 'TASK-ID')).toBe(
-      false,
+    expect(
+      res.body.entries.filter(
+        (e: { taskExternalId: string }) => e.taskExternalId === 'TASK-ID',
+      ),
+    ).toEqual([]);
+  });
+
+  it('reads the entries of a ledger and leaves out the fenced format example above them', async () => {
+    const docsPath = createScratchDocsPath();
+    writeFileSync(
+      path.join(docsPath, 'Agentslog.md'),
+      [
+        '# Agents log',
+        '',
+        '## Entry format',
+        '',
+        '```markdown',
+        '## [YYYY-MM-DDTHH:mm:ssZ] | agent | TASK-ID | IN_PROGRESS | Name',
+        '- Summary: what the agent will do or did',
+        '```',
+        '',
+        '## Entries',
+        '',
+        '## [2026-10-26T10:00:00Z] | tester | X-1 | DONE | A name',
+        '- Summary: done',
+        '- Verify: v',
+        '',
+      ].join('\n'),
+      'utf-8',
     );
+    const created = await request(app.getHttpServer())
+      .post('/projects')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        name: `Ledger E2E ${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+        docsPath,
+      })
+      .expect(201);
+
+    const res = await request(app.getHttpServer())
+      .get(`/projects/${created.body.id}/documents/agentslog/structured`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+
+    expect(
+      res.body.entries.map((e: { taskExternalId: string }) => e.taskExternalId),
+    ).toEqual(['X-1']);
   });
 
   it('denies an unauthenticated request', () => {
@@ -114,7 +161,10 @@ describe('Documents (roadmap parser, e2e)', () => {
       const res = await request(server())
         .post('/projects')
         .set('Authorization', auth())
-        .send({ name: `Documents E2E ${Date.now()}-${Math.random()}`, docsPath })
+        .send({
+          name: `Documents E2E ${Date.now()}-${Math.random()}`,
+          docsPath,
+        })
         .expect(201);
       return res.body.id as string;
     }
@@ -131,7 +181,10 @@ describe('Documents (roadmap parser, e2e)', () => {
 
     it('records one revision per synced, content-bearing document, newest first', async () => {
       const projectId = await createProjectAt(createScratchDocsPath());
-      await request(server()).post(`/projects/${projectId}/sync`).set('Authorization', auth()).expect(201);
+      await request(server())
+        .post(`/projects/${projectId}/sync`)
+        .set('Authorization', auth())
+        .expect(201);
 
       const roadmapRevisions = await request(server())
         .get(`/projects/${projectId}/documents/roadmap/revisions`)
@@ -151,7 +204,10 @@ describe('Documents (roadmap parser, e2e)', () => {
 
     it('fetches one revision by id with its full content, and 404s for a revision from a different document', async () => {
       const projectId = await createProjectAt(createScratchDocsPath());
-      await request(server()).post(`/projects/${projectId}/sync`).set('Authorization', auth()).expect(201);
+      await request(server())
+        .post(`/projects/${projectId}/sync`)
+        .set('Authorization', auth())
+        .expect(201);
 
       const list = await request(server())
         .get(`/projects/${projectId}/documents/roadmap/revisions`)
@@ -167,7 +223,9 @@ describe('Documents (roadmap parser, e2e)', () => {
 
       // Same id, wrong kind segment — must not leak the roadmap revision's content.
       await request(server())
-        .get(`/projects/${projectId}/documents/agentslog/revisions/${revisionId}`)
+        .get(
+          `/projects/${projectId}/documents/agentslog/revisions/${revisionId}`,
+        )
         .set('Authorization', auth())
         .expect(404);
     });
@@ -175,7 +233,9 @@ describe('Documents (roadmap parser, e2e)', () => {
     it('404s for an unknown revision id', async () => {
       const projectId = await createProjectAt(createScratchDocsPath());
       await request(server())
-        .get(`/projects/${projectId}/documents/roadmap/revisions/00000000-0000-0000-0000-000000000000`)
+        .get(
+          `/projects/${projectId}/documents/roadmap/revisions/00000000-0000-0000-0000-000000000000`,
+        )
         .set('Authorization', auth())
         .expect(404);
     });
