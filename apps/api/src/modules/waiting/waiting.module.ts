@@ -9,5 +9,6 @@ import { WaitingService } from './waiting.service.js';
   imports: [AuthModule, GitProvidersModule, RoadmapModule],
   controllers: [WaitingController],
   providers: [WaitingService],
+  exports: [WaitingService],
 })
 export class WaitingModule {}

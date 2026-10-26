@@ -7,5 +7,6 @@ import { PaceService } from './pace.service.js';
   imports: [AuthModule],
   controllers: [PaceController],
   providers: [PaceService],
+  exports: [PaceService],
 })
 export class PaceModule {}

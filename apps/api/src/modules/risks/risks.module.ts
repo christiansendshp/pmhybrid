@@ -7,5 +7,6 @@ import { RisksService } from './risks.service.js';
   imports: [AuthModule],
   controllers: [RisksController],
   providers: [RisksService],
+  exports: [RisksService],
 })
 export class RisksModule {}

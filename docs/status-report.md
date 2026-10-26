@@ -1,7 +1,7 @@
 # Status report and history
 
-Status: the daily snapshot (Roadmap TASK-46) and the rebuilding of past days (TASK-47) exist. The weekly report in
-Markdown (TASK-48) and the Informe tab (TASK-49) add their parts here. The idea is FEATURE-08 of
+Status: the daily snapshot (Roadmap TASK-46), the rebuilding of past days (TASK-47) and the weekly report in
+Markdown (TASK-48) exist. The Informe tab (TASK-49) adds its part here. The idea is FEATURE-08 of
 `docs/tracking-improvement-plan.md`: the state of a project should be readable without logging in, and the past state
 should be a number and not a reconstruction.
 
@@ -50,3 +50,28 @@ done once its `completedAt` has passed; the cards that are not work are out, as 
 purpose**: a task that was finished and later reopened has lost its `completedAt` and counts as open on the days it
 was done. Everything else (`byStatus`, `blocked`, `openConflicts`, `progress`) is **null**, never invented, and the
 row says `RECONSTRUCTED` so no page presents it as a recorded figure (BR-020). The answer is `{ written, days[] }`.
+
+## The weekly report (`GET /projects/:projectId/report`)
+
+Any member can read it. It answers `{ generatedAt, from, to, markdown }` for **the 7 days ending now**
+(`from` = now − 7 days) and does nothing a person could not read elsewhere: `ReportService` gathers what the app
+already computes and `buildReport` (pure) puts it in words, in Spanish, as plain Markdown:
+
+| Section                              | Where it comes from                                                                                                                                                                                                   |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Resumen**                          | The progress now (`ProgressRollupService`) and the tasks done of all; the snapshot of seven days ago (`ProjectSnapshot`); the tasks finished and created in the week; the light of the risks and the number of waits. |
+| **Qué se terminó**                   | The tasks whose `completedAt` is in the week, newest first, each with its day.                                                                                                                                        |
+| **Ritmo y pronóstico**               | The last complete weeks (`PaceService`) and the forecast sentence of BR-016: a range, or why there is none.                                                                                                           |
+| **Qué espera**                       | `WaitingService`: the blocked tasks, the decisions the ledger waits on and the open conflicts, the longest waiting first, with since when; a note when the ledger could not be read.                                  |
+| **Riesgos**                          | `RisksService`: the light and what counts against it, the signals with their reason, and the critical path in order.                                                                                                  |
+| **En desarrollo** / **Lo siguiente** | The tasks in development, and the tasks assigned and not started.                                                                                                                                                     |
+
+A list names at most **10** and says how many more there are ("…y 4 más"). The progress of a week ago comes from the
+snapshot of that day: **with none it says "No hay historia de hace 7 días para comparar", never a zero**, and a day
+that was rebuilt (TASK-47) says it is approximate. A project with no tasks gets a report that says so and has no
+sections. The tasks are the ones that count towards the progress (deleted ones and the cards that are not work are
+out).
+
+**Markdown, not HTML** (BR-021): a task title is data, so `escapeMarkdown` puts a backslash before `\`, `*`, `_`,
+`{ } [ ]`, `< >`, `#`, `|` and `~`, turns line breaks into spaces, and the report has no raw HTML tag whatever the
+titles say. `apps/api/src/modules/report/report.util.spec.ts` and `apps/api/test/report.e2e-spec.ts` check it.
