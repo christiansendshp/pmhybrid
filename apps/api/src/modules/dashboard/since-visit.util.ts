@@ -1,3 +1,5 @@
+import { blockedMove } from '../tasks/blocked-since.util.js';
+
 /** Days back a person is read from when they have never marked a project as seen (Roadmap TASK-38). */
 export const DEFAULT_WINDOW_DAYS = 7;
 
@@ -72,22 +74,19 @@ export function hasNews(news: ProjectNews): boolean {
 
 interface AuditedChange {
   entityId: string;
+  previousValue: unknown;
   newValue: unknown;
 }
 
 /**
- * The tasks an audit event says were taken out of the Blocked table (the caller gives the events whose previous
- * value was Blocked): not the ones that stayed in it, and not the ones the change completed, which are done and
- * not unblocked.
+ * The tasks an audit event says were taken out of the Blocked table for another one (`blockedMove`, the rule the
+ * notifications use too): not the ones that stayed in it, not a row that vanished and not the ones the change
+ * completed, which are done and not unblocked.
  */
 export function unblockedIds(changes: readonly AuditedChange[]): string[] {
   const ids = new Set<string>();
   for (const change of changes) {
-    const next = (change.newValue ?? {}) as {
-      roadmapTable?: unknown;
-      status?: unknown;
-    };
-    if (next.roadmapTable !== 'BLOCKED' && next.status !== 'TERMINADA') {
+    if (blockedMove(change.previousValue, change.newValue) === 'UNBLOCKED') {
       ids.add(change.entityId);
     }
   }

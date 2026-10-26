@@ -1,8 +1,8 @@
 # What changed: since the last visit, notifications and summaries
 
-Status: the marker and the summary of what is new in the API (Roadmap TASK-38) and the Panel section
-(TASK-39) exist. The new notification types (TASK-40, TASK-41) and the periodic summary (TASK-42) build on them and
-add their parts here. DEC-004 D3: everything stays in the app, nothing is sent out.
+Status: the marker and the summary of what is new in the API (Roadmap TASK-38), the Panel section (TASK-39) and
+the blocked and unblocked notifications (TASK-40) exist. The phase completed notification (TASK-41) and the
+periodic summary (TASK-42) add their parts here. DEC-004 D3: everything stays in the app, nothing is sent out.
 
 ## The marker (`ProjectSeen`)
 
@@ -16,13 +16,13 @@ project is read from 7 days back, which is also what a project they have just jo
 `GET /dashboard/since-last-visit` gives, for each active project the caller is an active member of **and that has
 news**, what happened since their marker:
 
-| Kind        | What counts                                                                                                                                                                                                                                                              |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `done`      | Tasks whose `completedAt` is after the marker.                                                                                                                                                                                                                           |
-| `blocked`   | Tasks in the Blocked table now whose `blockedSince` is after the marker.                                                                                                                                                                                                 |
-| `unblocked` | Tasks the audit trail shows taken out of the Blocked table after the marker (`previousValue.roadmapTable` Blocked, new one not) that are neither blocked nor done now. A move out that completed the task is `done`, not `unblocked`; a task blocked again is `blocked`. |
-| `newScope`  | Tasks whose `createdAt` is after the marker.                                                                                                                                                                                                                             |
-| `conflicts` | A count of the conflicts detected after the marker that are still open.                                                                                                                                                                                                  |
+| Kind        | What counts                                                                                                                                                                                                                                                                                                             |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `done`      | Tasks whose `completedAt` is after the marker.                                                                                                                                                                                                                                                                          |
+| `blocked`   | Tasks in the Blocked table now whose `blockedSince` is after the marker.                                                                                                                                                                                                                                                |
+| `unblocked` | Tasks the audit trail shows taken out of the Blocked table for another table after the marker (`blockedMove`, the rule the notifications use too) that are neither blocked nor done now. A row that vanished is not another table, a move out that completed the task is `done`, and a task blocked again is `blocked`. |
+| `newScope`  | Tasks whose `createdAt` is after the marker.                                                                                                                                                                                                                                                                            |
+| `conflicts` | A count of the conflicts detected after the marker that are still open.                                                                                                                                                                                                                                                 |
 
 Each task kind is `{ count, tasks }`: the count is of all of them, the list names the first 10 (`id`,
 `externalId`, `title`). They are the tasks that count towards the progress (deleted ones and the cards that are not
@@ -55,3 +55,23 @@ activity below are untouched.
 - The pure part, the sentences and their order, is `core/since-visit.ts` (`newsLines`), with its own tests; the
   component spec checks the reading, the failures, the links and the marking, and the Panel is in the accessibility
   and target-size suites.
+
+## Blocked and unblocked notifications (`TASK_BLOCKED`, `TASK_UNBLOCKED`)
+
+Sent to **the assignee of a task** (Roadmap TASK-40), by one listener on `sync.completed`
+(`NotificationsService.notifyBlockedMoves`): it reads the audit events of that run (`ROADMAP_TABLE_CHANGE`, origin
+`SYNC`, between the run's start and its end), so none of the places that write the Roadmap table has to say
+anything. For each task it takes the **net** move of the run, from where its first change started to where its last
+one ended (`netBlockedMoves`), and applies `blockedMove`:
+
+- Into the Blocked table from anywhere else: `TASK_BLOCKED`, with the title, the blocker (`reason`) and the
+  decision it needs (`neededDecision`).
+- Out of the Blocked table into another table: `TASK_UNBLOCKED`.
+- **Not** an unblocking: a row that vanished (it is in no table, not in another), and a change that completed the
+  task (it is done). A task blocked and unblocked again within one run is news to nobody.
+
+Nobody is told about their own change: when the person who ran the sync is the assignee, nothing is sent. A task
+with no assignee, a deleted one or a finished one tells nobody, and a sync that changes nothing sends nothing; the
+runs are one after another under the project's lock, so a change is in the window of one run only. A failure in
+the listener is logged and never changes the sync's own outcome. The notification list says each in a sentence
+("Tu tarea «…» quedó bloqueada: <reason>. Necesita: <decision>", "Tu tarea «…» ya no está bloqueada").

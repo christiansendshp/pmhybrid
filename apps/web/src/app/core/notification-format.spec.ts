@@ -78,6 +78,41 @@ describe('describeNotification (brief §29)', () => {
     expect(about('TASK_ASSIGNED')).toBe('Te asignaron la tarea «sin título»');
   });
 
+  describe('a task blocked or unblocked (Roadmap TASK-40)', () => {
+    const blocked = (payload: Record<string, unknown>) =>
+      describeNotification(notification({ type: 'TASK_BLOCKED', payload }));
+
+    it('says the task was blocked, why, and what it needs', () => {
+      expect(
+        blocked({ title: 'Ship it', reason: 'Waiting for legal', neededDecision: 'PO decision' }),
+      ).toBe('Tu tarea «Ship it» quedó bloqueada: Waiting for legal. Necesita: PO decision');
+    });
+
+    it('says only that it was blocked when the payload has no reason', () => {
+      expect(blocked({ title: 'Ship it', reason: null, neededDecision: null })).toBe(
+        'Tu tarea «Ship it» quedó bloqueada',
+      );
+    });
+
+    it('says what it needs when there is no reason', () => {
+      expect(blocked({ title: 'Ship it', neededDecision: 'PO decision' })).toBe(
+        'Tu tarea «Ship it» quedó bloqueada. Necesita: PO decision',
+      );
+    });
+
+    it('says the task is no longer blocked', () => {
+      expect(
+        describeNotification(
+          notification({ type: 'TASK_UNBLOCKED', payload: { title: 'Ship it' } }),
+        ),
+      ).toBe('Tu tarea «Ship it» ya no está bloqueada');
+    });
+
+    it('never renders a hole when the payload has no title', () => {
+      expect(blocked({})).toBe('Tu tarea «sin título» quedó bloqueada');
+    });
+  });
+
   it('falls back to the raw type for an unknown notification type, instead of rendering empty', () => {
     expect(describeNotification(notification({ type: 'SOMETHING_NEW', payload: {} }))).toBe(
       'SOMETHING_NEW',

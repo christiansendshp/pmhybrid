@@ -153,7 +153,7 @@ export class SinceVisitService {
         occurredAt: { gt: since },
         previousValue: { path: ['roadmapTable'], equals: 'BLOCKED' },
       },
-      select: { entityId: true, newValue: true },
+      select: { entityId: true, previousValue: true, newValue: true },
     });
     const ids = unblockedIds(changes);
     if (ids.length === 0) {

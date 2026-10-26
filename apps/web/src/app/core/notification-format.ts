@@ -31,6 +31,17 @@ export function describeNotification(notification: Notification): string {
       return `Te asignaron la tarea «${taskTitle(payload)}»`;
     case 'TASK_REASSIGNED':
       return `La tarea «${taskTitle(payload)}» pasó a otra persona`;
+    case 'TASK_BLOCKED': {
+      const reason =
+        typeof payload['reason'] === 'string' && payload['reason'] ? `: ${payload['reason']}` : '';
+      const needed =
+        typeof payload['neededDecision'] === 'string' && payload['neededDecision']
+          ? `. Necesita: ${payload['neededDecision']}`
+          : '';
+      return `Tu tarea «${taskTitle(payload)}» quedó bloqueada${reason}${needed}`;
+    }
+    case 'TASK_UNBLOCKED':
+      return `Tu tarea «${taskTitle(payload)}» ya no está bloqueada`;
     case 'TASK_COMMENTED':
       return `Nuevo comentario en tu tarea «${taskTitle(payload)}»`;
     default:

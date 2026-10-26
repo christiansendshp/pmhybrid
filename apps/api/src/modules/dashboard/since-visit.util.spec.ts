@@ -83,18 +83,37 @@ describe('hasNews', () => {
 });
 
 describe('unblockedIds', () => {
-  it('names the task that moved to another table, or to none', () => {
+  const blocked = { roadmapTable: 'BLOCKED' };
+
+  it('names the task that moved to another table', () => {
     expect(
       unblockedIds([
-        { entityId: 'a', newValue: { roadmapTable: 'ACTIVE' } },
-        { entityId: 'b', newValue: { roadmapTable: null } },
+        {
+          entityId: 'a',
+          previousValue: blocked,
+          newValue: { roadmapTable: 'ACTIVE' },
+        },
       ]),
-    ).toEqual(['a', 'b']);
+    ).toEqual(['a']);
   });
 
   it('leaves out the task that stayed blocked', () => {
     expect(
-      unblockedIds([{ entityId: 'a', newValue: { roadmapTable: 'BLOCKED' } }]),
+      unblockedIds([
+        { entityId: 'a', previousValue: blocked, newValue: blocked },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('leaves out a row that vanished: it is in no table, not in another', () => {
+    expect(
+      unblockedIds([
+        {
+          entityId: 'a',
+          previousValue: blocked,
+          newValue: { roadmapTable: null },
+        },
+      ]),
     ).toEqual([]);
   });
 
@@ -103,22 +122,33 @@ describe('unblockedIds', () => {
       unblockedIds([
         {
           entityId: 'a',
+          previousValue: blocked,
           newValue: { status: 'TERMINADA', roadmapTable: null },
         },
       ]),
     ).toEqual([]);
   });
 
+  it('leaves out an event that says nothing about where the task went', () => {
+    expect(
+      unblockedIds([{ entityId: 'a', previousValue: blocked, newValue: null }]),
+    ).toEqual([]);
+  });
+
   it('names a task once however many times it moved', () => {
     expect(
       unblockedIds([
-        { entityId: 'a', newValue: { roadmapTable: 'ACTIVE' } },
-        { entityId: 'a', newValue: { roadmapTable: 'NEAR_TERM' } },
+        {
+          entityId: 'a',
+          previousValue: blocked,
+          newValue: { roadmapTable: 'ACTIVE' },
+        },
+        {
+          entityId: 'a',
+          previousValue: blocked,
+          newValue: { roadmapTable: 'NEAR_TERM' },
+        },
       ]),
     ).toEqual(['a']);
-  });
-
-  it('reads an event with no new value as a move out of the table', () => {
-    expect(unblockedIds([{ entityId: 'a', newValue: null }])).toEqual(['a']);
   });
 });

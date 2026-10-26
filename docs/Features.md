@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 190
-- Latest verification: `check, lint, build, unit and e2e green (since-visit specs 26 incl. Panel); looked at in the browser on a scratch API/web (desktop, mark as seen, 375 px without overflow); the a11y suite was extended but not run (needs the persistent stack stopped)` (2026-10-26)
+- Verified capabilities: 191
+- Latest verification: `check, lint, build, unit and e2e green (blocked-notifications 7 e2e, blockedMove and netBlockedMoves unit, web sentences); TASK-38's unblockedIds tests were rewritten on purpose for the stricter shared rule` (2026-10-26)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -205,3 +205,4 @@ Use one row per stable capability. Link long specifications or runbooks from
 | FEATURE-01 | Pace, progress over time and forecast: the calculator, GET /projects/:id/metrics/pace and the Seguimiento tab (weekly closed and created, burn-up per phase, forecast as a range beside the scope growth, declining without history or when the work does not converge) | TASK-35, TASK-36 and TASK-37 are in Features.md with VALIDAR green on 5a8bf48, 96b71d5 and 56b7c79 | log:FEATURE-01 | 2026-10-26 |
 | TASK-38 | Per-person ProjectSeen marker and GET /dashboard/since-last-visit: for each active project of the caller with news since the marker (7 days back with none), the tasks done, blocked, unblocked (audit) and new, and the conflicts opened, as counts with up to 10 tasks each; POST /dashboard/since-last-visit/seen moves only the caller's marker (BR-017) | check, lint, build, unit (since-visit.util.spec 16) and e2e (since-last-visit 17) green; migration applied to the dev DB | log:TASK-38 | 2026-10-26 |
 | TASK-39 | The Panel starts with Desde tu última visita: each project with news since the person's marker as a card (counts as sentences in the order a person acts: blocked, conflicts, unblocked, done, new; the first tasks as links; from when it counts) and Marcar como visto per project or for all, updating without reloading; it reads on its own and says when it cannot | check, lint, build, unit and e2e green (since-visit specs 26 incl. Panel); looked at in the browser on a scratch API/web (desktop, mark as seen, 375 px without overflow); the a11y suite was extended but not run (needs the persistent stack stopped) | log:TASK-39 | 2026-10-26 |
+| TASK-40 | TASK_BLOCKED and TASK_UNBLOCKED go to a task's assignee after a sync whose audit events show it entered the Blocked table (with why and what is needed) or left it for another table; one hook on sync.completed using the net move per task; a vanished row, a completion, an unassigned task and the person who ran the sync tell nobody; blockedMove is now the one rule for the notifications and for the Panel's unblocked (a vanished row no longer counts there) | check, lint, build, unit and e2e green (blocked-notifications 7 e2e, blockedMove and netBlockedMoves unit, web sentences); TASK-38's unblockedIds tests were rewritten on purpose for the stricter shared rule | log:TASK-40 | 2026-10-26 |

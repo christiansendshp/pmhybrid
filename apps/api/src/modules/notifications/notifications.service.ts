@@ -1,7 +1,8 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { Prisma } from '@prisma/client';
+import { Prisma, TaskStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { netBlockedMoves } from '../tasks/blocked-since.util.js';
 import { NotificationsGateway } from '../realtime/notifications.gateway.js';
 
 interface SyncCompletedPayload {
@@ -118,6 +119,86 @@ export class NotificationsService {
             .map(({ id, reason }) => ({ id, reason })),
         },
         payload.requesterActorId,
+      );
+    }
+    await this.notifyBlockedMoves(payload);
+  }
+
+  /**
+   * Tells a task's assignee that a sync put it into the Blocked table, or took it out for another one (Roadmap
+   * TASK-40). It reads the audit events of the run, so none of the places that write the table has to say it; the
+   * person who ran the sync is not told of their own change, and a task nobody holds tells nobody.
+   */
+  private async notifyBlockedMoves(
+    payload: SyncCompletedPayload,
+  ): Promise<void> {
+    try {
+      const run = await this.prisma.syncRun.findUnique({
+        where: { id: payload.syncRunId },
+        select: { startedAt: true, finishedAt: true },
+      });
+      if (!run) {
+        return;
+      }
+      const changes = await this.prisma.auditEvent.findMany({
+        where: {
+          projectId: payload.projectId,
+          entityType: 'Task',
+          operation: 'ROADMAP_TABLE_CHANGE',
+          origin: 'SYNC',
+          occurredAt: { gte: run.startedAt, lte: run.finishedAt ?? new Date() },
+        },
+        orderBy: { occurredAt: 'asc' },
+        select: { entityId: true, previousValue: true, newValue: true },
+      });
+      const moves = netBlockedMoves(changes);
+      if (moves.size === 0) {
+        return;
+      }
+      const tasks = await this.prisma.task.findMany({
+        where: {
+          id: { in: [...moves.keys()] },
+          deletedAt: null,
+          status: { not: TaskStatus.TERMINADA },
+          assigneeActorId: { not: null },
+        },
+        select: {
+          id: true,
+          externalId: true,
+          title: true,
+          assigneeActorId: true,
+          blockedReason: true,
+          neededDecision: true,
+        },
+      });
+      for (const task of tasks) {
+        const assignee = task.assigneeActorId;
+        const move = moves.get(task.id);
+        if (!assignee || !move || assignee === payload.requesterActorId) {
+          continue;
+        }
+        const details = {
+          taskId: task.id,
+          externalId: task.externalId,
+          title: task.title,
+          syncRunId: payload.syncRunId,
+        };
+        await this.notifyActors(
+          [assignee],
+          payload.projectId,
+          move === 'BLOCKED' ? 'TASK_BLOCKED' : 'TASK_UNBLOCKED',
+          move === 'BLOCKED'
+            ? {
+                ...details,
+                reason: task.blockedReason,
+                neededDecision: task.neededDecision,
+              }
+            : details,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Could not notify the blocked moves of sync run ${payload.syncRunId}: ${String(error)}`,
       );
     }
   }
