@@ -36,17 +36,30 @@ ${row}
 `;
 }
 
-function onceMessage(client: WebSocket, timeoutMs = 5000): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error('Timed out waiting for a WS message')),
-      timeoutMs,
-    );
-    client.once('message', (data) => {
-      clearTimeout(timer);
-      resolve(JSON.parse(data.toString()));
-    });
+/**
+ * Listens from now, so a push that arrives while the test is still making the
+ * requests that cause it is not missed; the returned function starts the
+ * timeout when the test begins to wait, so the requests do not spend it
+ * (Roadmap GAP-49).
+ */
+function onceMessage(
+  client: WebSocket,
+  timeoutMs = 5000,
+): () => Promise<unknown> {
+  const received = new Promise<unknown>((resolve) => {
+    client.once('message', (data) => resolve(JSON.parse(data.toString())));
   });
+  return () =>
+    new Promise((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('Timed out waiting for a WS message')),
+        timeoutMs,
+      );
+      void received.then((message) => {
+        clearTimeout(timer);
+        resolve(message);
+      });
+    });
 }
 
 function onceClose(client: WebSocket, timeoutMs = 5000): Promise<number> {
@@ -214,7 +227,7 @@ describe('Realtime notifications gateway (e2e)', () => {
     const ticket = await mintTicket(memberToken);
     const memberSocket = connect(ticket);
     await onceOpen(memberSocket);
-    const nextMessage = onceMessage(memberSocket);
+    const waitForMessage = onceMessage(memberSocket);
 
     // Owner triggers both sync runs, so only the member (who did not) gets notified.
     await request(server())
@@ -231,7 +244,7 @@ describe('Realtime notifications gateway (e2e)', () => {
       .set('Authorization', auth())
       .expect(201);
 
-    await expect(nextMessage).resolves.toEqual({
+    await expect(waitForMessage()).resolves.toEqual({
       type: 'notifications.changed',
     });
   });

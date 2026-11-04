@@ -140,6 +140,26 @@ so the next attempt does not start from zero:
 - Per-file timings: `pnpm exec vitest run --config ./vitest.config.e2e.ts --reporter=json --outputFile=times.json` in
   `apps/api`, then read each `testResults[].endTime - startTime`.
 
+## Timeouts on a busy machine (Roadmap GAP-48)
+
+A test that waits longer than its timeout fails even when nothing is wrong with it, so each suite carries a margin
+for a machine that something else is using (VALIDAR shares it with the other projects' sessions):
+
+- **api e2e:** `testTimeout` 40 s and `hookTimeout` 30 s in `apps/api/vitest.config.e2e.ts`.
+- **web unit:** `testTimeout` and `hookTimeout` 15 s in `apps/web/vitest-base.config.ts`, which `ng test` reads
+  because `angular.json` sets `runnerConfig: true`. The builder looks for that exact name (`vitest-base.config.*`): a
+  file called `vitest.config.ts` is ignored without a word, so a test longer than 5 s still fails.
+- **api unit:** Vitest's 5 s default; no timeout there has been recorded.
+- **A wait inside a test** (`onceMessage` of `realtime.e2e-spec.ts`) starts its clock when the test starts to wait,
+  not when it starts to listen: the listener is registered before the requests that cause the event, so the event is
+  not missed, and those requests do not spend the wait (GAP-49: on a busy machine two `POST /sync` used the 5 s and
+  a push that had arrived was judged late).
+
+Measured on 2026-11-04, the day `app.routes.spec.ts` timed out at 5.6 s under load: the web suite takes 52 s alone
+(778 tests) and 109 to 137 s with one CPU burner per core (`node -e 'for(;;){}'`, 20 of them), and passed three times
+in a row in that state. Keep the margin when you add a slow spec; raise it only with a measure like this one, and
+never to hide a test that is slow on a quiet machine.
+
 ## CI
 
 `.github/workflows/ci.yml` (Roadmap GAP-17) runs `lint` → `build` → unit

@@ -2,8 +2,8 @@
 
 ## Operational summary
 
-- Verified capabilities: 211
-- Latest verification: `check, lint, build, unit and e2e green in 268 s; the skill's smoke test 578 passed 0 failed with the change; the same four history scenarios give the same verdicts with the original and the changed script` (2026-10-26)
+- Verified capabilities: 213
+- Latest verification: `web suite 778 passed 3 of 3 under 20 CPU burners (109-137 s, 52 s alone); a 7 s probe passes with the file and times out at 5 s without it; VALIDAR green` (2026-11-04)
 - Known limitation: see `docs/features/known-limitations.md`
 
 <!-- context:end -->
@@ -226,3 +226,5 @@ Use one row per stable capability. Link long specifications or runbooks from
 | FEATURE-09 | Operational hygiene: the old sync runs of a project are trimmed but every failed one stays (TASK-50), read notifications older than N days are deleted and the unread never (TASK-51), and a documented pg_dump backup with a restore check on a scratch database (TASK-52) | TASK-50, TASK-51 and TASK-52 are in Features.md with VALIDAR green on 762276b, 8eb24b4 and 369c450 | log:FEATURE-09 | 2026-10-26 |
 | EPIC-01 | Project tracking: pace and forecast, work logged without a task, agents as responsible actors, normalized log status, what is waiting and on whom, what changed since the last visit and a periodic summary, risk signals, a shareable report with a daily history, and operational hygiene of the data that grows | FEATURE-01 to FEATURE-09 are in Features.md with VALIDAR green; the last, TASK-52, on 369c450 | log:EPIC-01 | 2026-10-26 |
 | GAP-44 | VALIDAR went from 293-322 s to 268 s: check 59-73 s to 35 s (one grep over the archives of docs/history instead of one per archive, 1327 processes for 209 IDs, ADR-024), the e2e suite shown to be bound by the machine (16 workers no faster) and its longest files to be the skill's own commands; findings in docs/testing.md | check, lint, build, unit and e2e green in 268 s; the skill's smoke test 578 passed 0 failed with the change; the same four history scenarios give the same verdicts with the original and the changed script | log:GAP-44 | 2026-10-26 |
+| GAP-49 | realtime.e2e-spec.ts onceMessage listens at once but starts its 5 s timeout when the test starts to wait, so the two syncs no longer spend it. A longer timeout was rejected: it would hide the cause. | with the syncs 6 s late the old helper fails with the error of the VALIDAR and the new one passes (6/6); VALIDAR green, e2e 746 passed | log:GAP-49 | 2026-11-04 |
+| GAP-48 | Web unit tests get a 15 s test and hook timeout in apps/web/vitest-base.config.ts (angular.json runnerConfig true; the builder reads only vitest-base.config.*, a vitest.config.ts is ignored). Same margin approach as the api e2e config; reversible, no ADR. | web suite 778 passed 3 of 3 under 20 CPU burners (109-137 s, 52 s alone); a 7 s probe passes with the file and times out at 5 s without it; VALIDAR green | log:GAP-48 | 2026-11-04 |

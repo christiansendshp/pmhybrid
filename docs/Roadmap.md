@@ -26,7 +26,7 @@ stable for positional edits.
 
 | ID | Name | Description | Acceptance check | Status | Owner | Depends on | Pause reason |
 |---|---|---|---|---|---|---|---|
-| TASK-24 | Register the agents of SMARTHR with their aliases | BLOQUEADA (BLOQUEO): live SMARTHR data and a person's answer on which agent names are one agent. Cause and action: its Agentslog entry. | Every SMARTHR ledger agent name resolves to a registered agent. | PAUSE | claude-sonnet-5-5@2026-10-26T23:24:36Z | TASK-02 | BLOQUEADA: waits for a person, live SMARTHR data |
+| TASK-24 | Register the agents of SMARTHR with their aliases | BLOQUEADA (BLOQUEO): needs SMARTHR's live data and a person's decision on agent names. | Every SMARTHR agent name resolves to a registered agent. | PAUSE | claude-sonnet-5-5@2026-10-26T23:24:36Z | TASK-02 | BLOQUEADA: see Description |
 
 <!-- context:end -->
 
