@@ -30,3 +30,4 @@ and documents cite them by id (`ADR-002`).
 | [ADR-022](ADR-022-latest-skill-roadmaps-hold-the-skills-status-word.md)  | 2026-09-17 | CONFIRMED | A Roadmap of the latest skill holds the skill's status word (supersedes ADR-002 there)  |
 | [ADR-023](ADR-023-the-skills-tables-and-prettier-skips-them.md)          | 2026-10-16 | CONFIRMED | This repo's own documents follow the latest skill's tables, and prettier skips them     |
 | [ADR-024](ADR-024-the-skill-copy-searches-the-archives-with-one-grep.md) | 2026-10-26 | CONFIRMED | This repo's copy of the skill searches the archives with one grep                       |
+| [ADR-025](ADR-025-blocked-rows-are-pause-with-bloqueo.md)                | 2026-11-05 | CONFIRMED | A blocked task is a PAUSE row with category BLOQUEO; vanished PM Hub tasks stay open    |
